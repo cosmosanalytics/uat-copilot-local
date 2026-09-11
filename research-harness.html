@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Harness — Local Models</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
+    --text:#1c211e; --text-dim:#54594f; --text-faint:#8c9188;
+    --accent:#12806c; --accent-bg:#e6f2ef; --accent-dim:#9cc9c0;
+    --amber:#a9770f; --amber-bg:#fbf1de; --amber-dim:#e6cd97;
+    --danger:#b4413a; --danger-bg:#fbe9e7;
+    --shadow:0 1px 3px rgba(20,25,20,0.08);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  header{
+    display:flex; align-items:center; gap:12px; padding:10px 18px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1 span{ color:var(--accent); }
+  .badge{
+    font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent);
+    background:var(--accent-bg); border:1px solid var(--accent-dim); padding:4px 9px; border-radius:20px;
+  }
+  .spacer{ flex:1; }
+  .gpu-pill{
+    font-size:11px; padding:4px 10px; border-radius:20px; font-family:ui-monospace,monospace;
+    border:1px solid var(--border);
+  }
+  .gpu-pill.ok{ color:var(--accent); border-color:var(--accent-dim); background:var(--accent-bg); }
+  .gpu-pill.bad{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 60px 18px; }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px; box-shadow:var(--shadow); margin-bottom:18px;
+  }
+  .card h2{ font-size:14px; margin:0 0 4px 0; }
+  .card p.help{ color:var(--text-dim); font-size:12.5px; margin:0 0 14px 0; line-height:1.5; }
+  label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin:10px 0 5px 0; }
+  textarea, input[type=text]{
+    width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px;
+    font-size:13.5px; font-family:inherit; background:var(--panel-inset); color:var(--text);
+  }
+  textarea{ min-height:80px; resize:vertical; }
+
+  .model-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; margin-top:4px; }
+  .model-opt{
+    display:flex; align-items:flex-start; gap:8px; border:1px solid var(--border); border-radius:7px;
+    padding:9px 10px; background:var(--panel-inset); cursor:pointer; font-size:12.5px;
+  }
+  .model-opt:hover{ border-color:var(--accent-dim); }
+  .model-opt input{ margin-top:2px; }
+  .model-opt .m-name{ font-weight:600; }
+  .model-opt .m-size{ color:var(--text-faint); font-size:11px; font-family:ui-monospace,monospace; }
+
+  .harness-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(250px,1fr)); gap:8px; margin-top:4px; }
+  .harness-opt{
+    display:flex; flex-direction:column; gap:3px; border:1.5px solid var(--border); border-radius:8px;
+    padding:10px 12px; background:var(--panel-inset); cursor:pointer; font-size:12.5px;
+  }
+  .harness-opt.selected{ border-color:var(--accent); background:var(--accent-bg); }
+  .harness-opt .h-name{ font-weight:700; display:flex; align-items:center; gap:6px; }
+  .harness-opt .h-desc{ color:var(--text-dim); font-size:11.5px; line-height:1.4; }
+
+  .synth-row{ display:none; margin-top:10px; }
+  .synth-row.on{ display:block; }
+  select{
+    width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px;
+    font-size:13px; font-family:inherit; background:var(--panel-inset); color:var(--text);
+  }
+
+  .btn{
+    border:1px solid var(--border); background:var(--panel); color:var(--text);
+    padding:9px 16px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .btn:hover:not(:disabled){ border-color:var(--accent-dim); color:var(--accent); }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover:not(:disabled){ opacity:0.92; color:#fff; }
+  .btn-row{ display:flex; gap:9px; margin-top:16px; flex-wrap:wrap; }
+
+  .results{ display:flex; flex-direction:column; gap:14px; }
+  .model-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .model-card.synth{ border-color:var(--accent-dim); }
+  .mc-head{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--panel-inset);
+    border-bottom:1px solid var(--border-soft); flex-wrap:wrap;
+  }
+  .mc-head .mc-name{ font-weight:700; font-size:13px; }
+  .mc-head .mc-stage{ font-size:11px; color:var(--text-faint); font-family:ui-monospace,monospace; }
+  .mc-head .spacer{ flex:1; }
+  .mc-head .mc-stat{ font-size:11px; color:var(--text-dim); font-family:ui-monospace,monospace; }
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--border); flex:none; }
+  .status-dot.loading{ background:var(--amber); }
+  .status-dot.running{ background:var(--accent); animation:pulse 1s infinite; }
+  .status-dot.done{ background:var(--accent); }
+  .status-dot.error{ background:var(--danger); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  .mc-body{ padding:12px 14px; }
+  .bar{ height:6px; border-radius:5px; background:var(--panel-inset); border:1px solid var(--border-soft); overflow:hidden; margin:6px 0; }
+  .bar .fill{ height:100%; background:var(--accent); width:0%; transition:width .15s; }
+  .progress-note{ font-size:11px; color:var(--text-faint); font-family:ui-monospace,monospace; }
+
+  .pass{ margin-bottom:10px; }
+  .pass:last-child{ margin-bottom:0; }
+  .pass-label{
+    font-size:10.5px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:4px;
+  }
+  .pass-text{ font-size:13px; line-height:1.55; white-space:pre-wrap; }
+  .pass.draft .pass-text{ color:var(--text-dim); border-left:2px solid var(--border); padding-left:9px; }
+
+  .empty-note{ color:var(--text-faint); font-size:13px; text-align:center; padding:30px; border:1px dashed var(--border); border-radius:8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Research <span>Harness</span> — Local Models</h1>
+  <span class="badge">Runs on-device · WebGPU · no API key</span>
+  <div class="spacer"></div>
+  <span class="gpu-pill mono" id="gpuPill">checking GPU…</span>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>Research question</h2>
+    <p class="help">Ask the thing you actually want investigated. The harness you pick below controls how hard each model works on it — not just which model answers.</p>
+    <textarea id="question" placeholder="e.g. What are the tradeoffs between rolling-horizon MPC and full-horizon MILP for supply chain planning under demand uncertainty?"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Models to run</h2>
+    <p class="help">Each is a small open instruct model, downloaded once from the Hugging Face Hub and cached by your browser. Bigger = slower to load, generally stronger reasoning.</p>
+    <div class="model-grid" id="modelGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Harness</h2>
+    <p class="help">The harness is the strategy applied to every model above — it's what makes the research "deeper" than a single-shot answer.</p>
+    <div class="harness-grid" id="harnessGrid"></div>
+
+    <div class="synth-row" id="synthRow">
+      <label for="synthModel" id="synthLabel">Synthesizer model (combines all independent answers into one)</label>
+      <select id="synthModel"></select>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn primary" id="runBtn" disabled>Run harness</button>
+      <button class="btn" id="exportBtn" disabled>Export transcript (.md)</button>
+      <span class="progress-note" id="globalStatus"></span>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="empty-note">Pick models and a harness, then click "Run harness" — results stream in below, one card per model.</div>
+  </div>
+
+</div>
+
+<script type="module">
+import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+
+const el = id => document.getElementById(id);
+const gpuPill = el('gpuPill');
+const modelGrid = el('modelGrid');
+const harnessGrid = el('harnessGrid');
+const synthRow = el('synthRow');
+const synthLabel = el('synthLabel');
+const synthModelSel = el('synthModel');
+const runBtn = el('runBtn');
+const exportBtn = el('exportBtn');
+const globalStatus = el('globalStatus');
+const resultsEl = el('results');
+const questionEl = el('question');
+
+const MODELS = [
+  { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B Instruct", size: "~0.4 GB" },
+  { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B Instruct", size: "~0.9 GB" },
+  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B Instruct", size: "~1.1 GB" },
+  { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B Instruct", size: "~2.3 GB" },
+  { id: "Qwen2.5-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5 3B Instruct", size: "~2.3 GB" },
+  { id: "Phi-3.5-mini-instruct-q4f16_1-MLC", label: "Phi-3.5-mini Instruct", size: "~2.5 GB" },
+];
+
+const HARNESSES = [
+  {
+    id: "direct",
+    name: "Direct",
+    desc: "One-shot answer. Fast baseline — no extra reasoning pushed on the model.",
+  },
+  {
+    id: "cot",
+    name: "Chain-of-thought",
+    desc: "Model is told to reason step by step before answering. Slower, usually more thorough.",
+  },
+  {
+    id: "selfconsistency",
+    name: "Self-consistency",
+    desc: "Same model, same question, 3 samples at higher temperature — then a reconcile pass keeps what's consistent and drops what only showed up once.",
+  },
+  {
+    id: "refine",
+    name: "Self-refine (2-pass)",
+    desc: "Model drafts an answer, then critiques its own draft for gaps and unsupported claims, then rewrites it. Two full generations per model.",
+  },
+  {
+    id: "debate",
+    name: "Cross-model debate",
+    desc: "First selected model drafts, second selected model critiques it as a peer reviewer, then a designated model reconciles into a final answer. Needs 2+ models selected.",
+  },
+  {
+    id: "synthesis",
+    name: "Cross-model synthesis",
+    desc: "Every selected model answers independently (chain-of-thought), then one designated model reads all the answers and synthesizes a single deeper answer, flagging disagreements.",
+  },
+];
+
+let selectedHarness = "cot";
+
+// ---- render model checkboxes ----
+MODELS.forEach(m => {
+  const label = document.createElement('label');
+  label.className = 'model-opt';
+  label.innerHTML = `
+    <input type="checkbox" value="${m.id}" data-label="${m.label}">
+    <span>
+      <div class="m-name">${m.label}</div>
+      <div class="m-size">${m.size} · ${m.id}</div>
+    </span>`;
+  modelGrid.appendChild(label);
+  label.querySelector('input').addEventListener('change', () => { updateSynthOptions(); updateRunEnabled(); });
+});
+
+// ---- render harness cards ----
+HARNESSES.forEach(h => {
+  const card = document.createElement('div');
+  card.className = 'harness-opt' + (h.id === selectedHarness ? ' selected' : '');
+  card.dataset.id = h.id;
+  card.innerHTML = `<div class="h-name">${h.name}</div><div class="h-desc">${h.desc}</div>`;
+  card.addEventListener('click', () => {
+    selectedHarness = h.id;
+    harnessGrid.querySelectorAll('.harness-opt').forEach(c => c.classList.toggle('selected', c.dataset.id === h.id));
+    synthRow.classList.toggle('on', h.id === 'synthesis' || h.id === 'debate');
+    synthLabel.textContent = h.id === 'debate'
+      ? 'Reconciler model (reads the draft + critique, writes the final answer)'
+      : 'Synthesizer model (combines all independent answers into one)';
+  });
+  harnessGrid.appendChild(card);
+});
+
+function selectedModelIds() {
+  return [...modelGrid.querySelectorAll('input:checked')].map(i => i.value);
+}
+
+function updateSynthOptions() {
+  const ids = selectedModelIds();
+  synthModelSel.innerHTML = ids.map(id => {
+    const m = MODELS.find(x => x.id === id);
+    return `<option value="${id}">${m.label}</option>`;
+  }).join('');
+}
+
+function updateRunEnabled() {
+  runBtn.disabled = selectedModelIds().length === 0 || !questionEl.value.trim() || busy;
+}
+questionEl.addEventListener('input', updateRunEnabled);
+
+// ---- WebGPU check ----
+async function checkWebGPU() {
+  try {
+    if (!("gpu" in navigator)) throw new Error("WebGPU not available in this browser.");
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error("No WebGPU adapter found.");
+    gpuPill.textContent = 'WebGPU ready';
+    gpuPill.className = 'gpu-pill mono ok';
+  } catch (e) {
+    gpuPill.textContent = 'WebGPU unavailable';
+    gpuPill.className = 'gpu-pill mono bad';
+    globalStatus.textContent = e.message + ' — try Chrome or Edge on a WebGPU-capable GPU.';
+  }
+}
+checkWebGPU();
+
+// ---- engine management (one loaded model at a time) ----
+let currentEngine = null;
+let currentEngineModelId = null;
+let busy = false;
+
+async function getEngine(modelId, onProgress) {
+  if (currentEngine && currentEngineModelId === modelId) return currentEngine;
+  if (currentEngine) {
+    try { await currentEngine.unload(); } catch (_) {}
+    currentEngine = null;
+    currentEngineModelId = null;
+  }
+  const engine = await webllm.CreateMLCEngine(modelId, {
+    initProgressCallback: onProgress,
+  });
+  currentEngine = engine;
+  currentEngineModelId = modelId;
+  return engine;
+}
+
+// ---- UI helpers for a model result card ----
+function makeCard(name, opts = {}) {
+  const card = document.createElement('div');
+  card.className = 'model-card' + (opts.synth ? ' synth' : '');
+  card.innerHTML = `
+    <div class="mc-head">
+      <span class="status-dot loading"></span>
+      <span class="mc-name">${name}</span>
+      <span class="mc-stage">loading…</span>
+      <div class="spacer"></div>
+      <span class="mc-stat"></span>
+    </div>
+    <div class="mc-body"><div class="bar"><div class="fill"></div></div></div>`;
+  resultsEl.appendChild(card);
+  return {
+    el: card,
+    dot: card.querySelector('.status-dot'),
+    stage: card.querySelector('.mc-stage'),
+    stat: card.querySelector('.mc-stat'),
+    body: card.querySelector('.mc-body'),
+  };
+}
+
+function setStage(ui, stage, statusClass) {
+  ui.stage.textContent = stage;
+  if (statusClass) ui.dot.className = 'status-dot ' + statusClass;
+}
+
+function setProgressBar(ui, pct, note) {
+  ui.body.innerHTML = `<div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="progress-note">${note || ''}</div>`;
+}
+
+function addPass(ui, label, isDraft) {
+  const wrap = document.createElement('div');
+  wrap.className = 'pass' + (isDraft ? ' draft' : '');
+  wrap.innerHTML = `<div class="pass-label">${label}</div><div class="pass-text"></div>`;
+  ui.body.appendChild(wrap);
+  return wrap.querySelector('.pass-text');
+}
+
+function clearBody(ui) { ui.body.innerHTML = ''; }
+
+// ---- generation helpers ----
+async function streamCompletion(engine, messages, textEl, opts = {}) {
+  const completion = await engine.chat.completions.create({
+    messages,
+    stream: true,
+    temperature: opts.temperature ?? 0.7,
+    max_tokens: opts.max_tokens ?? 640,
+  });
+  let full = '';
+  const start = performance.now();
+  let tokenCount = 0;
+  for await (const chunk of completion) {
+    const delta = chunk.choices?.[0]?.delta?.content || '';
+    if (delta) {
+      full += delta;
+      tokenCount++;
+      textEl.textContent = full;
+    }
+  }
+  const secs = (performance.now() - start) / 1000;
+  return { text: full, tps: tokenCount / Math.max(secs, 0.001) };
+}
+
+const SYSTEM_RESEARCH = "You are a careful research assistant. Be specific, cite concrete tradeoffs and mechanisms rather than generic statements, and flag uncertainty where it exists instead of glossing over it.";
+
+async function runDirect(engine, ui, question) {
+  const textEl = addPass(ui, 'Answer');
+  const { text, tps } = await streamCompletion(engine, [
+    { role: 'system', content: SYSTEM_RESEARCH },
+    { role: 'user', content: question },
+  ], textEl, { temperature: 0.6, max_tokens: 512 });
+  ui.stat.textContent = `${tps.toFixed(1)} tok/s`;
+  return text;
+}
+
+async function runCoT(engine, ui, question) {
+  const textEl = addPass(ui, 'Reasoning + answer');
+  const prompt = `${question}\n\nThink through this step by step first (assumptions, mechanisms, tradeoffs), then give a clearly-marked final answer under a "Final answer:" heading.`;
+  const { text, tps } = await streamCompletion(engine, [
+    { role: 'system', content: SYSTEM_RESEARCH },
+    { role: 'user', content: prompt },
+  ], textEl, { temperature: 0.7, max_tokens: 768 });
+  ui.stat.textContent = `${tps.toFixed(1)} tok/s`;
+  return text;
+}
+
+async function runSelfConsistency(engine, ui, question) {
+  const N = 3;
+  const samples = [];
+  for (let i = 0; i < N; i++) {
+    const textEl = addPass(ui, `Sample ${i + 1}`, true);
+    const { text } = await streamCompletion(engine, [
+      { role: 'system', content: SYSTEM_RESEARCH },
+      { role: 'user', content: question },
+    ], textEl, { temperature: 0.9, max_tokens: 420 });
+    samples.push(text);
+  }
+  const finalEl = addPass(ui, 'Reconciled answer');
+  const prompt = `Question: ${question}\n\nHere are ${N} independent answers from the same model, sampled separately at higher temperature:\n\n${samples.map((s, i) => `--- Sample ${i + 1} ---\n${s}`).join('\n\n')}\n\nIdentify what's consistent across the samples (likely reliable) versus what only shows up once (likely a fluke), then give one final answer that keeps only the consistent, well-supported parts.`;
+  const { text, tps } = await streamCompletion(engine, [
+    { role: 'system', content: SYSTEM_RESEARCH },
+    { role: 'user', content: prompt },
+  ], finalEl, { temperature: 0.4, max_tokens: 600 });
+  ui.stat.textContent = `${tps.toFixed(1)} tok/s`;
+  return text;
+}
+
+async function runRefine(engine, ui, question) {
+  const draftEl = addPass(ui, 'Draft', true);
+  const { text: draft } = await streamCompletion(engine, [
+    { role: 'system', content: SYSTEM_RESEARCH },
+    { role: 'user', content: question },
+  ], draftEl, { temperature: 0.7, max_tokens: 512 });
+
+  const finalEl = addPass(ui, 'Critique + revised answer');
+  const critiquePrompt = `Question: ${question}\n\nHere is a draft answer:\n"""\n${draft}\n"""\n\nCritique this draft: what's missing, unsupported, or too generic? Then write an improved, deeper final answer that fixes those issues. Show the critique briefly, then the revised answer under "Revised answer:".`;
+  const { text: revised, tps } = await streamCompletion(engine, [
+    { role: 'system', content: SYSTEM_RESEARCH },
+    { role: 'user', content: critiquePrompt },
+  ], finalEl, { temperature: 0.5, max_tokens: 768 });
+  ui.stat.textContent = `${tps.toFixed(1)} tok/s`;
+  return revised;
+}
+
+async function runDebate(question, modelIds, reconcilerId) {
+  if (modelIds.length < 2) {
+    throw new Error('Cross-model debate needs at least 2 selected models.');
+  }
+  const [idA, idB] = modelIds;
+  const mA = MODELS.find(x => x.id === idA);
+  const mB = MODELS.find(x => x.id === idB);
+  const entries = [];
+
+  const uiA = makeCard(`${mA.label} — draft`);
+  let draft = '';
+  try {
+    setStage(uiA, 'loading weights…', 'loading');
+    const engineA = await getEngine(idA, (report) => {
+      const pct = Math.round((report.progress || 0) * 100);
+      setProgressBar(uiA, pct, report.text || '');
+    });
+    setStage(uiA, 'answering…', 'running');
+    clearBody(uiA);
+    const textEl = addPass(uiA, 'Draft answer');
+    const { text, tps } = await streamCompletion(engineA, [
+      { role: 'system', content: SYSTEM_RESEARCH },
+      { role: 'user', content: question },
+    ], textEl, { temperature: 0.6, max_tokens: 550 });
+    draft = text;
+    uiA.stat.textContent = `${tps.toFixed(1)} tok/s`;
+    setStage(uiA, 'done', 'done');
+    entries.push({ label: `${mA.label} (draft)`, text: draft });
+  } catch (e) {
+    setStage(uiA, 'error', 'error'); clearBody(uiA);
+    const p = addPass(uiA, 'Error'); p.textContent = e.message || String(e);
+    throw e;
+  }
+
+  const uiB = makeCard(`${mB.label} — critique`);
+  let critique = '';
+  try {
+    setStage(uiB, 'loading weights…', 'loading');
+    const engineB = await getEngine(idB, (report) => {
+      const pct = Math.round((report.progress || 0) * 100);
+      setProgressBar(uiB, pct, report.text || '');
+    });
+    setStage(uiB, 'critiquing…', 'running');
+    clearBody(uiB);
+    const textEl = addPass(uiB, 'Critique');
+    const critiquePrompt = `Question: ${question}\n\nAnother model answered as follows:\n"""\n${draft}\n"""\n\nCritique this answer as a rigorous peer reviewer: what's wrong, unsupported, missing, or too generic? Be specific — don't just restate the answer.`;
+    const { text, tps } = await streamCompletion(engineB, [
+      { role: 'system', content: SYSTEM_RESEARCH },
+      { role: 'user', content: critiquePrompt },
+    ], textEl, { temperature: 0.6, max_tokens: 450 });
+    critique = text;
+    uiB.stat.textContent = `${tps.toFixed(1)} tok/s`;
+    setStage(uiB, 'done', 'done');
+    entries.push({ label: `${mB.label} (critique)`, text: critique });
+  } catch (e) {
+    setStage(uiB, 'error', 'error'); clearBody(uiB);
+    const p = addPass(uiB, 'Error'); p.textContent = e.message || String(e);
+    throw e;
+  }
+
+  const reconMeta = MODELS.find(x => x.id === reconcilerId);
+  const uiR = makeCard(`Reconciled — ${reconMeta.label}`, { synth: true });
+  try {
+    setStage(uiR, 'loading weights…', 'loading');
+    const engineR = await getEngine(reconcilerId, (report) => {
+      const pct = Math.round((report.progress || 0) * 100);
+      setProgressBar(uiR, pct, report.text || '');
+    });
+    setStage(uiR, 'reconciling…', 'running');
+    clearBody(uiR);
+    const textEl = addPass(uiR, 'Final answer');
+    const reconPrompt = `Question: ${question}\n\nDraft answer (from ${mA.label}):\n"""\n${draft}\n"""\n\nCritique of that draft (from ${mB.label}):\n"""\n${critique}\n"""\n\nWrite a final answer that fixes what the critique got right, keeps what the draft got right, and notes explicitly where the critique itself may have overreached.`;
+    const { text, tps } = await streamCompletion(engineR, [
+      { role: 'system', content: SYSTEM_RESEARCH },
+      { role: 'user', content: reconPrompt },
+    ], textEl, { temperature: 0.5, max_tokens: 700 });
+    uiR.stat.textContent = `${tps.toFixed(1)} tok/s`;
+    setStage(uiR, 'done', 'done');
+    entries.push({ label: `Reconciled (${reconMeta.label})`, text });
+  } catch (e) {
+    setStage(uiR, 'error', 'error'); clearBody(uiR);
+    const p = addPass(uiR, 'Error'); p.textContent = e.message || String(e);
+  }
+  return entries;
+}
+
+async function runSynthesis(question, modelIds, synthId) {
+  const perModelAnswers = [];
+  for (const modelId of modelIds) {
+    const m = MODELS.find(x => x.id === modelId);
+    const ui = makeCard(m.label);
+    try {
+      setStage(ui, 'loading weights…', 'loading');
+      const engine = await getEngine(modelId, (report) => {
+        const pct = Math.round((report.progress || 0) * 100);
+        setProgressBar(ui, pct, report.text || '');
+      });
+      setStage(ui, 'thinking…', 'running');
+      clearBody(ui);
+      const answer = await runCoT(engine, ui, question);
+      perModelAnswers.push({ label: m.label, text: answer });
+      setStage(ui, 'done', 'done');
+    } catch (e) {
+      setStage(ui, 'error', 'error');
+      clearBody(ui);
+      const p = addPass(ui, 'Error'); p.textContent = e.message || String(e);
+    }
+  }
+
+  const synthMeta = MODELS.find(x => x.id === synthId);
+  const synthUi = makeCard(`Synthesis — ${synthMeta.label}`, { synth: true });
+  try {
+    setStage(synthUi, 'loading weights…', 'loading');
+    const engine = await getEngine(synthId, (report) => {
+      const pct = Math.round((report.progress || 0) * 100);
+      setProgressBar(synthUi, pct, report.text || '');
+    });
+    setStage(synthUi, 'synthesizing…', 'running');
+    clearBody(synthUi);
+    const combined = perModelAnswers.map((a, i) => `--- Answer from ${a.label} ---\n${a.text}`).join('\n\n');
+    const textEl = addPass(synthUi, 'Synthesized answer');
+    const prompt = `Question: ${question}\n\nSeveral independent research assistants answered this question separately:\n\n${combined}\n\nSynthesize these into a single, deeper answer. Resolve disagreements explicitly (say which model claimed what if they conflict), keep what's genuinely useful from each, and don't just concatenate them.`;
+    const { text, tps } = await streamCompletion(engine, [
+      { role: 'system', content: SYSTEM_RESEARCH },
+      { role: 'user', content: prompt },
+    ], textEl, { temperature: 0.5, max_tokens: 900 });
+    synthUi.stat.textContent = `${tps.toFixed(1)} tok/s`;
+    setStage(synthUi, 'done', 'done');
+    perModelAnswers.push({ label: `Synthesis (${synthMeta.label})`, text });
+  } catch (e) {
+    setStage(synthUi, 'error', 'error');
+    clearBody(synthUi);
+    const p = addPass(synthUi, 'Error'); p.textContent = e.message || String(e);
+  }
+  return perModelAnswers;
+}
+
+// ---- run orchestration ----
+let lastTranscript = null;
+
+runBtn.addEventListener('click', async () => {
+  const question = questionEl.value.trim();
+  const modelIds = selectedModelIds();
+  if (!question || modelIds.length === 0) return;
+
+  busy = true;
+  runBtn.disabled = true;
+  exportBtn.disabled = true;
+  globalStatus.textContent = 'Running…';
+  resultsEl.innerHTML = '';
+
+  const transcript = { question, harness: selectedHarness, entries: [] };
+
+  try {
+    if (selectedHarness === 'synthesis') {
+      const synthId = synthModelSel.value || modelIds[0];
+      const answers = await runSynthesis(question, modelIds, synthId);
+      transcript.entries = answers;
+    } else if (selectedHarness === 'debate') {
+      const reconcilerId = synthModelSel.value || modelIds[0];
+      const answers = await runDebate(question, modelIds, reconcilerId);
+      transcript.entries = answers;
+    } else {
+      for (const modelId of modelIds) {
+        const m = MODELS.find(x => x.id === modelId);
+        const ui = makeCard(m.label);
+        try {
+          setStage(ui, 'loading weights…', 'loading');
+          const engine = await getEngine(modelId, (report) => {
+            const pct = Math.round((report.progress || 0) * 100);
+            setProgressBar(ui, pct, report.text || '');
+          });
+          setStage(ui, 'thinking…', 'running');
+          clearBody(ui);
+          let text;
+          if (selectedHarness === 'direct') text = await runDirect(engine, ui, question);
+          else if (selectedHarness === 'cot') text = await runCoT(engine, ui, question);
+          else if (selectedHarness === 'selfconsistency') text = await runSelfConsistency(engine, ui, question);
+          else if (selectedHarness === 'refine') text = await runRefine(engine, ui, question);
+          setStage(ui, 'done', 'done');
+          transcript.entries.push({ label: m.label, text });
+        } catch (e) {
+          setStage(ui, 'error', 'error');
+          clearBody(ui);
+          const p = addPass(ui, 'Error'); p.textContent = e.message || String(e);
+        }
+      }
+    }
+    globalStatus.textContent = 'Done.';
+  } catch (e) {
+    globalStatus.textContent = 'Error: ' + (e.message || String(e));
+  }
+
+  lastTranscript = transcript;
+  exportBtn.disabled = false;
+  busy = false;
+  updateRunEnabled();
+});
+
+exportBtn.addEventListener('click', () => {
+  if (!lastTranscript) return;
+  const h = HARNESSES.find(x => x.id === lastTranscript.harness);
+  let md = `# Research transcript\n\n`;
+  md += `**Question:** ${lastTranscript.question}\n\n`;
+  md += `**Harness:** ${h ? h.name : lastTranscript.harness}\n\n`;
+  md += `**Date:** ${new Date().toISOString()}\n\n---\n\n`;
+  for (const entry of lastTranscript.entries) {
+    md += `## ${entry.label}\n\n${entry.text}\n\n---\n\n`;
+  }
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `research-transcript-${Date.now()}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+</script>
+</body>
+</html>
