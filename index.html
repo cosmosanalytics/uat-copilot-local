@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UAT Copilot — Local Model</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
+    --text:#1c211e; --text-dim:#54594f; --text-faint:#8c9188;
+    --accent:#12806c; --accent-bg:#e6f2ef; --accent-dim:#9cc9c0;
+    --amber:#a9770f; --amber-bg:#fbf1de; --amber-dim:#e6cd97;
+    --danger:#b4413a; --danger-bg:#fbe9e7;
+    --user-bubble:#e6f2ef; --user-border:#bfe0d7; --assistant-bubble:#fff;
+    --shadow:0 1px 3px rgba(20,25,20,0.08);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  .mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  header{
+    display:flex; align-items:center; gap:12px; padding:10px 18px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1 span{ color:var(--accent); }
+  .badge{
+    font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent);
+    background:var(--accent-bg); border:1px solid var(--accent-dim); padding:4px 9px; border-radius:20px;
+  }
+  .spacer{ flex:1; }
+  .gpu-pill{
+    font-size:11px; padding:4px 10px; border-radius:20px; font-family:ui-monospace,monospace;
+    border:1px solid var(--border);
+  }
+  .gpu-pill.ok{ color:var(--accent); border-color:var(--accent-dim); background:var(--accent-bg); }
+  .gpu-pill.bad{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+
+  .setup{
+    max-width:760px; margin:24px auto; padding:0 16px; width:100%;
+  }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+  .card h2{ font-size:14px; margin:0 0 4px 0; }
+  .card p.help{ color:var(--text-dim); font-size:13px; margin:0 0 14px 0; line-height:1.5; }
+  label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin:10px 0 5px 0; }
+  select, textarea, input[type=text]{
+    width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px;
+    font-size:13.5px; font-family:inherit; background:var(--panel-inset); color:var(--text);
+  }
+  textarea{ min-height:110px; resize:vertical; font-family:ui-monospace,monospace; font-size:12.5px; line-height:1.5; }
+  .btn{
+    border:1px solid var(--border); background:var(--panel); color:var(--text);
+    padding:9px 16px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .btn:hover:not(:disabled){ border-color:var(--accent-dim); color:var(--accent); }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover:not(:disabled){ opacity:0.92; color:#fff; }
+  .btn-row{ display:flex; gap:9px; margin-top:14px; flex-wrap:wrap; }
+
+  .progress-wrap{ margin-top:14px; }
+  .progress-item{ font-size:11.5px; color:var(--text-dim); margin-bottom:6px; font-family:ui-monospace,monospace; }
+  .bar{ height:7px; border-radius:5px; background:var(--panel-inset); border:1px solid var(--border-soft); overflow:hidden; margin-bottom:8px; }
+  .bar .fill{ height:100%; background:var(--accent); width:0%; transition:width .15s; }
+
+  .app{ display:none; flex:1; grid-template-columns:300px 1fr; min-height:0; }
+  .app.on{ display:grid; }
+  @media (max-width:800px){
+    .app.on{ grid-template-columns:1fr; }
+    .sidebar{ max-height:170px; border-right:none; border-bottom:1px solid var(--border); }
+  }
+  .sidebar{
+    background:var(--panel); border-right:1px solid var(--border); padding:14px 16px;
+    overflow-y:auto; display:flex; flex-direction:column; gap:14px;
+  }
+  .side-label{ font-size:10.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-faint); margin:0 0 7px 0; }
+  .script-box{ border:1px solid var(--border); border-radius:6px; background:var(--panel-inset); padding:9px 10px; font-size:12px; line-height:1.55; color:var(--text-dim); font-family:ui-monospace,monospace; white-space:pre-wrap; }
+  .checklist{ display:flex; flex-direction:column; gap:2px; }
+  .chk-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px; }
+  .chk-count{ font-family:ui-monospace,monospace; font-size:11px; color:var(--accent); }
+  .step{ display:flex; align-items:flex-start; gap:8px; padding:6px 5px; border-radius:5px; font-size:12.8px; line-height:1.35; cursor:pointer; }
+  .step:hover{ background:var(--panel-inset); }
+  .step .mark{ flex:none; width:15px; height:15px; border-radius:4px; border:1.5px solid var(--border); margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; }
+  .step.done .mark{ background:var(--accent); border-color:var(--accent); }
+  .step.done span.txt{ color:var(--text-faint); text-decoration:line-through; }
+
+  .main{ display:flex; flex-direction:column; min-height:0; }
+  .screen-wrap{ padding:14px 18px 6px 18px; flex:none; }
+  .screen-label-row{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); font-family:ui-monospace,monospace; }
+  video#preview{ width:100%; max-height:280px; object-fit:contain; background:#000; border-radius:8px; border:1px solid var(--border); box-shadow:var(--shadow); }
+  .no-share{ border:1px dashed var(--border); border-radius:8px; padding:26px; text-align:center; color:var(--text-faint); font-size:13px; }
+
+  .chat{ flex:1; overflow-y:auto; padding:12px 20px 8px 20px; display:flex; flex-direction:column; gap:10px; min-height:120px; }
+  .msg{ max-width:640px; padding:9px 12px; border-radius:9px; font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
+  .msg.user{ align-self:flex-end; background:var(--user-bubble); border:1px solid var(--user-border); }
+  .msg.assistant{ align-self:flex-start; background:var(--assistant-bubble); border:1px solid var(--border-soft); }
+  .msg.system{ align-self:center; background:transparent; color:var(--text-faint); font-size:11.5px; text-align:center; }
+  .msg .tps{ display:block; margin-top:5px; font-size:10px; color:var(--text-faint); font-family:ui-monospace,monospace; }
+
+  .composer{ border-top:1px solid var(--border); background:var(--panel); padding:10px 16px 14px 16px; flex:none; }
+  .quick-row{ display:flex; gap:7px; margin-bottom:8px; flex-wrap:wrap; }
+  .quick-btn{ font-size:12px; padding:7px 12px; border-radius:14px; border:1px solid var(--accent-dim); background:var(--accent-bg); color:var(--accent); cursor:pointer; font-weight:600; font-family:inherit; }
+  .quick-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .composer-row{ display:flex; gap:8px; }
+  .composer-row input{ flex:1; }
+  .composer-row .send{ background:var(--accent); color:#fff; border:none; border-radius:8px; padding:0 16px; font-weight:600; cursor:pointer; font-size:12.5px; }
+  .composer-row .send:disabled{ opacity:0.4; cursor:not-allowed; }
+  a{ color:var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>UAT <span>Copilot</span> — Local Model</h1>
+  <span class="badge">Runs on-device · WebGPU · no API key</span>
+  <div class="spacer"></div>
+  <span class="gpu-pill mono" id="gpuPill">checking GPU…</span>
+</header>
+
+<div class="setup" id="setup">
+  <div class="card">
+    <h2>How this works</h2>
+    <p class="help">
+      This page downloads a small vision-language model straight from the Hugging Face Hub into your
+      browser (once — it's cached after that) and runs every inference on your own GPU via WebGPU.
+      Nothing is uploaded anywhere: your screenshots never leave the tab. Requires Chrome or Edge with
+      a WebGPU-capable GPU. The first load can take a while depending on your connection and model size.
+    </p>
+    <label for="modelSelect">Model</label>
+    <select id="modelSelect">
+      <option value="HuggingFaceTB/SmolVLM-256M-Instruct">SmolVLM-256M-Instruct — smallest, fastest, weakest reasoning (~350&nbsp;MB)</option>
+      <option value="HuggingFaceTB/SmolVLM-500M-Instruct" selected>SmolVLM-500M-Instruct — balanced (~650&nbsp;MB)</option>
+      <option value="HuggingFaceTB/SmolVLM-Instruct">SmolVLM-Instruct (2.2B) — best quality, slowest, largest (~2.2&nbsp;GB)</option>
+    </select>
+
+    <label for="scriptArea">Paste your test script (one step per line)</label>
+    <textarea id="scriptArea">1. Log in as planner
+2. Open the S&amp;OP workbook
+3. Run the demand scenario
+4. Verify scenario output matches expected demand
+5. Submit sign-off</textarea>
+
+    <div class="btn-row">
+      <button class="btn primary" id="loadBtn">Load model</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap" style="display:none;"></div>
+  </div>
+
+  <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div>
+      <h2 style="margin-bottom:2px;">Share your screen</h2>
+      <p class="help" style="margin:0;">Pick the window or tab you're testing in. This only starts once the model is ready.</p>
+    </div>
+    <button class="btn" id="shareBtn" disabled>Share screen</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div>
+      <div class="side-label">Test script</div>
+      <div class="script-box" id="scriptBox"></div>
+    </div>
+    <div class="checklist">
+      <div class="chk-head">
+        <span class="side-label" style="margin:0;">Checklist — click to toggle</span>
+        <span class="chk-count" id="chkCount"></span>
+      </div>
+      <div id="chkBody"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="screen-wrap">
+      <div class="screen-label-row"><span>Your shared screen</span></div>
+      <video id="preview" autoplay muted></video>
+    </div>
+
+    <div class="chat" id="chatLog"></div>
+
+    <div class="composer">
+      <div class="quick-row">
+        <button class="quick-btn" id="whatsNextBtn">What's next?</button>
+        <button class="quick-btn" id="checkBtn">Did I do this step correctly?</button>
+        <button class="quick-btn" id="stuckBtn">I'm stuck — explain this screen</button>
+      </div>
+      <div class="composer-row">
+        <input type="text" id="chatInput" placeholder="Ask about the current screen…">
+        <button class="send" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const el = id => document.getElementById(id);
+const gpuPill = el('gpuPill');
+const loadBtn = el('loadBtn');
+const shareBtn = el('shareBtn');
+const modelSelect = el('modelSelect');
+const scriptArea = el('scriptArea');
+const progressWrap = el('progressWrap');
+const setupEl = el('setup');
+const appEl = el('app');
+const scriptBox = el('scriptBox');
+const chkBody = el('chkBody');
+const chkCount = el('chkCount');
+const chatLog = el('chatLog');
+const preview = el('preview');
+const whatsNextBtn = el('whatsNextBtn');
+const checkBtn = el('checkBtn');
+const stuckBtn = el('stuckBtn');
+const chatInput = el('chatInput');
+const sendBtn = el('sendBtn');
+
+let steps = [];
+let stepDone = [];
+let modelReady = false;
+let busy = false;
+let stream = null;
+
+const worker = new Worker('./worker.js', { type: 'module' });
+const progressBars = new Map();
+
+worker.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (msg.status === 'error') {
+    gpuPill.textContent = 'error';
+    gpuPill.className = 'gpu-pill mono bad';
+    addMsg('system', 'Error: ' + msg.data);
+    setBusy(false);
+    return;
+  }
+  if (msg.status === 'webgpu-ok') {
+    gpuPill.textContent = 'WebGPU ready';
+    gpuPill.className = 'gpu-pill mono ok';
+    loadBtn.disabled = false;
+    return;
+  }
+  if (msg.status === 'initiate') {
+    progressWrap.style.display = 'block';
+    progressBars.set(msg.file, { progress: 0, total: msg.file });
+    renderProgress();
+  } else if (msg.status === 'progress') {
+    progressBars.set(msg.file, { progress: msg.progress || 0, total: msg.file });
+    renderProgress();
+  } else if (msg.status === 'done') {
+    progressBars.delete(msg.file);
+    renderProgress();
+  } else if (msg.status === 'ready') {
+    modelReady = true;
+    loadBtn.textContent = 'Model loaded ✓';
+    shareBtn.disabled = false;
+  } else if (msg.status === 'update') {
+    appendToLastAssistant(msg.output);
+  } else if (msg.status === 'complete') {
+    finalizeLastAssistant();
+    setBusy(false);
+  }
+});
+
+function renderProgress() {
+  if (progressBars.size === 0) { progressWrap.innerHTML = ''; return; }
+  let html = '';
+  for (const [file, info] of progressBars) {
+    const pct = Math.round(info.progress || 0);
+    html += `<div class="progress-item">${file}</div><div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
+  }
+  progressWrap.innerHTML = html;
+}
+
+worker.postMessage({ type: 'check' });
+
+loadBtn.addEventListener('click', () => {
+  loadBtn.disabled = true;
+  loadBtn.textContent = 'Loading…';
+  worker.postMessage({ type: 'load', data: { model_id: modelSelect.value } });
+});
+
+function parseScript(raw) {
+  return raw.split('\n').map(l => l.trim()).filter(Boolean)
+    .map(l => l.replace(/^\d+[\.\)]\s*/, ''));
+}
+
+function renderScript() {
+  scriptBox.textContent = steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+}
+
+function renderChecklist() {
+  chkCount.textContent = `${stepDone.filter(Boolean).length} / ${steps.length}`;
+  chkBody.innerHTML = steps.map((s, i) => `
+    <div class="step ${stepDone[i] ? 'done' : ''}" data-i="${i}">
+      <span class="mark">${stepDone[i] ? '✓' : ''}</span>
+      <span class="txt">${s}</span>
+    </div>`).join('');
+  chkBody.querySelectorAll('.step').forEach(node => {
+    node.addEventListener('click', () => {
+      const i = +node.dataset.i;
+      stepDone[i] = !stepDone[i];
+      renderChecklist();
+    });
+  });
+}
+
+shareBtn.addEventListener('click', async () => {
+  steps = parseScript(scriptArea.value);
+  stepDone = steps.map(() => false);
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 4 }, audio: false });
+  } catch (err) {
+    addMsg('system', 'Screen share was cancelled or blocked: ' + err.message);
+    return;
+  }
+  preview.srcObject = stream;
+  stream.getVideoTracks()[0].addEventListener('ended', () => {
+    addMsg('system', 'Screen sharing stopped.');
+  });
+  setupEl.style.display = 'none';
+  appEl.classList.add('on');
+  renderScript();
+  renderChecklist();
+  addMsg('system', 'Screen shared. Ask "What\'s next?" whenever you want guidance on your current screen.');
+});
+
+function captureFrame() {
+  const canvas = document.createElement('canvas');
+  const track = stream.getVideoTracks()[0];
+  const settings = track.getSettings();
+  const w = Math.min(896, settings.width || 896);
+  const scale = w / (settings.width || w);
+  canvas.width = w;
+  canvas.height = Math.round((settings.height || w) * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+function buildSystemText() {
+  const scriptText = steps.map((s, i) => `${i + 1}. [${stepDone[i] ? 'done' : 'pending'}] ${s}`).join('\n');
+  return `You are a UAT (User Acceptance Testing) assistant. The tester is sharing their screen while working through this test script:\n${scriptText}\n\nYou are shown a screenshot of their current screen. Give short, concrete, specific guidance about what to do next or what you observe. Reference exact buttons, fields, or labels visible in the screenshot. Keep answers under 4 sentences.`;
+}
+
+let lastAssistantEl = null;
+let lastAssistantText = '';
+
+function addMsg(role, text, imgDataUrl) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  if (imgDataUrl) {
+    const tag = document.createElement('div');
+    tag.style.fontSize = '10px';
+    tag.style.color = 'var(--text-faint)';
+    tag.style.marginBottom = '5px';
+    tag.textContent = '📷 screenshot attached';
+    wrap.appendChild(tag);
+  }
+  const body = document.createElement('div');
+  body.textContent = text;
+  wrap.appendChild(body);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return wrap;
+}
+
+function appendToLastAssistant(chunk) {
+  if (!lastAssistantEl) {
+    lastAssistantEl = addMsg('assistant', '');
+  }
+  lastAssistantText += chunk;
+  lastAssistantEl.lastChild.textContent = lastAssistantText;
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function finalizeLastAssistant() {
+  lastAssistantEl = null;
+  lastAssistantText = '';
+}
+
+function setBusy(b) {
+  busy = b;
+  [whatsNextBtn, checkBtn, stuckBtn, sendBtn, chatInput].forEach(x => x.disabled = b);
+}
+
+function ask(promptText) {
+  if (busy || !modelReady) return;
+  setBusy(true);
+  const shot = captureFrame();
+  addMsg('user', promptText, shot);
+  worker.postMessage({
+    type: 'generate',
+    data: {
+      model_id: modelSelect.value,
+      systemText: buildSystemText(),
+      userText: promptText,
+      image: shot,
+    },
+  });
+}
+
+whatsNextBtn.addEventListener('click', () => ask("What should I do next on this screen?"));
+checkBtn.addEventListener('click', () => ask("Did I complete the current step correctly? What do you see?"));
+stuckBtn.addEventListener('click', () => ask("I'm stuck. Explain what's on this screen and what it's for."));
+sendBtn.addEventListener('click', () => {
+  const v = chatInput.value.trim();
+  if (!v) return;
+  chatInput.value = '';
+  ask(v);
+});
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendBtn.click();
+});
+</script>
+</body>
+</html>
