@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Governance Console — Traceable AI Answers</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
+    --text:#1c211e; --text-dim:#54594f; --text-faint:#8c9188;
+    --accent:#12806c; --accent-bg:#e6f2ef; --accent-dim:#9cc9c0;
+    --amber:#a9770f; --amber-bg:#fbf1de; --amber-dim:#e6cd97;
+    --danger:#b4413a; --danger-bg:#fbe9e7;
+    --plum:#7a4f9e; --plum-bg:#f1e9f7;
+    --shadow:0 1px 3px rgba(20,25,20,0.08);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  header{
+    display:flex; align-items:center; gap:12px; padding:10px 18px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1 span{ color:var(--accent); }
+  .badge{
+    font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent);
+    background:var(--accent-bg); border:1px solid var(--accent-dim); padding:4px 9px; border-radius:20px;
+  }
+  .spacer{ flex:1; }
+  .gpu-pill{
+    font-size:11px; padding:4px 10px; border-radius:20px; font-family:ui-monospace,monospace;
+    border:1px solid var(--border);
+  }
+  .gpu-pill.ok{ color:var(--accent); border-color:var(--accent-dim); background:var(--accent-bg); }
+  .gpu-pill.bad{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .actor-pill{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
+  .actor-pill input{
+    border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px;
+    font-family:inherit; background:var(--panel-inset); color:var(--text); width:130px;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 60px 18px; }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px; box-shadow:var(--shadow); margin-bottom:18px;
+  }
+  .card h2{ font-size:14px; margin:0 0 4px 0; display:flex; align-items:center; gap:8px; }
+  .card h2 .num{
+    display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px;
+    border-radius:50%; background:var(--accent-bg); color:var(--accent); font-size:11px; font-weight:800;
+  }
+  .card p.help{ color:var(--text-dim); font-size:12.5px; margin:0 0 14px 0; line-height:1.5; }
+  label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin:10px 0 5px 0; }
+  textarea, input[type=text], select{
+    width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px;
+    font-size:13.5px; font-family:inherit; background:var(--panel-inset); color:var(--text);
+  }
+  textarea{ min-height:80px; resize:vertical; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > *{ flex:1; min-width:160px; }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:7px;
+    padding:8px 14px; background:var(--panel-inset); color:var(--text); font-size:12.5px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn:hover{ border-color:var(--accent-dim); }
+  .btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.primary:disabled{ background:var(--border); border-color:var(--border); color:var(--text-faint); cursor:not-allowed; }
+  .btn.danger{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .btn.small{ padding:5px 10px; font-size:11.5px; }
+  .btn-row{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+
+  .model-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; margin-top:4px; }
+  .model-opt{
+    display:flex; align-items:flex-start; gap:8px; border:1px solid var(--border); border-radius:7px;
+    padding:9px 10px; background:var(--panel-inset); cursor:pointer; font-size:12.5px;
+  }
+  .model-opt:hover{ border-color:var(--accent-dim); }
+  .model-opt input{ margin-top:2px; }
+  .model-opt .m-name{ font-weight:600; }
+  .model-opt .m-size{ color:var(--text-faint); font-size:11px; font-family:ui-monospace,monospace; }
+  .model-opt.selected{ border-color:var(--accent); background:var(--accent-bg); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th{ text-align:left; color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em;
+      border-bottom:1px solid var(--border); padding:6px 8px; }
+  td{ border-bottom:1px solid var(--border-soft); padding:7px 8px; vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+  .doc-title{ font-weight:700; }
+  .doc-meta{ color:var(--text-faint); font-size:11px; margin-top:2px; }
+  .doc-text{ color:var(--text-dim); font-size:11.5px; margin-top:4px; max-width:520px; }
+
+  .pill{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; }
+  .pill.draft{ background:var(--panel-inset); color:var(--text-dim); border:1px solid var(--border); }
+  .pill.pending{ background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.approved{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.rejected{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.issue{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.warn{ background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.ok{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+
+  .flags{ margin-top:4px; display:flex; gap:5px; flex-wrap:wrap; }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:4px; }
+  .stat{ background:var(--panel-inset); border:1px solid var(--border-soft); border-radius:8px; padding:10px 12px; }
+  .stat .v{ font-size:20px; font-weight:800; }
+  .stat .l{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
+
+  .answer-box{ border:1px solid var(--border); border-radius:9px; background:var(--panel-inset); padding:14px 16px; margin-top:12px; }
+  .answer-box .a-text{ font-size:14px; line-height:1.6; white-space:pre-wrap; }
+  .answer-box .a-stat{ font-size:11px; color:var(--text-faint); margin-top:8px; font-family:ui-monospace,monospace; }
+  .status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
+  .status-dot.loading{ background:var(--amber); animation:pulse 1.1s infinite; }
+  .status-dot.done{ background:var(--accent); }
+  .status-dot.err{ background:var(--danger); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .sources{ margin-top:14px; }
+  .source-card{
+    border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px;
+    background:var(--panel); position:relative;
+  }
+  .source-card .sc-head{ display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
+  .sc-rank{
+    display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:5px;
+    background:var(--accent); color:#fff; font-size:11px; font-weight:800; flex-shrink:0;
+  }
+  .sc-title{ font-weight:700; font-size:12.5px; }
+  .sc-score{ margin-left:auto; font-size:11px; font-family:ui-monospace,monospace; color:var(--text-faint); }
+  .sc-text{ font-size:12px; color:var(--text-dim); line-height:1.5; }
+  .sc-quality{ font-size:10.5px; color:var(--text-faint); margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+
+  .empty{ color:var(--text-faint); font-size:12.5px; font-style:italic; padding:10px 2px; }
+
+  .audit-row{ display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12px; }
+  .audit-row:last-child{ border-bottom:none; }
+  .audit-ts{ color:var(--text-faint); font-family:ui-monospace,monospace; font-size:11px; white-space:nowrap; }
+  .audit-actor{ font-weight:700; white-space:nowrap; }
+  .audit-detail{ color:var(--text-dim); }
+  .audit-list{ max-height:280px; overflow-y:auto; }
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .filter-row select{ width:auto; padding:6px 10px; font-size:12px; }
+
+  .footnote{ font-size:11px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  .k-input{ width:70px !important; flex:none !important; }
+  select.small{ width:auto; }
+
+  .intro-card{ background:var(--accent-bg); border-color:var(--accent-dim); }
+
+  .tab-bar{
+    display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; border-bottom:1px solid var(--border);
+    padding-bottom:0;
+  }
+  .tab-btn{
+    display:flex; align-items:center; gap:7px; border:1px solid transparent; border-bottom:none;
+    background:transparent; color:var(--text-dim); font-family:inherit; font-size:12.5px; font-weight:600;
+    padding:9px 14px; border-radius:8px 8px 0 0; cursor:pointer; position:relative; top:1px;
+  }
+  .tab-btn:hover{ color:var(--text); background:var(--panel-inset); }
+  .tab-btn.active{
+    color:var(--accent); background:var(--panel); border-color:var(--border);
+    border-bottom:1px solid var(--panel);
+  }
+  .tab-num{
+    display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+    border-radius:50%; background:var(--panel-inset); color:var(--text-faint); font-size:10.5px; font-weight:800;
+    flex-shrink:0;
+  }
+  .tab-btn.active .tab-num{ background:var(--accent); color:#fff; }
+  .tab-flag{
+    display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px;
+    border-radius:20px; background:var(--amber); color:#fff; font-size:9.5px; font-weight:800;
+  }
+  .tab-panel{ margin-top:0; border-top-left-radius:0; }
+  .tab-next{ margin-top:16px; border-top:1px solid var(--border-soft); padding-top:14px; display:flex; justify-content:flex-end; }
+</style>
+</head>
+<body>
+<header>
+  <h1>RAG <span>Governance</span> Console</h1>
+  <span class="badge">local model · in-browser retrieval · nothing uploaded</span>
+  <div class="spacer"></div>
+  <div class="actor-pill">Acting as <input type="text" id="actorInput" placeholder="your name"></div>
+  <span class="gpu-pill mono" id="gpuPill">checking WebGPU…</span>
+</header>
+
+<div class="wrap">
+
+  <div class="card intro-card">
+    <h2><span class="num">i</span>What this demonstrates</h2>
+    <p class="help">
+      A small language model runs entirely in your browser (WebLLM, no server, no API key). Instead of trusting the model's
+      memory, every answer is <b>grounded</b> in specific document chunks retrieved from a library you control — and every
+      chunk in that library went through the same quality-check → ownership → approval → audit-log pipeline as the data
+      quality console. So when the model answers, you can see exactly which chunks it used, who approved them, and
+      whether those chunks had any known quality issues at the time. That's the traceability link: model output → specific
+      governed data.
+    </p>
+  </div>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="tab1"><span class="tab-num">1</span>Document library</button>
+    <button class="tab-btn" data-tab="tab2"><span class="tab-num">2</span>Chunk approval<span class="tab-flag" id="tabFlag2" hidden></span></button>
+    <button class="tab-btn" data-tab="tab3"><span class="tab-num">3</span>Model &amp; retrieval</button>
+    <button class="tab-btn" data-tab="tab4"><span class="tab-num">4</span>Ask a question</button>
+    <button class="tab-btn" data-tab="tab5"><span class="tab-num">5</span>Audit log</button>
+  </div>
+
+  <div class="card tab-panel" id="tab1" data-tab="tab1">
+    <h2><span class="num">1</span>Document library</h2>
+    <p class="help">Add source documents (paste text, or load the sample library). Each is split into chunks, and each chunk is checked for quality issues before it can be approved for retrieval.</p>
+    <div class="row">
+      <div style="flex:2">
+        <label>Title / source name</label>
+        <input type="text" id="docTitle" placeholder="e.g. Q3 Returns Policy v2">
+      </div>
+      <div style="flex:1">
+        <label>Effective / last-updated date (optional)</label>
+        <input type="text" id="docDate" placeholder="e.g. 2025-01">
+      </div>
+    </div>
+    <label>Document text</label>
+    <textarea id="docText" placeholder="Paste the document text here. It will be split into chunks automatically."></textarea>
+    <div class="btn-row">
+      <button class="btn primary" id="addDocBtn">Add document (as draft)</button>
+      <button class="btn" id="loadSampleBtn">Load sample library instead</button>
+      <button class="btn danger" id="resetBtn" style="margin-left:auto">Clear all saved data</button>
+    </div>
+    <div class="tab-next"><button class="btn primary next-btn" data-goto="tab2">Next: review chunk quality →</button></div>
+  </div>
+
+  <div class="card tab-panel" id="tab2" data-tab="tab2" hidden>
+    <h2><span class="num">2</span>Chunk quality &amp; approval queue</h2>
+    <p class="help">
+      Automatic checks per chunk: near-duplicate content, contradiction with another <b>approved</b> chunk, too-short/empty text,
+      missing source metadata, and staleness (if a date was given). A chunk only becomes eligible for retrieval once it is
+      <b>Approved</b> by someone — and approval nudges you to name a different person than whoever added it, same review
+      discipline as the rules workflow in the data quality console.
+    </p>
+    <div class="stat-row" id="chunkStats"></div>
+    <div class="filter-row">
+      <select id="filterStatus" class="small">
+        <option value="">All statuses</option>
+        <option value="draft">Draft</option>
+        <option value="pending">Pending approval</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <select id="filterFlag" class="small">
+        <option value="">All flags</option>
+        <option value="issue">Has quality issue</option>
+        <option value="clean">No issues</option>
+      </select>
+    </div>
+    <table id="chunkTable">
+      <thead><tr><th>Chunk</th><th>Status</th><th>Quality flags</th><th>Actions</th></tr></thead>
+      <tbody id="chunkBody"></tbody>
+    </table>
+    <div class="empty" id="chunkEmpty" style="display:none">No documents loaded yet — add one above or load the sample library.</div>
+    <div class="tab-next"><button class="btn primary next-btn" data-goto="tab3">Next: pick a model →</button></div>
+  </div>
+
+  <div class="card tab-panel" id="tab3" data-tab="tab3" hidden>
+    <h2><span class="num">3</span>Model &amp; retrieval settings</h2>
+    <p class="help">Pick a local model to generate answers. Retrieval itself (finding relevant chunks) is done with on-device keyword/TF‑IDF scoring — deterministic and inspectable, unlike the generation step.</p>
+    <div class="model-grid" id="modelGrid"></div>
+    <div class="row" style="margin-top:12px">
+      <div class="k-input">
+        <label>Chunks to retrieve (k)</label>
+        <input type="text" id="kInput" value="3">
+      </div>
+      <div style="flex:2">
+        <label>Retrieval pool</label>
+        <select id="poolSelect">
+          <option value="approved">Approved chunks only (recommended)</option>
+          <option value="all">All chunks, regardless of status (for comparison)</option>
+        </select>
+      </div>
+    </div>
+    <div class="tab-next"><button class="btn primary next-btn" data-goto="tab4">Next: ask a question →</button></div>
+  </div>
+
+  <div class="card tab-panel" id="tab4" data-tab="tab4" hidden>
+    <h2><span class="num">4</span>Ask a question</h2>
+    <p class="help">The model will only see the retrieved chunks below plus your question — it is instructed not to use outside knowledge, so you can judge the answer against the exact sources shown.</p>
+    <textarea id="question" placeholder="Ask something the document library should be able to answer…"></textarea>
+    <div class="btn-row">
+      <button class="btn primary" id="askBtn" disabled>Ask (grounded in approved chunks)</button>
+      <span id="globalStatus" style="font-size:12px;color:var(--text-dim);align-self:center;"></span>
+    </div>
+    <div id="answerArea"></div>
+    <div class="tab-next"><button class="btn next-btn" data-goto="tab5">See audit log →</button></div>
+  </div>
+
+  <div class="card tab-panel" id="tab5" data-tab="tab5" hidden>
+    <h2><span class="num">5</span>Audit log</h2>
+    <p class="help">Every document add, chunk status change, approval, and question asked — who did it, when, and (for questions) exactly which chunks were used.</p>
+    <div class="audit-list" id="auditLog"></div>
+    <div class="btn-row">
+      <button class="btn small" id="exportLogBtn">Export audit log (.csv)</button>
+      <button class="btn small" id="exportReportBtn">Export full report (.json)</button>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Runs fully client-side: WebLLM (<span class="mono">@mlc-ai/web-llm</span>) loads a small open model via WebGPU, and the
+    document library/audit log persist in this browser's local storage. Nothing is uploaded anywhere.
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+
+const el = id => document.getElementById(id);
+const gpuPill = el('gpuPill');
+const actorInput = el('actorInput');
+const modelGrid = el('modelGrid');
+const chunkBody = el('chunkBody');
+const chunkEmpty = el('chunkEmpty');
+const chunkStats = el('chunkStats');
+const filterStatus = el('filterStatus');
+const filterFlag = el('filterFlag');
+const askBtn = el('askBtn');
+const questionEl = el('question');
+const answerArea = el('answerArea');
+const globalStatus = el('globalStatus');
+const auditLogEl = el('auditLog');
+const kInput = el('kInput');
+const poolSelect = el('poolSelect');
+
+const STORAGE_KEY = 'rag_governance_state_v1';
+
+const MODELS = [
+  { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B Instruct", size: "~0.4 GB" },
+  { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B Instruct", size: "~0.9 GB" },
+  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B Instruct", size: "~1.1 GB" },
+  { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B Instruct", size: "~2.3 GB" },
+  { id: "Phi-3.5-mini-instruct-q4f16_1-MLC", label: "Phi-3.5-mini Instruct", size: "~2.5 GB" },
+];
+let selectedModelId = MODELS[0].id;
+
+// ---------------- state ----------------
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return { actor: '', chunks: [], auditLog: [], nextChunkSeq: 1 };
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+}
+let state = loadState();
+actorInput.value = state.actor || '';
+actorInput.addEventListener('input', () => { state.actor = actorInput.value; saveState(); });
+
+function actor() { return (state.actor || '').trim() || 'anonymous'; }
+
+function log(action, detail) {
+  state.auditLog.unshift({ ts: new Date().toISOString(), actor: actor(), action, detail });
+  if (state.auditLog.length > 500) state.auditLog.length = 500;
+  saveState();
+  renderAuditLog();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtTs(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ---------------- chunking ----------------
+function splitIntoChunks(text, maxWords = 90) {
+  const paras = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const chunks = [];
+  for (const p of paras) {
+    const words = p.split(/\s+/);
+    if (words.length <= maxWords) { chunks.push(p); continue; }
+    for (let i = 0; i < words.length; i += maxWords) {
+      chunks.push(words.slice(i, i + maxWords).join(' '));
+    }
+  }
+  return chunks.length ? chunks : (text.trim() ? [text.trim()] : []);
+}
+
+// ---------------- quality checks ----------------
+function tokenize(s) {
+  return (s.toLowerCase().match(/[a-z0-9]+/g) || []);
+}
+function jaccard(aTokens, bTokens) {
+  const a = new Set(aTokens), b = new Set(bTokens);
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+function runQualityChecks(newChunk, allChunks) {
+  const flags = [];
+  const tokens = tokenize(newChunk.text);
+
+  if (tokens.length < 6) {
+    flags.push({ kind: 'too-short', severity: 'medium', note: `Only ${tokens.length} words — likely a fragment, not a real chunk.` });
+  }
+  if (!newChunk.docTitle || !newChunk.docTitle.trim()) {
+    flags.push({ kind: 'missing-source', severity: 'medium', note: 'No source/title recorded for this chunk.' });
+  }
+  for (const other of allChunks) {
+    if (other.id === newChunk.id) continue;
+    const sim = jaccard(tokens, tokenize(other.text));
+    if (sim > 0.85) {
+      flags.push({ kind: 'near-duplicate', severity: 'low', note: `${Math.round(sim*100)}% overlap with chunk #${other.seq} ("${other.docTitle}").`, relatedId: other.id });
+    } else if (sim > 0.35 && other.status === 'approved') {
+      // moderate overlap with an approved chunk — possible outdated/contradicting info, flag for human judgment
+      flags.push({ kind: 'possible-overlap', severity: 'low', note: `Partly overlaps approved chunk #${other.seq} ("${other.docTitle}") — check for outdated or conflicting info.`, relatedId: other.id });
+    }
+  }
+  if (newChunk.docDate) {
+    const parsed = Date.parse(newChunk.docDate);
+    if (!isNaN(parsed)) {
+      const ageMonths = (Date.now() - parsed) / (1000*60*60*24*30);
+      if (ageMonths > 18) {
+        flags.push({ kind: 'stale', severity: 'medium', note: `Dated ${newChunk.docDate} — over ${Math.round(ageMonths/12*10)/10} years old.` });
+      }
+    }
+  }
+  return flags;
+}
+
+// ---------------- ingest ----------------
+function addDocument(title, dateStr, text) {
+  const chunkTexts = splitIntoChunks(text);
+  if (chunkTexts.length === 0) return 0;
+  const added = [];
+  for (const t of chunkTexts) {
+    const chunk = {
+      id: 'c' + (state.nextChunkSeq),
+      seq: state.nextChunkSeq,
+      docTitle: title.trim(),
+      docDate: dateStr.trim(),
+      text: t,
+      status: 'draft',
+      proposedBy: actor(),
+      approvedBy: '',
+      flags: [],
+    };
+    state.nextChunkSeq++;
+    added.push(chunk);
+  }
+  // run quality checks against the union of existing + newly added so far
+  for (const chunk of added) {
+    chunk.flags = runQualityChecks(chunk, [...state.chunks, ...added]);
+    state.chunks.push(chunk);
+  }
+  saveState();
+  log('document-added', `"${title.trim()}" — ${added.length} chunk(s) created as drafts`);
+  return added.length;
+}
+
+function recheckAllQuality() {
+  // Re-run quality checks for every chunk against the current state of all others —
+  // matters because "possible-overlap with an approved chunk" depends on approval
+  // status that can change after a chunk was first created.
+  for (const c of state.chunks) {
+    c.flags = runQualityChecks(c, state.chunks);
+  }
+}
+
+function transitionChunk(id, newStatus, extra) {
+  const c = state.chunks.find(x => x.id === id);
+  if (!c) return;
+  const from = c.status;
+  c.status = newStatus;
+  if (newStatus === 'approved') c.approvedBy = extra || actor();
+  if (newStatus === 'rejected') c.approvedBy = '';
+  recheckAllQuality();
+  saveState();
+  log('chunk-' + newStatus, `Chunk #${c.seq} ("${c.docTitle}") ${from} → ${newStatus}` + (extra ? ` by ${extra}` : ''));
+  renderChunks();
+}
+
+function approveChunk(id) {
+  const c = state.chunks.find(x => x.id === id);
+  if (!c) return;
+  const approver = window.prompt(`Approver name (should differ from proposer "${c.proposedBy}" for a real review step):`, actor() !== c.proposedBy ? actor() : '');
+  if (approver === null) return;
+  const name = approver.trim() || actor();
+  transitionChunk(id, 'approved', name);
+}
+
+function deleteChunk(id) {
+  const c = state.chunks.find(x => x.id === id);
+  if (!c) return;
+  state.chunks = state.chunks.filter(x => x.id !== id);
+  saveState();
+  log('chunk-deleted', `Chunk #${c.seq} ("${c.docTitle}") removed`);
+  renderChunks();
+}
+
+// ---------------- sample library ----------------
+function loadSampleLibrary() {
+  const docs = [
+    {
+      title: 'Returns Policy',
+      date: '2025-06',
+      text: `Customers may return unopened items within 30 days of delivery for a full refund.\n\nOpened electronics may be returned within 15 days only if the item is defective. A restocking fee of 10% applies to opened non-defective electronics returned within 15 days.\n\nCustomers may return unopened items within 30 days of delivery for a full refund.\n\nRefunds are issued to the original payment method within 5-7 business days of the warehouse receiving the returned item.`,
+    },
+    {
+      title: 'Returns Policy (old draft)',
+      date: '2022-01',
+      text: `Customers may return unopened items within 14 days of delivery for a full refund. Opened items are not eligible for return under any circumstances.`,
+    },
+    {
+      title: 'Shipping FAQ',
+      date: '2025-08',
+      text: `Standard shipping takes 3-5 business days within the continental US. Expedited shipping (2-day) is available at checkout for an additional fee.\n\nInternational orders may take 10-20 business days depending on customs processing in the destination country.\n\nAll orders over $75 qualify for free standard shipping.`,
+    },
+    {
+      title: 'Warranty Terms',
+      date: '2024-11',
+      text: `All hardware products include a 1-year limited warranty covering manufacturing defects. The warranty does not cover accidental damage, water damage, or normal wear and tear.\n\nTo file a warranty claim, contact support with your order number and a description of the issue within the warranty period.`,
+    },
+    {
+      title: 'Stray note',
+      date: '',
+      text: `see me`,
+    },
+  ];
+  let totalChunks = 0;
+  for (const d of docs) totalChunks += addDocument(d.title, d.date, d.text);
+  return totalChunks;
+}
+
+// ---------------- rendering: model grid ----------------
+MODELS.forEach((m, i) => {
+  const label = document.createElement('label');
+  label.className = 'model-opt' + (i === 0 ? ' selected' : '');
+  label.innerHTML = `
+    <input type="radio" name="model" value="${m.id}" ${i === 0 ? 'checked' : ''}>
+    <span>
+      <div class="m-name">${m.label}</div>
+      <div class="m-size">${m.size} · ${m.id}</div>
+    </span>`;
+  modelGrid.appendChild(label);
+  label.querySelector('input').addEventListener('change', () => {
+    selectedModelId = m.id;
+    modelGrid.querySelectorAll('.model-opt').forEach(o => o.classList.remove('selected'));
+    label.classList.add('selected');
+  });
+});
+
+// ---------------- rendering: chunk table ----------------
+function flagPill(f) {
+  const cls = f.severity === 'high' ? 'issue' : (f.severity === 'medium' ? 'warn' : 'issue');
+  return `<span class="pill ${cls}" title="${escapeHtml(f.note)}">${f.kind}</span>`;
+}
+
+function renderChunkStats() {
+  const total = state.chunks.length;
+  const approved = state.chunks.filter(c => c.status === 'approved').length;
+  const pending = state.chunks.filter(c => c.status === 'pending').length;
+  const withIssues = state.chunks.filter(c => c.flags.length > 0).length;
+  const approvedClean = state.chunks.filter(c => c.status === 'approved' && c.flags.length === 0).length;
+  chunkStats.innerHTML = `
+    <div class="stat"><div class="v">${total}</div><div class="l">Total chunks</div></div>
+    <div class="stat"><div class="v">${approved}</div><div class="l">Approved</div></div>
+    <div class="stat"><div class="v">${pending}</div><div class="l">Pending review</div></div>
+    <div class="stat"><div class="v">${withIssues}</div><div class="l">With quality flags</div></div>
+    <div class="stat"><div class="v">${approvedClean}</div><div class="l">Approved &amp; clean</div></div>`;
+}
+
+function renderChunks() {
+  renderChunkStats();
+  if (typeof updateTabFlags === 'function') updateTabFlags();
+  const sf = filterStatus.value, ff = filterFlag.value;
+  let rows = state.chunks.slice().sort((a,b) => b.seq - a.seq);
+  if (sf) rows = rows.filter(c => c.status === sf);
+  if (ff === 'issue') rows = rows.filter(c => c.flags.length > 0);
+  if (ff === 'clean') rows = rows.filter(c => c.flags.length === 0);
+
+  chunkEmpty.style.display = state.chunks.length === 0 ? 'block' : 'none';
+  chunkBody.innerHTML = rows.map(c => `
+    <tr>
+      <td>
+        <div class="doc-title">#${c.seq} · ${escapeHtml(c.docTitle || '(untitled)')}</div>
+        <div class="doc-meta">${c.docDate ? escapeHtml(c.docDate) + ' · ' : ''}proposed by ${escapeHtml(c.proposedBy)}${c.approvedBy ? ' · approved by ' + escapeHtml(c.approvedBy) : ''}</div>
+        <div class="doc-text">${escapeHtml(c.text.slice(0, 220))}${c.text.length > 220 ? '…' : ''}</div>
+      </td>
+      <td><span class="pill ${c.status}">${c.status === 'pending' ? 'pending approval' : c.status}</span></td>
+      <td>
+        <div class="flags">${c.flags.length ? c.flags.map(flagPill).join('') : '<span class="pill ok">clean</span>'}</div>
+      </td>
+      <td>
+        ${c.status === 'draft' ? `<button class="btn small submit-btn" data-id="${c.id}">Submit for approval</button>` : ''}
+        ${c.status === 'pending' ? `<button class="btn small primary approve-btn" data-id="${c.id}">Approve</button><button class="btn small danger reject-btn" data-id="${c.id}">Reject</button>` : ''}
+        ${c.status === 'rejected' ? `<button class="btn small submit-btn" data-id="${c.id}">Resubmit</button>` : ''}
+        <button class="btn small danger delete-btn" data-id="${c.id}">Delete</button>
+      </td>
+    </tr>`).join('');
+
+  chunkBody.querySelectorAll('.submit-btn').forEach(b => b.addEventListener('click', () => transitionChunk(b.dataset.id, 'pending')));
+  chunkBody.querySelectorAll('.approve-btn').forEach(b => b.addEventListener('click', () => approveChunk(b.dataset.id)));
+  chunkBody.querySelectorAll('.reject-btn').forEach(b => b.addEventListener('click', () => transitionChunk(b.dataset.id, 'rejected')));
+  chunkBody.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', () => { if (confirm('Delete this chunk?')) deleteChunk(b.dataset.id); }));
+}
+filterStatus.addEventListener('change', renderChunks);
+filterFlag.addEventListener('change', renderChunks);
+
+// ---------------- audit log ----------------
+function renderAuditLog() {
+  if (state.auditLog.length === 0) {
+    auditLogEl.innerHTML = '<div class="empty">Nothing logged yet.</div>';
+    return;
+  }
+  auditLogEl.innerHTML = state.auditLog.slice(0, 200).map(e => `
+    <div class="audit-row">
+      <span class="audit-ts">${fmtTs(e.ts)}</span>
+      <span class="audit-actor">${escapeHtml(e.actor)}</span>
+      <span class="audit-detail"><b>${escapeHtml(e.action)}</b> — ${escapeHtml(e.detail)}</span>
+    </div>`).join('');
+}
+
+// ---------------- retrieval (TF-IDF cosine, deterministic & inspectable) ----------------
+function buildIndex(chunks) {
+  const docs = chunks.map(c => tokenize(c.text));
+  const df = new Map();
+  docs.forEach(tokens => {
+    new Set(tokens).forEach(t => df.set(t, (df.get(t) || 0) + 1));
+  });
+  const N = docs.length || 1;
+  const idf = new Map();
+  for (const [t, d] of df) idf.set(t, Math.log((N + 1) / (d + 1)) + 1);
+  const vectors = docs.map(tokens => {
+    const tf = new Map();
+    tokens.forEach(t => tf.set(t, (tf.get(t) || 0) + 1));
+    const vec = new Map();
+    for (const [t, c] of tf) vec.set(t, (c / tokens.length) * (idf.get(t) || 1));
+    return vec;
+  });
+  return { vectors, idf };
+}
+
+function vecFromQuery(query, idf) {
+  const tokens = tokenize(query);
+  const tf = new Map();
+  tokens.forEach(t => tf.set(t, (tf.get(t) || 0) + 1));
+  const vec = new Map();
+  for (const [t, c] of tf) vec.set(t, (c / tokens.length) * (idf.get(t) || 1));
+  return vec;
+}
+
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (const [, v] of a) na += v*v;
+  for (const [, v] of b) nb += v*v;
+  for (const [t, v] of a) if (b.has(t)) dot += v * b.get(t);
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+function retrieve(query, pool, k) {
+  if (pool.length === 0) return [];
+  const { vectors, idf } = buildIndex(pool);
+  const qVec = vecFromQuery(query, idf);
+  const scored = pool.map((c, i) => ({ chunk: c, score: cosine(qVec, vectors[i]) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(s => s.score > 0).slice(0, k);
+}
+
+// ---------------- engine management ----------------
+let currentEngine = null;
+let currentEngineModelId = null;
+
+async function getEngine(modelId, onProgress) {
+  if (currentEngine && currentEngineModelId === modelId) return currentEngine;
+  if (currentEngine) {
+    try { await currentEngine.unload(); } catch (_) {}
+    currentEngine = null; currentEngineModelId = null;
+  }
+  const engine = await webllm.CreateMLCEngine(modelId, { initProgressCallback: onProgress });
+  currentEngine = engine; currentEngineModelId = modelId;
+  return engine;
+}
+
+// ---------------- WebGPU check ----------------
+async function checkWebGPU() {
+  try {
+    if (!("gpu" in navigator)) throw new Error("WebGPU not available in this browser.");
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error("No WebGPU adapter found.");
+    gpuPill.textContent = 'WebGPU ready';
+    gpuPill.className = 'gpu-pill mono ok';
+  } catch (e) {
+    gpuPill.textContent = 'WebGPU unavailable';
+    gpuPill.className = 'gpu-pill mono bad';
+    globalStatus.textContent = e.message + ' — try Chrome or Edge on a WebGPU-capable GPU.';
+  }
+}
+checkWebGPU();
+
+// ---------------- ask flow ----------------
+function updateAskEnabled() {
+  askBtn.disabled = !questionEl.value.trim();
+}
+questionEl.addEventListener('input', updateAskEnabled);
+
+askBtn.addEventListener('click', async () => {
+  const question = questionEl.value.trim();
+  if (!question) return;
+  askBtn.disabled = true;
+  globalStatus.textContent = 'Loading model…';
+
+  const pool = poolSelect.value === 'approved'
+    ? state.chunks.filter(c => c.status === 'approved')
+    : state.chunks.slice();
+
+  const k = Math.max(1, parseInt(kInput.value, 10) || 3);
+
+  answerArea.innerHTML = `
+    <div class="answer-box">
+      <div><span class="status-dot loading"></span><span class="a-stage">Loading model…</span></div>
+    </div>`;
+  const stageEl = answerArea.querySelector('.a-stage');
+  const dotEl = answerArea.querySelector('.status-dot');
+  const boxEl = answerArea.querySelector('.answer-box');
+
+  try {
+    const engine = await getEngine(selectedModelId, (p) => {
+      stageEl.textContent = p.text || 'Loading model…';
+    });
+
+    stageEl.textContent = 'Retrieving relevant chunks…';
+    const results = retrieve(question, pool, k);
+
+    if (results.length === 0) {
+      dotEl.className = 'status-dot err';
+      stageEl.textContent = 'No relevant chunks found in the retrieval pool.';
+      boxEl.innerHTML += `<div class="a-text" style="margin-top:10px;color:var(--text-dim)">Nothing in the ${poolSelect.value === 'approved' ? 'approved' : 'full'} chunk pool matched this question closely enough. Try adding more documents, approving pending chunks, or rephrasing.</div>`;
+      log('question-no-match', `"${question}" — 0 chunks matched in ${poolSelect.value} pool`);
+      askBtn.disabled = false;
+      globalStatus.textContent = '';
+      return;
+    }
+
+    const context = results.map((r, i) => `[Source ${i+1}: ${r.chunk.docTitle}]\n${r.chunk.text}`).join('\n\n');
+    const messages = [
+      { role: 'system', content: 'You are a careful assistant that answers ONLY using the numbered sources provided by the user. If the sources do not contain the answer, say so plainly instead of guessing. When you use a fact, mention which source number it came from (e.g. "(Source 2)").' },
+      { role: 'user', content: `Sources:\n\n${context}\n\nQuestion: ${question}\n\nAnswer using only the sources above, citing source numbers.` },
+    ];
+
+    stageEl.textContent = 'Generating grounded answer…';
+    let text = '';
+    let numTokens = 0;
+    const start = performance.now();
+    const stream = await engine.chat.completions.create({ messages, stream: true, temperature: 0.3, max_tokens: 500 });
+    boxEl.innerHTML += `<div class="a-text" style="margin-top:10px"></div>`;
+    const textEl = boxEl.querySelector('.a-text');
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content || '';
+      if (delta) { text += delta; numTokens++; textEl.textContent = text; }
+    }
+    const tps = numTokens / ((performance.now() - start) / 1000);
+    dotEl.className = 'status-dot done';
+    stageEl.textContent = 'Answer generated';
+    boxEl.innerHTML += `<div class="a-stat">${tps.toFixed(1)} tok/s · ${selectedModelId}</div>`;
+
+    // ---- traceability: render exactly which chunks were used ----
+    const sourcesHtml = results.map((r, i) => {
+      const c = r.chunk;
+      const qbits = c.flags.length
+        ? c.flags.map(f => `<span class="pill ${f.severity==='high'?'issue':f.severity==='medium'?'warn':'issue'}" title="${escapeHtml(f.note)}">${f.kind}</span>`).join(' ')
+        : '<span class="pill ok">clean</span>';
+      return `
+        <div class="source-card">
+          <div class="sc-head">
+            <span class="sc-rank">${i+1}</span>
+            <span class="sc-title">${escapeHtml(c.docTitle)} <span class="pill ${c.status}" style="margin-left:6px">${c.status}</span></span>
+            <span class="sc-score">similarity ${r.score.toFixed(3)}</span>
+          </div>
+          <div class="sc-text">${escapeHtml(c.text)}</div>
+          <div class="sc-quality">Chunk #${c.seq} · proposed by ${escapeHtml(c.proposedBy)}${c.approvedBy ? ' · approved by ' + escapeHtml(c.approvedBy) : ''} · ${qbits}</div>
+        </div>`;
+    }).join('');
+    boxEl.insertAdjacentHTML('afterend', `<div class="sources"><label style="margin-top:0">Traced to these ${results.length} retrieved chunks</label>${sourcesHtml}</div>`);
+
+    log('question-answered', `"${question}" — model ${selectedModelId} — used chunks: ${results.map(r => '#' + r.chunk.seq).join(', ')}`);
+  } catch (e) {
+    dotEl.className = 'status-dot err';
+    stageEl.textContent = 'Error: ' + e.message;
+    log('question-error', `"${question}" — ${e.message}`);
+  }
+  askBtn.disabled = false;
+  globalStatus.textContent = '';
+});
+
+// ---------------- document add / sample / reset ----------------
+el('addDocBtn').addEventListener('click', () => {
+  const title = el('docTitle').value.trim();
+  const date = el('docDate').value.trim();
+  const text = el('docText').value.trim();
+  if (!text) { alert('Paste some document text first.'); return; }
+  const n = addDocument(title || '(untitled document)', date, text);
+  el('docTitle').value = ''; el('docDate').value = ''; el('docText').value = '';
+  renderChunks();
+  globalStatus.textContent = `Added ${n} chunk(s) as drafts.`;
+});
+
+el('loadSampleBtn').addEventListener('click', () => {
+  const n = loadSampleLibrary();
+  renderChunks();
+  globalStatus.textContent = `Loaded sample library — ${n} chunks (drafts, not yet approved).`;
+});
+
+el('resetBtn').addEventListener('click', () => {
+  if (!confirm('This clears the document library and audit log from this browser. Continue?')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+  state = { actor: state.actor, chunks: [], auditLog: [], nextChunkSeq: 1 };
+  saveState();
+  renderChunks();
+  renderAuditLog();
+});
+
+// ---------------- export ----------------
+function downloadBlob(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+el('exportLogBtn').addEventListener('click', () => {
+  const rows = [['timestamp','actor','action','detail']];
+  state.auditLog.forEach(e => rows.push([e.ts, e.actor, e.action, e.detail]));
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  downloadBlob('rag_audit_log.csv', csv, 'text/csv');
+});
+
+el('exportReportBtn').addEventListener('click', () => {
+  const report = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: actor(),
+    chunks: state.chunks,
+    auditLogTail: state.auditLog.slice(0, 100),
+  };
+  downloadBlob('rag_governance_report.json', JSON.stringify(report, null, 2), 'application/json');
+});
+
+// ---------------- tabs ----------------
+const tabBar = el('tabBar');
+const tabPanels = [...document.querySelectorAll('.tab-panel')];
+const tabFlag2 = el('tabFlag2');
+
+function showTab(tabId) {
+  tabPanels.forEach(p => { p.hidden = p.dataset.tab !== tabId; });
+  tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  window.scrollTo({ top: tabBar.offsetTop - 8, behavior: 'smooth' });
+}
+tabBar.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('.next-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.goto)));
+
+function updateTabFlags() {
+  const pending = state.chunks.filter(c => c.status === 'pending').length;
+  if (pending > 0) { tabFlag2.hidden = false; tabFlag2.textContent = pending; }
+  else { tabFlag2.hidden = true; }
+}
+
+// ---------------- init ----------------
+renderChunks();
+renderAuditLog();
+updateAskEnabled();
+updateTabFlags();
+</script>
+</body>
+</html>
