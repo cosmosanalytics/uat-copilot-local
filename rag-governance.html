@@ -87,6 +87,17 @@
   .model-opt .m-size{ color:var(--text-faint); font-size:11px; font-family:ui-monospace,monospace; }
   .model-opt.selected{ border-color:var(--accent); background:var(--accent-bg); }
 
+  .retrieval-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:8px; margin-top:4px; }
+  .retrieval-opt{
+    display:flex; align-items:flex-start; gap:8px; border:1.5px solid var(--border); border-radius:8px;
+    padding:10px 12px; background:var(--panel-inset); cursor:pointer; font-size:12.5px;
+  }
+  .retrieval-opt input{ margin-top:2px; }
+  .retrieval-opt.selected{ border-color:var(--accent); background:var(--accent-bg); }
+  .retrieval-opt .r-name{ font-weight:700; margin-bottom:2px; }
+  .retrieval-opt .r-desc{ color:var(--text-dim); font-size:11.5px; line-height:1.4; }
+  .embed-status{ font-size:11px; color:var(--text-faint); margin-top:8px; font-family:ui-monospace,monospace; }
+
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   th{ text-align:left; color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em;
       border-bottom:1px solid var(--border); padding:6px 8px; }
@@ -269,8 +280,26 @@
 
   <div class="card tab-panel" id="tab3" data-tab="tab3" hidden>
     <h2><span class="num">3</span>Model &amp; retrieval settings</h2>
-    <p class="help">Pick a local model to generate answers. Retrieval itself (finding relevant chunks) is done with on-device keyword/TF‑IDF scoring — deterministic and inspectable, unlike the generation step.</p>
+    <p class="help">Pick a local model to generate answers, and how chunks are found. Both retrieval methods run on-device — nothing is sent anywhere to search.</p>
     <div class="model-grid" id="modelGrid"></div>
+
+    <label style="margin-top:16px">Retrieval method</label>
+    <div class="retrieval-grid" id="retrievalGrid">
+      <label class="retrieval-opt selected" data-method="tfidf">
+        <input type="radio" name="retrieval" value="tfidf" checked>
+        <span>
+          <div class="r-name">Keyword (TF‑IDF)</div>
+          <div class="r-desc">Deterministic word-overlap scoring. Instant, no extra model, fully inspectable — same words in the question and chunk score higher. Misses paraphrases (e.g. "reimbursement" vs "refund").</div>
+        </span>
+      </label>
+      <label class="retrieval-opt" data-method="semantic">
+        <input type="radio" name="retrieval" value="semantic">
+        <span>
+          <div class="r-name">Semantic embeddings</div>
+          <div class="r-desc">Loads a small on-device embedding model (Xenova/all-MiniLM-L6-v2, ~90MB, runs on CPU via WASM) and ranks chunks by meaning, not exact words. Closer to production RAG systems — but the "why this chunk" story is a similarity number, not a shared keyword you can point to.</div>
+        </span>
+      </label>
+    </div>
     <div class="row" style="margin-top:12px">
       <div class="k-input">
         <label>Chunks to retrieve (k)</label>
@@ -310,13 +339,16 @@
   </div>
 
   <div class="footnote">
-    Runs fully client-side: WebLLM (<span class="mono">@mlc-ai/web-llm</span>) loads a small open model via WebGPU, and the
-    document library/audit log persist in this browser's local storage. Nothing is uploaded anywhere.
+    Runs fully client-side: WebLLM (<span class="mono">@mlc-ai/web-llm</span>) loads a small open model via WebGPU for
+    generation; if you pick semantic retrieval, Transformers.js (<span class="mono">@huggingface/transformers</span>)
+    loads a small embedding model (Xenova/all-MiniLM-L6-v2) via WASM on CPU. The document library and audit log persist
+    in this browser's local storage. Nothing is uploaded anywhere.
   </div>
 </div>
 
 <script type="module">
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+import { pipeline as hfPipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1/+esm";
 
 const el = id => document.getElementById(id);
 const gpuPill = el('gpuPill');
@@ -334,6 +366,15 @@ const globalStatus = el('globalStatus');
 const auditLogEl = el('auditLog');
 const kInput = el('kInput');
 const poolSelect = el('poolSelect');
+const retrievalGrid = el('retrievalGrid');
+
+let retrievalMethod = 'tfidf';
+retrievalGrid.querySelectorAll('.retrieval-opt').forEach(opt => {
+  opt.querySelector('input').addEventListener('change', () => {
+    retrievalMethod = opt.dataset.method;
+    retrievalGrid.querySelectorAll('.retrieval-opt').forEach(o => o.classList.toggle('selected', o === opt));
+  });
+});
 
 const STORAGE_KEY = 'rag_governance_state_v1';
 
@@ -677,6 +718,48 @@ function retrieve(query, pool, k) {
   return scored.filter(s => s.score > 0).slice(0, k);
 }
 
+// ---------------- retrieval (semantic embeddings — closer to production RAG) ----------------
+// Cache embeddings per chunk id so re-asking doesn't re-embed the whole library every time.
+const embeddingCache = new Map(); // chunk.id -> Float32Array
+let embedPipelinePromise = null;
+
+async function getEmbedPipeline(onProgress) {
+  if (!embedPipelinePromise) {
+    embedPipelinePromise = hfPipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+      progress_callback: onProgress,
+    });
+  }
+  return embedPipelinePromise;
+}
+
+function cosineFlat(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+async function embedText(embedder, text) {
+  const output = await embedder(text, { pooling: 'mean', normalize: true });
+  return output.data; // Float32Array
+}
+
+async function semanticRetrieve(query, pool, k, embedder) {
+  if (pool.length === 0) return [];
+  const qVec = await embedText(embedder, query);
+  const scored = [];
+  for (const c of pool) {
+    let vec = embeddingCache.get(c.id);
+    if (!vec) {
+      vec = await embedText(embedder, c.text);
+      embeddingCache.set(c.id, vec);
+    }
+    scored.push({ chunk: c, score: cosineFlat(qVec, vec) });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(s => s.score > 0.1).slice(0, k);
+}
+
 // ---------------- engine management ----------------
 let currentEngine = null;
 let currentEngineModelId = null;
@@ -739,14 +822,24 @@ askBtn.addEventListener('click', async () => {
       stageEl.textContent = p.text || 'Loading model…';
     });
 
-    stageEl.textContent = 'Retrieving relevant chunks…';
-    const results = retrieve(question, pool, k);
+    let results;
+    if (retrievalMethod === 'semantic') {
+      stageEl.textContent = 'Loading embedding model…';
+      const embedder = await getEmbedPipeline((p) => {
+        if (p && p.status === 'progress') stageEl.textContent = `Loading embedding model… ${Math.round(p.progress || 0)}%`;
+      });
+      stageEl.textContent = 'Embedding chunks and question…';
+      results = await semanticRetrieve(question, pool, k, embedder);
+    } else {
+      stageEl.textContent = 'Retrieving relevant chunks…';
+      results = retrieve(question, pool, k);
+    }
 
     if (results.length === 0) {
       dotEl.className = 'status-dot err';
       stageEl.textContent = 'No relevant chunks found in the retrieval pool.';
-      boxEl.innerHTML += `<div class="a-text" style="margin-top:10px;color:var(--text-dim)">Nothing in the ${poolSelect.value === 'approved' ? 'approved' : 'full'} chunk pool matched this question closely enough. Try adding more documents, approving pending chunks, or rephrasing.</div>`;
-      log('question-no-match', `"${question}" — 0 chunks matched in ${poolSelect.value} pool`);
+      boxEl.innerHTML += `<div class="a-text" style="margin-top:10px;color:var(--text-dim)">Nothing in the ${poolSelect.value === 'approved' ? 'approved' : 'full'} chunk pool matched this question closely enough (${retrievalMethod === 'semantic' ? 'semantic embeddings' : 'keyword/TF-IDF'}). Try adding more documents, approving pending chunks, switching retrieval method, or rephrasing.</div>`;
+      log('question-no-match', `"${question}" — 0 chunks matched in ${poolSelect.value} pool (${retrievalMethod})`);
       askBtn.disabled = false;
       globalStatus.textContent = '';
       return;
@@ -791,9 +884,10 @@ askBtn.addEventListener('click', async () => {
           <div class="sc-quality">Chunk #${c.seq} · proposed by ${escapeHtml(c.proposedBy)}${c.approvedBy ? ' · approved by ' + escapeHtml(c.approvedBy) : ''} · ${qbits}</div>
         </div>`;
     }).join('');
-    boxEl.insertAdjacentHTML('afterend', `<div class="sources"><label style="margin-top:0">Traced to these ${results.length} retrieved chunks</label>${sourcesHtml}</div>`);
+    const methodLabel = retrievalMethod === 'semantic' ? 'semantic embeddings (Xenova/all-MiniLM-L6-v2)' : 'keyword / TF-IDF';
+    boxEl.insertAdjacentHTML('afterend', `<div class="sources"><label style="margin-top:0">Traced to these ${results.length} retrieved chunks — via ${methodLabel}</label>${sourcesHtml}</div>`);
 
-    log('question-answered', `"${question}" — model ${selectedModelId} — used chunks: ${results.map(r => '#' + r.chunk.seq).join(', ')}`);
+    log('question-answered', `"${question}" — model ${selectedModelId} — retrieval: ${retrievalMethod} — used chunks: ${results.map(r => '#' + r.chunk.seq).join(', ')}`);
   } catch (e) {
     dotEl.className = 'status-dot err';
     stageEl.textContent = 'Error: ' + e.message;
