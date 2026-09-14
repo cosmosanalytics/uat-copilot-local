@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>The recommendation loop — on-device AI</title>
+<style>
+  :root {
+    --ink: #FAF7F2;
+    --panel: #FFFFFF;
+    --border: #DFD9CC;
+    --text: #26241F;
+    --muted: #847F72;
+    --amber: #C97A2B;
+    --teal: #2F8F76;
+    --coral: #C24E36;
+    --violet: #7A5FBF;
+    --track: #EFEAE0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-size: 26px;
+    margin: 0;
+  }
+  h2 { font-size: 15px; margin: 0 0 12px 0; }
+  p { margin: 0; }
+  .top {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin-bottom: 20px;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; max-width: 560px; }
+  .tabs { display: flex; gap: 8px; }
+  .tab {
+    padding: 6px 12px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+  }
+  .tab.active { background: var(--amber); color: #fff; border-color: var(--amber); }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 860px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .bar-row { margin-bottom: 12px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .bar-track { height: 7px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 400ms ease; }
+  .btn {
+    border: none; border-radius: 6px; padding: 10px 14px; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+  .btn-amber { background: var(--amber); color: #fff; }
+  .btn-teal { background: var(--teal); color: #fff; }
+  .btn-outline-coral { background: transparent; border: 1px solid var(--coral); color: var(--coral); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-track { background: var(--track); color: var(--text); }
+  .btn-violet { background: var(--violet); color: #fff; }
+  .card { border: 1px solid var(--border); background: #FBF5E9; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .cat-title { font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif; font-size: 22px; margin: 4px 0 6px 0; }
+  textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+    font-size: 13px; resize: none; font-family: inherit; color: var(--text); background: #fff;
+  }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .row { display: flex; gap: 8px; }
+  .flex1 { flex: 1; }
+  .log-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+  .log-row + .log-row { border-top: 1px solid var(--border); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <p style="font-family:ui-sans-serif,system-ui,sans-serif;color:#847F72;padding:20px">Loading…</p>
+</div>
+
+<script type="module">
+
+const CATEGORIES = ["Focus Tools", "Movement", "Cooking", "Travel", "Money", "Style"];
+
+const PERSONAS = [
+  { id: "priya", name: "Priya", role: "Product manager, works late",
+    truth: { "Focus Tools": 0.85, Movement: 0.2, Cooking: 0.3, Travel: 0.55, Money: 0.4, Style: 0.25 } },
+  { id: "marcus", name: "Marcus", role: "Field engineer, up at dawn",
+    truth: { "Focus Tools": 0.25, Movement: 0.8, Cooking: 0.35, Travel: 0.3, Money: 0.5, Style: 0.15 } },
+  { id: "elena", name: "Elena", role: "Freelance designer",
+    truth: { "Focus Tools": 0.3, Movement: 0.25, Cooking: 0.45, Travel: 0.7, Money: 0.2, Style: 0.8 } },
+];
+
+const STRATEGIES = [
+  { id: "best", name: "Best match", blurb: "Leans on the category the profile already rates highest." },
+  { id: "explore", name: "Explorer", blurb: "Tries whatever this profile has seen the fewest times." },
+  { id: "trend", name: "Trending", blurb: "Follows whichever category is landing well across everyone." },
+];
+
+function freshSim() {
+  const personas = {};
+  PERSONAS.forEach((p) => {
+    personas[p.id] = {
+      learned: Object.fromEntries(CATEGORIES.map((c) => [c, 0.3])),
+      obs: Object.fromEntries(CATEGORIES.map((c) => [c, 0])),
+    };
+  });
+  const strategyStats = Object.fromEntries(STRATEGIES.map((s) => [s.id, { wins: 0, trials: 0 }]));
+  const globalStats = Object.fromEntries(CATEGORIES.map((c) => [c, { wins: 0, trials: 0 }]));
+  const notes = Object.fromEntries(PERSONAS.map((p) => [p.id, []]));
+  return { personas, strategyStats, globalStats, history: [], log: [], notes };
+}
+
+function pickStrategy(sim) {
+  const total = sim.history.length;
+  const epsilon = Math.max(0.06, 0.35 - total * 0.01);
+  if (Math.random() < epsilon) return STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)].id;
+  let best = STRATEGIES[0].id, bestRate = -1;
+  STRATEGIES.forEach((s) => {
+    const st = sim.strategyStats[s.id];
+    const rate = st.trials === 0 ? 0.5 : st.wins / st.trials;
+    if (rate > bestRate) { bestRate = rate; best = s.id; }
+  });
+  return best;
+}
+
+function pickCategory(sim, personaId, strategyId) {
+  const persona = sim.personas[personaId];
+  if (strategyId === "best") return CATEGORIES.reduce((a, b) => (persona.learned[b] > persona.learned[a] ? b : a));
+  if (strategyId === "explore") {
+    const minObs = Math.min(...CATEGORIES.map((c) => persona.obs[c]));
+    const tied = CATEGORIES.filter((c) => persona.obs[c] === minObs);
+    return tied[Math.floor(Math.random() * tied.length)];
+  }
+  let best = null, bestRate = -1;
+  CATEGORIES.forEach((c) => {
+    const st = sim.globalStats[c];
+    const rate = st.trials === 0 ? 0.5 : st.wins / st.trials;
+    if (rate > bestRate) { bestRate = rate; best = c; }
+  });
+  return best || CATEGORIES[0];
+}
+
+function simulateOutcome(persona, category) {
+  const prob = Math.min(0.95, Math.max(0.05, persona.truth[category] + (Math.random() - 0.5) * 0.25));
+  return Math.random() < prob ? 1 : 0;
+}
+
+function commitOutcome(sim, personaId, strategyId, category, outcome) {
+  const next = {
+    personas: { ...sim.personas },
+    strategyStats: { ...sim.strategyStats },
+    globalStats: { ...sim.globalStats },
+    notes: sim.notes,
+    history: [...sim.history, outcome],
+    log: [{ personaId, strategyId, category, outcome }, ...sim.log].slice(0, 8),
+  };
+  const p = sim.personas[personaId];
+  const learned = { ...p.learned, [category]: p.learned[category] + 0.3 * (outcome - p.learned[category]) };
+  const obs = { ...p.obs, [category]: p.obs[category] + 1 };
+  next.personas[personaId] = { learned, obs };
+  const st = sim.strategyStats[strategyId];
+  next.strategyStats[strategyId] = { wins: st.wins + outcome, trials: st.trials + 1 };
+  const gs = sim.globalStats[category];
+  next.globalStats[category] = { wins: gs.wins + outcome, trials: gs.trials + 1 };
+  return next;
+}
+
+function applyEnrichment(sim, personaId, adjustments, note) {
+  const p = sim.personas[personaId];
+  const learned = { ...p.learned };
+  Object.entries(adjustments || {}).forEach(([cat, delta]) => {
+    if (learned[cat] === undefined) return;
+    const bounded = Math.max(-0.15, Math.min(0.15, Number(delta) || 0));
+    learned[cat] = Math.max(0, Math.min(1, learned[cat] + bounded));
+  });
+  return {
+    ...sim,
+    personas: { ...sim.personas, [personaId]: { ...p, learned } },
+    notes: { ...sim.notes, [personaId]: note ? [note, ...sim.notes[personaId]].slice(0, 4) : sim.notes[personaId] },
+  };
+}
+
+function rollingSeries(history, window = 8, maxPoints = 28) {
+  if (history.length === 0) return [];
+  const series = history.map((_, i) => {
+    const start = Math.max(0, i - window + 1);
+    const slice = history.slice(start, i + 1);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+  if (series.length <= maxPoints) return series;
+  const step = series.length / maxPoints;
+  return Array.from({ length: maxPoints }, (_, i) => series[Math.floor(i * step)]);
+}
+
+// ---- App state (plain variables, re-rendered manually) ----
+let sim = freshSim();
+let selectedId = "priya";
+let pending = null;
+let lastEvent = null;
+let feedbackText = "";
+let isEnriching = false;
+let enrichError = null;
+const PREFERRED_MODELS = [
+  "SmolLM2-360M-Instruct-q4f16_1-MLC",
+  "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+  "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+  "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+  "Phi-3.5-mini-instruct-q4f16_1-MLC",
+];
+
+function pickChatModelId(modelList) {
+  for (const id of PREFERRED_MODELS) {
+    if (modelList.some((m) => m.model_id === id)) return id;
+  }
+  // Fallback: exclude anything that looks like an embedding model, then take the smallest.
+  const chatModels = modelList.filter((m) => !/embed/i.test(m.model_id));
+  const sorted = [...chatModels].sort(
+    (a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9)
+  );
+  return sorted[0] ? sorted[0].model_id : null;
+}
+
+let engine = null;
+let webllm = null;
+let loadedModelId = null;
+let engineStatus = "idle"; // idle | loading | ready | unsupported | error
+let engineProgress = "";
+
+async function loadModel() {
+  if (engineStatus === "loading" || engineStatus === "ready") return;
+  if (!navigator.gpu) { engineStatus = "unsupported"; render(); return; }
+  engineStatus = "loading";
+  engineProgress = "Fetching WebLLM…";
+  render();
+  try {
+    if (!webllm) {
+      webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    }
+    const modelId = pickChatModelId(webllm.prebuiltAppConfig.model_list);
+    if (!modelId) throw new Error("No compatible chat model found in WebLLM's model list.");
+    loadedModelId = modelId;
+    engineProgress = "Starting " + modelId + "…";
+    render();
+    engine = await webllm.CreateMLCEngine(modelId, {
+      initProgressCallback: (p) => { engineProgress = p.text || ""; render(); },
+    });
+    engineStatus = "ready";
+  } catch (err) {
+    engineStatus = "error";
+    engineProgress = (err && err.message) ? err.message : String(err);
+  }
+  render();
+}
+
+function parseModelJSON(raw, categories) {
+  const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+  const braceMatch = raw.match(/\{[\s\S]*\}/);
+  const candidate = braceMatch ? braceMatch[0] : raw;
+
+  let parsed = tryParse(candidate);
+  if (!parsed) {
+    const cleaned = candidate
+      .replace(/'/g, '"')
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_ ]*)\s*:/g, '$1"$2":');
+    parsed = tryParse(cleaned);
+  }
+  if (parsed) return parsed;
+
+  // Last resort: pull category:number and a note-ish sentence straight out of the raw text,
+  // regardless of whether it forms valid JSON.
+  const adjustments = {};
+  const catPattern = new RegExp('"?(' + categories.join("|") + ')"?\\s*:?\\s*(-?\\d*\\.?\\d+)', "g");
+  let m;
+  while ((m = catPattern.exec(raw))) {
+    adjustments[m[1]] = parseFloat(m[2]);
+  }
+  const noteMatch = raw.match(/"note"\s*:\s*"([^"]*)"/) || raw.match(/note[:\-]\s*"?([^",\n]{4,80})/i);
+  const note = noteMatch ? noteMatch[1].trim() : null;
+  if (Object.keys(adjustments).length === 0 && !note) return null;
+  return { note, adjustments };
+}
+
+async function fetchEnrichmentLocal(personaName, category, outcome, text) {
+  const system =
+    "You maintain a user profile for a recommendation system. " +
+    "Reply with ONLY one JSON object and nothing else — no explanation, no markdown fences, no text before or after it. " +
+    "Format exactly like this example: " +
+    '{"note": "Prefers weekend activities", "adjustments": {"Travel": 0.1, "Money": -0.05}} ' +
+    `Adjustment keys must come only from this exact list: ${CATEGORIES.join(", ")}. ` +
+    "Values are small numbers between -0.15 and 0.15. Include only categories the feedback actually speaks to " +
+    "(usually just one or two). If the feedback carries no usable signal, return an empty adjustments object.";
+  const userMsg =
+    `Persona: ${personaName}. Recommended category: ${category}. Persona ${outcome ? "accepted" : "dismissed"} it. ` +
+    `Their feedback: "${text}". Respond with the JSON object only.`;
+  const reply = await engine.chat.completions.create({
+    messages: [{ role: "system", content: system }, { role: "user", content: userMsg }],
+    temperature: 0,
+    max_tokens: 300,
+  });
+  const raw = reply.choices?.[0]?.message?.content || "";
+  const parsed = parseModelJSON(raw, CATEGORIES);
+  if (!parsed) {
+    const preview = raw.trim().slice(0, 120);
+    throw new Error(preview ? `Model said: "${preview}"` : "Model returned nothing usable");
+  }
+  return parsed;
+}
+
+function selectPersona(id) {
+  selectedId = id; pending = null; lastEvent = null; feedbackText = "";
+  render();
+}
+
+function suggest() {
+  const strategyId = pickStrategy(sim);
+  const category = pickCategory(sim, selectedId, strategyId);
+  pending = { strategyId, category };
+  lastEvent = null; feedbackText = "";
+  render();
+}
+
+function resolve(outcome) {
+  if (!pending) return;
+  sim = commitOutcome(sim, selectedId, pending.strategyId, pending.category, outcome);
+  lastEvent = { personaId: selectedId, category: pending.category, outcome };
+  pending = null; feedbackText = ""; enrichError = null;
+  render();
+}
+
+async function sendFeedback() {
+  if (!lastEvent || !feedbackText.trim() || engineStatus !== "ready") return;
+  isEnriching = true; enrichError = null; render();
+  try {
+    const personaName = PERSONAS.find((p) => p.id === lastEvent.personaId).name;
+    const result = await fetchEnrichmentLocal(personaName, lastEvent.category, lastEvent.outcome, feedbackText.trim());
+    sim = applyEnrichment(sim, lastEvent.personaId, result.adjustments, result.note);
+    lastEvent = null; feedbackText = "";
+  } catch (err) {
+    enrichError = (err && err.message) ? err.message : "The on-device model couldn't parse that — try again.";
+  } finally {
+    isEnriching = false; render();
+  }
+}
+
+function skipFeedback() {
+  lastEvent = null; feedbackText = ""; enrichError = null;
+  render();
+}
+
+function runRounds(n) {
+  let working = sim;
+  for (let i = 0; i < n; i++) {
+    const pid = PERSONAS[i % PERSONAS.length].id;
+    const strategyId = pickStrategy(working);
+    const category = pickCategory(working, pid, strategyId);
+    const outcome = simulateOutcome(PERSONAS.find((p) => p.id === pid), category);
+    working = commitOutcome(working, pid, strategyId, category, outcome);
+  }
+  sim = working; pending = null; lastEvent = null;
+  render();
+}
+
+function reset() {
+  sim = freshSim(); pending = null; lastEvent = null; feedbackText = ""; enrichError = null;
+  render();
+}
+
+function onFeedbackInput(v) { feedbackText = v; }
+
+window.selectPersona = selectPersona;
+window.suggest = suggest;
+window.resolve = resolve;
+window.sendFeedback = sendFeedback;
+window.skipFeedback = skipFeedback;
+window.runRounds = runRounds;
+window.reset = reset;
+window.loadModel = loadModel;
+window.onFeedbackInput = onFeedbackInput;
+
+function engineStatusLine() {
+  if (engineStatus === "unsupported") return { dot: "#C24E36", text: "This browser doesn't support WebGPU, so the on-device model can't run here. Try desktop Chrome or Edge." };
+  if (engineStatus === "idle") return { dot: "#847F72", text: "On-device AI not loaded yet." };
+  if (engineStatus === "loading") return { dot: "#C97A2B", text: engineProgress || "Loading model…" };
+  if (engineStatus === "ready") return { dot: "#2F8F76", text: "On-device model ready (" + loadedModelId + ") — running fully in this browser." };
+  return { dot: "#C24E36", text: "Model failed to load: " + engineProgress };
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function render() {
+  const persona = PERSONAS.find((p) => p.id === selectedId);
+  const total = sim.history.length;
+  const recent = sim.history.slice(-10);
+  const rollingRate = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : null;
+  const series = rollingSeries(sim.history);
+  const strategyDetail = pending ? STRATEGIES.find((s) => s.id === pending.strategyId) : null;
+  const es = engineStatusLine();
+
+  const tabs = PERSONAS.map(
+    (p) => `<button class="tab ${p.id === selectedId ? "active" : ""}" onclick="selectPersona('${p.id}')">${p.name}</button>`
+  ).join("");
+
+  const bars = CATEGORIES.map((c) => {
+    const v = sim.personas[selectedId].learned[c];
+    const count = sim.personas[selectedId].obs[c];
+    return `
+      <div class="bar-row">
+        <div class="bar-label"><span>${c}</span><span class="muted">${count} seen</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v * 100)}%;background:var(--teal)"></div></div>
+      </div>`;
+  }).join("");
+
+  const notes = sim.notes[selectedId].length
+    ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+         <p class="small muted" style="margin-bottom:6px">What feedback has taught the profile</p>
+         ${sim.notes[selectedId].map((n) => `<p class="small" style="margin-bottom:6px">· ${n}</p>`).join("")}
+       </div>`
+    : "";
+
+  const recCard = pending
+    ? `<div class="card">
+         <p class="small muted" style="margin-bottom:4px">${strategyDetail.name} chose this</p>
+         <p class="cat-title">${pending.category}</p>
+         <p class="small muted" style="margin-bottom:14px">${strategyDetail.blurb}</p>
+         <div class="row">
+           <button class="btn btn-teal flex1" onclick="resolve(1)">Accept</button>
+           <button class="btn btn-outline-coral flex1" onclick="resolve(0)">Dismiss</button>
+         </div>
+       </div>`
+    : `<button class="btn btn-amber" style="width:100%;margin-bottom:16px" onclick="suggest()">Suggest something for ${persona.name}</button>`;
+
+  const feedbackBox = lastEvent
+    ? `<div class="card">
+         <p class="small muted" style="margin-bottom:8px">
+           Want to tell the profile why you ${lastEvent.outcome ? "accepted" : "dismissed"} ${lastEvent.category}?
+           ${engineStatus === "ready" ? "The on-device model reads it and adjusts the profile." : "Load the on-device model below to enable this."}
+         </p>
+         <textarea rows="2" oninput="onFeedbackInput(this.value)" placeholder="e.g. only interested on weekends" ${engineStatus !== "ready" ? "disabled" : ""}>${escapeHtml(feedbackText)}</textarea>
+         ${enrichError ? `<p class="small" style="color:var(--coral);margin:8px 0">${enrichError}</p>` : ""}
+         <div class="row" style="margin-top:8px">
+           <button class="btn btn-violet flex1" ${engineStatus !== "ready" || isEnriching ? "disabled" : ""} onclick="sendFeedback()">
+             ${isEnriching ? "Reading feedback…" : "Send to on-device AI"}
+           </button>
+           <button class="btn btn-outline" onclick="skipFeedback()">Skip</button>
+         </div>
+       </div>`
+    : "";
+
+  const chartPoints = series.length > 1
+    ? series.map((v, i) => `${(i / (series.length - 1)) * 280},${58 - v * 54}`).join(" ")
+    : "";
+
+  const strategyRows = STRATEGIES.map((s) => {
+    const st = sim.strategyStats[s.id];
+    const rate = st.trials === 0 ? null : st.wins / st.trials;
+    return `
+      <div style="margin-bottom:16px">
+        <div class="bar-label"><span>${s.name}</span><span class="muted">${rate === null ? "no data yet" : Math.round(rate * 100) + "% of " + st.trials}</span></div>
+        <div class="bar-track" style="margin-bottom:4px"><div class="bar-fill" style="width:${rate === null ? 0 : rate * 100}%;background:var(--violet)"></div></div>
+        <p class="small muted">${s.blurb}</p>
+      </div>`;
+  }).join("");
+
+  const logRows = sim.log.map((e) => `
+    <div class="log-row">
+      <span class="muted">${PERSONAS.find((p) => p.id === e.personaId).name} · ${e.category}</span>
+      <span style="color:${e.outcome ? "var(--teal)" : "var(--coral)"}">${e.outcome ? "accepted" : "dismissed"}</span>
+    </div>`).join("");
+
+  document.getElementById("app").innerHTML = `
+    <div class="top">
+      <div>
+        <h1>The recommendation loop</h1>
+        <p class="sub">A bandit runs the fast numeric loop locally. A small language model, also running entirely in this browser via WebGPU, reads optional free-text feedback to enrich the profile further.</p>
+      </div>
+      <div class="tabs">${tabs}</div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="status-dot" style="background:${es.dot}"></span>
+      <span class="small">${es.text}</span>
+      ${engineStatus === "idle" ? `<button class="btn btn-track" style="margin-left:auto" onclick="loadModel()">Load on-device AI model</button>` : ""}
+      ${engineStatus === "error" ? `<button class="btn btn-track" style="margin-left:auto" onclick="loadModel()">Try again</button>` : ""}
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>${persona.name}'s profile</h2>
+        <p class="small muted" style="margin-bottom:14px">${persona.role}</p>
+        ${bars}
+        <p class="small muted" style="margin-top:10px">Bars start flat and only move once a recommendation in that category gets accepted, dismissed, or discussed in feedback.</p>
+        ${notes}
+      </div>
+
+      <div class="panel">
+        <h2>Next recommendation</h2>
+        ${recCard}
+        ${feedbackBox}
+        <div style="margin-top:${lastEvent || pending ? "16px" : "auto"}">
+          <div class="bar-label" style="align-items:baseline">
+            <span class="small muted">Adoption rate, last 10</span>
+            <span style="font-size:20px">${rollingRate === null ? "—" : Math.round(rollingRate * 100) + "%"}</span>
+          </div>
+          <svg viewBox="0 0 280 60" width="100%" height="60" preserveAspectRatio="none">
+            ${series.length > 1
+              ? `<polyline fill="none" stroke="var(--amber)" stroke-width="2" points="${chartPoints}" />`
+              : `<text x="8" y="34" fill="#847F72" font-size="12">Run a few rounds to see a trend</text>`}
+          </svg>
+          <p class="small muted">${total} recommendations served across everyone</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Strategy standings</h2>
+        ${strategyRows}
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-track flex1" onclick="runRounds(25)">Run 25 rounds</button>
+          <button class="btn btn-outline" onclick="reset()">Reset</button>
+        </div>
+        ${sim.log.length ? `<div style="margin-top:20px"><p class="small muted" style="margin-bottom:6px">Recent activity</p><div style="max-height:130px;overflow-y:auto">${logRows}</div></div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+render();
+</script>
+<script>
+  window.addEventListener("error", function (e) {
+    var app = document.getElementById("app");
+    if (app && app.innerHTML.trim() === "" || (app && app.textContent.trim() === "Loading…")) {
+      app.innerHTML = '<p style="font-family:ui-sans-serif,system-ui,sans-serif;color:#C24E36;padding:20px">' +
+        "Something failed to load: " + (e.message || "unknown error") + "</p>";
+    }
+  });
+</script>
+</body>
+</html>
