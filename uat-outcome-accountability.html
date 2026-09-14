@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UAT Outcome Accountability Console</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
+    --text:#1c211e; --text-dim:#54594f; --text-faint:#8c9188;
+    --accent:#12806c; --accent-bg:#e6f2ef; --accent-dim:#9cc9c0;
+    --amber:#a9770f; --amber-bg:#fbf1de; --amber-dim:#e6cd97;
+    --danger:#b4413a; --danger-bg:#fbe9e7;
+    --plum:#7a4f9e; --plum-bg:#f1e9f7;
+    --shadow:0 1px 3px rgba(20,25,20,0.08);
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; }
+  .mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  header{ display:flex; align-items:center; gap:12px; padding:10px 18px; background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1 span{ color:var(--accent); }
+  .badge{ font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent); background:var(--accent-bg); border:1px solid var(--accent-dim); padding:4px 9px; border-radius:20px; }
+  .spacer{ flex:1; }
+  .gpu-pill{ font-size:11px; padding:4px 10px; border-radius:20px; font-family:ui-monospace,monospace; border:1px solid var(--border); }
+  .gpu-pill.ok{ color:var(--accent); border-color:var(--accent-dim); background:var(--accent-bg); }
+  .gpu-pill.bad{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .actor-pill{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
+  .actor-pill input{ border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; font-family:inherit; background:var(--panel-inset); color:var(--text); width:130px; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 60px 18px; }
+  .card{ background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px; box-shadow:var(--shadow); margin-bottom:18px; }
+  .card h2{ font-size:14px; margin:0 0 4px 0; display:flex; align-items:center; gap:8px; }
+  .card h2 .num{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--accent-bg); color:var(--accent); font-size:11px; font-weight:800; }
+  .card p.help{ color:var(--text-dim); font-size:12.5px; margin:0 0 14px 0; line-height:1.5; }
+  label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin:10px 0 5px 0; }
+  textarea, input[type=text], select{ width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px; font-size:13.5px; font-family:inherit; background:var(--panel-inset); color:var(--text); }
+  textarea{ min-height:100px; resize:vertical; font-family:ui-monospace,monospace; font-size:12.5px; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > *{ flex:1; min-width:160px; }
+  .btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:7px; padding:8px 14px; background:var(--panel-inset); color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn:hover{ border-color:var(--accent-dim); }
+  .btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.primary:disabled{ background:var(--border); border-color:var(--border); color:var(--text-faint); cursor:not-allowed; }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .btn.danger{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .btn.small{ padding:5px 10px; font-size:11.5px; }
+  .btn-row{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+
+  .mode-toggle{ display:flex; gap:8px; margin-top:6px; }
+  .mode-btn{ flex:1; border:1.5px solid var(--border); border-radius:7px; padding:9px 12px; background:var(--panel-inset); cursor:pointer; font-size:12.5px; font-weight:600; text-align:center; }
+  .mode-btn.selected{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th{ text-align:left; color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; border-bottom:1px solid var(--border); padding:6px 8px; }
+  td{ border-bottom:1px solid var(--border-soft); padding:7px 8px; vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+
+  .pill{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; }
+  .pill.pass{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.fail{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.blocked{ background:var(--plum-bg); color:var(--plum); border:1px solid #d9c4e8; }
+  .pill.unclear{ background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.agree{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.override{ background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.awaiting{ background:var(--panel-inset); color:var(--text-faint); border:1px solid var(--border); }
+  .pill.wrong{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:4px; }
+  .stat{ background:var(--panel-inset); border:1px solid var(--border-soft); border-radius:8px; padding:10px 12px; }
+  .stat .v{ font-size:20px; font-weight:800; }
+  .stat .l{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
+
+  .status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
+  .status-dot.loading{ background:var(--amber); animation:pulse 1.1s infinite; }
+  .status-dot.done{ background:var(--accent); }
+  .status-dot.err{ background:var(--danger); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .assess-card{ border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:10px; background:var(--panel-inset); }
+  .assess-text{ font-size:12.5px; color:var(--text-dim); white-space:pre-wrap; line-height:1.5; }
+  video#preview{ width:100%; max-height:220px; object-fit:contain; background:#000; border-radius:8px; border:1px solid var(--border); }
+  img.shot-thumb{ max-width:100%; max-height:160px; border-radius:8px; border:1px solid var(--border); display:block; }
+  .no-share{ border:1px dashed var(--border); border-radius:8px; padding:20px; text-align:center; color:var(--text-faint); font-size:12.5px; }
+
+  .empty{ color:var(--text-faint); font-size:12.5px; font-style:italic; padding:10px 2px; }
+
+  .audit-row{ display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12px; }
+  .audit-row:last-child{ border-bottom:none; }
+  .audit-ts{ color:var(--text-faint); font-family:ui-monospace,monospace; font-size:11px; white-space:nowrap; }
+  .audit-actor{ font-weight:700; white-space:nowrap; }
+  .audit-detail{ color:var(--text-dim); }
+  .audit-list{ max-height:280px; overflow-y:auto; }
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .filter-row select{ width:auto; padding:6px 10px; font-size:12px; }
+
+  .footnote{ font-size:11px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  .intro-card{ background:var(--accent-bg); border-color:var(--accent-dim); }
+
+  .tab-bar{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .tab-btn{ display:flex; align-items:center; gap:7px; border:1px solid transparent; border-bottom:none; background:transparent; color:var(--text-dim); font-family:inherit; font-size:12.5px; font-weight:600; padding:9px 14px; border-radius:8px 8px 0 0; cursor:pointer; position:relative; top:1px; }
+  .tab-btn:hover{ color:var(--text); background:var(--panel-inset); }
+  .tab-btn.active{ color:var(--accent); background:var(--panel); border-color:var(--border); border-bottom:1px solid var(--panel); }
+  .tab-num{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--panel-inset); color:var(--text-faint); font-size:10.5px; font-weight:800; flex-shrink:0; }
+  .tab-btn.active .tab-num{ background:var(--accent); color:#fff; }
+  .tab-flag{ display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; border-radius:20px; background:var(--amber); color:#fff; font-size:9.5px; font-weight:800; }
+  .tab-panel{ margin-top:0; border-top-left-radius:0; }
+
+  .drift-banner{ background:var(--danger-bg); border:1px solid #eecfcb; color:var(--danger); border-radius:8px; padding:12px 14px; font-size:12.5px; margin-bottom:14px; display:flex; gap:10px; align-items:flex-start; }
+  .drift-banner b{ display:block; margin-bottom:2px; }
+  .uncertain-banner{ background:var(--amber-bg); border:1px solid var(--amber-dim); color:var(--amber); border-radius:8px; padding:8px 12px; font-size:12px; margin-top:8px; }
+
+  .expand-toggle{ font-size:11px; color:var(--accent); cursor:pointer; font-weight:700; }
+  .trace-block{ display:none; margin-top:8px; }
+  .trace-block.open{ display:block; }
+
+  .progress-item{ font-size:11px; color:var(--text-dim); margin:6px 0 4px 0; font-family:ui-monospace,monospace; }
+  .bar{ height:6px; border-radius:5px; background:var(--panel-inset); border:1px solid var(--border-soft); overflow:hidden; margin-bottom:6px; }
+  .bar .fill{ height:100%; background:var(--accent); width:0%; transition:width .15s; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UAT Outcome <span>Accountability</span> Console</h1>
+  <span class="badge">vision model · SmolVLM via WebGPU · nothing uploaded</span>
+  <div class="spacer"></div>
+  <div class="actor-pill">Acting as <input type="text" id="actorInput" placeholder="your name"></div>
+  <span class="gpu-pill mono" id="gpuPill">checking WebGPU…</span>
+</header>
+
+<div class="wrap">
+
+  <div class="card intro-card">
+    <h2><span class="num">i</span>What this demonstrates</h2>
+    <p class="help">
+      A companion to UAT Copilot, applying the same accountability framework used elsewhere in this project — but adapted
+      honestly to a vision model. The underlying model here always decodes deterministically (no randomness), so unlike a
+      text model, asking it the same question twice gives the same answer — self-consistency sampling wouldn't produce a
+      real confidence signal. Instead the safety net here is stricter: <b>every</b> AI read of a screen requires a named
+      tester's sign-off before it counts as a test result — nothing is ever auto-passed. The AI also flags its own
+      uncertain language automatically. What closes the loop: after sign-off, if a defect later surfaces on a step that
+      was confirmed, you can mark it "later found incorrect" — so real accuracy (not just process) becomes measurable
+      by tester and by whether the AI hedged.
+    </p>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn primary" id="loadSampleWalkthroughBtn">See a sample end-to-end walkthrough</button>
+      <span style="font-size:11.5px;color:var(--text-dim);align-self:center">No model load or screen share needed — loads 6 already-completed steps so you can browse the Step log and Dashboard right away.</span>
+    </div>
+  </div>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="tab1"><span class="tab-num">1</span>Setup</button>
+    <button class="tab-btn" data-tab="tab2"><span class="tab-num">2</span>Assess a step</button>
+    <button class="tab-btn" data-tab="tab3"><span class="tab-num">3</span>Step log</button>
+    <button class="tab-btn" data-tab="tab4"><span class="tab-num">4</span>Later outcomes<span class="tab-flag" id="tabFlag4" hidden></span></button>
+    <button class="tab-btn" data-tab="tab5"><span class="tab-num">5</span>Accountability dashboard</button>
+  </div>
+
+  <div class="card tab-panel" id="tab1" data-tab="tab1">
+    <h2><span class="num">1</span>Setup</h2>
+    <p class="help">Load the same local vision model UAT Copilot uses, paste your test script, and choose how to capture the screen.</p>
+    <label for="modelSelect">Model</label>
+    <select id="modelSelect">
+      <option value="HuggingFaceTB/SmolVLM-256M-Instruct">SmolVLM-256M-Instruct — smallest, fastest (~350 MB)</option>
+      <option value="HuggingFaceTB/SmolVLM-500M-Instruct" selected>SmolVLM-500M-Instruct — balanced (~650 MB)</option>
+      <option value="HuggingFaceTB/SmolVLM-Instruct">SmolVLM-Instruct (2.2B) — best quality, slowest (~2.2 GB)</option>
+    </select>
+    <label for="scriptArea">Test script (one step per line)</label>
+    <textarea id="scriptArea">1. Log in as planner
+2. Open the S&amp;OP workbook
+3. Run the demand scenario
+4. Verify scenario output matches expected demand
+5. Submit sign-off</textarea>
+    <div class="btn-row">
+      <button class="btn primary" id="loadBtn">Load model</button>
+    </div>
+    <div id="progressWrap"></div>
+
+    <label style="margin-top:16px">Capture mode</label>
+    <div class="mode-toggle">
+      <div class="mode-btn selected" id="modeShareBtn">Share my screen (live)</div>
+      <div class="mode-btn" id="modeUploadBtn">Upload a screenshot</div>
+    </div>
+    <div id="shareArea" style="margin-top:10px">
+      <div class="no-share" id="noShareMsg">Not sharing yet.</div>
+      <video id="preview" autoplay muted style="display:none"></video>
+      <div class="btn-row"><button class="btn" id="shareBtn">Share screen</button></div>
+    </div>
+    <div id="uploadArea" style="margin-top:10px; display:none">
+      <input type="file" id="uploadInput" accept="image/*">
+      <img class="shot-thumb" id="uploadPreview" style="display:none; margin-top:8px">
+    </div>
+  </div>
+
+  <div class="card tab-panel" id="tab2" data-tab="tab2" hidden>
+    <h2><span class="num">2</span>Assess a step</h2>
+    <p class="help">Pick the step you're on, capture the current screen, and ask the AI to read it. Its read is only a suggestion — you always give the final, named sign-off.</p>
+    <label for="stepSelect">Current step</label>
+    <select id="stepSelect"></select>
+    <div class="btn-row">
+      <button class="btn primary" id="assessBtn" disabled>Assess this step</button>
+    </div>
+    <div id="assessArea"></div>
+  </div>
+
+  <div class="card tab-panel" id="tab3" data-tab="tab3" hidden>
+    <h2><span class="num">3</span>Step log</h2>
+    <p class="help">Every step assessed and signed off, with the full AI read and screenshot available on demand.</p>
+    <div class="filter-row">
+      <select id="filterFinal" class="small">
+        <option value="">All final results</option>
+        <option value="pass">Pass</option>
+        <option value="fail">Fail</option>
+        <option value="blocked">Blocked</option>
+      </select>
+      <select id="filterAgree" class="small">
+        <option value="">All</option>
+        <option value="agree">Tester agreed with AI</option>
+        <option value="override">Tester overrode AI</option>
+      </select>
+    </div>
+    <table id="stepTable"><thead><tr><th>Step</th><th>AI suggested</th><th>Final (tester)</th><th>Later outcome</th></tr></thead><tbody id="stepBody"></tbody></table>
+    <div class="empty" id="stepEmpty" style="display:none">No steps assessed yet.</div>
+  </div>
+
+  <div class="card tab-panel" id="tab4" data-tab="tab4" hidden>
+    <h2><span class="num">4</span>Later outcomes</h2>
+    <p class="help">This is the delayed, real-world check: if a defect later surfaces on a step that was signed off, record it here against that specific step. That's what makes accuracy measurable against reality, not just against the tester's own in-the-moment call.</p>
+    <div id="laterOutcomeBody"></div>
+    <div class="empty" id="laterOutcomeEmpty" style="display:none">No signed-off steps yet.</div>
+  </div>
+
+  <div class="card tab-panel" id="tab5" data-tab="tab5" hidden>
+    <h2><span class="num">5</span>Accountability dashboard</h2>
+    <p class="help">Two different accuracy numbers: how often the AI's read matched the tester's immediate sign-off, and — more rigorously — how many signed-off steps were later confirmed wrong by a real defect.</p>
+    <div id="driftBannerArea"></div>
+    <div class="stat-row" id="dashStats"></div>
+    <div class="row" style="margin-top:16px">
+      <div>
+        <label>Agreement by AI uncertainty flag</label>
+        <table id="uncertainTable"><thead><tr><th>AI flagged uncertain?</th><th>Steps</th><th>Tester agreed</th></tr></thead><tbody id="uncertainBody"></tbody></table>
+      </div>
+      <div>
+        <label>By tester</label>
+        <table id="testerTable"><thead><tr><th>Tester</th><th>Steps signed off</th><th>Overrode AI</th><th>Later found wrong</th></tr></thead><tbody id="testerBody"></tbody></table>
+      </div>
+    </div>
+    <label style="margin-top:16px">Audit log</label>
+    <div class="audit-list" id="auditLog"></div>
+    <div class="btn-row">
+      <button class="btn small" id="exportLogBtn">Export audit log (.csv)</button>
+      <button class="btn small" id="exportReportBtn">Export full report (.json)</button>
+      <button class="btn danger small" id="resetBtn" style="margin-left:auto">Clear all saved data</button>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Runs fully client-side, same engine as UAT Copilot: a SmolVLM model via Transformers.js on WebGPU, loaded through
+    <span class="mono">worker.js</span> (must be deployed alongside this file — it's the same worker UAT Copilot uses).
+    All steps, sign-offs, later outcomes, and the audit log persist in this browser's local storage. Nothing is uploaded anywhere.
+  </div>
+</div>
+
+<script type="module">
+const el = id => document.getElementById(id);
+const gpuPill = el('gpuPill');
+const actorInput = el('actorInput');
+const modelSelect = el('modelSelect');
+const scriptArea = el('scriptArea');
+const loadBtn = el('loadBtn');
+const progressWrap = el('progressWrap');
+const shareBtn = el('shareBtn');
+const preview = el('preview');
+const noShareMsg = el('noShareMsg');
+const modeShareBtn = el('modeShareBtn');
+const modeUploadBtn = el('modeUploadBtn');
+const shareArea = el('shareArea');
+const uploadArea = el('uploadArea');
+const uploadInput = el('uploadInput');
+const uploadPreview = el('uploadPreview');
+const stepSelect = el('stepSelect');
+const assessBtn = el('assessBtn');
+const assessArea = el('assessArea');
+
+const STORAGE_KEY = 'uat_outcome_accountability_v1';
+const UNCERTAIN_PATTERNS = /\b(unclear|not sure|cannot tell|can't tell|hard to (tell|determine)|difficult to determine|ambiguous|not (fully |clearly )?visible|partially visible|uncertain|not certain|can't confirm|cannot confirm)\b/i;
+
+// ---------------- state ----------------
+function loadState() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return JSON.parse(raw); } catch (_) {}
+  return { actor: '', steps: [], auditLog: [], nextSeq: 1 };
+}
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {} }
+let state = loadState();
+actorInput.value = state.actor || '';
+actorInput.addEventListener('input', () => { state.actor = actorInput.value; saveState(); });
+function actor() { return (state.actor || '').trim() || 'anonymous'; }
+
+function log(action, detail) {
+  state.auditLog.unshift({ ts: new Date().toISOString(), actor: actor(), action, detail });
+  if (state.auditLog.length > 500) state.auditLog.length = 500;
+  saveState();
+  renderAuditLog();
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTs(iso) { const d = new Date(iso); return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
+
+// ---------------- worker setup (same worker.js as UAT Copilot) ----------------
+const worker = new Worker('./worker.js', { type: 'module' });
+let modelReady = false;
+let gpuOk = false;
+const progressBars = new Map();
+let pendingResolve = null;
+let pendingReject = null;
+let pendingUpdateCb = null;
+
+worker.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (msg.status === 'error') {
+    gpuPill.textContent = gpuOk ? 'error' : 'WebGPU unavailable';
+    gpuPill.className = 'gpu-pill mono bad';
+    if (pendingReject) { pendingReject(new Error(msg.data)); pendingResolve = null; pendingReject = null; pendingUpdateCb = null; }
+    return;
+  }
+  if (msg.status === 'webgpu-ok') {
+    gpuOk = true;
+    gpuPill.textContent = 'WebGPU ready';
+    gpuPill.className = 'gpu-pill mono ok';
+    loadBtn.disabled = false;
+    return;
+  }
+  if (msg.status === 'initiate') {
+    progressBars.set(msg.file, 0);
+    renderProgress();
+  } else if (msg.status === 'progress') {
+    progressBars.set(msg.file, msg.progress || 0);
+    renderProgress();
+  } else if (msg.status === 'done') {
+    progressBars.delete(msg.file);
+    renderProgress();
+  } else if (msg.status === 'ready') {
+    modelReady = true;
+    loadBtn.textContent = 'Model loaded ✓';
+    updateAssessEnabled();
+  } else if (msg.status === 'update') {
+    if (pendingUpdateCb) pendingUpdateCb(msg.output);
+  } else if (msg.status === 'complete') {
+    if (pendingResolve) { pendingResolve(); pendingResolve = null; pendingReject = null; pendingUpdateCb = null; }
+  }
+});
+worker.postMessage({ type: 'check' });
+
+function renderProgress() {
+  if (progressBars.size === 0) { progressWrap.innerHTML = ''; return; }
+  let html = '';
+  for (const [file, pct] of progressBars) html += `<div class="progress-item">${escapeHtml(file)}</div><div class="bar"><div class="fill" style="width:${Math.round(pct)}%"></div></div>`;
+  progressWrap.innerHTML = html;
+}
+
+loadBtn.addEventListener('click', () => {
+  loadBtn.disabled = true;
+  loadBtn.textContent = 'Loading…';
+  worker.postMessage({ type: 'load', data: { model_id: modelSelect.value } });
+});
+
+// Runs exactly one generation at a time, matching worker.js's single-in-flight design.
+function runInference(userText, imageDataUrl, onUpdate) {
+  return new Promise((resolve, reject) => {
+    if (pendingResolve) { reject(new Error('Another assessment is already in progress.')); return; }
+    pendingResolve = resolve;
+    pendingReject = reject;
+    pendingUpdateCb = onUpdate;
+    worker.postMessage({
+      type: 'generate',
+      data: {
+        model_id: modelSelect.value,
+        systemText: 'You are a UAT (User Acceptance Testing) assistant reviewing a screenshot against a specific expected test step. Give 1-3 sentences of specific, concrete observation referencing exact buttons, fields, or labels visible. Then end your response with exactly one line in this exact format: "RESULT: PASS" or "RESULT: FAIL" or "RESULT: UNCLEAR" (use UNCLEAR if the screen does not show enough to judge).',
+        userText,
+        image: imageDataUrl,
+      },
+    });
+  });
+}
+
+// ---------------- capture mode ----------------
+let captureMode = 'share';
+let mediaStream = null;
+let uploadedDataUrl = null;
+
+modeShareBtn.addEventListener('click', () => setCaptureMode('share'));
+modeUploadBtn.addEventListener('click', () => setCaptureMode('upload'));
+function setCaptureMode(mode) {
+  captureMode = mode;
+  modeShareBtn.classList.toggle('selected', mode === 'share');
+  modeUploadBtn.classList.toggle('selected', mode === 'upload');
+  shareArea.style.display = mode === 'share' ? 'block' : 'none';
+  uploadArea.style.display = mode === 'upload' ? 'block' : 'none';
+  updateAssessEnabled();
+}
+
+shareBtn.addEventListener('click', async () => {
+  try {
+    mediaStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 4 }, audio: false });
+  } catch (err) {
+    noShareMsg.textContent = 'Screen share was cancelled or blocked: ' + err.message;
+    return;
+  }
+  preview.srcObject = mediaStream;
+  preview.style.display = 'block';
+  noShareMsg.style.display = 'none';
+  mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
+    preview.style.display = 'none';
+    noShareMsg.style.display = 'block';
+    noShareMsg.textContent = 'Screen sharing stopped.';
+    mediaStream = null;
+    updateAssessEnabled();
+  });
+  updateAssessEnabled();
+});
+
+uploadInput.addEventListener('change', () => {
+  const file = uploadInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    uploadedDataUrl = reader.result;
+    uploadPreview.src = uploadedDataUrl;
+    uploadPreview.style.display = 'block';
+    updateAssessEnabled();
+  };
+  reader.readAsDataURL(file);
+});
+
+function captureFrame() {
+  if (captureMode === 'upload') return uploadedDataUrl;
+  if (!mediaStream) return null;
+  const canvas = document.createElement('canvas');
+  const track = mediaStream.getVideoTracks()[0];
+  const settings = track.getSettings();
+  const w = Math.min(896, settings.width || 896);
+  const scale = w / (settings.width || w);
+  canvas.width = w;
+  canvas.height = Math.round((settings.height || w) * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+function hasFrameAvailable() {
+  return captureMode === 'upload' ? !!uploadedDataUrl : !!mediaStream;
+}
+
+// ---------------- script / steps ----------------
+function parseScript(raw) {
+  return raw.split('\n').map(l => l.trim()).filter(Boolean).map(l => l.replace(/^\d+[\.\)]\s*/, ''));
+}
+function renderStepSelect() {
+  const steps = parseScript(scriptArea.value);
+  stepSelect.innerHTML = steps.map((s, i) => `<option value="${i}">${i+1}. ${escapeHtml(s)}</option>`).join('');
+  updateAssessEnabled();
+}
+scriptArea.addEventListener('input', renderStepSelect);
+renderStepSelect();
+
+function updateAssessEnabled() {
+  assessBtn.disabled = !(modelReady && hasFrameAvailable() && stepSelect.options.length > 0);
+}
+
+// ---------------- assess a step ----------------
+function parseResult(text) {
+  const m = text.match(/RESULT:\s*(PASS|FAIL|UNCLEAR)/i);
+  if (m) return m[1].toUpperCase();
+  const lower = text.toLowerCase();
+  if (/\b(fail|failed|incorrect|wrong|missing|error)\b/.test(lower)) return 'FAIL';
+  if (/\b(pass|passed|correct|as expected|looks good)\b/.test(lower)) return 'PASS';
+  return 'UNCLEAR';
+}
+
+assessBtn.addEventListener('click', async () => {
+  const steps = parseScript(scriptArea.value);
+  const stepIdx = parseInt(stepSelect.value, 10);
+  const stepText = steps[stepIdx];
+  const shot = captureFrame();
+  if (!shot) { alert('No screen captured yet — share your screen or upload a screenshot first.'); return; }
+
+  assessBtn.disabled = true;
+  assessArea.innerHTML = `
+    <div class="assess-card">
+      <div><span class="status-dot loading"></span><span class="stage-text">Reading screen…</span></div>
+      <div class="assess-text" id="liveText"></div>
+    </div>`;
+  const liveText = el('liveText');
+  const stageEl = assessArea.querySelector('.stage-text');
+  const dotEl = assessArea.querySelector('.status-dot');
+
+  try {
+    let fullText = '';
+    await runInference(`Expected test step: "${stepText}". Does the current screen show this step completed correctly?`, shot, (chunk) => {
+      fullText += chunk;
+      liveText.textContent = fullText;
+    });
+    const aiResult = parseResult(fullText);
+    const flaggedUncertain = UNCERTAIN_PATTERNS.test(fullText) || aiResult === 'UNCLEAR';
+
+    dotEl.className = 'status-dot done';
+    stageEl.textContent = 'AI read complete — your sign-off is required below';
+
+    assessArea.insertAdjacentHTML('beforeend', `
+      <div class="assess-card">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span>AI suggests:</span>
+          <span class="pill ${aiResult.toLowerCase()}">${aiResult}</span>
+          ${flaggedUncertain ? '<span class="pill unclear">uncertainty flagged</span>' : ''}
+        </div>
+        ${flaggedUncertain ? "<div class=\"uncertain-banner\">The AI hedged or could not fully judge this screen — look closely before confirming.</div>" : ''}
+        <img class="shot-thumb" src="${shot}" style="margin-top:8px">
+      </div>
+      <div class="assess-card">
+        <label style="margin-top:0">Your name (required to sign off)</label>
+        <input type="text" id="signoffName" placeholder="Tester name">
+        <label>Final result (defaults to the AI's suggestion — change it if you disagree)</label>
+        <select id="signoffResult">
+          <option value="PASS" ${aiResult==='PASS'?'selected':''}>Pass</option>
+          <option value="FAIL" ${aiResult==='FAIL'?'selected':''}>Fail</option>
+          <option value="BLOCKED">Blocked (can't test this yet)</option>
+        </select>
+        <label>Notes (optional)</label>
+        <input type="text" id="signoffNotes" placeholder="Any context for this call">
+        <div class="btn-row"><button class="btn primary" id="confirmSignoffBtn">Confirm &amp; log this step</button></div>
+      </div>`);
+
+    el('confirmSignoffBtn').addEventListener('click', () => {
+      const name = el('signoffName').value.trim();
+      if (!name) { alert('Enter your name before confirming.'); return; }
+      const finalResult = el('signoffResult').value;
+      const notes = el('signoffNotes').value.trim();
+      const seq = state.nextSeq++;
+      const record = {
+        id: 's' + seq, seq,
+        stepText, modelId: modelSelect.value,
+        aiText: fullText, aiResult, flaggedUncertain,
+        screenshot: shot,
+        tester: name, finalResult, notes,
+        agreedWithAi: finalResult === aiResult,
+        createdAt: new Date().toISOString(),
+        laterOutcome: null,
+      };
+      state.steps.unshift(record);
+      saveState();
+      log('step-signed-off', `#${seq} "${stepText.slice(0,50)}${stepText.length>50?'…':''}" — AI: ${aiResult}${flaggedUncertain?' (uncertain)':''} — tester ${name}: ${finalResult}${record.agreedWithAi ? ' (agreed)' : ' (overrode AI)'}`);
+      assessArea.innerHTML = `<div class="assess-card" style="color:var(--accent)">Logged as #${seq}. See the Step log tab, or assess another step above.</div>`;
+      renderAll();
+    });
+  } catch (e) {
+    dotEl.className = 'status-dot err';
+    stageEl.textContent = 'Error: ' + e.message;
+  }
+  assessBtn.disabled = false;
+});
+
+// ---------------- step log ----------------
+function resultPill(r) { return `<span class="pill ${r.toLowerCase()}">${r}</span>`; }
+function laterOutcomePill(s) {
+  if (!s.laterOutcome) return '<span class="pill awaiting">not checked yet</span>';
+  return s.laterOutcome.foundWrong ? '<span class="pill wrong">later found incorrect</span>' : '<span class="pill pass">held up — confirmed correct</span>';
+}
+
+function renderStepLog() {
+  const ff = el('filterFinal').value;
+  const fa = el('filterAgree').value;
+  let rows = state.steps.slice();
+  if (ff) rows = rows.filter(s => s.finalResult.toLowerCase() === ff);
+  if (fa === 'agree') rows = rows.filter(s => s.agreedWithAi);
+  else if (fa === 'override') rows = rows.filter(s => !s.agreedWithAi);
+
+  el('stepEmpty').style.display = state.steps.length === 0 ? 'block' : 'none';
+  el('stepBody').innerHTML = rows.map(s => `
+    <tr>
+      <td>
+        <b>#${s.seq}</b> ${escapeHtml(s.stepText.slice(0,70))}${s.stepText.length>70?'…':''}
+        <div><span class="expand-toggle" data-id="${s.id}">view trace</span></div>
+        <div class="trace-block" id="trace-${s.id}">
+          <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Model: ${escapeHtml(s.modelId)} · ${fmtTs(s.createdAt)} · tester ${escapeHtml(s.tester)}</div>
+          <div class="assess-card"><div class="assess-text">${escapeHtml(s.aiText)}</div></div>
+          <img class="shot-thumb" src="${s.screenshot}">
+          ${s.notes ? `<div class="assess-card"><div class="assess-text"><b>Tester note:</b> ${escapeHtml(s.notes)}</div></div>` : ''}
+          ${s.laterOutcome ? `<div class="assess-card"><div class="assess-text"><b>Later outcome (${escapeHtml(s.laterOutcome.recordedBy)}, ${fmtTs(s.laterOutcome.recordedAt)}):</b> ${s.laterOutcome.foundWrong ? 'found incorrect' : 'confirmed correct'}${s.laterOutcome.notes ? ' — ' + escapeHtml(s.laterOutcome.notes) : ''}</div></div>` : ''}
+        </div>
+      </td>
+      <td>${resultPill(s.aiResult)} ${s.flaggedUncertain ? '<span class="pill unclear">uncertain</span>' : ''}</td>
+      <td>${resultPill(s.finalResult)} <span class="pill ${s.agreedWithAi ? 'agree' : 'override'}">${s.agreedWithAi ? 'agreed' : 'overrode'}</span></td>
+      <td>${laterOutcomePill(s)}</td>
+    </tr>`).join('');
+
+  el('stepBody').querySelectorAll('.expand-toggle').forEach(t => {
+    t.addEventListener('click', () => {
+      const block = el('trace-' + t.dataset.id);
+      block.classList.toggle('open');
+      t.textContent = block.classList.contains('open') ? 'hide trace' : 'view trace';
+    });
+  });
+}
+el('filterFinal').addEventListener('change', renderStepLog);
+el('filterAgree').addEventListener('change', renderStepLog);
+
+// ---------------- later outcomes ----------------
+function renderLaterOutcomes() {
+  const notChecked = state.steps.filter(s => !s.laterOutcome);
+  const body = el('laterOutcomeBody');
+  el('laterOutcomeEmpty').style.display = notChecked.length === 0 ? 'block' : 'none';
+  body.innerHTML = notChecked.map(s => `
+    <div class="assess-card">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span>#${s.seq}</span>${resultPill(s.finalResult)}<span style="font-size:11px;color:var(--text-faint)">signed off by ${escapeHtml(s.tester)}</span>
+      </div>
+      <div class="assess-text">${escapeHtml(s.stepText)}</div>
+      <div class="row" style="margin-top:8px">
+        <select class="later-result" data-id="${s.id}">
+          <option value="correct">Held up — confirmed correct (no issue found since)</option>
+          <option value="wrong">Later found incorrect (a defect/issue surfaced on this step)</option>
+        </select>
+      </div>
+      <input type="text" class="later-notes" data-id="${s.id}" placeholder="What was found? (optional)" style="margin-top:6px">
+      <div class="btn-row"><button class="btn small primary record-later-btn" data-id="${s.id}">Record</button></div>
+    </div>`).join('');
+
+  body.querySelectorAll('.record-later-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const select = body.querySelector(`.later-result[data-id="${id}"]`);
+      const notesInput = body.querySelector(`.later-notes[data-id="${id}"]`);
+      const s = state.steps.find(x => x.id === id);
+      if (!s) return;
+      s.laterOutcome = { foundWrong: select.value === 'wrong', notes: notesInput.value.trim(), recordedBy: actor(), recordedAt: new Date().toISOString() };
+      saveState();
+      log('later-outcome-recorded', `#${s.seq} — ${s.laterOutcome.foundWrong ? 'later found incorrect' : 'held up as correct'} by ${actor()}` + (s.laterOutcome.notes ? ` — "${s.laterOutcome.notes}"` : ''));
+      renderAll();
+    });
+  });
+}
+
+// ---------------- dashboard ----------------
+function renderDashboard() {
+  const total = state.steps.length;
+  const overrides = state.steps.filter(s => !s.agreedWithAi).length;
+  const agreementRate = total ? Math.round((total - overrides) / total * 100) : null;
+  const checked = state.steps.filter(s => s.laterOutcome);
+  const foundWrong = checked.filter(s => s.laterOutcome.foundWrong).length;
+  const heldUpRate = checked.length ? Math.round((checked.length - foundWrong) / checked.length * 100) : null;
+
+  el('dashStats').innerHTML = `
+    <div class="stat"><div class="v">${total}</div><div class="l">Steps signed off</div></div>
+    <div class="stat"><div class="v">${agreementRate === null ? '—' : agreementRate + '%'}</div><div class="l">AI / tester agreement</div></div>
+    <div class="stat"><div class="v">${overrides}</div><div class="l">Tester overrides</div></div>
+    <div class="stat"><div class="v">${checked.length}</div><div class="l">Later-checked</div></div>
+    <div class="stat"><div class="v">${heldUpRate === null ? '—' : heldUpRate + '%'}</div><div class="l">Held up over time</div></div>`;
+
+  const driftArea = el('driftBannerArea');
+  const recentChecked = checked.slice().sort((a,b) => new Date(b.laterOutcome.recordedAt) - new Date(a.laterOutcome.recordedAt)).slice(0, 5);
+  if (recentChecked.length >= 3) {
+    const recentWrong = recentChecked.filter(s => s.laterOutcome.foundWrong).length;
+    if (recentWrong / recentChecked.length > 0.4) {
+      driftArea.innerHTML = `<div class="drift-banner"><span>⚠</span><div><b>Recently signed-off steps are turning out wrong</b>${recentWrong} of the last ${recentChecked.length} later-checked steps were found incorrect after sign-off. Worth reviewing whether the model, the script, or a specific tester's calls need a closer look.</div></div>`;
+    } else driftArea.innerHTML = '';
+  } else driftArea.innerHTML = '';
+
+  // by uncertainty flag
+  const flagged = state.steps.filter(s => s.flaggedUncertain);
+  const notFlagged = state.steps.filter(s => !s.flaggedUncertain);
+  el('uncertainBody').innerHTML = [
+    ['Flagged uncertain', flagged],
+    ['Not flagged', notFlagged],
+  ].map(([name, arr]) => {
+    if (arr.length === 0) return `<tr><td>${name}</td><td>0</td><td>—</td></tr>`;
+    const agreed = arr.filter(s => s.agreedWithAi).length;
+    return `<tr><td>${name}</td><td>${arr.length}</td><td>${Math.round(agreed/arr.length*100)}%</td></tr>`;
+  }).join('');
+
+  // by tester
+  const byTester = new Map();
+  state.steps.forEach(s => { if (!byTester.has(s.tester)) byTester.set(s.tester, []); byTester.get(s.tester).push(s); });
+  if (byTester.size === 0) {
+    el('testerBody').innerHTML = '<tr><td colspan="4" style="color:var(--text-faint);font-style:italic">No steps signed off yet.</td></tr>';
+  } else {
+    el('testerBody').innerHTML = [...byTester.entries()].map(([name, arr]) => {
+      const overrideCount = arr.filter(s => !s.agreedWithAi).length;
+      const laterCheckedArr = arr.filter(s => s.laterOutcome);
+      const wrongCount = laterCheckedArr.filter(s => s.laterOutcome.foundWrong).length;
+      return `<tr><td>${escapeHtml(name)}</td><td>${arr.length}</td><td>${overrideCount}</td><td>${laterCheckedArr.length ? wrongCount + ' / ' + laterCheckedArr.length : '—'}</td></tr>`;
+    }).join('');
+  }
+}
+
+// ---------------- audit log ----------------
+function renderAuditLog() {
+  const auditLogEl = el('auditLog');
+  if (state.auditLog.length === 0) { auditLogEl.innerHTML = '<div class="empty">Nothing logged yet.</div>'; return; }
+  auditLogEl.innerHTML = state.auditLog.slice(0, 200).map(e => `
+    <div class="audit-row">
+      <span class="audit-ts">${fmtTs(e.ts)}</span>
+      <span class="audit-actor">${escapeHtml(e.actor)}</span>
+      <span class="audit-detail"><b>${escapeHtml(e.action)}</b> — ${escapeHtml(e.detail)}</span>
+    </div>`).join('');
+}
+
+// ---------------- tabs ----------------
+const tabBar = el('tabBar');
+const tabPanels = [...document.querySelectorAll('.tab-panel')];
+function showTab(tabId) {
+  tabPanels.forEach(p => { p.hidden = p.dataset.tab !== tabId; });
+  tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  window.scrollTo({ top: tabBar.offsetTop - 8, behavior: 'smooth' });
+}
+tabBar.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+function updateTabFlags() {
+  const notChecked = state.steps.filter(s => !s.laterOutcome).length;
+  const tf4 = el('tabFlag4');
+  if (notChecked > 0) { tf4.hidden = false; tf4.textContent = notChecked; } else tf4.hidden = true;
+}
+
+// ---------------- reset / export ----------------
+el('resetBtn').addEventListener('click', () => {
+  if (!confirm('This clears all steps, later outcomes, and the audit log from this browser. Continue?')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+  state = { actor: state.actor, steps: [], auditLog: [], nextSeq: 1 };
+  saveState();
+  renderAll();
+});
+function downloadBlob(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+el('exportLogBtn').addEventListener('click', () => {
+  const rows = [['timestamp','actor','action','detail']];
+  state.auditLog.forEach(e => rows.push([e.ts, e.actor, e.action, e.detail]));
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  downloadBlob('uat_accountability_audit_log.csv', csv, 'text/csv');
+});
+el('exportReportBtn').addEventListener('click', () => {
+  const report = { exportedAt: new Date().toISOString(), exportedBy: actor(), steps: state.steps, auditLogTail: state.auditLog.slice(0, 100) };
+  downloadBlob('uat_accountability_report.json', JSON.stringify(report, null, 2), 'application/json');
+});
+
+// ---------------- sample walkthrough (no model / screen share needed) ----------------
+function makeFakeScreenshot(title, subtitle, bg, fg) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 480; canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(16, 16, canvas.width - 32, 40);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 13px monospace'; ctx.fillText('Kinaxis Maestro — S&OP Workbook', 26, 42);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1;
+  for (let y = 80; y < canvas.height - 20; y += 26) { ctx.beginPath(); ctx.moveTo(24, y); ctx.lineTo(canvas.width - 24, y); ctx.stroke(); }
+  ctx.fillStyle = fg; ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(title, 26, canvas.height / 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '13px sans-serif';
+  ctx.fillText(subtitle, 26, canvas.height / 2 + 26);
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+function loadSampleWalkthrough() {
+  const now = Date.now();
+  const daysAgo = (n) => new Date(now - n * 86400000).toISOString();
+
+  const samples = [
+    {
+      stepText: 'Log in as planner', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'The login screen shows the planner role selected and the main dashboard has loaded with the workbook list visible. RESULT: PASS',
+      aiResult: 'PASS', flaggedUncertain: false,
+      screenshot: makeFakeScreenshot('Dashboard loaded', 'Role: Planner · Workbooks: 6', '#12806c', '#fff'),
+      tester: 'Sam', finalResult: 'PASS', notes: '', createdAt: daysAgo(4),
+      laterOutcome: { foundWrong: false, notes: 'No issues in the following week.', recordedBy: 'Sam', recordedAt: daysAgo(1) },
+    },
+    {
+      stepText: 'Open the S&OP workbook', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'The S&OP workbook is open with the demand grid visible and all expected column headers present. RESULT: PASS',
+      aiResult: 'PASS', flaggedUncertain: false,
+      screenshot: makeFakeScreenshot('S&OP Workbook', 'Demand grid · 12 columns', '#12806c', '#fff'),
+      tester: 'Sam', finalResult: 'PASS', notes: '', createdAt: daysAgo(4),
+      laterOutcome: { foundWrong: false, notes: '', recordedBy: 'Sam', recordedAt: daysAgo(1) },
+    },
+    {
+      stepText: 'Run the demand scenario', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'The "Run Scenario" button appears greyed out and no results table has appeared below the grid. RESULT: FAIL',
+      aiResult: 'FAIL', flaggedUncertain: false,
+      screenshot: makeFakeScreenshot('Run Scenario: disabled', 'No results table shown', '#b4413a', '#fff'),
+      tester: 'Jordan', finalResult: 'BLOCKED', notes: 'Environment was mid-deploy — retested clean the next morning.', createdAt: daysAgo(3),
+      laterOutcome: { foundWrong: false, notes: 'Confirmed as an environment issue, not a real defect. Passed on retest.', recordedBy: 'Jordan', recordedAt: daysAgo(2) },
+    },
+    {
+      stepText: 'Verify scenario output matches expected demand', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'It is hard to tell whether the output values match expectations from this angle — the results table is partially visible below the fold. RESULT: UNCLEAR',
+      aiResult: 'UNCLEAR', flaggedUncertain: true,
+      screenshot: makeFakeScreenshot('Results (partial)', 'Table cut off below fold', '#a9770f', '#fff'),
+      tester: 'Jordan', finalResult: 'PASS', notes: 'Scrolled down and numbers looked right at a glance.', createdAt: daysAgo(2),
+      laterOutcome: { foundWrong: true, notes: 'A rounding error in the Q3 demand column was found during peer review two days later — the AI’s hedge was correct to flag.', recordedBy: 'Priya', recordedAt: daysAgo(1) },
+    },
+    {
+      stepText: 'Open the S&OP workbook', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'The workbook reopened correctly after the environment fix, demand grid is populated as expected. RESULT: PASS',
+      aiResult: 'PASS', flaggedUncertain: false,
+      screenshot: makeFakeScreenshot('S&OP Workbook', 'Reopened after fix', '#12806c', '#fff'),
+      tester: 'Priya', finalResult: 'PASS', notes: '', createdAt: daysAgo(2),
+      laterOutcome: { foundWrong: false, notes: '', recordedBy: 'Priya', recordedAt: daysAgo(1) },
+    },
+    {
+      stepText: 'Submit sign-off', modelId: 'HuggingFaceTB/SmolVLM-500M-Instruct',
+      aiText: 'The sign-off confirmation dialog is showing with the submit button enabled and the summary matches the completed steps. RESULT: PASS',
+      aiResult: 'PASS', flaggedUncertain: false,
+      screenshot: makeFakeScreenshot('Sign-off dialog', 'Ready to submit', '#12806c', '#fff'),
+      tester: 'Sam', finalResult: 'PASS', notes: '', createdAt: daysAgo(1),
+      laterOutcome: null, // deliberately left unchecked, to show the "awaiting" state
+    },
+  ];
+
+  samples.forEach((s) => {
+    const seq = state.nextSeq++;
+    const record = {
+      id: 's' + seq, seq,
+      stepText: s.stepText, modelId: s.modelId,
+      aiText: s.aiText, aiResult: s.aiResult, flaggedUncertain: s.flaggedUncertain,
+      screenshot: s.screenshot,
+      tester: s.tester, finalResult: s.finalResult, notes: s.notes,
+      agreedWithAi: s.finalResult === s.aiResult,
+      createdAt: s.createdAt,
+      laterOutcome: s.laterOutcome,
+    };
+    state.steps.unshift(record);
+    state.auditLog.unshift({ ts: s.createdAt, actor: s.tester, action: 'step-signed-off', detail: `#${seq} "${s.stepText}" — AI: ${s.aiResult}${s.flaggedUncertain ? ' (uncertain)' : ''} — tester ${s.tester}: ${s.finalResult}${record.agreedWithAi ? ' (agreed)' : ' (overrode AI)'}` });
+    if (s.laterOutcome) {
+      state.auditLog.unshift({ ts: s.laterOutcome.recordedAt, actor: s.laterOutcome.recordedBy, action: 'later-outcome-recorded', detail: `#${seq} — ${s.laterOutcome.foundWrong ? 'later found incorrect' : 'held up as correct'} by ${s.laterOutcome.recordedBy}${s.laterOutcome.notes ? ' — "' + s.laterOutcome.notes + '"' : ''}` });
+    }
+  });
+  state.auditLog.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  saveState();
+  renderAll();
+  showTab('tab3');
+}
+el('loadSampleWalkthroughBtn').addEventListener('click', loadSampleWalkthrough);
+
+// ---------------- render all ----------------
+function renderAll() {
+  renderStepLog();
+  renderLaterOutcomes();
+  renderDashboard();
+  renderAuditLog();
+  updateTabFlags();
+}
+renderAll();
+</script>
+</body>
+</html>
