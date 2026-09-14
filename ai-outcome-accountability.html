@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Outcome Accountability Console</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
+    --text:#1c211e; --text-dim:#54594f; --text-faint:#8c9188;
+    --accent:#12806c; --accent-bg:#e6f2ef; --accent-dim:#9cc9c0;
+    --amber:#a9770f; --amber-bg:#fbf1de; --amber-dim:#e6cd97;
+    --danger:#b4413a; --danger-bg:#fbe9e7;
+    --plum:#7a4f9e; --plum-bg:#f1e9f7;
+    --shadow:0 1px 3px rgba(20,25,20,0.08);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
+  }
+  .mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  header{
+    display:flex; align-items:center; gap:12px; padding:10px 18px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1 span{ color:var(--accent); }
+  .badge{
+    font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent);
+    background:var(--accent-bg); border:1px solid var(--accent-dim); padding:4px 9px; border-radius:20px;
+  }
+  .spacer{ flex:1; }
+  .gpu-pill{
+    font-size:11px; padding:4px 10px; border-radius:20px; font-family:ui-monospace,monospace;
+    border:1px solid var(--border);
+  }
+  .gpu-pill.ok{ color:var(--accent); border-color:var(--accent-dim); background:var(--accent-bg); }
+  .gpu-pill.bad{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .actor-pill{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
+  .actor-pill input{
+    border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px;
+    font-family:inherit; background:var(--panel-inset); color:var(--text); width:130px;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 60px 18px; }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px; box-shadow:var(--shadow); margin-bottom:18px;
+  }
+  .card h2{ font-size:14px; margin:0 0 4px 0; display:flex; align-items:center; gap:8px; }
+  .card h2 .num{
+    display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px;
+    border-radius:50%; background:var(--accent-bg); color:var(--accent); font-size:11px; font-weight:800;
+  }
+  .card p.help{ color:var(--text-dim); font-size:12.5px; margin:0 0 14px 0; line-height:1.5; }
+  label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin:10px 0 5px 0; }
+  textarea, input[type=text], select{
+    width:100%; border:1px solid var(--border); border-radius:7px; padding:9px 11px;
+    font-size:13.5px; font-family:inherit; background:var(--panel-inset); color:var(--text);
+  }
+  textarea{ min-height:80px; resize:vertical; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > *{ flex:1; min-width:160px; }
+  .checkbox-row{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; color:var(--text-dim); }
+  .checkbox-row input{ width:auto; }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:7px;
+    padding:8px 14px; background:var(--panel-inset); color:var(--text); font-size:12.5px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn:hover{ border-color:var(--accent-dim); }
+  .btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.primary:disabled{ background:var(--border); border-color:var(--border); color:var(--text-faint); cursor:not-allowed; }
+  .btn.danger{ color:var(--danger); border-color:#eecfcb; background:var(--danger-bg); }
+  .btn.small{ padding:5px 10px; font-size:11.5px; }
+  .btn-row{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+
+  .model-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; margin-top:4px; }
+  .model-opt{
+    display:flex; align-items:flex-start; gap:8px; border:1px solid var(--border); border-radius:7px;
+    padding:9px 10px; background:var(--panel-inset); cursor:pointer; font-size:12.5px;
+  }
+  .model-opt:hover{ border-color:var(--accent-dim); }
+  .model-opt input{ margin-top:2px; }
+  .model-opt .m-name{ font-weight:600; }
+  .model-opt .m-size{ color:var(--text-faint); font-size:11px; font-family:ui-monospace,monospace; }
+  .model-opt.selected{ border-color:var(--accent); background:var(--accent-bg); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th{ text-align:left; color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em;
+      border-bottom:1px solid var(--border); padding:6px 8px; }
+  td{ border-bottom:1px solid var(--border-soft); padding:7px 8px; vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+
+  .pill{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; }
+  .pill.approve{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.deny{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.escalate{ background:var(--plum-bg); color:var(--plum); border:1px solid #d9c4e8; }
+  .pill.auto{ background:var(--panel-inset); color:var(--text-dim); border:1px solid var(--border); }
+  .pill.pending{ background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.reviewed{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.risk{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.correct{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
+  .pill.incorrect{ background:var(--danger-bg); color:var(--danger); border:1px solid #eecfcb; }
+  .pill.unclear{ background:var(--panel-inset); color:var(--text-dim); border:1px solid var(--border); }
+  .pill.awaiting{ background:var(--panel-inset); color:var(--text-faint); border:1px solid var(--border); }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:4px; }
+  .stat{ background:var(--panel-inset); border:1px solid var(--border-soft); border-radius:8px; padding:10px 12px; }
+  .stat .v{ font-size:20px; font-weight:800; }
+  .stat .l{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.03em; }
+
+  .status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
+  .status-dot.loading{ background:var(--amber); animation:pulse 1.1s infinite; }
+  .status-dot.done{ background:var(--accent); }
+  .status-dot.err{ background:var(--danger); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .sample-card{ border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:8px; background:var(--panel-inset); }
+  .sample-card .s-head{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-faint); margin-bottom:4px; }
+  .sample-card .s-text{ font-size:12px; color:var(--text-dim); white-space:pre-wrap; line-height:1.5; }
+
+  .confidence-bar{ display:flex; gap:3px; margin-top:8px; }
+  .confidence-bar .seg{ flex:1; height:8px; border-radius:3px; background:var(--border-soft); }
+  .confidence-bar .seg.filled{ background:var(--accent); }
+  .confidence-bar .seg.filled.low{ background:var(--danger); }
+  .confidence-bar .seg.filled.mid{ background:var(--amber); }
+
+  .empty{ color:var(--text-faint); font-size:12.5px; font-style:italic; padding:10px 2px; }
+
+  .audit-row{ display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12px; }
+  .audit-row:last-child{ border-bottom:none; }
+  .audit-ts{ color:var(--text-faint); font-family:ui-monospace,monospace; font-size:11px; white-space:nowrap; }
+  .audit-actor{ font-weight:700; white-space:nowrap; }
+  .audit-detail{ color:var(--text-dim); }
+  .audit-list{ max-height:280px; overflow-y:auto; }
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .filter-row select{ width:auto; padding:6px 10px; font-size:12px; }
+
+  .footnote{ font-size:11px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+
+  .intro-card{ background:var(--accent-bg); border-color:var(--accent-dim); }
+
+  .tab-bar{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .tab-btn{
+    display:flex; align-items:center; gap:7px; border:1px solid transparent; border-bottom:none;
+    background:transparent; color:var(--text-dim); font-family:inherit; font-size:12.5px; font-weight:600;
+    padding:9px 14px; border-radius:8px 8px 0 0; cursor:pointer; position:relative; top:1px;
+  }
+  .tab-btn:hover{ color:var(--text); background:var(--panel-inset); }
+  .tab-btn.active{ color:var(--accent); background:var(--panel); border-color:var(--border); border-bottom:1px solid var(--panel); }
+  .tab-num{
+    display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+    border-radius:50%; background:var(--panel-inset); color:var(--text-faint); font-size:10.5px; font-weight:800;
+    flex-shrink:0;
+  }
+  .tab-btn.active .tab-num{ background:var(--accent); color:#fff; }
+  .tab-flag{
+    display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px;
+    border-radius:20px; background:var(--amber); color:#fff; font-size:9.5px; font-weight:800;
+  }
+  .tab-panel{ margin-top:0; border-top-left-radius:0; }
+  .tab-next{ margin-top:16px; border-top:1px solid var(--border-soft); padding-top:14px; display:flex; justify-content:flex-end; }
+
+  .drift-banner{
+    background:var(--danger-bg); border:1px solid #eecfcb; color:var(--danger); border-radius:8px;
+    padding:12px 14px; font-size:12.5px; margin-bottom:14px; display:flex; gap:10px; align-items:flex-start;
+  }
+  .drift-banner b{ display:block; margin-bottom:2px; }
+
+  .expand-toggle{ font-size:11px; color:var(--accent); cursor:pointer; font-weight:700; }
+  .trace-block{ display:none; margin-top:8px; }
+  .trace-block.open{ display:block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Outcome <span>Accountability</span> Console</h1>
+  <span class="badge">local model · self-consistency confidence · nothing uploaded</span>
+  <div class="spacer"></div>
+  <div class="actor-pill">Acting as <input type="text" id="actorInput" placeholder="your name"></div>
+  <span class="gpu-pill mono" id="gpuPill">checking WebGPU…</span>
+</header>
+
+<div class="wrap">
+
+  <div class="card intro-card">
+    <h2><span class="num">i</span>What this demonstrates</h2>
+    <p class="help">
+      Most "AI accountability" demos stop at process metadata — who approved what, when. This one goes one step further:
+      it closes the loop back to <b>real-world outcomes</b>. A local model (WebLLM) makes a policy recommendation by answering
+      the same question several times and voting — its confidence is measured, not self-reported. Low-confidence or
+      high-risk cases require a named human reviewer before they count as final. Later, you record what <b>actually</b>
+      happened, and the console computes real accuracy — overall, by confidence level, and by reviewer — and flags it if
+      recent accuracy is slipping. That closing step (decision → outcome → accountability) is what most AI tools skip.
+    </p>
+  </div>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="tab1"><span class="tab-num">1</span>New decision</button>
+    <button class="tab-btn" data-tab="tab2"><span class="tab-num">2</span>Review queue<span class="tab-flag" id="tabFlag2" hidden></span></button>
+    <button class="tab-btn" data-tab="tab3"><span class="tab-num">3</span>Decision log</button>
+    <button class="tab-btn" data-tab="tab4"><span class="tab-num">4</span>Record outcomes<span class="tab-flag" id="tabFlag4" hidden></span></button>
+    <button class="tab-btn" data-tab="tab5"><span class="tab-num">5</span>Accountability dashboard</button>
+  </div>
+
+  <div class="card tab-panel" id="tab1" data-tab="tab1">
+    <h2><span class="num">1</span>New decision</h2>
+    <p class="help">Describe a scenario the AI should make a policy call on. It answers 5 times independently (self-consistency) and votes — agreement rate becomes its confidence score. Pick a model below first.</p>
+    <div class="model-grid" id="modelGrid"></div>
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label>Auto-review threshold: below this confidence, a human must review</label>
+        <select id="thresholdSelect">
+          <option value="1.0">100% agreement required (strictest)</option>
+          <option value="0.8" selected>80% agreement required</option>
+          <option value="0.6">60% agreement required</option>
+          <option value="0.4">40% agreement required (loosest)</option>
+        </select>
+      </div>
+    </div>
+    <label>Scenario</label>
+    <textarea id="scenarioText" placeholder="e.g. Customer wants to return a laptop opened 20 days ago, claims it arrived defective, no visible damage."></textarea>
+    <div class="checkbox-row">
+      <input type="checkbox" id="riskCheck">
+      <label style="margin:0" for="riskCheck">Mark as high-risk (forces human review regardless of confidence — e.g. fraud, legal, safety)</label>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="runBtn" disabled>Get AI recommendation (5 samples)</button>
+      <button class="btn" id="loadSampleBtn">Load a sample scenario instead</button>
+      <button class="btn danger" id="resetBtn" style="margin-left:auto">Clear all saved data</button>
+    </div>
+    <div id="runArea"></div>
+  </div>
+
+  <div class="card tab-panel" id="tab2" data-tab="tab2" hidden>
+    <h2><span class="num">2</span>Review queue</h2>
+    <p class="help">Decisions that didn't clear the confidence threshold, or were flagged high-risk, wait here. A named person must agree with the AI or override it before the decision counts as final.</p>
+    <div id="reviewQueueBody"></div>
+    <div class="empty" id="reviewEmpty" style="display:none">Nothing waiting for review.</div>
+  </div>
+
+  <div class="card tab-panel" id="tab3" data-tab="tab3" hidden>
+    <h2><span class="num">3</span>Decision log</h2>
+    <p class="help">Every decision made, auto-approved or reviewed, with its full trace available on demand — the exact scenario, all 5 samples, and who (if anyone) reviewed it.</p>
+    <div class="filter-row">
+      <select id="filterStatus" class="small">
+        <option value="">All statuses</option>
+        <option value="auto">Auto-approved</option>
+        <option value="pending">Pending review</option>
+        <option value="reviewed">Reviewed</option>
+      </select>
+      <select id="filterOutcome" class="small">
+        <option value="">All outcomes</option>
+        <option value="awaiting">Outcome not yet recorded</option>
+        <option value="correct">Recorded: correct</option>
+        <option value="incorrect">Recorded: incorrect</option>
+        <option value="unclear">Recorded: unclear</option>
+      </select>
+    </div>
+    <table id="decisionTable">
+      <thead><tr><th>Scenario</th><th>Final decision</th><th>Confidence</th><th>Status</th><th>Outcome</th></tr></thead>
+      <tbody id="decisionBody"></tbody>
+    </table>
+    <div class="empty" id="decisionEmpty" style="display:none">No decisions yet — make one in tab 1.</div>
+  </div>
+
+  <div class="card tab-panel" id="tab4" data-tab="tab4" hidden>
+    <h2><span class="num">4</span>Record outcomes</h2>
+    <p class="help">This is the step most AI tools skip: once you know what actually happened, log it here against the specific decision. That's what makes real accuracy — not just approval activity — measurable.</p>
+    <div id="outcomeQueueBody"></div>
+    <div class="empty" id="outcomeEmpty" style="display:none">No finalized decisions are waiting for an outcome.</div>
+  </div>
+
+  <div class="card tab-panel" id="tab5" data-tab="tab5" hidden>
+    <h2><span class="num">5</span>Accountability dashboard</h2>
+    <p class="help">Real accuracy against recorded outcomes — overall, by how confident the AI was, and by reviewer. This is the loop closing: not "was the process followed" but "did it actually work."</p>
+    <div id="driftBannerArea"></div>
+    <div class="stat-row" id="dashStats"></div>
+    <div class="row" style="margin-top:16px">
+      <div>
+        <label>Accuracy by confidence tier</label>
+        <table id="tierTable"><thead><tr><th>Tier</th><th>Decisions</th><th>Accuracy</th></tr></thead><tbody id="tierBody"></tbody></table>
+      </div>
+      <div>
+        <label>Accuracy by reviewer</label>
+        <table id="reviewerTable"><thead><tr><th>Reviewer</th><th>Decisions</th><th>Accuracy</th></tr></thead><tbody id="reviewerBody"></tbody></table>
+      </div>
+    </div>
+    <label style="margin-top:16px">Audit log</label>
+    <div class="audit-list" id="auditLog"></div>
+    <div class="btn-row">
+      <button class="btn small" id="exportLogBtn">Export audit log (.csv)</button>
+      <button class="btn small" id="exportReportBtn">Export full report (.json)</button>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Runs fully client-side: WebLLM (<span class="mono">@mlc-ai/web-llm</span>) loads a small open model via WebGPU. All
+    decisions, reviews, outcomes, and the audit log persist in this browser's local storage. Nothing is uploaded anywhere.
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+
+const el = id => document.getElementById(id);
+const gpuPill = el('gpuPill');
+const actorInput = el('actorInput');
+const modelGrid = el('modelGrid');
+const thresholdSelect = el('thresholdSelect');
+const scenarioText = el('scenarioText');
+const riskCheck = el('riskCheck');
+const runBtn = el('runBtn');
+const runArea = el('runArea');
+
+const STORAGE_KEY = 'ai_outcome_accountability_v1';
+
+const MODELS = [
+  { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B Instruct", size: "~0.4 GB" },
+  { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B Instruct", size: "~0.9 GB" },
+  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B Instruct", size: "~1.1 GB" },
+  { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B Instruct", size: "~2.3 GB" },
+  { id: "Phi-3.5-mini-instruct-q4f16_1-MLC", label: "Phi-3.5-mini Instruct", size: "~2.5 GB" },
+];
+let selectedModelId = MODELS[0].id;
+
+const RISK_KEYWORDS = ['fraud', 'chargeback', 'lawsuit', 'legal', 'illegal', 'injury', 'allergic', 'safety', 'threat', 'dispute'];
+
+// ---------------- state ----------------
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return { actor: '', decisions: [], auditLog: [], nextSeq: 1 };
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+}
+let state = loadState();
+actorInput.value = state.actor || '';
+actorInput.addEventListener('input', () => { state.actor = actorInput.value; saveState(); });
+function actor() { return (state.actor || '').trim() || 'anonymous'; }
+
+function log(action, detail) {
+  state.auditLog.unshift({ ts: new Date().toISOString(), actor: actor(), action, detail });
+  if (state.auditLog.length > 500) state.auditLog.length = 500;
+  saveState();
+  renderAuditLog();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtTs(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ---------------- model grid ----------------
+MODELS.forEach((m, i) => {
+  const label = document.createElement('label');
+  label.className = 'model-opt' + (i === 0 ? ' selected' : '');
+  label.innerHTML = `
+    <input type="radio" name="model" value="${m.id}" ${i === 0 ? 'checked' : ''}>
+    <span>
+      <div class="m-name">${m.label}</div>
+      <div class="m-size">${m.size} · ${m.id}</div>
+    </span>`;
+  modelGrid.appendChild(label);
+  label.querySelector('input').addEventListener('change', () => {
+    selectedModelId = m.id;
+    modelGrid.querySelectorAll('.model-opt').forEach(o => o.classList.remove('selected'));
+    label.classList.add('selected');
+  });
+});
+
+// ---------------- WebGPU check ----------------
+async function checkWebGPU() {
+  try {
+    if (!("gpu" in navigator)) throw new Error("WebGPU not available in this browser.");
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error("No WebGPU adapter found.");
+    gpuPill.textContent = 'WebGPU ready';
+    gpuPill.className = 'gpu-pill mono ok';
+  } catch (e) {
+    gpuPill.textContent = 'WebGPU unavailable';
+    gpuPill.className = 'gpu-pill mono bad';
+  }
+}
+checkWebGPU();
+
+// ---------------- engine management ----------------
+let currentEngine = null;
+let currentEngineModelId = null;
+async function getEngine(modelId, onProgress) {
+  if (currentEngine && currentEngineModelId === modelId) return currentEngine;
+  if (currentEngine) { try { await currentEngine.unload(); } catch (_) {} currentEngine = null; currentEngineModelId = null; }
+  const engine = await webllm.CreateMLCEngine(modelId, { initProgressCallback: onProgress });
+  currentEngine = engine; currentEngineModelId = modelId;
+  return engine;
+}
+
+// ---------------- decision parsing ----------------
+function parseDecision(text) {
+  const m = text.match(/DECISION:\s*(APPROVE|DENY|ESCALATE)/i);
+  if (m) return m[1].toUpperCase();
+  const lower = text.toLowerCase();
+  if (/\bescalat/.test(lower)) return 'ESCALATE';
+  if (/\b(deny|denied|reject|rejected|decline)\b/.test(lower)) return 'DENY';
+  if (/\b(approve|approved|accept|accepted)\b/.test(lower)) return 'APPROVE';
+  return 'ESCALATE'; // unparseable -> safest default is to punt to a human
+}
+
+function detectRisk(text) {
+  const lower = text.toLowerCase();
+  return RISK_KEYWORDS.some(k => lower.includes(k));
+}
+
+// ---------------- run a decision (self-consistency, N=5) ----------------
+const SYSTEM_PROMPT = 'You are a policy-decision assistant reviewing a customer-service scenario against a standard, reasonable return/dispute policy (30-day return window for unopened items, 15 days for defective opened electronics, escalate anything involving fraud, legal exposure, or safety). Give 1-2 sentences of reasoning, then end your response with exactly one line in this exact format: "DECISION: APPROVE" or "DECISION: DENY" or "DECISION: ESCALATE".';
+
+async function runDecision(scenario, riskFlagManual, threshold) {
+  const engine = await getEngine(selectedModelId, (p) => {
+    stageText(p.text || 'Loading model…');
+  });
+
+  const N = 5;
+  const samples = [];
+  for (let i = 0; i < N; i++) {
+    stageText(`Sampling ${i+1} of ${N}…`);
+    const sampleEl = addSampleCard(i+1);
+    const stream = await engine.chat.completions.create({
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Scenario: ${scenario}` },
+      ],
+      stream: true, temperature: 0.8, max_tokens: 180,
+    });
+    let text = '';
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content || '';
+      if (delta) { text += delta; sampleEl.textEl.textContent = text; }
+    }
+    const decision = parseDecision(text);
+    sampleEl.tagEl.textContent = decision;
+    sampleEl.tagEl.className = 'pill ' + decision.toLowerCase();
+    samples.push({ text, decision });
+  }
+
+  const votes = { APPROVE: 0, DENY: 0, ESCALATE: 0 };
+  samples.forEach(s => votes[s.decision]++);
+  const maxVotes = Math.max(votes.APPROVE, votes.DENY, votes.ESCALATE);
+  const recommendation = Object.keys(votes).find(k => votes[k] === maxVotes);
+  const confidence = maxVotes / N;
+  const autoRisk = detectRisk(scenario);
+  const needsReview = riskFlagManual || autoRisk || confidence < threshold;
+
+  return { samples, votes, recommendation, confidence, autoRisk, needsReview };
+}
+
+function stageText(t) {
+  const stageEl = runArea.querySelector('.stage-text');
+  if (stageEl) stageEl.textContent = t;
+}
+function addSampleCard(n) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sample-card';
+  wrap.innerHTML = `<div class="s-head"><span>Sample ${n}</span><span class="pill auto tagEl">…</span></div><div class="s-text textEl"></div>`;
+  runArea.querySelector('.samples-area').appendChild(wrap);
+  return { textEl: wrap.querySelector('.textEl'), tagEl: wrap.querySelector('.tagEl') };
+}
+
+// ---------------- run button ----------------
+function updateRunEnabled() { runBtn.disabled = !scenarioText.value.trim(); }
+scenarioText.addEventListener('input', updateRunEnabled);
+
+runBtn.addEventListener('click', async () => {
+  const scenario = scenarioText.value.trim();
+  if (!scenario) return;
+  runBtn.disabled = true;
+  const threshold = parseFloat(thresholdSelect.value);
+  const riskFlagManual = riskCheck.checked;
+
+  runArea.innerHTML = `
+    <div class="sample-card" style="background:var(--panel)">
+      <div class="s-head"><span class="status-dot loading"></span><span class="stage-text">Loading model…</span></div>
+    </div>
+    <div class="samples-area"></div>`;
+
+  try {
+    const result = await runDecision(scenario, riskFlagManual, threshold);
+    const seq = state.nextSeq++;
+    const decision = {
+      id: 'd' + seq,
+      seq,
+      scenario,
+      modelId: selectedModelId,
+      threshold,
+      riskFlagManual,
+      autoRisk: result.autoRisk,
+      samples: result.samples,
+      votes: result.votes,
+      recommendation: result.recommendation,
+      confidence: result.confidence,
+      status: result.needsReview ? 'pending' : 'auto',
+      finalDecision: result.needsReview ? null : result.recommendation,
+      createdBy: actor(),
+      createdAt: new Date().toISOString(),
+      reviewer: '',
+      reviewNotes: '',
+      reviewAction: '',
+      outcome: null,
+    };
+    state.decisions.unshift(decision);
+    saveState();
+
+    const doneStageEl = runArea.querySelector('.stage-text');
+    if (doneStageEl) {
+      doneStageEl.parentElement.querySelector('.status-dot').className = 'status-dot done';
+      doneStageEl.textContent = `Done — ${result.votes[result.recommendation]}/5 agreed on ${result.recommendation} (${Math.round(result.confidence*100)}% confidence)`;
+    }
+    const confClass = result.confidence >= 0.8 ? '' : (result.confidence >= 0.5 ? 'mid' : 'low');
+    const barHtml = `<div class="confidence-bar">${[0,1,2,3,4].map(i => `<div class="seg${i < result.votes[result.recommendation] ? ' filled '+confClass : ''}"></div>`).join('')}</div>`;
+    runArea.insertAdjacentHTML('beforeend', `
+      <div class="sample-card" style="background:var(--panel);margin-top:10px">
+        <div class="s-head"><span>Result</span>
+          <span class="pill ${result.recommendation.toLowerCase()}">${result.recommendation}</span>
+          ${result.needsReview ? '<span class="pill pending">needs human review</span>' : '<span class="pill auto">auto-approved</span>'}
+          ${result.autoRisk ? '<span class="pill risk">risk keyword detected</span>' : ''}
+        </div>
+        ${barHtml}
+        <div class="s-text" style="margin-top:6px">${result.votes.APPROVE} APPROVE · ${result.votes.DENY} DENY · ${result.votes.ESCALATE} ESCALATE — see full trace in the Decision log tab.</div>
+      </div>`);
+
+    log('decision-created', `#${seq} "${scenario.slice(0,60)}${scenario.length>60?'…':''}" — ${result.recommendation} at ${Math.round(result.confidence*100)}% — ${result.needsReview ? 'sent to review' : 'auto-approved'}`);
+    renderAll();
+  } catch (e) {
+    runArea.innerHTML += `<div class="sample-card" style="background:var(--danger-bg);color:var(--danger)">Error: ${escapeHtml(e.message)}</div>`;
+  }
+  runBtn.disabled = false;
+});
+
+// ---------------- sample scenarios ----------------
+const SAMPLE_SCENARIOS = [
+  { text: 'Customer wants to return unopened wireless headphones within 10 days, has the receipt.', risk: false },
+  { text: 'Customer disputes a $45 charge claiming they never received the item, but tracking shows it was delivered and signed for.', risk: false },
+  { text: 'Customer wants a refund for a couch after 60 days citing a quality issue; the standard return window is 30 days.', risk: false },
+  { text: 'Customer says a product caused an allergic reaction and is requesting a full refund plus threatening to escalate to legal action.', risk: false },
+  { text: 'Customer wants to exchange a wrong-size shirt within the return window, unworn with tags still attached.', risk: false },
+  { text: 'Customer claims a competitor shipped them the wrong item and wants us to refund it even though we have no record of the order.', risk: false },
+];
+let sampleIdx = 0;
+el('loadSampleBtn').addEventListener('click', () => {
+  const s = SAMPLE_SCENARIOS[sampleIdx % SAMPLE_SCENARIOS.length];
+  sampleIdx++;
+  scenarioText.value = s.text;
+  riskCheck.checked = s.risk;
+  updateRunEnabled();
+});
+
+// ---------------- review queue ----------------
+function renderReviewQueue() {
+  const pending = state.decisions.filter(d => d.status === 'pending');
+  const body = el('reviewQueueBody');
+  el('reviewEmpty').style.display = pending.length === 0 ? 'block' : 'none';
+  body.innerHTML = pending.map(d => {
+    const confPct = Math.round(d.confidence * 100);
+    return `
+    <div class="sample-card" style="background:var(--panel)">
+      <div class="s-head">
+        <span>#${d.seq}</span>
+        <span class="pill ${d.recommendation.toLowerCase()}">AI suggests: ${d.recommendation}</span>
+        <span class="pill pending">${confPct}% agreement</span>
+        ${d.autoRisk || d.riskFlagManual ? '<span class="pill risk">high-risk</span>' : ''}
+      </div>
+      <div class="s-text">${escapeHtml(d.scenario)}</div>
+      <div class="row" style="margin-top:10px">
+        <input type="text" class="reviewer-name" data-id="${d.id}" placeholder="Reviewer name">
+        <select class="reviewer-action" data-id="${d.id}">
+          <option value="agree">Agree with AI (${d.recommendation})</option>
+          <option value="APPROVE">Override → APPROVE</option>
+          <option value="DENY">Override → DENY</option>
+          <option value="ESCALATE">Override → ESCALATE</option>
+        </select>
+      </div>
+      <input type="text" class="reviewer-notes" data-id="${d.id}" placeholder="Notes (optional)" style="margin-top:6px">
+      <div class="btn-row">
+        <button class="btn small primary submit-review-btn" data-id="${d.id}">Submit review</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  body.querySelectorAll('.submit-review-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const nameInput = body.querySelector(`.reviewer-name[data-id="${id}"]`);
+      const actionSelect = body.querySelector(`.reviewer-action[data-id="${id}"]`);
+      const notesInput = body.querySelector(`.reviewer-notes[data-id="${id}"]`);
+      const reviewerName = nameInput.value.trim();
+      if (!reviewerName) { alert('Enter a reviewer name before submitting.'); return; }
+      const d = state.decisions.find(x => x.id === id);
+      if (!d) return;
+      const action = actionSelect.value;
+      d.finalDecision = action === 'agree' ? d.recommendation : action;
+      d.reviewAction = action === 'agree' ? 'agreed' : 'overridden';
+      d.reviewer = reviewerName;
+      d.reviewNotes = notesInput.value.trim();
+      d.status = 'reviewed';
+      saveState();
+      log('decision-reviewed', `#${d.seq} — ${d.reviewAction} by ${reviewerName} — final: ${d.finalDecision}` + (d.reviewNotes ? ` — "${d.reviewNotes}"` : ''));
+      renderAll();
+    });
+  });
+}
+
+// ---------------- decision log ----------------
+function statusPill(d) {
+  if (d.status === 'auto') return '<span class="pill auto">auto-approved</span>';
+  if (d.status === 'pending') return '<span class="pill pending">pending review</span>';
+  return '<span class="pill reviewed">reviewed by ' + escapeHtml(d.reviewer) + '</span>';
+}
+function outcomePill(d) {
+  if (!d.finalDecision) return '<span class="pill awaiting">not finalized</span>';
+  if (!d.outcome) return '<span class="pill awaiting">awaiting outcome</span>';
+  return `<span class="pill ${d.outcome.result}">${d.outcome.result}</span>`;
+}
+
+function renderDecisionLog() {
+  const sf = el('filterStatus').value;
+  const of = el('filterOutcome').value;
+  let rows = state.decisions.slice();
+  if (sf) rows = rows.filter(d => d.status === sf);
+  if (of === 'awaiting') rows = rows.filter(d => d.finalDecision && !d.outcome);
+  else if (of) rows = rows.filter(d => d.outcome && d.outcome.result === of);
+
+  el('decisionEmpty').style.display = state.decisions.length === 0 ? 'block' : 'none';
+  el('decisionBody').innerHTML = rows.map(d => `
+    <tr>
+      <td>
+        <b>#${d.seq}</b> ${escapeHtml(d.scenario.slice(0, 90))}${d.scenario.length > 90 ? '…' : ''}
+        <div><span class="expand-toggle" data-id="${d.id}">view trace</span></div>
+        <div class="trace-block" id="trace-${d.id}">
+          <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Model: ${escapeHtml(d.modelId)} · ${fmtTs(d.createdAt)} · by ${escapeHtml(d.createdBy)}</div>
+          ${d.samples.map((s, i) => `<div class="sample-card"><div class="s-head"><span>Sample ${i+1}</span><span class="pill ${s.decision.toLowerCase()}">${s.decision}</span></div><div class="s-text">${escapeHtml(s.text)}</div></div>`).join('')}
+          ${d.reviewNotes ? `<div class="sample-card"><div class="s-head"><span>Review note (${escapeHtml(d.reviewer)})</span></div><div class="s-text">${escapeHtml(d.reviewNotes)}</div></div>` : ''}
+          ${d.outcome ? `<div class="sample-card"><div class="s-head"><span>Recorded outcome</span><span class="pill ${d.outcome.result}">${d.outcome.result}</span></div><div class="s-text">${escapeHtml(d.outcome.notes || '(no notes)')} — recorded by ${escapeHtml(d.outcome.recordedBy)}, ${fmtTs(d.outcome.recordedAt)}</div></div>` : ''}
+        </div>
+      </td>
+      <td>${d.finalDecision ? `<span class="pill ${d.finalDecision.toLowerCase()}">${d.finalDecision}</span>` : '<span class="pill awaiting">—</span>'}</td>
+      <td>${Math.round(d.confidence*100)}%</td>
+      <td>${statusPill(d)}</td>
+      <td>${outcomePill(d)}</td>
+    </tr>`).join('');
+
+  el('decisionBody').querySelectorAll('.expand-toggle').forEach(t => {
+    t.addEventListener('click', () => {
+      const block = el('trace-' + t.dataset.id);
+      block.classList.toggle('open');
+      t.textContent = block.classList.contains('open') ? 'hide trace' : 'view trace';
+    });
+  });
+}
+el('filterStatus').addEventListener('change', renderDecisionLog);
+el('filterOutcome').addEventListener('change', renderDecisionLog);
+
+// ---------------- record outcomes ----------------
+function renderOutcomeQueue() {
+  const awaiting = state.decisions.filter(d => d.finalDecision && !d.outcome);
+  const body = el('outcomeQueueBody');
+  el('outcomeEmpty').style.display = awaiting.length === 0 ? 'block' : 'none';
+  body.innerHTML = awaiting.map(d => `
+    <div class="sample-card" style="background:var(--panel)">
+      <div class="s-head">
+        <span>#${d.seq}</span>
+        <span class="pill ${d.finalDecision.toLowerCase()}">Final: ${d.finalDecision}</span>
+        ${statusPill(d)}
+      </div>
+      <div class="s-text">${escapeHtml(d.scenario)}</div>
+      <div class="row" style="margin-top:10px">
+        <select class="outcome-result" data-id="${d.id}">
+          <option value="correct">Correct — this was the right call</option>
+          <option value="incorrect">Incorrect — this turned out wrong</option>
+          <option value="unclear">Unclear / can't determine</option>
+        </select>
+      </div>
+      <input type="text" class="outcome-notes" data-id="${d.id}" placeholder="What actually happened? (optional)" style="margin-top:6px">
+      <div class="btn-row">
+        <button class="btn small primary record-outcome-btn" data-id="${d.id}">Record outcome</button>
+      </div>
+    </div>`).join('');
+
+  body.querySelectorAll('.record-outcome-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const resultSelect = body.querySelector(`.outcome-result[data-id="${id}"]`);
+      const notesInput = body.querySelector(`.outcome-notes[data-id="${id}"]`);
+      const d = state.decisions.find(x => x.id === id);
+      if (!d) return;
+      d.outcome = { result: resultSelect.value, notes: notesInput.value.trim(), recordedBy: actor(), recordedAt: new Date().toISOString() };
+      saveState();
+      log('outcome-recorded', `#${d.seq} — recorded as ${d.outcome.result} by ${actor()}` + (d.outcome.notes ? ` — "${d.outcome.notes}"` : ''));
+      renderAll();
+    });
+  });
+}
+
+// ---------------- dashboard ----------------
+function tierOf(conf) {
+  if (conf >= 0.8) return 'High (≥80%)';
+  if (conf >= 0.5) return 'Medium (50–79%)';
+  return 'Low (<50%)';
+}
+
+function renderDashboard() {
+  const withOutcome = state.decisions.filter(d => d.outcome);
+  const total = state.decisions.length;
+  const finalized = state.decisions.filter(d => d.finalDecision).length;
+  const reviewedCount = state.decisions.filter(d => d.status === 'reviewed').length;
+  const correctCount = withOutcome.filter(d => d.outcome.result === 'correct').length;
+  const incorrectCount = withOutcome.filter(d => d.outcome.result === 'incorrect').length;
+  const decidable = withOutcome.filter(d => d.outcome.result !== 'unclear');
+  const accuracyPct = decidable.length ? Math.round((correctCount / decidable.length) * 100) : null;
+
+  el('dashStats').innerHTML = `
+    <div class="stat"><div class="v">${total}</div><div class="l">Total decisions</div></div>
+    <div class="stat"><div class="v">${reviewedCount}</div><div class="l">Human reviewed</div></div>
+    <div class="stat"><div class="v">${withOutcome.length}</div><div class="l">Outcomes recorded</div></div>
+    <div class="stat"><div class="v">${accuracyPct === null ? '—' : accuracyPct + '%'}</div><div class="l">Real accuracy</div></div>
+    <div class="stat"><div class="v">${incorrectCount}</div><div class="l">Confirmed wrong</div></div>`;
+
+  // drift: last 5 recorded outcomes (decidable) accuracy
+  const recentDecidable = decidable.slice().sort((a,b) => new Date(b.outcome.recordedAt) - new Date(a.outcome.recordedAt)).slice(0, 5);
+  const driftArea = el('driftBannerArea');
+  if (recentDecidable.length >= 3) {
+    const recentCorrect = recentDecidable.filter(d => d.outcome.result === 'correct').length;
+    const recentAcc = recentCorrect / recentDecidable.length;
+    if (recentAcc < 0.6) {
+      driftArea.innerHTML = `<div class="drift-banner"><span>⚠</span><div><b>Recent accuracy has dropped</b>Only ${recentCorrect}/${recentDecidable.length} of the last recorded outcomes were correct (${Math.round(recentAcc*100)}%). Consider reviewing the model, prompt, or policy — this may be model drift or a policy change the AI hasn't been told about.</div></div>`;
+    } else {
+      driftArea.innerHTML = '';
+    }
+  } else {
+    driftArea.innerHTML = '';
+  }
+
+  // by confidence tier
+  const tiers = { 'High (≥80%)': [], 'Medium (50–79%)': [], 'Low (<50%)': [] };
+  decidable.forEach(d => tiers[tierOf(d.confidence)].push(d));
+  el('tierBody').innerHTML = Object.entries(tiers).map(([name, arr]) => {
+    if (arr.length === 0) return `<tr><td>${name}</td><td>0</td><td>—</td></tr>`;
+    const correct = arr.filter(d => d.outcome.result === 'correct').length;
+    return `<tr><td>${name}</td><td>${arr.length}</td><td>${Math.round(correct/arr.length*100)}%</td></tr>`;
+  }).join('');
+
+  // by reviewer (only decisions that had a named human reviewer)
+  const byReviewer = new Map();
+  decidable.filter(d => d.reviewer).forEach(d => {
+    if (!byReviewer.has(d.reviewer)) byReviewer.set(d.reviewer, []);
+    byReviewer.get(d.reviewer).push(d);
+  });
+  if (byReviewer.size === 0) {
+    el('reviewerBody').innerHTML = '<tr><td colspan="3" style="color:var(--text-faint);font-style:italic">No reviewed decisions with recorded outcomes yet.</td></tr>';
+  } else {
+    el('reviewerBody').innerHTML = [...byReviewer.entries()].map(([name, arr]) => {
+      const correct = arr.filter(d => d.outcome.result === 'correct').length;
+      return `<tr><td>${escapeHtml(name)}</td><td>${arr.length}</td><td>${Math.round(correct/arr.length*100)}%</td></tr>`;
+    }).join('');
+  }
+}
+
+// ---------------- audit log ----------------
+function renderAuditLog() {
+  const auditLogEl = el('auditLog');
+  if (state.auditLog.length === 0) {
+    auditLogEl.innerHTML = '<div class="empty">Nothing logged yet.</div>';
+    return;
+  }
+  auditLogEl.innerHTML = state.auditLog.slice(0, 200).map(e => `
+    <div class="audit-row">
+      <span class="audit-ts">${fmtTs(e.ts)}</span>
+      <span class="audit-actor">${escapeHtml(e.actor)}</span>
+      <span class="audit-detail"><b>${escapeHtml(e.action)}</b> — ${escapeHtml(e.detail)}</span>
+    </div>`).join('');
+}
+
+// ---------------- tabs ----------------
+const tabBar = el('tabBar');
+const tabPanels = [...document.querySelectorAll('.tab-panel')];
+function showTab(tabId) {
+  tabPanels.forEach(p => { p.hidden = p.dataset.tab !== tabId; });
+  tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  window.scrollTo({ top: tabBar.offsetTop - 8, behavior: 'smooth' });
+}
+tabBar.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+function updateTabFlags() {
+  const pendingReview = state.decisions.filter(d => d.status === 'pending').length;
+  const tf2 = el('tabFlag2');
+  if (pendingReview > 0) { tf2.hidden = false; tf2.textContent = pendingReview; } else tf2.hidden = true;
+
+  const awaitingOutcome = state.decisions.filter(d => d.finalDecision && !d.outcome).length;
+  const tf4 = el('tabFlag4');
+  if (awaitingOutcome > 0) { tf4.hidden = false; tf4.textContent = awaitingOutcome; } else tf4.hidden = true;
+}
+
+// ---------------- reset ----------------
+el('resetBtn').addEventListener('click', () => {
+  if (!confirm('This clears all decisions, reviews, outcomes, and the audit log from this browser. Continue?')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+  state = { actor: state.actor, decisions: [], auditLog: [], nextSeq: 1 };
+  saveState();
+  runArea.innerHTML = '';
+  renderAll();
+});
+
+// ---------------- export ----------------
+function downloadBlob(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+el('exportLogBtn').addEventListener('click', () => {
+  const rows = [['timestamp','actor','action','detail']];
+  state.auditLog.forEach(e => rows.push([e.ts, e.actor, e.action, e.detail]));
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  downloadBlob('ai_accountability_audit_log.csv', csv, 'text/csv');
+});
+el('exportReportBtn').addEventListener('click', () => {
+  const report = { exportedAt: new Date().toISOString(), exportedBy: actor(), decisions: state.decisions, auditLogTail: state.auditLog.slice(0, 100) };
+  downloadBlob('ai_accountability_report.json', JSON.stringify(report, null, 2), 'application/json');
+});
+
+// ---------------- render all ----------------
+function renderAll() {
+  renderReviewQueue();
+  renderDecisionLog();
+  renderOutcomeQueue();
+  renderDashboard();
+  renderAuditLog();
+  updateTabFlags();
+}
+
+// ---------------- init ----------------
+renderAll();
+updateRunEnabled();
+</script>
+</body>
+</html>
