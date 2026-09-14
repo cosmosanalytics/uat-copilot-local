@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Risk Protection Console</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1c211e; --sub:#54594f; --muted:#8c9188;
+    --line:#e3e0d6;
+    --amber-bg:#fbf1de; --amber-line:#e6cd97; --amber-strong:#a9770f;
+    --teal-bg:#e6f2ef; --teal-line:#9cc9c0; --teal-strong:#12806c;
+    --low:#2f8f5b; --mod:#c9971f; --high:#d9722c; --sev:#c23b3b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:1080px; margin:0 auto;}
+  header{margin-bottom:20px;}
+  header h1{font-size:24px; margin:0 0 6px 0;}
+  header p{margin:0; color:var(--sub); font-size:14px; max-width:760px; line-height:1.5;}
+  .grid{display:grid; grid-template-columns:1fr; gap:18px;}
+  @media (min-width:880px){
+    .grid{grid-template-columns: 380px 1fr;}
+  }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:18px 20px; box-shadow:0 1px 2px rgba(0,0,0,0.03);
+  }
+  .card h2{font-size:15px; margin:0 0 14px 0; display:flex; align-items:center; gap:8px;}
+  .card h2 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:50%; background:var(--teal-strong); color:#fff;
+    font-size:11px; font-weight:700;
+  }
+  .field{margin-bottom:18px;}
+  .field label{display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px;}
+  .field label .val{font-weight:700; color:var(--teal-strong); font-variant-numeric:tabular-nums;}
+  input[type="range"]{width:100%; accent-color:var(--teal-strong);}
+  .field .range-labels{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:2px;}
+  .toggle-row{display:flex; gap:8px; margin-bottom:18px;}
+  .toggle-btn{
+    flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
+    background:#fafaf7; cursor:pointer; font-size:13px; font-weight:600; color:var(--sub);
+  }
+  .toggle-btn.active{background:var(--teal-bg); border-color:var(--teal-line); color:var(--teal-strong);}
+  .help{font-size:12px; color:var(--muted); line-height:1.5;}
+  .readout{
+    display:flex; align-items:baseline; gap:10px; margin:4px 0 10px 0;
+  }
+  .readout .cr-value{font-size:38px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .readout .cr-unit{font-size:13px; color:var(--sub);}
+  .tier-pill{
+    display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700;
+    color:#fff; letter-spacing:.02em;
+  }
+  .gauge-wrap{margin:14px 0 6px 0;}
+  .gauge-track{
+    position:relative; height:14px; border-radius:7px; overflow:hidden;
+    background:linear-gradient(to right,
+      var(--low) 0%, var(--low) 20%,
+      var(--mod) 20%, var(--mod) 50%,
+      var(--high) 50%, var(--high) 70%,
+      var(--sev) 70%, var(--sev) 100%);
+  }
+  .gauge-marker{
+    position:absolute; top:-4px; width:2px; height:22px; background:#1c211e;
+    transform:translateX(-1px);
+  }
+  .gauge-scale{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px;}
+  .kv-row{display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; border-bottom:1px dashed var(--line);}
+  .kv-row:last-child{border-bottom:none;}
+  .kv-row .k{color:var(--sub);}
+  .kv-row .v{font-weight:700; font-variant-numeric:tabular-nums;}
+  canvas{display:block; width:100%; height:auto; border-radius:8px; background:#fafaf7;}
+  .heatmap-wrap{position:relative;}
+  .axis-label-x{text-align:center; font-size:11px; color:var(--sub); margin-top:6px; font-weight:600;}
+  .axis-label-y{
+    position:absolute; left:-26px; top:50%; transform:translateY(-50%) rotate(-90deg);
+    font-size:11px; color:var(--sub); font-weight:600; white-space:nowrap;
+  }
+  .legend-row{display:flex; align-items:center; gap:14px; margin-top:10px; flex-wrap:wrap;}
+  .legend-item{display:flex; align-items:center; gap:6px; font-size:11px; color:var(--sub);}
+  .legend-swatch{width:12px; height:12px; border-radius:3px;}
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:8px;
+    border:1px solid var(--teal-line); background:var(--teal-bg); color:var(--teal-strong);
+    font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(0.97);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .mc-stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;}
+  .mc-stat{
+    background:#fafaf7; border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  }
+  .mc-stat .lbl{font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+  .mc-stat .num{font-size:20px; font-weight:800; margin-top:2px;}
+  .treatment-card{
+    border-radius:10px; padding:14px 16px; margin-top:6px; border:1px solid var(--line);
+  }
+  .treatment-card .t-title{font-size:13px; font-weight:800; margin-bottom:4px;}
+  .treatment-card .t-body{font-size:12.5px; color:var(--sub); line-height:1.5;}
+  .footnote{
+    margin-top:0; padding:14px 16px; border-radius:10px; background:var(--amber-bg);
+    border:1px solid var(--amber-line); font-size:12px; color:var(--sub); line-height:1.6;
+  }
+  .footnote b{color:var(--amber-strong);}
+  .row2{display:grid; grid-template-columns:1fr; gap:18px;}
+  @media (min-width:640px){ .row2{grid-template-columns:1fr 1fr;} }
+
+  .tab-bar{
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; border-bottom:1px solid var(--line);
+    padding-bottom:0;
+  }
+  .tab-btn{
+    padding:10px 16px; border:none; background:transparent; cursor:pointer;
+    font-size:13px; font-weight:700; color:var(--muted); border-bottom:2px solid transparent;
+    margin-bottom:-1px; display:flex; align-items:center; gap:7px;
+  }
+  .tab-btn .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; background:#e3e0d6; color:var(--sub);
+    font-size:10.5px; font-weight:800;
+  }
+  .tab-btn.active{color:var(--teal-strong); border-bottom-color:var(--teal-strong);}
+  .tab-btn.active .step-num{background:var(--teal-strong); color:#fff;}
+  .tab-btn:hover:not(.active){color:var(--ink);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .summary-strip{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:#fafaf7; border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; margin-bottom:18px; font-size:12.5px; color:var(--sub);
+  }
+  .summary-strip b{color:var(--ink);}
+  .summary-strip .tier-pill{font-size:11px; padding:3px 10px;}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Asset Risk Protection Console</h1>
+    <p>
+      A first-principles model of CO&#8322; corrosion risk in a water or oil process system: temperature,
+      pressure, flow velocity, and dissolved contamination combine to define a corrosion rate, expressed
+      as distance to a <b>warning</b> and a <b>danger</b> boundary. Monte Carlo simulation turns today's
+      operating point into a probability of crossing each boundary &mdash; the same logic behind routine
+      monitoring vs. escalated inspection vs. intervention.
+    </p>
+  </header>
+
+  <div class="summary-strip">
+    <span>Current point: <b id="summaryConditions">T=60&deg;C, P=50 bar, v=2.0 m/s, CO&#8322;=5.0%</b></span>
+    <span>&rarr;</span>
+    <span><b id="summaryCr">0.073 mm/yr</b></span>
+    <span class="tier-pill" id="summaryTier">LOW</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab1"><span class="step-num">1</span>Operating conditions</button>
+    <button class="tab-btn" data-tab="tab2"><span class="step-num">2</span>Risk &amp; treatment</button>
+    <button class="tab-btn" data-tab="tab3"><span class="step-num">3</span>Boundary map</button>
+    <button class="tab-btn" data-tab="tab4"><span class="step-num">4</span>Monte Carlo</button>
+    <button class="tab-btn" data-tab="tab5"><span class="step-num">5</span>Model notes</button>
+  </div>
+
+  <!-- STEP 1: Operating conditions -->
+  <div class="tab-panel active" id="tab1">
+    <div class="card">
+      <h2><span class="num">1</span>Set operating conditions</h2>
+
+      <div class="toggle-row" style="max-width:280px;">
+        <button class="toggle-btn active" id="fluidWaterBtn" data-fluid="water">Water</button>
+        <button class="toggle-btn" id="fluidOilBtn" data-fluid="oil">Oil</button>
+      </div>
+
+      <div class="row2">
+        <div>
+          <div class="field">
+            <label>Temperature <span class="val" id="tempVal">60 &deg;C</span></label>
+            <input type="range" id="tempSlider" min="10" max="150" value="60" step="1">
+            <div class="range-labels"><span>10&deg;C</span><span>150&deg;C</span></div>
+          </div>
+
+          <div class="field">
+            <label>Pressure <span class="val" id="presVal">50 bar</span></label>
+            <input type="range" id="presSlider" min="1" max="150" value="50" step="1">
+            <div class="range-labels"><span>1 bar</span><span>150 bar</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="field">
+            <label>Flow velocity <span class="val" id="flowVal">2.0 m/s</span></label>
+            <input type="range" id="flowSlider" min="0.1" max="10" value="2" step="0.1">
+            <div class="range-labels"><span>0.1 m/s</span><span>10 m/s</span></div>
+          </div>
+
+          <div class="field">
+            <label>CO&#8322; contamination <span class="val" id="co2Val">5.0 mol%</span></label>
+            <input type="range" id="co2Slider" min="0.1" max="20" value="5" step="0.1">
+            <div class="range-labels"><span>0.1%</span><span>20%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="help">
+        Flow velocity feeds a wall-shear-stress term: at low temperature a protective iron-carbonate
+        scale tends to form and can tolerate faster flow, while above roughly 55&ndash;70&deg;C the same
+        scale is thinner and more easily stripped &mdash; so the very same velocity can be safe at one
+        temperature and corrosive at another. These four values carry through every step below.
+      </p>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn" id="goStep2Btn">See the risk assessment &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Risk readout + treatment -->
+  <div class="tab-panel" id="tab2">
+    <div class="card">
+      <h2><span class="num">2</span>Corrosion risk &mdash; distance to the failure boundary</h2>
+
+      <div class="readout">
+        <span class="cr-value" id="crValue">0.00</span>
+        <span class="cr-unit">mm/yr metal loss</span>
+        <span class="tier-pill" id="tierPill">LOW</span>
+      </div>
+
+      <div class="gauge-wrap">
+        <div class="gauge-track">
+          <div class="gauge-marker" id="gaugeMarker"></div>
+        </div>
+        <div class="gauge-scale">
+          <span>0</span><span>routine</span><span>warning</span><span>danger</span><span>severe</span>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="kv-row"><span class="k">Fugacity-corrected CO&#8322; partial pressure (fCO&#8322;)</span><span class="v" id="fco2Val">&mdash;</span></div>
+        <div class="kv-row"><span class="k">Estimated CO&#8322;-saturated pH</span><span class="v" id="phVal">&mdash;</span></div>
+        <div class="kv-row"><span class="k">Wall shear stress</span><span class="v" id="shearVal">&mdash;</span></div>
+        <div class="kv-row"><span class="k">Protective scale factor (0=bare metal, 1=fully protected)</span><span class="v" id="scaleVal">&mdash;</span></div>
+      </div>
+
+      <div class="treatment-card" id="treatmentCard">
+        <div class="t-title" id="treatmentTitle">Routine monitoring</div>
+        <div class="t-body" id="treatmentBody">Corrosion rate is well within the routine band. Standard periodic inspection is sufficient.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Boundary map -->
+  <div class="tab-panel" id="tab3">
+    <div class="card">
+      <h2><span class="num">3</span>Thermodynamic boundary map (temperature &times; flow velocity)</h2>
+      <div class="heatmap-wrap">
+        <span class="axis-label-y">Flow velocity (m/s)</span>
+        <canvas id="heatmapCanvas" width="480" height="320"></canvas>
+      </div>
+      <div class="axis-label-x">Temperature (&deg;C)</div>
+      <div class="legend-row">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--low)"></span>Low</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--mod)"></span>Warning</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--high)"></span>Danger</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--sev)"></span>Severe</div>
+        <div class="legend-item">&#9679; current operating point (pressure &amp; CO&#8322; held at slider values)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Monte Carlo -->
+  <div class="tab-panel" id="tab4">
+    <div class="card">
+      <h2><span class="num">4</span>Monte Carlo: probability of breaching the boundary</h2>
+      <p class="help">
+        Samples all four operating variables with &plusmn;15% random noise around today's slider values
+        (2,000 draws) and recomputes the corrosion rate for each, treating normal day-to-day process
+        variation as the source of uncertainty.
+      </p>
+      <button class="btn" id="runMcBtn">Run Monte Carlo simulation</button>
+      <canvas id="histCanvas" width="480" height="220" style="margin-top:14px;"></canvas>
+      <div class="mc-stats" id="mcStats" style="display:none;">
+        <div class="mc-stat"><div class="lbl">P(exceed warning)</div><div class="num" id="mcWarnPct">&mdash;</div></div>
+        <div class="mc-stat"><div class="lbl">P(exceed danger)</div><div class="num" id="mcDangerPct">&mdash;</div></div>
+        <div class="mc-stat"><div class="lbl">Mean corrosion rate</div><div class="num" id="mcMean">&mdash;</div></div>
+        <div class="mc-stat"><div class="lbl">95th percentile</div><div class="num" id="mcP95">&mdash;</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: Model notes -->
+  <div class="tab-panel" id="tab5">
+    <div class="card">
+      <h2><span class="num">5</span>Model disclosure</h2>
+      <div class="footnote">
+        <b>Model disclosure.</b> This app is a simplified, illustrative model inspired by the published
+        structure of CO&#8322; corrosion prediction approaches (de Waard&ndash;Milliams 1975; NORSOK M-506-style
+        flow/temperature treatments): it reuses the well-established fugacity-corrected fCO&#8322;<sup>0.62</sup>
+        driver, but the temperature/protective-scale/flow-stripping combination and calibration constant here
+        were authored for this demo and tuned by hand to land in a realistic 0.01&ndash;5&nbsp;mm/yr range. It is
+        <b>not a validated reproduction of any named standard and not for engineering design use</b> &mdash; it
+        exists to demonstrate the asset-risk-protection reasoning pattern: first-principles model &rarr;
+        Monte Carlo &rarr; distance-to-boundary &rarr; tiered treatment.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Model ----------
+  function fCO2(P_bar, co2pct, T_C){
+    const T_K = T_C + 273.15;
+    const pCO2 = P_bar * (co2pct/100);
+    const logPhi = P_bar * (0.0031 - 1.4/T_K);
+    const phi = Math.pow(10, logPhi);
+    return phi * pCO2;
+  }
+  function protectionBase(T){ return 1/(1+Math.exp((T-55)/5)); }
+  function vCrit(T){ return 0.6 + 3.0*protectionBase(T); }
+  function filmIntact(v, T){ return 1/(1+Math.exp((v-vCrit(T))/0.6)); }
+  const FLOOR = 0.12;
+  function protectionFinal(T, v){ return FLOOR + (1-FLOOR)*protectionBase(T)*filmIntact(v,T); }
+  function rise(T){ return Math.exp(Math.log(2)/25*(T-20)); }
+  const A_CONST = 0.08;
+  function corrosionRate(T, P, co2pct, v){
+    const f = fCO2(P, co2pct, T);
+    return A_CONST * rise(T) * protectionFinal(T,v) * Math.pow(f, 0.62);
+  }
+  function pHEstimate(T, f){
+    if (f <= 0) return 7;
+    return 3.82 + 0.0033*T - 0.5*Math.log10(f);
+  }
+  function wallShear(v, fluid){
+    const rho = fluid === "oil" ? 850 : 1000; // kg/m3
+    const fD = 0.025; // Darcy friction factor, typical commercial steel pipe
+    return 0.5 * fD * rho * v * v; // Pa
+  }
+
+  const WARN_THRESH = 0.1;
+  const DANGER_THRESH = 0.5;
+  const SEVERE_THRESH = 1.0;
+  const GAUGE_MAX = 2.0; // clamp for the gauge/marker scale
+
+  function tierFor(cr){
+    if (cr < WARN_THRESH) return { key:"low", label:"LOW", color:"var(--low)" };
+    if (cr < DANGER_THRESH) return { key:"mod", label:"WARNING", color:"var(--mod)" };
+    if (cr < SEVERE_THRESH) return { key:"high", label:"DANGER", color:"var(--high)" };
+    return { key:"sev", label:"SEVERE", color:"var(--sev)" };
+  }
+  function treatmentFor(cr){
+    if (cr < WARN_THRESH) return {
+      title: "Routine monitoring",
+      body: "Corrosion rate is well within the routine band. Standard periodic inspection is sufficient; distance to the warning boundary is comfortable at current conditions."
+    };
+    if (cr < DANGER_THRESH) return {
+      title: "Escalated inspection",
+      body: "Corrosion rate has crossed the warning boundary. Increase inspection frequency and trend the rate over time — the margin to the danger boundary is narrowing."
+    };
+    if (cr < SEVERE_THRESH) return {
+      title: "Intervention required",
+      body: "Corrosion rate is in the danger band. Plan an intervention — chemical treatment, velocity or pressure derate, or a material/coating change — before the failure boundary is reached."
+    };
+    return {
+      title: "Immediate action",
+      body: "Corrosion rate is severe. Asset reliability is at near-term risk; treat this as an active threat to operational continuity, not a monitoring item."
+    };
+  }
+
+  // ---------- State ----------
+  const state = { T:60, P:50, v:2, co2:5, fluid:"water" };
+
+  // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
+  const tempSlider = $("tempSlider"), presSlider = $("presSlider"), flowSlider = $("flowSlider"), co2Slider = $("co2Slider");
+  const tempVal = $("tempVal"), presVal = $("presVal"), flowVal = $("flowVal"), co2Val = $("co2Val");
+  const fluidWaterBtn = $("fluidWaterBtn"), fluidOilBtn = $("fluidOilBtn");
+  const crValue = $("crValue"), tierPill = $("tierPill"), gaugeMarker = $("gaugeMarker");
+  const fco2ValEl = $("fco2Val"), phValEl = $("phVal"), shearValEl = $("shearVal"), scaleValEl = $("scaleVal");
+  const treatmentTitle = $("treatmentTitle"), treatmentBody = $("treatmentBody"), treatmentCard = $("treatmentCard");
+  const heatmapCanvas = $("heatmapCanvas");
+  const histCanvas = $("histCanvas");
+  const runMcBtn = $("runMcBtn");
+  const mcStats = $("mcStats"), mcWarnPct = $("mcWarnPct"), mcDangerPct = $("mcDangerPct"), mcMean = $("mcMean"), mcP95 = $("mcP95");
+  const summaryConditions = $("summaryConditions"), summaryCr = $("summaryCr"), summaryTier = $("summaryTier");
+  const goStep2Btn = $("goStep2Btn");
+
+  // ---------- Tabs ----------
+  const tabBtns = Array.from(document.querySelectorAll(".tab-btn"));
+  const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+  function showTab(id){
+    tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === id));
+    tabPanels.forEach(p => p.classList.toggle("active", p.id === id));
+    if (id === "tab3") drawHeatmap();
+  }
+  tabBtns.forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  if (goStep2Btn) goStep2Btn.addEventListener("click", () => showTab("tab2"));
+
+  function colorForTier(key){
+    return { low:"#2f8f5b", mod:"#c9971f", high:"#d9722c", sev:"#c23b3b" }[key];
+  }
+
+  function updateReadout(){
+    const cr = corrosionRate(state.T, state.P, state.co2, state.v);
+    const f = fCO2(state.P, state.co2, state.T);
+    const ph = pHEstimate(state.T, f);
+    const shear = wallShear(state.v, state.fluid);
+    const scale = protectionFinal(state.T, state.v);
+    const tier = tierFor(cr);
+    const treat = treatmentFor(cr);
+
+    crValue.textContent = cr.toFixed(3);
+    crValue.style.color = colorForTier(tier.key);
+    tierPill.textContent = tier.label;
+    tierPill.style.background = colorForTier(tier.key);
+
+    const pct = Math.min(1, cr / GAUGE_MAX) * 100;
+    gaugeMarker.style.left = pct + "%";
+
+    fco2ValEl.textContent = f.toFixed(3) + " bar";
+    phValEl.textContent = ph.toFixed(2);
+    shearValEl.textContent = shear.toFixed(1) + " Pa";
+    scaleValEl.textContent = scale.toFixed(2);
+
+    treatmentTitle.textContent = treat.title;
+    treatmentBody.textContent = treat.body;
+    treatmentCard.style.borderColor = colorForTier(tier.key);
+    treatmentCard.style.background = tier.key === "low" ? "#eef7f0" : (tier.key === "sev" ? "#fbeaea" : "#fdf6ea");
+
+    summaryConditions.textContent = "T=" + state.T.toFixed(0) + "°C, P=" + state.P.toFixed(0) + " bar, v=" + state.v.toFixed(1) + " m/s, CO₂=" + state.co2.toFixed(1) + "%";
+    summaryCr.textContent = cr.toFixed(3) + " mm/yr";
+    summaryTier.textContent = tier.label;
+    summaryTier.style.background = colorForTier(tier.key);
+
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (activePanel && activePanel.id === "tab3") drawHeatmap();
+  }
+
+  function onSliderChange(){
+    state.T = parseFloat(tempSlider.value);
+    state.P = parseFloat(presSlider.value);
+    state.v = parseFloat(flowSlider.value);
+    state.co2 = parseFloat(co2Slider.value);
+    tempVal.textContent = state.T.toFixed(0) + " °C";
+    presVal.textContent = state.P.toFixed(0) + " bar";
+    flowVal.textContent = state.v.toFixed(1) + " m/s";
+    co2Val.textContent = state.co2.toFixed(1) + " mol%";
+    updateReadout();
+    mcStats.style.display = "none";
+    clearHist();
+  }
+
+  [tempSlider, presSlider, flowSlider, co2Slider].forEach(s => s.addEventListener("input", onSliderChange));
+
+  fluidWaterBtn.addEventListener("click", () => {
+    state.fluid = "water";
+    fluidWaterBtn.classList.add("active");
+    fluidOilBtn.classList.remove("active");
+    updateReadout();
+  });
+  fluidOilBtn.addEventListener("click", () => {
+    state.fluid = "oil";
+    fluidOilBtn.classList.add("active");
+    fluidWaterBtn.classList.remove("active");
+    updateReadout();
+  });
+
+  // ---------- Heatmap: Temperature x Flow velocity, P & CO2 fixed at slider values ----------
+  function drawHeatmap(){
+    const ctx = heatmapCanvas.getContext("2d");
+    const W = heatmapCanvas.width, H = heatmapCanvas.height;
+    const nx = 60, ny = 40;
+    const tMin = 10, tMax = 150, vMin = 0.1, vMax = 10;
+
+    const img = ctx.createImageData(nx, ny);
+    for (let j = 0; j < ny; j++){
+      const v = vMax - (j/(ny-1))*(vMax-vMin); // top row = high velocity
+      for (let i = 0; i < nx; i++){
+        const T = tMin + (i/(nx-1))*(tMax-tMin);
+        const cr = corrosionRate(T, state.P, state.co2, v);
+        const [r,g,b] = colorForRate(cr);
+        const idx = (j*nx+i)*4;
+        img.data[idx] = r; img.data[idx+1] = g; img.data[idx+2] = b; img.data[idx+3] = 255;
+      }
+    }
+    // draw scaled up via offscreen canvas
+    const off = document.createElement("canvas");
+    off.width = nx; off.height = ny;
+    off.getContext("2d").putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(off, 0, 0, W, H);
+
+    // gridlines / axis ticks
+    ctx.strokeStyle = "rgba(28,33,30,0.15)";
+    ctx.lineWidth = 1;
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.fillStyle = "#54594f";
+    for (let tt = 25; tt <= 150; tt += 25){
+      const x = ((tt-tMin)/(tMax-tMin)) * W;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+      ctx.fillText(String(tt), Math.min(x+2, W-20), H-4);
+    }
+    for (let vv = 2; vv <= 10; vv += 2){
+      const y = H - ((vv-vMin)/(vMax-vMin)) * H;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+      ctx.fillText(String(vv), 2, Math.max(y-2, 10));
+    }
+
+    // current operating point
+    const px = ((state.T-tMin)/(tMax-tMin)) * W;
+    const py = H - ((state.v-vMin)/(vMax-vMin)) * H;
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI*2);
+    ctx.fillStyle = "#1c211e";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI*2);
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function colorForRate(cr){
+    // interpolate across the four risk bands for a smooth-ish contour look
+    const stops = [
+      [0.00, [47,143,91]],    // low green
+      [0.10, [201,151,31]],   // warning amber
+      [0.50, [217,114,44]],   // danger orange
+      [1.00, [194,59,59]],    // severe red
+      [2.00, [110,30,30]]     // deep red, off the gauge
+    ];
+    let lo = stops[0], hi = stops[stops.length-1];
+    for (let k = 0; k < stops.length-1; k++){
+      if (cr >= stops[k][0] && cr <= stops[k+1][0]){ lo = stops[k]; hi = stops[k+1]; break; }
+    }
+    if (cr > stops[stops.length-1][0]) return stops[stops.length-1][1];
+    const span = hi[0]-lo[0];
+    const t = span > 0 ? (cr-lo[0])/span : 0;
+    const c0 = lo[1], c1 = hi[1];
+    return [
+      Math.round(c0[0]+(c1[0]-c0[0])*t),
+      Math.round(c0[1]+(c1[1]-c0[1])*t),
+      Math.round(c0[2]+(c1[2]-c0[2])*t)
+    ];
+  }
+
+  // ---------- Monte Carlo ----------
+  function gaussianNoise(){
+    // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+  }
+  function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+
+  function runMonteCarlo(){
+    const N = 2000;
+    const sigma = 0.15; // 15% relative noise
+    const samples = [];
+    for (let i = 0; i < N; i++){
+      const T = clamp(state.T * (1 + sigma*0.4*gaussianNoise()), 5, 200); // temp noise a bit tighter (absolute-ish process control)
+      const P = clamp(state.P * (1 + sigma*gaussianNoise()), 0.5, 200);
+      const v = clamp(state.v * (1 + sigma*gaussianNoise()), 0.05, 15);
+      const co2 = clamp(state.co2 * (1 + sigma*gaussianNoise()), 0.01, 30);
+      samples.push(corrosionRate(T, P, co2, v));
+    }
+    samples.sort((a,b) => a-b);
+    const mean = samples.reduce((a,b)=>a+b,0)/N;
+    const p95 = samples[Math.floor(0.95*N)];
+    const pWarn = samples.filter(x => x >= WARN_THRESH).length / N;
+    const pDanger = samples.filter(x => x >= DANGER_THRESH).length / N;
+
+    mcMean.textContent = mean.toFixed(3);
+    mcP95.textContent = p95.toFixed(3);
+    mcWarnPct.textContent = (pWarn*100).toFixed(1) + "%";
+    mcDangerPct.textContent = (pDanger*100).toFixed(1) + "%";
+    mcStats.style.display = "grid";
+
+    drawHistogram(samples);
+  }
+
+  function clearHist(){
+    const ctx = histCanvas.getContext("2d");
+    ctx.clearRect(0,0,histCanvas.width, histCanvas.height);
+  }
+
+  function drawHistogram(samples){
+    const ctx = histCanvas.getContext("2d");
+    const W = histCanvas.width, H = histCanvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const maxVal = Math.max(samples[samples.length-1], DANGER_THRESH*1.3, 0.05);
+    const bins = 40;
+    const counts = new Array(bins).fill(0);
+    samples.forEach(x => {
+      const idx = Math.min(bins-1, Math.floor((x/maxVal)*bins));
+      counts[idx]++;
+    });
+    const maxCount = Math.max(...counts);
+    const padL = 4, padB = 20, padT = 8;
+    const plotW = W - padL - 4, plotH = H - padB - padT;
+    const barW = plotW / bins;
+
+    for (let i = 0; i < bins; i++){
+      const h = (counts[i]/maxCount) * plotH;
+      const binCenter = ((i+0.5)/bins) * maxVal;
+      const tier = tierFor(binCenter);
+      ctx.fillStyle = colorForTier(tier.key);
+      ctx.fillRect(padL + i*barW, padT + (plotH-h), barW-1, h);
+    }
+
+    // threshold lines
+    function drawThreshLine(threshVal, label, color){
+      const x = padL + (threshVal/maxVal)*plotW;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+plotH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = "10px -apple-system, sans-serif";
+      ctx.fillText(label, x+2, padT+10);
+    }
+    drawThreshLine(WARN_THRESH, "warning", "#c9971f");
+    drawThreshLine(DANGER_THRESH, "danger", "#d9722c");
+
+    ctx.fillStyle = "#8c9188";
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.fillText("0", padL, H-4);
+    ctx.fillText(maxVal.toFixed(2) + " mm/yr", W-70, H-4);
+  }
+
+  runMcBtn.addEventListener("click", runMonteCarlo);
+
+  // ---------- init ----------
+  updateReadout();
+})();
+</script>
+</body>
+</html>
