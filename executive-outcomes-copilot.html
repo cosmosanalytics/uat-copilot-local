@@ -704,10 +704,36 @@
   let analyzeInFlight = false;
   let cancelRequested = false;
 
+  // A live elapsed-time + token-count ticker, separate from the per-chunk status update below.
+  // The gap between sending the prompt and the model's first token ("time to first token") can
+  // itself be many seconds on a phone or a laptop without a dedicated GPU — with only a per-chunk
+  // update, the status line sits frozen on whatever text was last set (e.g. "Building data
+  // digest...") for that whole stretch, which reads as stuck even though nothing is wrong. This
+  // ticks every second regardless of whether a token has arrived yet, so there's always visible
+  // movement.
+  let heartbeatTimer = null, heartbeatStartMs = 0, heartbeatTokenCount = 0, heartbeatLabel = "";
+
+  function startHeartbeat(label){
+    heartbeatLabel = label;
+    heartbeatStartMs = Date.now();
+    heartbeatTokenCount = 0;
+    stopHeartbeat();
+    renderHeartbeat();
+    heartbeatTimer = setInterval(renderHeartbeat, 1000);
+  }
+  function renderHeartbeat(){
+    const elapsedS = Math.round((Date.now() - heartbeatStartMs) / 1000);
+    analyzeStatus.textContent = heartbeatLabel + "... (" + heartbeatTokenCount + " tokens, " + elapsedS + "s elapsed)";
+  }
+  function stopHeartbeat(){
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  }
+
   async function streamAnalysis(messages, useJsonMode){
     const MAX_TOKENS = 1400;
     const createArgs = { messages, temperature: 0.3, max_tokens: MAX_TOKENS, stream: true };
     if (useJsonMode) createArgs.response_format = { type: "json_object", schema: ACTIONS_JSON_SCHEMA };
+    startHeartbeat("Analyzing SAP + Salesforce data with the local model");
     const stream = await state.engine.chat.completions.create(createArgs);
 
     let raw = "", tokenCount = 0, sawOpenBrace = false, braceDepth = 0;
@@ -717,7 +743,8 @@
       if (delta) {
         raw += delta;
         tokenCount++;
-        analyzeStatus.textContent = "Analyzing SAP + Salesforce data with the local model... (" + tokenCount + " tokens generated)";
+        heartbeatTokenCount = tokenCount;
+        renderHeartbeat();
         for (const ch of delta) {
           if (ch === "{") { sawOpenBrace = true; braceDepth++; }
           else if (ch === "}") { braceDepth--; }
@@ -811,6 +838,7 @@
     } catch (e) {
       analyzeStatus.textContent = "Analysis stopped: " + e.message + ". Try again, or check the digest in step 1's tables manually.";
     } finally {
+      stopHeartbeat();
       analyzeInFlight = false;
       analyzeBtn.disabled = false;
       cancelAnalyzeBtn.style.display = "none";
@@ -819,6 +847,7 @@
 
   cancelAnalyzeBtn.addEventListener("click", async () => {
     cancelRequested = true;
+    stopHeartbeat();
     analyzeStatus.textContent = "Cancelling...";
     cancelAnalyzeBtn.disabled = true;
     if (state.engine && state.engine.interruptGenerate) {
