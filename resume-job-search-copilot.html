@@ -205,7 +205,12 @@
       <h2><span class="num">3</span>Extract job titles &amp; keywords</h2>
       <div class="btn-row">
         <button class="btn" id="analyzeBtn" disabled>Analyze resume</button>
+        <button class="btn secondary" id="cancelAnalyzeBtn" style="display:none;">Cancel</button>
       </div>
+      <p class="help" style="margin-top:8px;">
+        On a phone or a laptop without a dedicated GPU this can take 1&ndash;3 minutes &mdash; the status line
+        below will keep updating with a live token count so you can see it's still working, not stuck.
+      </p>
       <div class="status-line" id="analyzeStatus"></div>
 
       <div id="resultsBlock" style="display:none; margin-top:16px;">
@@ -456,7 +461,7 @@
   });
 
   // ---------- Step 3: Keywords ----------
-  const analyzeStatus = $("analyzeStatus"), resultsBlock = $("resultsBlock");
+  const analyzeStatus = $("analyzeStatus"), resultsBlock = $("resultsBlock"), cancelAnalyzeBtn = $("cancelAnalyzeBtn");
   const seniorityVal = $("seniorityVal"), industryVal = $("industryVal");
   const titleChips = $("titleChips"), keywordChips = $("keywordChips");
   const addTitleInput = $("addTitleInput"), addTitleBtn = $("addTitleBtn");
@@ -514,10 +519,16 @@
     return JSON.parse(jsonStr);
   }
 
+  let analyzeInFlight = false;
+  let cancelRequested = false;
+
   analyzeBtn.addEventListener("click", async () => {
-    if (!state.engine || !state.resumeText) return;
+    if (!state.engine || !state.resumeText || analyzeInFlight) return;
+    analyzeInFlight = true;
+    cancelRequested = false;
     analyzeBtn.disabled = true;
-    analyzeStatus.textContent = "Analyzing resume with the local model...";
+    cancelAnalyzeBtn.style.display = "inline-flex";
+    analyzeStatus.textContent = "Analyzing resume with the local model... (starting)";
     resultsBlock.style.display = "none";
     try {
       const prompt = [
@@ -530,16 +541,55 @@
         "",
         "Respond with ONLY a JSON object, no other text, in exactly this shape:",
         '{"job_titles": ["...", "..."], "keywords": ["...", "..."], "industry": "...", "seniority": "..."}',
+        "Keep it to that single JSON object — no explanation before or after it.",
         "",
         "RESUME:",
         state.resumeText.slice(0, 6000)
       ].join("\n");
 
-      const reply = await state.engine.chat.completions.create({
+      // Streamed, token-capped generation: a phone or CPU-fallback WebGPU device can take
+      // minutes per response, and an uncapped call can also ramble well past the JSON object
+      // it was asked for. Streaming gives live progress instead of a silent hang, a hard
+      // max_tokens keeps worst-case wall-clock time bounded, and we stop as soon as the JSON
+      // object looks complete so slow devices aren't stuck waiting out the full token budget.
+      const MAX_TOKENS = 700;
+      const stream = await state.engine.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.3
+        temperature: 0.3,
+        max_tokens: MAX_TOKENS,
+        stream: true
       });
-      const raw = reply.choices[0].message.content;
+
+      let raw = "";
+      let tokenCount = 0;
+      let sawOpenBrace = false;
+      let braceDepth = 0;
+
+      for await (const chunk of stream) {
+        if (cancelRequested) break;
+        const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta ? chunk.choices[0].delta.content : "";
+        if (delta) {
+          raw += delta;
+          tokenCount++;
+          analyzeStatus.textContent = "Analyzing resume with the local model... (" + tokenCount + " tokens generated)";
+          for (const ch of delta) {
+            if (ch === "{") { sawOpenBrace = true; braceDepth++; }
+            else if (ch === "}") { braceDepth--; }
+          }
+          if (sawOpenBrace && braceDepth <= 0) {
+            try { state.engine.interruptGenerate && state.engine.interruptGenerate(); } catch (e) { /* ignore */ }
+            break;
+          }
+        }
+      }
+
+      if (cancelRequested) {
+        analyzeStatus.textContent = "Cancelled. You can try Analyze again, or add titles/keywords manually.";
+        resultsBlock.style.display = "block";
+        return;
+      }
+
+      if (!raw.trim()) throw new Error("model returned no output");
       const parsed = parseModelJson(raw);
 
       state.titles = Array.isArray(parsed.job_titles) ? parsed.job_titles.filter(Boolean).slice(0, 8) : [];
@@ -554,17 +604,32 @@
       updateKeywordSummary();
 
       resultsBlock.style.display = "block";
-      analyzeStatus.textContent = "Done. Review the suggestions below — add or remove anything before searching.";
+      analyzeStatus.textContent = "Done (" + tokenCount + " tokens). Review the suggestions below — add or remove anything before searching.";
     } catch (e) {
-      analyzeStatus.textContent = "The model's response couldn't be parsed (" + e.message + "). Try Analyze again, or add titles/keywords manually in the fields that appear.";
+      analyzeStatus.textContent = "Analysis stopped: " + e.message + ". Try Analyze again, or add titles/keywords manually in the fields that appear.";
       state.titles = state.titles.length ? state.titles : [];
       state.keywords = state.keywords.length ? state.keywords : [];
       renderChips(titleChips, state.titles, "title-chip");
       renderChips(keywordChips, state.keywords);
       resultsBlock.style.display = "block";
     } finally {
+      analyzeInFlight = false;
       analyzeBtn.disabled = false;
+      cancelAnalyzeBtn.style.display = "none";
     }
+  });
+
+  cancelAnalyzeBtn.addEventListener("click", async () => {
+    cancelRequested = true;
+    analyzeStatus.textContent = "Cancelling...";
+    cancelAnalyzeBtn.disabled = true;
+    if (state.engine && state.engine.interruptGenerate) {
+      try { await state.engine.interruptGenerate(); } catch (e) { /* ignore */ }
+    }
+    cancelAnalyzeBtn.disabled = false;
+    // The in-flight analyze handler's own loop notices cancelRequested and updates
+    // status/UI on its next chunk (or immediately, if the stream is already exhausted);
+    // this button only needs to request that and nudge the engine to stop early.
   });
 
   goSearchBtn.addEventListener("click", () => showTab("tab4"));
