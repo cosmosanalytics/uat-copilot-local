@@ -647,7 +647,7 @@
     properties: {
       summary: { type: "string" },
       actions: {
-        type: "array", minItems: 3, maxItems: 8,
+        type: "array", minItems: 2, maxItems: 4,
         items: {
           type: "object",
           properties: {
@@ -665,6 +665,20 @@
     required: ["summary", "actions"]
   });
 
+  // Small on-device models struggle with long prompts and long required outputs — a bigger
+  // input takes longer just to prefill (that's the silent gap before the first token, which is
+  // what looked "stuck" at 38s/0 tokens), and a bigger required output means more chances for
+  // a weak model to wander off the requested JSON shape before it gets there and burn through
+  // the token budget. Keeping the digest to a handful of records with short, truncated text,
+  // and asking for only 2-4 actions, keeps the whole request small enough for a 1B-3B model to
+  // reliably finish in well under the token cap, especially on a phone GPU.
+  const DIGEST_ITEMS_PER_SECTION = 4;
+  const NOTE_TRUNCATE_LEN = 110;
+  function truncateNote(s){
+    if (!s || s.length <= NOTE_TRUNCATE_LEN) return s;
+    return s.slice(0, NOTE_TRUNCATE_LEN).replace(/\s+\S*$/, "") + "…";
+  }
+
   function buildDigest(){
     const openOpps = state.opps.filter(o => o.stage !== "Closed Won" && o.stage !== "Closed Lost");
     const pipelineValue = openOpps.reduce((s, o) => s + o.amount, 0);
@@ -676,11 +690,11 @@
     const closedCsat = state.cases.filter(c => c.csat !== null).map(c => c.csat);
     const avgCsat = closedCsat.length ? (closedCsat.reduce((a, b) => a + b, 0) / closedCsat.length) : null;
 
-    const topOrders = [...atRiskOrders].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+    const topOrders = [...atRiskOrders].sort((a, b) => b.revenue - a.revenue).slice(0, DIGEST_ITEMS_PER_SECTION);
     const topOpps = [...openOpps]
       .filter(o => o.stage === "Negotiation" || o.stage === "Proposal")
-      .sort((a, b) => b.amount - a.amount).slice(0, 8);
-    const topCases = state.cases.filter(c => (c.priority === "Critical" || c.priority === "High") && c.status !== "Closed").slice(0, 8);
+      .sort((a, b) => b.amount - a.amount).slice(0, DIGEST_ITEMS_PER_SECTION);
+    const topCases = state.cases.filter(c => (c.priority === "Critical" || c.priority === "High") && c.status !== "Closed").slice(0, DIGEST_ITEMS_PER_SECTION);
 
     const lines = [];
     lines.push("KPI SUMMARY:");
@@ -690,13 +704,13 @@
     lines.push("- Average support CSAT (closed cases): " + (avgCsat !== null ? avgCsat.toFixed(1) + "/5" : "n/a"));
     lines.push("");
     lines.push("TOP AT-RISK ORDERS (SAP):");
-    topOrders.forEach(o => lines.push(`[${o.id}] ${o.customer} — ${o.product} — ${fmtMoney(o.revenue)} — ${o.status} ${o.delayDays}d — "${o.notes}"`));
+    topOrders.forEach(o => lines.push(`[${o.id}] ${o.customer} — ${o.product} — ${fmtMoney(o.revenue)} — ${o.status} ${o.delayDays}d — "${truncateNote(o.notes)}"`));
     lines.push("");
     lines.push("TOP AT-RISK DEALS (Salesforce Opportunities):");
-    topOpps.forEach(o => lines.push(`[${o.id}] ${o.account} — ${o.stage} — ${fmtMoney(o.amount)} — Next step: "${o.nextStep}"`));
+    topOpps.forEach(o => lines.push(`[${o.id}] ${o.account} — ${o.stage} — ${fmtMoney(o.amount)} — Next step: "${truncateNote(o.nextStep)}"`));
     lines.push("");
     lines.push("OPEN HIGH/CRITICAL SUPPORT CASES (Salesforce):");
-    topCases.forEach(c => lines.push(`[${c.id}] ${c.account} — ${c.priority} — ${c.subject} — "${c.description}"`));
+    topCases.forEach(c => lines.push(`[${c.id}] ${c.account} — ${c.priority} — ${c.subject} — "${truncateNote(c.description)}"`));
 
     return lines.join("\n");
   }
@@ -730,7 +744,7 @@
   }
 
   async function streamAnalysis(messages, useJsonMode){
-    const MAX_TOKENS = 1400;
+    const MAX_TOKENS = 500;
     const createArgs = { messages, temperature: 0.3, max_tokens: MAX_TOKENS, stream: true };
     if (useJsonMode) createArgs.response_format = { type: "json_object", schema: ACTIONS_JSON_SCHEMA };
     startHeartbeat("Analyzing SAP + Salesforce data with the local model");
@@ -779,11 +793,12 @@
       const basePrompt = [
         "You are an executive operations advisor. Below is a digest of KPIs and the highest-risk or",
         "highest-value records from a company's SAP (ERP) and Salesforce (CRM) systems, including free-text",
-        "notes written by staff. Read it and propose 3 to 6 concrete actions an executive could take this",
+        "notes written by staff. Read it and propose 2 to 4 concrete actions an executive could take this",
         "week to protect revenue, retain at-risk customers, or unblock stalled deals.",
         "",
-        "For each action, reference the specific record IDs (like SAP-O1004 or SF-OPP2011 or SF-CASE3002)",
-        "from the digest below that justify it, in evidence_ids.",
+        "Be brief: keep each rationale to one short sentence (under 20 words) and each impact to a short",
+        "phrase (under 12 words). For each action, reference the specific record IDs (like SAP-O1004 or",
+        "SF-OPP2011 or SF-CASE3002) from the digest below that justify it, in evidence_ids.",
         "",
         "Respond with ONLY a JSON object, no other text, in exactly this shape:",
         '{"summary": "...", "actions": [{"title": "...", "rationale": "...", "evidence_ids": ["..."], "impact": "...", "urgency": "High|Medium|Low", "owner": "Sales|Operations|Customer Success|Finance|Executive"}]}',
@@ -828,7 +843,7 @@
         result.tokenCount += retryResult.tokenCount;
       }
 
-      state.actions = Array.isArray(parsed.actions) ? parsed.actions.slice(0, 8) : [];
+      state.actions = Array.isArray(parsed.actions) ? parsed.actions.slice(0, 4) : [];
       state.execSummary = parsed.summary || "";
       renderActions();
       actionsBlock.style.display = "block";
