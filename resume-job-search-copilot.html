@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Job-Search Copilot</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1c211e; --sub:#54594f; --muted:#8c9188;
+    --line:#e3e0d6;
+    --amber-bg:#fbf1de; --amber-line:#e6cd97; --amber-strong:#a9770f;
+    --teal-bg:#e6f2ef; --teal-line:#9cc9c0; --teal-strong:#12806c;
+    --blue-bg:#e8eef7; --blue-line:#a9c0e0; --blue-strong:#2a5ca8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:1040px; margin:0 auto;}
+  header{margin-bottom:20px;}
+  header h1{font-size:24px; margin:0 0 6px 0;}
+  header p{margin:0; color:var(--sub); font-size:14px; max-width:760px; line-height:1.5;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:18px 20px; box-shadow:0 1px 2px rgba(0,0,0,0.03); margin-bottom:16px;
+  }
+  .card h2{font-size:15px; margin:0 0 14px 0; display:flex; align-items:center; gap:8px;}
+  .card h2 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:50%; background:var(--teal-strong); color:#fff;
+    font-size:11px; font-weight:700; flex-shrink:0;
+  }
+  .help{font-size:12px; color:var(--muted); line-height:1.5;}
+  textarea{
+    width:100%; min-height:220px; border:1px solid var(--line); border-radius:8px;
+    padding:12px; font-size:13px; font-family:inherit; resize:vertical; background:#fafaf7; color:var(--ink);
+  }
+  input[type="text"], input[type="file"], select{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+    font-size:13px; font-family:inherit; background:#fafaf7; color:var(--ink);
+  }
+  label.field-label{display:block; font-size:13px; font-weight:600; margin-bottom:6px;}
+  .field{margin-bottom:16px;}
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:8px;
+    border:1px solid var(--teal-line); background:var(--teal-bg); color:var(--teal-strong);
+    font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(0.97);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn.secondary{background:#fafaf7; border-color:var(--line); color:var(--sub);}
+  .btn.linkedin{background:var(--blue-bg); border-color:var(--blue-line); color:var(--blue-strong);}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .tab-bar{
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; border-bottom:1px solid var(--line);
+  }
+  .tab-btn{
+    padding:10px 16px; border:none; background:transparent; cursor:pointer;
+    font-size:13px; font-weight:700; color:var(--muted); border-bottom:2px solid transparent;
+    margin-bottom:-1px; display:flex; align-items:center; gap:7px;
+  }
+  .tab-btn .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; background:#e3e0d6; color:var(--sub);
+    font-size:10.5px; font-weight:800;
+  }
+  .tab-btn.active{color:var(--teal-strong); border-bottom-color:var(--teal-strong);}
+  .tab-btn.active .step-num{background:var(--teal-strong); color:#fff;}
+  .tab-btn:hover:not(.active){color:var(--ink);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .status-line{font-size:12.5px; color:var(--sub); margin-top:10px; min-height:18px;}
+  .progress-track{height:6px; border-radius:3px; background:#e3e0d6; overflow:hidden; margin-top:8px; display:none;}
+  .progress-fill{height:100%; background:var(--teal-strong); width:0%; transition:width .2s;}
+  .chip-group{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:6px 10px 6px 12px; border-radius:999px;
+    background:var(--teal-bg); border:1px solid var(--teal-line); color:var(--teal-strong);
+    font-size:12.5px; font-weight:600;
+  }
+  .chip.title-chip{background:var(--blue-bg); border-color:var(--blue-line); color:var(--blue-strong);}
+  .chip .rm{cursor:pointer; font-weight:800; opacity:.6; padding:0 2px;}
+  .chip .rm:hover{opacity:1;}
+  .add-chip-row{display:flex; gap:8px; margin-top:10px;}
+  .add-chip-row input{flex:1;}
+  .meta-row{display:flex; gap:24px; flex-wrap:wrap; margin-top:14px; font-size:12.5px;}
+  .meta-row .k{color:var(--muted); font-weight:600; text-transform:uppercase; font-size:10.5px; letter-spacing:.03em; display:block; margin-bottom:3px;}
+  .meta-row .v{font-weight:700;}
+  .filter-grid{display:grid; grid-template-columns:1fr; gap:16px;}
+  @media (min-width:700px){ .filter-grid{grid-template-columns:1fr 1fr;} }
+  .check-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;}
+  .check-pill{
+    display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:7px;
+    border:1px solid var(--line); background:#fafaf7; font-size:12.5px; cursor:pointer;
+  }
+  .check-pill input{width:auto; margin:0;}
+  .search-card{
+    border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-top:12px;
+    background:#fafaf7;
+  }
+  .search-card .sc-title{font-size:14px; font-weight:800; margin-bottom:4px;}
+  .search-card .sc-query{font-size:12px; color:var(--sub); margin-bottom:10px; word-break:break-word;}
+  .search-card .sc-query code{background:#efece2; padding:1px 5px; border-radius:4px;}
+  .empty-note{font-size:13px; color:var(--muted); padding:20px; text-align:center;}
+  .footnote{
+    padding:14px 16px; border-radius:10px; background:var(--amber-bg);
+    border:1px solid var(--amber-line); font-size:12px; color:var(--sub); line-height:1.6;
+  }
+  .footnote b{color:var(--amber-strong);}
+  .footnote + .footnote{margin-top:12px;}
+  .resume-preview{
+    max-height:140px; overflow-y:auto; background:#fafaf7; border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; font-size:11.5px; color:var(--sub); white-space:pre-wrap; margin-top:10px;
+  }
+  .summary-strip{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:#fafaf7; border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; margin-bottom:18px; font-size:12.5px; color:var(--sub);
+  }
+  .summary-strip b{color:var(--ink);}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--muted); display:inline-block;}
+  .dot.ok{background:var(--teal-strong);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Resume Job-Search Copilot</h1>
+    <p>
+      Runs entirely in your browser on WebGPU &mdash; your resume is never uploaded anywhere. A small
+      language model reads it locally, suggests job titles and search keywords, and this page turns
+      those into ready-to-click LinkedIn job-search links.
+    </p>
+  </header>
+
+  <div class="summary-strip">
+    <span><span class="dot" id="dotResume"></span> Resume loaded: <b id="sumResume">no</b></span>
+    <span><span class="dot" id="dotModel"></span> AI model: <b id="sumModel">not loaded</b></span>
+    <span><span class="dot" id="dotKeywords"></span> Keywords: <b id="sumKeywords">not extracted</b></span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab1"><span class="step-num">1</span>Resume</button>
+    <button class="tab-btn" data-tab="tab2"><span class="step-num">2</span>AI model</button>
+    <button class="tab-btn" data-tab="tab3"><span class="step-num">3</span>Keywords</button>
+    <button class="tab-btn" data-tab="tab4"><span class="step-num">4</span>Search LinkedIn</button>
+    <button class="tab-btn" data-tab="tab5"><span class="step-num">5</span>About</button>
+  </div>
+
+  <!-- STEP 1: Resume -->
+  <div class="tab-panel active" id="tab1">
+    <div class="card">
+      <h2><span class="num">1</span>Add your resume</h2>
+      <div class="field">
+        <label class="field-label">Upload a PDF (extracted locally in your browser)</label>
+        <input type="file" id="resumeFile" accept="application/pdf">
+        <div class="status-line" id="pdfStatus"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">...or paste your resume text directly</label>
+        <textarea id="resumeText" placeholder="Paste your resume text here (or upload a PDF above and it will appear here)."></textarea>
+      </div>
+      <div class="resume-preview" id="resumePreview" style="display:none;"></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn" id="confirmResumeBtn">Save resume &amp; continue &rarr;</button>
+        <button class="btn secondary" id="loadSampleResumeBtn">Load a sample resume</button>
+      </div>
+      <p class="help" style="margin-top:10px;">
+        PDF extraction uses pdf.js loaded from a CDN the first time you upload a file; the extraction itself
+        still runs locally in your browser tab, nothing is sent to a server. If PDF extraction doesn't work
+        on your network, paste the text instead.
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 2: AI model -->
+  <div class="tab-panel" id="tab2">
+    <div class="card">
+      <h2><span class="num">2</span>Load a local AI model (WebGPU)</h2>
+      <p class="help">
+        The model downloads once (cached by your browser afterward) and runs entirely on your device's GPU
+        via WebGPU &mdash; no resume text ever leaves this tab.
+      </p>
+      <div class="field" style="max-width:420px; margin-top:12px;">
+        <label class="field-label">Model</label>
+        <select id="modelSelect">
+          <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B Instruct (better quality, larger download)</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC" selected>Llama 3.2 1B Instruct (fastest, smallest download)</option>
+          <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B Instruct</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="loadModelBtn">Load model</button>
+      </div>
+      <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="status-line" id="modelStatus"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Keywords -->
+  <div class="tab-panel" id="tab3">
+    <div class="card">
+      <h2><span class="num">3</span>Extract job titles &amp; keywords</h2>
+      <div class="btn-row">
+        <button class="btn" id="analyzeBtn" disabled>Analyze resume</button>
+      </div>
+      <div class="status-line" id="analyzeStatus"></div>
+
+      <div id="resultsBlock" style="display:none; margin-top:16px;">
+        <div class="meta-row">
+          <div><span class="k">Seniority</span><span class="v" id="seniorityVal">&mdash;</span></div>
+          <div><span class="k">Primary industry</span><span class="v" id="industryVal">&mdash;</span></div>
+        </div>
+
+        <div class="field" style="margin-top:16px;">
+          <label class="field-label">Suggested job titles (click &times; to remove, or add your own)</label>
+          <div class="chip-group" id="titleChips"></div>
+          <div class="add-chip-row">
+            <input type="text" id="addTitleInput" placeholder="Add another job title...">
+            <button class="btn secondary" id="addTitleBtn">Add</button>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:16px;">
+          <label class="field-label">Suggested keywords &amp; skills (click &times; to remove, or add your own)</label>
+          <div class="chip-group" id="keywordChips"></div>
+          <div class="add-chip-row">
+            <input type="text" id="addKeywordInput" placeholder="Add another keyword...">
+            <button class="btn secondary" id="addKeywordBtn">Add</button>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn" id="goSearchBtn">Build LinkedIn searches &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Search LinkedIn -->
+  <div class="tab-panel" id="tab4">
+    <div class="card">
+      <h2><span class="num">4</span>Search filters</h2>
+      <div class="filter-grid">
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Location (optional)</label>
+          <input type="text" id="locationInput" placeholder="e.g. Philadelphia, PA or Remote">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Number of top keywords per search</label>
+          <select id="keywordCountSelect">
+            <option value="3">Top 3</option>
+            <option value="5" selected>Top 5</option>
+            <option value="8">Top 8</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:16px; margin-bottom:0;">
+        <label class="field-label">Workplace type</label>
+        <div class="check-row" id="workTypeRow">
+          <label class="check-pill"><input type="checkbox" value="1"> On-site</label>
+          <label class="check-pill"><input type="checkbox" value="2"> Remote</label>
+          <label class="check-pill"><input type="checkbox" value="3"> Hybrid</label>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:16px; margin-bottom:0;">
+        <label class="field-label">Experience level</label>
+        <div class="check-row" id="expLevelRow">
+          <label class="check-pill"><input type="checkbox" value="2"> Entry</label>
+          <label class="check-pill"><input type="checkbox" value="3"> Associate</label>
+          <label class="check-pill"><input type="checkbox" value="4"> Mid-Senior</label>
+          <label class="check-pill"><input type="checkbox" value="5"> Director</label>
+          <label class="check-pill"><input type="checkbox" value="6"> Executive</label>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn" id="buildSearchesBtn">Generate LinkedIn search links</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">&#8594;</span>Ready-to-click searches</h2>
+      <div id="searchCardsWrap">
+        <div class="empty-note">Extract keywords in step 3, then generate links here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: About -->
+  <div class="tab-panel" id="tab5">
+    <div class="card">
+      <h2><span class="num">5</span>How this works &amp; its limits</h2>
+      <div class="footnote">
+        <b>Everything runs locally.</b> PDF text extraction and the language model both run in this browser
+        tab using WebGPU. Your resume text is never uploaded to a server, and no data leaves the tab, other
+        than the one-time model download from a public model CDN.
+      </div>
+      <div class="footnote">
+        <b>Why this generates links instead of live results.</b> LinkedIn's job search has no public,
+        unauthenticated API, and scraping signed-in search results from a browser tab would violate
+        LinkedIn's Terms of Service. So instead of pretending to fetch results, this tool has the local
+        model do the part it's actually good at &mdash; reading your resume and proposing the job titles
+        and keywords worth searching &mdash; and turns those into standard LinkedIn job-search URLs
+        (title + boolean keyword query + your filters) that you open yourself, already signed in to your
+        own LinkedIn account.
+      </div>
+      <div class="footnote">
+        <b>Model disclosure.</b> Keyword and job-title suggestions come from a small open-weight instruction
+        model (1&ndash;3B parameters) chosen for fast in-browser loading, not from a specialized resume
+        model. Treat its suggestions as a fast first draft to edit in step 3, not a final answer &mdash;
+        review and adjust the titles and keywords before searching.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm";
+
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Tabs ----------
+  const tabBtns = Array.from(document.querySelectorAll(".tab-btn"));
+  const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+  function showTab(id){
+    tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === id));
+    tabPanels.forEach(p => p.classList.toggle("active", p.id === id));
+  }
+  tabBtns.forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+  // ---------- State ----------
+  const state = {
+    resumeText: "",
+    engine: null,
+    modelId: null,
+    titles: [],
+    keywords: [],
+    seniority: "",
+    industry: ""
+  };
+
+  // ---------- Step 1: Resume ----------
+  const resumeFile = $("resumeFile"), resumeText = $("resumeText"), pdfStatus = $("pdfStatus");
+  const resumePreview = $("resumePreview"), confirmResumeBtn = $("confirmResumeBtn"), loadSampleResumeBtn = $("loadSampleResumeBtn");
+  const sumResume = $("sumResume"), dotResume = $("dotResume");
+
+  let pdfjsLoaded = false;
+  async function ensurePdfJs(){
+    if (pdfjsLoaded) return true;
+    if (window["pdfjsLib"]) { pdfjsLoaded = true; return true; }
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      if (window["pdfjsLib"]) {
+        window["pdfjsLib"].GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        pdfjsLoaded = true;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  resumeFile.addEventListener("change", async () => {
+    const file = resumeFile.files[0];
+    if (!file) return;
+    pdfStatus.textContent = "Loading PDF reader...";
+    const ok = await ensurePdfJs();
+    if (!ok) {
+      pdfStatus.textContent = "Couldn't load the PDF reader (network/CDN issue). Please paste your resume text below instead.";
+      return;
+    }
+    pdfStatus.textContent = "Extracting text from " + file.name + "...";
+    try {
+      const buf = await file.arrayBuffer();
+      const pdf = await window["pdfjsLib"].getDocument({ data: buf }).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(it => it.str).join(" ") + "\n";
+      }
+      resumeText.value = text.trim();
+      pdfStatus.textContent = "Extracted " + pdf.numPages + " page(s), " + text.trim().length + " characters. Review below, then continue.";
+    } catch (e) {
+      pdfStatus.textContent = "Couldn't extract text from that PDF (" + e.message + "). Please paste your resume text below instead.";
+    }
+  });
+
+  const SAMPLE_RESUME = "Operations research scientist with 20+ years translating complex physical and business systems into production software and applied AI. Led global S&OP platform implementation on Kinaxis Maestro, including UAT automation using RAG-based AI drafting with human sign-off, cutting UAT cycle time from 3 hours to 45 minutes. Built first-principles Monte Carlo models for asset corrosion risk, catching 80% of failures before they occurred. Skilled in Python, dynamic optimization and MILP (COIN-OR/CBC, GLPK, PuLP), supply chain planning (S&OP, PSI), process control and chemical treatment modeling, and applied machine learning for operations.";
+
+  loadSampleResumeBtn.addEventListener("click", () => {
+    resumeText.value = SAMPLE_RESUME;
+    pdfStatus.textContent = "";
+  });
+
+  confirmResumeBtn.addEventListener("click", () => {
+    const t = resumeText.value.trim();
+    if (!t) {
+      pdfStatus.textContent = "Add resume text first — upload a PDF or paste it in.";
+      return;
+    }
+    state.resumeText = t;
+    resumePreview.style.display = "block";
+    resumePreview.textContent = t.slice(0, 1200) + (t.length > 1200 ? "…" : "");
+    sumResume.textContent = "yes (" + t.length + " chars)";
+    dotResume.classList.add("ok");
+    analyzeBtn.disabled = !state.engine;
+    showTab("tab2");
+  });
+
+  // ---------- Step 2: AI model ----------
+  const modelSelect = $("modelSelect"), loadModelBtn = $("loadModelBtn");
+  const progressTrack = $("progressTrack"), progressFill = $("progressFill"), modelStatus = $("modelStatus");
+  const sumModel = $("sumModel"), dotModel = $("dotModel");
+  const analyzeBtn = $("analyzeBtn");
+
+  loadModelBtn.addEventListener("click", async () => {
+    const modelId = modelSelect.value;
+    loadModelBtn.disabled = true;
+    modelSelect.disabled = true;
+    progressTrack.style.display = "block";
+    modelStatus.textContent = "Initializing...";
+    try {
+      state.engine = await webllm.CreateMLCEngine(modelId, {
+        initProgressCallback: (p) => {
+          const pct = Math.round((p.progress || 0) * 100);
+          progressFill.style.width = pct + "%";
+          modelStatus.textContent = p.text || (pct + "%");
+        }
+      });
+      state.modelId = modelId;
+      modelStatus.textContent = "Model ready: " + modelId;
+      sumModel.textContent = modelId;
+      dotModel.classList.add("ok");
+      loadModelBtn.textContent = "Reload model";
+      loadModelBtn.disabled = false;
+      modelSelect.disabled = false;
+      analyzeBtn.disabled = !state.resumeText;
+    } catch (e) {
+      modelStatus.textContent = "Failed to load model: " + e.message + ". WebGPU may not be available in this browser.";
+      loadModelBtn.disabled = false;
+      modelSelect.disabled = false;
+    }
+  });
+
+  // ---------- Step 3: Keywords ----------
+  const analyzeStatus = $("analyzeStatus"), resultsBlock = $("resultsBlock");
+  const seniorityVal = $("seniorityVal"), industryVal = $("industryVal");
+  const titleChips = $("titleChips"), keywordChips = $("keywordChips");
+  const addTitleInput = $("addTitleInput"), addTitleBtn = $("addTitleBtn");
+  const addKeywordInput = $("addKeywordInput"), addKeywordBtn = $("addKeywordBtn");
+  const goSearchBtn = $("goSearchBtn");
+  const sumKeywords = $("sumKeywords"), dotKeywords = $("dotKeywords");
+
+  function renderChips(container, arr, cls){
+    container.innerHTML = "";
+    arr.forEach((val, idx) => {
+      const chip = document.createElement("span");
+      chip.className = "chip" + (cls ? " " + cls : "");
+      chip.innerHTML = "<span>" + escapeHtml(val) + "</span><span class='rm' data-idx='" + idx + "'>&times;</span>";
+      container.appendChild(chip);
+    });
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+  titleChips.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("rm")) return;
+    state.titles.splice(parseInt(e.target.dataset.idx, 10), 1);
+    renderChips(titleChips, state.titles, "title-chip");
+    updateKeywordSummary();
+  });
+  keywordChips.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("rm")) return;
+    state.keywords.splice(parseInt(e.target.dataset.idx, 10), 1);
+    renderChips(keywordChips, state.keywords);
+    updateKeywordSummary();
+  });
+  addTitleBtn.addEventListener("click", () => {
+    const v = addTitleInput.value.trim();
+    if (v) { state.titles.push(v); addTitleInput.value = ""; renderChips(titleChips, state.titles, "title-chip"); updateKeywordSummary(); }
+  });
+  addKeywordBtn.addEventListener("click", () => {
+    const v = addKeywordInput.value.trim();
+    if (v) { state.keywords.push(v); addKeywordInput.value = ""; renderChips(keywordChips, state.keywords); updateKeywordSummary(); }
+  });
+  [addTitleInput, addKeywordInput].forEach(inp => {
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); (inp === addTitleInput ? addTitleBtn : addKeywordBtn).click(); }
+    });
+  });
+  function updateKeywordSummary(){
+    sumKeywords.textContent = state.titles.length + " titles, " + state.keywords.length + " keywords";
+    dotKeywords.classList.toggle("ok", state.titles.length > 0 && state.keywords.length > 0);
+  }
+
+  function parseModelJson(raw){
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1 || end < start) throw new Error("no JSON object found in model output");
+    const jsonStr = raw.slice(start, end + 1);
+    return JSON.parse(jsonStr);
+  }
+
+  analyzeBtn.addEventListener("click", async () => {
+    if (!state.engine || !state.resumeText) return;
+    analyzeBtn.disabled = true;
+    analyzeStatus.textContent = "Analyzing resume with the local model...";
+    resultsBlock.style.display = "none";
+    try {
+      const prompt = [
+        "You are a career assistant helping someone search for jobs on LinkedIn.",
+        "Read the resume below and extract, from the perspective of what a recruiter would search for:",
+        "1) 3 to 5 concise, standard job titles this person is qualified for (as they'd appear in a LinkedIn job posting)",
+        "2) 12 to 18 keywords and skills a recruiter might search for, ranked from most to least important",
+        "3) the person's primary industry or domain, in a few words",
+        "4) their seniority level: one of Entry, Mid, Senior, Director, Executive",
+        "",
+        "Respond with ONLY a JSON object, no other text, in exactly this shape:",
+        '{"job_titles": ["...", "..."], "keywords": ["...", "..."], "industry": "...", "seniority": "..."}',
+        "",
+        "RESUME:",
+        state.resumeText.slice(0, 6000)
+      ].join("\n");
+
+      const reply = await state.engine.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3
+      });
+      const raw = reply.choices[0].message.content;
+      const parsed = parseModelJson(raw);
+
+      state.titles = Array.isArray(parsed.job_titles) ? parsed.job_titles.filter(Boolean).slice(0, 8) : [];
+      state.keywords = Array.isArray(parsed.keywords) ? parsed.keywords.filter(Boolean).slice(0, 24) : [];
+      state.seniority = parsed.seniority || "—";
+      state.industry = parsed.industry || "—";
+
+      seniorityVal.textContent = state.seniority;
+      industryVal.textContent = state.industry;
+      renderChips(titleChips, state.titles, "title-chip");
+      renderChips(keywordChips, state.keywords);
+      updateKeywordSummary();
+
+      resultsBlock.style.display = "block";
+      analyzeStatus.textContent = "Done. Review the suggestions below — add or remove anything before searching.";
+    } catch (e) {
+      analyzeStatus.textContent = "The model's response couldn't be parsed (" + e.message + "). Try Analyze again, or add titles/keywords manually in the fields that appear.";
+      state.titles = state.titles.length ? state.titles : [];
+      state.keywords = state.keywords.length ? state.keywords : [];
+      renderChips(titleChips, state.titles, "title-chip");
+      renderChips(keywordChips, state.keywords);
+      resultsBlock.style.display = "block";
+    } finally {
+      analyzeBtn.disabled = false;
+    }
+  });
+
+  goSearchBtn.addEventListener("click", () => showTab("tab4"));
+
+  // ---------- Step 4: LinkedIn search links ----------
+  const locationInput = $("locationInput"), keywordCountSelect = $("keywordCountSelect");
+  const workTypeRow = $("workTypeRow"), expLevelRow = $("expLevelRow");
+  const buildSearchesBtn = $("buildSearchesBtn"), searchCardsWrap = $("searchCardsWrap");
+
+  function buildLinkedInUrl(title, keywords, opts){
+    const kwQuery = keywords.length
+      ? '"' + title + '" AND (' + keywords.map(k => (/\s/.test(k) ? '"' + k + '"' : k)).join(" OR ") + ")"
+      : '"' + title + '"';
+    const params = new URLSearchParams();
+    params.set("keywords", kwQuery);
+    if (opts.location) params.set("location", opts.location);
+    if (opts.workTypes.length) params.set("f_WT", opts.workTypes.join(","));
+    if (opts.expLevels.length) params.set("f_E", opts.expLevels.join(","));
+    return { url: "https://www.linkedin.com/jobs/search/?" + params.toString(), query: kwQuery };
+  }
+
+  function getCheckedValues(container){
+    return Array.from(container.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
+  }
+
+  buildSearchesBtn.addEventListener("click", () => {
+    if (!state.titles.length) {
+      searchCardsWrap.innerHTML = "<div class='empty-note'>No job titles yet — go back to step 3 and analyze your resume first.</div>";
+      return;
+    }
+    const n = parseInt(keywordCountSelect.value, 10);
+    const opts = {
+      location: locationInput.value.trim(),
+      workTypes: getCheckedValues(workTypeRow),
+      expLevels: getCheckedValues(expLevelRow)
+    };
+    const topKeywords = state.keywords.slice(0, n);
+
+    searchCardsWrap.innerHTML = "";
+    state.titles.forEach(title => {
+      const { url, query } = buildLinkedInUrl(title, topKeywords, opts);
+      const card = document.createElement("div");
+      card.className = "search-card";
+      card.innerHTML =
+        "<div class='sc-title'>" + escapeHtml(title) + "</div>" +
+        "<div class='sc-query'>Query: <code>" + escapeHtml(query) + "</code>" +
+        (opts.location ? " &middot; Location: " + escapeHtml(opts.location) : "") + "</div>" +
+        "<a class='btn linkedin' href='" + url + "' target='_blank' rel='noopener noreferrer'>Search on LinkedIn &#8599;</a>";
+      searchCardsWrap.appendChild(card);
+    });
+  });
+
+  // ---------- init ----------
+  updateKeywordSummary();
+</script>
+</body>
+</html>
