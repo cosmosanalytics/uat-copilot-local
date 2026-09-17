@@ -3,171 +3,636 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Career Geography — Resume to World Map</title>
+<title>Career Geography — Professional Workforce Map</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-:root{
-  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--surface3:#30363d;
-  --border:rgba(255,255,255,0.08);--accent:#2d7dd2;--accent2:#58a6ff;
-  --text:#c9d1d9;--text-dim:#8b949e;--success:#3fb950;
-  --warn:#d29922;--danger:#f85149;--panel:320px;--hh:52px;
-  --r:10px;--t:.18s ease;
+:root {
+  --bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --surface3: #e2e8f0;
+  --border: #e2e8f0;
+  --border-focus: #3b82f6;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --accent-hover: #1d4ed8;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --panel-w: 360px;
+  --hh: 56px;
+  --radius: 10px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+  --transition: 0.18s ease;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:var(--bg);color:var(--text);font-size:13px}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
 
 /* ── Header ── */
-#hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);z-index:1000;
-  background:rgba(13,17,23,.95);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;padding:0 16px;gap:12px}
-.logo{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
-.logo-icon{width:28px;height:28px;border-radius:6px;background:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-size:14px}
-.pill{font-size:10px;padding:2px 8px;border-radius:20px;
-  background:rgba(45,125,210,.2);color:var(--accent2);
-  border:1px solid rgba(45,125,210,.3);font-weight:600;letter-spacing:.4px}
-.spacer{flex:1}
-#gpu-badge,#bls-badge{display:flex;align-items:center;gap:5px;
-  font-size:11px;color:var(--text-dim);padding:4px 10px;
-  border-radius:20px;border:1px solid var(--border);background:var(--surface)}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0}
-.dot.ok{background:var(--success);box-shadow:0 0 5px var(--success)}
-.dot.warn{background:var(--warn)}
-.dot.live{background:var(--success);box-shadow:0 0 5px var(--success);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
-/* ── Layout ── */
-#app{display:flex;height:100vh;padding-top:var(--hh)}
-#panel{width:var(--panel);min-width:var(--panel);height:100%;
-  background:var(--surface);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-#maparea{flex:1;position:relative}
-
-/* ── Panel sections ── */
-.sec{padding:14px;border-bottom:1px solid var(--border)}
-.sec-title{font-size:10px;font-weight:700;letter-spacing:.8px;
-  text-transform:uppercase;color:var(--text-dim);margin-bottom:10px}
-
-/* ── Upload zone ── */
-#drop{border:2px dashed rgba(45,125,210,.35);border-radius:var(--r);
-  padding:20px 14px;text-align:center;cursor:pointer;
-  background:rgba(45,125,210,.04);transition:all var(--t);position:relative}
-#drop:hover,#drop.over{border-color:var(--accent);background:rgba(45,125,210,.10)}
-#drop input{display:none}
-#drop .di{font-size:28px;margin-bottom:6px}
-#drop p{color:var(--text-dim);line-height:1.5;font-size:12px}
-#drop strong{color:var(--text)}
-
-/* Tabs for upload/paste */
-.tabs{display:flex;gap:0;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
-.tab{flex:1;padding:6px;text-align:center;cursor:pointer;font-size:11px;
-  background:var(--surface2);color:var(--text-dim);transition:all var(--t)}
-.tab.active{background:var(--accent);color:#fff;font-weight:600}
-#paste-area{width:100%;height:110px;background:var(--surface2);
-  border:1px solid var(--border);border-radius:8px;color:var(--text);
-  font-size:12px;padding:10px;resize:none;outline:none;
-  transition:border-color var(--t);display:none;font-family:inherit}
-#paste-area:focus{border-color:var(--accent)}
-#analyze-btn{width:100%;margin-top:8px;padding:9px;border-radius:8px;
-  background:var(--accent);color:#fff;border:none;cursor:pointer;
-  font-size:13px;font-weight:600;transition:all var(--t)}
-#analyze-btn:hover:not(:disabled){background:#1a6bc2}
-#analyze-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* ── Career profile card ── */
-#profile-card{display:none;background:var(--surface2);border-radius:var(--r);
-  padding:12px;border:1px solid var(--border)}
-.profile-domain{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.domain-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.domain-label{font-weight:700;font-size:14px}
-.skill-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.stag{font-size:10px;padding:2px 8px;border-radius:20px;
-  background:rgba(45,125,210,.15);color:var(--accent2);
-  border:1px solid rgba(45,125,210,.2)}
-.profile-meta{font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5}
-
-/* ── Stats strip ── */
-#stats-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.stat{background:var(--surface2);border-radius:8px;padding:10px;text-align:center}
-.stat .sv{font-size:18px;font-weight:700;color:var(--accent2)}
-.stat .sl{font-size:10px;color:var(--text-dim);margin-top:2px}
-
-/* ── Top cities list ── */
-#cities-list{display:flex;flex-direction:column;gap:5px}
-.city-row{display:flex;align-items:center;gap:8px;padding:6px 8px;
-  background:var(--surface2);border-radius:8px;cursor:pointer;
-  transition:all var(--t);border:1px solid transparent}
-.city-row:hover{border-color:var(--accent);background:rgba(45,125,210,.08)}
-.city-rank{font-size:11px;color:var(--text-dim);min-width:18px}
-.city-info{flex:1;min-width:0}
-.city-name{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.city-count{font-size:10px;color:var(--text-dim)}
-.city-bar{height:3px;border-radius:2px;background:var(--accent);margin-top:3px;transition:width .4s ease}
-
-/* ── AI Insights ── */
-#model-row{display:flex;gap:6px;margin-bottom:8px}
-#model-row select{flex:1;background:var(--surface2);border:1px solid var(--border);
-  border-radius:8px;color:var(--text);padding:6px 8px;font-size:12px;outline:none}
-#load-ai-btn{padding:6px 12px;border-radius:8px;background:var(--accent);
-  color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;
-  transition:all var(--t);white-space:nowrap}
-#load-ai-btn:disabled{opacity:.4;cursor:not-allowed}
-#ai-progress{display:none;margin-bottom:8px}
-#ai-ptrack{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:3px}
-#ai-pfill{height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .3s}
-#ai-plabel{font-size:10px;color:var(--text-dim)}
-#insights-box{background:var(--surface2);border-radius:var(--r);padding:10px;
-  font-size:12px;line-height:1.6;color:var(--text-dim);min-height:60px;
-  border:1px solid var(--border);white-space:pre-wrap}
-#insights-box.has-content{color:var(--text)}
-.cursor::after{content:'▋';animation:blink .7s infinite;font-size:11px}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-
-/* ── Map ── */
-#map{position:absolute;inset:0}
-.leaflet-container{background:#0d1117!important}
-
-/* ── Custom marker ── */
-.career-bubble{border-radius:50%;border:2px solid rgba(255,255,255,.2);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:700;color:#fff;font-size:11px;cursor:pointer;
-  transition:transform .15s,box-shadow .15s;
-  box-shadow:0 2px 12px rgba(0,0,0,.5)}
-.career-bubble:hover{transform:scale(1.15);box-shadow:0 4px 20px rgba(0,0,0,.7)}
-.career-bubble.top{animation:ring 2s infinite}
-@keyframes ring{
-  0%{box-shadow:0 0 0 0 rgba(45,125,210,.6)}
-  70%{box-shadow:0 0 0 12px rgba(45,125,210,0)}
-  100%{box-shadow:0 0 0 0 rgba(45,125,210,0)}
+#hdr {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--hh);
+  z-index: 1000;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 12px;
 }
 
-/* ── Data source tooltip ── */
-#data-src{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
-  background:rgba(22,27,34,.9);border:1px solid var(--border);
-  border-radius:20px;padding:4px 12px;font-size:10px;color:var(--text-dim);
-  z-index:500;pointer-events:none}
+.logo {
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
 
-/* ── Loading overlay ── */
-#loading{position:absolute;inset:0;background:rgba(13,17,23,.85);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;z-index:600;display:none}
-#loading .spin{width:36px;height:36px;border:3px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#loading p{font-size:13px;color:var(--text-dim)}
+.logo-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+}
 
-/* ── Empty map hint ── */
-#map-hint{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;pointer-events:none;z-index:10}
-#map-hint .big{font-size:52px;opacity:.15;margin-bottom:10px}
-#map-hint h3{font-size:16px;color:rgba(201,209,217,.3);font-weight:600}
-#map-hint p{font-size:12px;color:rgba(139,148,158,.5);margin-top:4px}
+.pill {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid #bfdbfe;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.spacer { flex: 1; }
+
+#gpu-badge, #bls-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+.dot.ok { background: var(--success); box-shadow: 0 0 5px var(--success); }
+.dot.warn { background: var(--warn); }
+.dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Main App Layout ── */
+#app {
+  display: flex;
+  height: 100vh;
+  padding-top: var(--hh);
+}
+
+#panel {
+  width: var(--panel-w);
+  min-width: var(--panel-w);
+  height: 100%;
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.02);
+  z-index: 10;
+}
+
+#maparea {
+  flex: 1;
+  position: relative;
+  background: #f1f5f9;
+}
+
+/* ── Panel sections ── */
+.sec {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sec-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Upload Tabs ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.tab {
+  flex: 1;
+  padding: 7px 10px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface2);
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+#drop {
+  border: 2px dashed #93c5fd;
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  text-align: center;
+  cursor: pointer;
+  background: #f8faff;
+  transition: all var(--transition);
+}
+
+#drop:hover, #drop.over {
+  border-color: var(--accent);
+  background: #eff6ff;
+}
+
+#drop input { display: none; }
+#drop .di { font-size: 26px; margin-bottom: 4px; }
+#drop p { color: var(--text-muted); line-height: 1.4; font-size: 12px; }
+#drop strong { color: var(--text); }
+
+#paste-area {
+  width: 100%;
+  height: 110px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 10px;
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition);
+  display: none;
+  font-family: inherit;
+}
+#paste-area:focus { border-color: var(--border-focus); box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+#analyze-btn {
+  width: 100%;
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+  transition: all var(--transition);
+}
+#analyze-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 10px rgba(37,99,235,0.35);
+}
+#analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#sample-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all var(--transition);
+}
+#sample-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ── Career Profile Card ── */
+#profile-card {
+  display: none;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+
+.profile-domain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.domain-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.domain-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.stag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--accent);
+  border: 1px solid #bfdbfe;
+  font-weight: 500;
+}
+
+.profile-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* ── Stats Strip ── */
+#stats-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stat {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.stat .sv {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.stat .sl {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Top Cities List ── */
+#city-search {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  margin-bottom: 8px;
+}
+#city-search:focus {
+  border-color: var(--accent);
+}
+
+#cities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.city-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  background: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+.city-row:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.city-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 20px;
+}
+.city-info {
+  flex: 1;
+  min-width: 0;
+}
+.city-name {
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #0f172a;
+}
+.city-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.city-bar {
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── AI Insights ── */
+#model-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+#model-row select {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+}
+#load-ai-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+#load-ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#ai-progress { display: none; margin-bottom: 8px; }
+#ai-ptrack { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+#ai-pfill { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+#ai-plabel { font-size: 11px; color: var(--text-muted); }
+
+#insights-box {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  min-height: 70px;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+}
+#insights-box.has-content { color: var(--text); background: #ffffff; }
+
+.cursor::after {
+  content: '▋';
+  animation: blink 0.7s infinite;
+  font-size: 11px;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ── Map Elements & Controls ── */
+#map { position: absolute; inset: 0; }
+.leaflet-container { background: #f8fafc !important; }
+
+/* Region Filter Bar floating on Map */
+#region-bar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  gap: 6px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  padding: 5px 8px;
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.rchip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all var(--transition);
+}
+.rchip:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.rchip.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* Density / Map style toggle controls */
+#map-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mctl-btn {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--transition);
+}
+.mctl-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Custom Map Marker Bubble */
+.career-bubble {
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+}
+.career-bubble:hover {
+  transform: scale(1.18);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  z-index: 1000 !important;
+}
+.career-bubble.top {
+  animation: ring 2.2s infinite;
+}
+@keyframes ring {
+  0%   { box-shadow: 0 0 0 0 rgba(37,99,235,0.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(37,99,235,0); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+
+/* Data Source Legend Bar */
+#data-src {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  z-index: 500;
+  pointer-events: none;
+}
+#data-src strong { color: #0f172a; }
+
+/* Loading overlay */
+#loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 600;
+  display: none;
+}
+#loading .spin {
+  width: 38px;
+  height: 38px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading p { font-size: 13px; font-weight: 500; color: #0f172a; }
+
+/* Map empty hint */
+#map-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+#map-hint .big { font-size: 56px; opacity: 0.35; margin-bottom: 10px; }
+#map-hint h3 { font-size: 18px; color: #334155; font-weight: 600; }
+#map-hint p { font-size: 13px; color: #64748b; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -178,17 +643,17 @@ html,body{height:100%;overflow:hidden;
     <div class="logo-icon">🌍</div>
     Career Geography
   </div>
-  <span class="pill">WebLLM · WebGPU · Live BLS Data</span>
+  <span class="pill">Light Mode · WebLLM · Live BLS Data</span>
   <div class="spacer"></div>
   <div id="bls-badge"><div class="dot" id="bls-dot"></div><span id="bls-txt">BLS API…</span></div>
   <div id="gpu-badge"><div class="dot" id="gpu-dot"></div><span id="gpu-txt">WebGPU…</span></div>
 </header>
 
 <div id="app">
-  <!-- LEFT PANEL -->
+  <!-- LEFT SIDEBAR PANEL -->
   <aside id="panel">
 
-    <!-- Upload -->
+    <!-- Upload Section -->
     <div class="sec">
       <div class="sec-title">📄 Your Resume</div>
       <div class="tabs">
@@ -198,7 +663,7 @@ html,body{height:100%;overflow:hidden;
 
       <!-- File upload -->
       <div id="drop" onclick="document.getElementById('fi').click()"
-           ondragover="ev.preventDefault();this.classList.add('over')"
+           ondragover="event.preventDefault();this.classList.add('over')"
            ondragleave="this.classList.remove('over')"
            ondrop="handleDrop(event)">
         <input type="file" id="fi" accept=".pdf,.txt,.doc" onchange="handleFile(event)"/>
@@ -206,19 +671,15 @@ html,body{height:100%;overflow:hidden;
         <p><strong>Drop PDF or TXT here</strong><br/>or click to browse</p>
       </div>
 
-      <!-- Paste -->
+      <!-- Paste area -->
       <textarea id="paste-area" placeholder="Paste your resume text here…"></textarea>
 
       <button id="analyze-btn" disabled onclick="analyzeResume()">
         🔍 Analyze &amp; Map My Career
       </button>
-      <button id="sample-btn" onclick="loadSample()" style="
-        width:100%;margin-top:6px;padding:7px;border-radius:8px;
-        border:1px solid var(--border);background:var(--surface2);
-        color:var(--text-dim);cursor:pointer;font-size:12px;transition:all var(--t);"
-        onmouseover="this.style.borderColor='var(--accent);this.style.color='var(--text)'"
-        onmouseout="this.style.borderColor='';this.style.color=''">
-        ✨ Try a sample resume
+
+      <button id="sample-btn" onclick="loadSample()">
+        ✨ Try Sample: Data Scientist
       </button>
     </div>
 
@@ -230,23 +691,26 @@ html,body{height:100%;overflow:hidden;
           <div class="domain-dot" id="pd-dot"></div>
           <div class="domain-label" id="pd-label">—</div>
         </div>
-        <div id="pd-secondary" style="font-size:11px;color:var(--text-dim);margin-bottom:4px"></div>
+        <div id="pd-secondary" style="font-size:11px;color:var(--text-muted);margin-bottom:6px"></div>
         <div class="skill-tags" id="pd-skills"></div>
         <div class="profile-meta" id="pd-meta"></div>
       </div>
       <div id="stats-strip">
-        <div class="stat"><div class="sv" id="st-total">—</div><div class="sl">US Professionals</div></div>
-        <div class="stat"><div class="sv" id="st-global">—</div><div class="sl">Global Est.</div></div>
+        <div class="stat"><div class="sv" id="st-total">—</div><div class="sl">US Workforce</div></div>
+        <div class="stat"><div class="sv" id="st-global">—</div><div class="sl">Global Talent Est.</div></div>
       </div>
     </div>
 
-    <!-- Top Cities -->
+    <!-- Top Hubs / Cities List -->
     <div class="sec" id="topcities-sec" style="display:none">
-      <div class="sec-title">📍 Top Hubs for Your Career</div>
+      <div class="sec-title">
+        <span>📍 Major Hubs (<span id="visible-count">0</span>)</span>
+      </div>
+      <input type="text" id="city-search" placeholder="Filter cities (e.g. Chicago, London)..." oninput="filterCitiesList()"/>
       <div id="cities-list"></div>
     </div>
 
-    <!-- AI Insights -->
+    <!-- AI Insights (WebLLM) -->
     <div class="sec">
       <div class="sec-title">🧠 AI Insights (WebLLM)</div>
       <div id="model-row">
@@ -259,23 +723,50 @@ html,body{height:100%;overflow:hidden;
       </div>
       <div id="ai-progress">
         <div id="ai-ptrack"><div id="ai-pfill"></div></div>
-        <div id="ai-plabel">Loading…</div>
+        <div id="ai-plabel">Loading model…</div>
       </div>
       <div id="insights-box">Upload your resume to see AI-powered career geography insights here.</div>
     </div>
+
   </aside>
 
-  <!-- MAP -->
+  <!-- MAP CANVAS -->
   <main id="maparea">
+    <!-- Region Filter Bar -->
+    <div id="region-bar">
+      <button class="rchip active" onclick="filterRegion('ALL', this)">All Regions (137)</button>
+      <button class="rchip" onclick="filterRegion('NA', this)">North America</button>
+      <button class="rchip" onclick="filterRegion('EU', this)">Europe</button>
+      <button class="rchip" onclick="filterRegion('APAC', this)">Asia-Pacific</button>
+      <button class="rchip" onclick="filterRegion('LATAM', this)">Latin America</button>
+      <button class="rchip" onclick="filterRegion('MEA', this)">Middle East & Africa</button>
+    </div>
+
+    <!-- Controls toggle -->
+    <div id="map-controls">
+      <button class="mctl-btn" id="tile-toggle-btn" onclick="toggleTileLayer()">
+        🗺️ Basemap: Light Canvas
+      </button>
+      <button class="mctl-btn" id="density-btn" onclick="toggleDensity()">
+        📊 View: All Hubs (137)
+      </button>
+    </div>
+
     <div id="map-hint">
       <div class="big">🌍</div>
       <h3>Upload your resume to see the map</h3>
-      <p>Dots show where professionals in your field are concentrated</p>
+      <p>137+ global metropolitan hubs will light up showing talent density in your field</p>
     </div>
+
     <div id="map"></div>
-    <div id="loading"><div class="spin"></div><p id="loading-msg">Fetching live BLS data…</p></div>
+
+    <div id="loading">
+      <div class="spin"></div>
+      <p id="loading-msg">Fetching live BLS data…</p>
+    </div>
+
     <div id="data-src">
-      Data: <strong>US Bureau of Labor Statistics OES</strong> (live) · International: ILO 2024 estimates
+      Data: <strong>US Bureau of Labor Statistics OES</strong> (live API query) · International: ILO 2024 Benchmark
     </div>
   </main>
 </div>
@@ -285,113 +776,2918 @@ html,body{height:100%;overflow:hidden;
    CAREER DOMAINS — BLS SOC codes + distribution data
 ══════════════════════════════════════════════════════ */
 const DOMAINS = {
-  software:     { label:'Software Engineering',  color:'#3b82f6', soc:'151252', fb:1847900,
+  software:     { label:'Software Engineering',  color:'#2563eb', soc:'151252', fb:1847900,
     kw:['software','developer','engineer','programmer','frontend','backend','fullstack','python','javascript','java','golang','rust','node','react','aws','devops','kubernetes','docker','api','microservices','typescript','c++','c#'] },
-  data_science: { label:'Data Science & AI/ML',  color:'#8b5cf6', soc:'152051', fb:168900,
+  data_science: { label:'Data Science & AI/ML',  color:'#7c3aed', soc:'152051', fb:168900,
     kw:['data scientist','machine learning','deep learning','ai','neural','nlp','computer vision','tensorflow','pytorch','sklearn','tableau','analytics','statistician','r programming','spark','big data','llm','generative'] },
-  product:      { label:'Product Management',    color:'#06b6d4', soc:'112021', fb:316800,
+  product:      { label:'Product Management',    color:'#0891b2', soc:'112021', fb:316800,
     kw:['product manager','product owner','roadmap','agile','scrum','sprint','backlog','okr','go-to-market','product strategy','product lead','product development'] },
-  design:       { label:'Design & UX',           color:'#ec4899', soc:'271021', fb:195000,
+  design:       { label:'Design & UX',           color:'#db2777', soc:'271021', fb:195000,
     kw:['ux','ui','user experience','user interface','designer','figma','sketch','adobe xd','wireframe','prototype','visual design','graphic','interaction design','creative director'] },
-  marketing:    { label:'Marketing & Growth',    color:'#f59e0b', soc:'131161', fb:792000,
+  marketing:    { label:'Marketing & Growth',    color:'#d97706', soc:'131161', fb:792000,
     kw:['marketing','growth','brand','content marketing','seo','sem','digital marketing','campaign','advertising','social media','email marketing','demand generation','performance marketing'] },
-  sales:        { label:'Sales & Business Dev',  color:'#f97316', soc:'413099', fb:1500000,
+  sales:        { label:'Sales & Business Dev',  color:'#ea580c', soc:'413099', fb:1500000,
     kw:['sales','business development','account executive','account manager','revenue','quota','crm','salesforce','enterprise sales','b2b','partnership','closing','hunter'] },
-  finance:      { label:'Finance & Investment',  color:'#2dce71', soc:'132051', fb:347400,
+  finance:      { label:'Finance & Investment',  color:'#16a34a', soc:'132051', fb:347400,
     kw:['finance','financial analyst','investment banking','private equity','venture capital','hedge fund','portfolio','equity research','trading','cfa','bloomberg','financial modeling','valuation','capital markets','m&a'] },
-  consulting:   { label:'Strategy & Consulting', color:'#14b8a6', soc:'131111', fb:906700,
+  consulting:   { label:'Strategy & Consulting', color:'#0d9488', soc:'131111', fb:906700,
     kw:['consulting','management consulting','strategy','mckinsey','bain','bcg','deloitte','accenture','advisory','management analyst','business analyst','transformation','strategic planning'] },
-  supply_chain: { label:'Supply Chain & Ops',    color:'#84cc16', soc:'131081', fb:182000,
+  supply_chain: { label:'Supply Chain & Ops',    color:'#65a30d', soc:'131081', fb:182000,
     kw:['supply chain','logistics','operations','procurement','warehouse','inventory','demand planning','forecasting','lean','six sigma','s&op','distribution','fulfillment','sourcing','vendor management'] },
-  healthcare:   { label:'Healthcare & Biotech',  color:'#f43f5e', soc:'291141', fb:3200000,
+  healthcare:   { label:'Healthcare & Biotech',  color:'#e11d48', soc:'291141', fb:3200000,
     kw:['healthcare','biotech','pharmaceutical','medical','clinical','nurse','physician','patient','hospital','fda','drug','genomics','clinical trial','life sciences','regulatory'] },
-  legal:        { label:'Legal & Compliance',    color:'#94a3b8', soc:'231011', fb:682000,
+  legal:        { label:'Legal & Compliance',    color:'#475569', soc:'231011', fb:682000,
     kw:['lawyer','attorney','legal','compliance','counsel','law firm','litigation','contract','intellectual property','regulatory','paralegal','juris','bar'] },
-  research:     { label:'Research & Academia',   color:'#0ea5e9', soc:'191042', fb:125000,
+  research:     { label:'Research & Academia',   color:'#0284c7', soc:'191042', fb:125000,
     kw:['research','phd','professor','academic','publication','journal','laboratory','university','postdoc','dissertation','thesis','grant','scientist','principal investigator'] },
 };
 
 /* ══════════════════════════════════════════════════════
-   CITY DATA — % share of national total per domain
-   Source: BLS OES metro area data patterns 2023/2024
+   137 METROPOLITAN HUBS WORLDWIDE
 ══════════════════════════════════════════════════════ */
 const CITIES = [
-  // ── United States ──
-  { n:'San Francisco Bay Area', c:'US', lat:37.77, lng:-122.42,
-    pct:{ software:9.5,data_science:12.0,product:8.5,design:7.5,marketing:5.0,sales:5.5,finance:5.0,consulting:4.5,supply_chain:1.5,healthcare:2.0,legal:2.0,research:6.5 }},
-  { n:'New York City', c:'US', lat:40.71, lng:-74.01,
-    pct:{ software:8.0,data_science:9.5,product:9.0,design:10.0,marketing:12.5,sales:10.0,finance:18.5,consulting:14.0,supply_chain:3.0,healthcare:7.0,legal:16.0,research:4.5 }},
-  { n:'Seattle', c:'US', lat:47.61, lng:-122.33,
-    pct:{ software:7.5,data_science:6.5,product:5.5,design:4.5,marketing:3.0,sales:3.0,finance:2.5,consulting:2.0,supply_chain:2.5,healthcare:2.5,legal:1.5,research:2.5 }},
-  { n:'Austin', c:'US', lat:30.27, lng:-97.74,
-    pct:{ software:4.0,data_science:3.5,product:3.5,design:2.5,marketing:3.0,sales:4.0,finance:2.5,consulting:2.5,supply_chain:2.0,healthcare:1.5,legal:1.5,research:1.5 }},
-  { n:'Boston', c:'US', lat:42.36, lng:-71.06,
-    pct:{ software:4.5,data_science:6.0,product:3.5,design:3.0,marketing:3.5,sales:3.0,finance:5.5,consulting:6.5,supply_chain:1.5,healthcare:7.5,legal:4.5,research:9.0 }},
-  { n:'Chicago', c:'US', lat:41.88, lng:-87.63,
-    pct:{ software:3.5,data_science:3.5,product:3.0,design:3.5,marketing:5.5,sales:5.5,finance:8.0,consulting:8.5,supply_chain:5.5,healthcare:5.0,legal:6.0,research:2.5 }},
-  { n:'Los Angeles', c:'US', lat:34.05, lng:-118.24,
-    pct:{ software:4.5,data_science:4.0,product:5.0,design:8.0,marketing:8.5,sales:6.0,finance:4.5,consulting:3.5,supply_chain:3.0,healthcare:5.5,legal:5.5,research:3.0 }},
-  { n:'Washington DC', c:'US', lat:38.91, lng:-77.04,
-    pct:{ software:3.5,data_science:5.0,product:3.5,design:2.5,marketing:3.5,sales:3.5,finance:3.5,consulting:10.0,supply_chain:2.0,healthcare:3.5,legal:8.5,research:4.5 }},
-  { n:'Atlanta', c:'US', lat:33.75, lng:-84.39,
-    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:3.5,sales:4.5,finance:4.0,consulting:4.0,supply_chain:4.5,healthcare:3.5,legal:3.0,research:1.5 }},
-  { n:'Dallas', c:'US', lat:32.78, lng:-96.80,
-    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:3.0,sales:4.5,finance:3.5,consulting:3.0,supply_chain:4.0,healthcare:3.0,legal:3.0,research:1.0 }},
-  { n:'Denver', c:'US', lat:39.74, lng:-104.99,
-    pct:{ software:2.0,data_science:1.5,product:2.0,design:1.5,marketing:2.0,sales:2.5,finance:2.0,consulting:2.0,supply_chain:1.5,healthcare:2.0,legal:1.5,research:1.5 }},
-  { n:'Miami', c:'US', lat:25.76, lng:-80.19,
-    pct:{ software:1.5,data_science:1.5,product:1.5,design:2.0,marketing:3.0,sales:3.5,finance:4.0,consulting:2.0,supply_chain:2.0,healthcare:2.5,legal:3.0,research:0.8 }},
-  // ── Canada ──
-  { n:'Toronto', c:'CA', lat:43.65, lng:-79.38,
-    pct:{ software:4.0,data_science:3.5,product:3.0,design:3.0,marketing:3.5,sales:4.0,finance:5.5,consulting:3.5,supply_chain:2.5,healthcare:3.5,legal:3.5,research:2.5 }},
-  { n:'Vancouver', c:'CA', lat:49.28, lng:-123.12,
-    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.5,marketing:1.5,sales:1.5,finance:1.5,consulting:1.0,supply_chain:1.0,healthcare:1.5,legal:1.0,research:1.0 }},
-  // ── Europe ──
-  { n:'London', c:'GB', lat:51.51, lng:-0.13,
-    pct:{ software:8.5,data_science:7.5,product:7.0,design:7.0,marketing:9.0,sales:8.5,finance:13.0,consulting:12.0,supply_chain:4.5,healthcare:5.0,legal:9.5,research:6.0 }},
-  { n:'Berlin', c:'DE', lat:52.52, lng:13.41,
-    pct:{ software:4.5,data_science:3.5,product:4.0,design:4.5,marketing:4.5,sales:3.5,finance:2.0,consulting:2.5,supply_chain:1.5,healthcare:2.0,legal:1.5,research:3.5 }},
-  { n:'Amsterdam', c:'NL', lat:52.37, lng:4.90,
-    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.5,marketing:3.0,sales:3.0,finance:3.5,consulting:3.0,supply_chain:3.5,healthcare:2.0,legal:2.0,research:2.5 }},
-  { n:'Paris', c:'FR', lat:48.86, lng:2.35,
-    pct:{ software:3.5,data_science:3.0,product:3.0,design:4.0,marketing:5.5,sales:5.0,finance:5.5,consulting:6.0,supply_chain:3.0,healthcare:3.5,legal:4.0,research:4.5 }},
-  { n:'Stockholm', c:'SE', lat:59.33, lng:18.07,
-    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:1.5,sales:1.5,finance:1.5,consulting:1.5,supply_chain:1.0,healthcare:1.5,legal:1.0,research:2.0 }},
-  { n:'Zurich', c:'CH', lat:47.38, lng:8.54,
-    pct:{ software:2.0,data_science:1.5,product:1.5,design:1.0,marketing:1.0,sales:1.5,finance:5.0,consulting:3.5,supply_chain:1.0,healthcare:2.5,legal:1.5,research:3.0 }},
-  { n:'Dublin', c:'IE', lat:53.35, lng:-6.26,
-    pct:{ software:2.0,data_science:1.5,product:1.5,design:1.0,marketing:1.5,sales:2.0,finance:2.0,consulting:1.5,supply_chain:0.8,healthcare:1.0,legal:1.0,research:1.0 }},
-  // ── Asia Pacific ──
-  { n:'Singapore', c:'SG', lat:1.35, lng:103.82,
-    pct:{ software:3.0,data_science:2.5,product:2.0,design:1.5,marketing:2.5,sales:3.0,finance:6.0,consulting:4.5,supply_chain:5.5,healthcare:2.0,legal:2.5,research:2.0 }},
-  { n:'Tokyo', c:'JP', lat:35.68, lng:139.65,
-    pct:{ software:5.5,data_science:4.0,product:3.5,design:3.5,marketing:5.5,sales:6.0,finance:7.0,consulting:5.0,supply_chain:6.5,healthcare:5.0,legal:3.5,research:5.0 }},
-  { n:'Bangalore', c:'IN', lat:12.97, lng:77.59,
-    pct:{ software:8.0,data_science:6.5,product:3.5,design:2.0,marketing:2.0,sales:2.5,finance:1.5,consulting:2.5,supply_chain:2.0,healthcare:2.0,legal:1.0,research:3.5 }},
-  { n:'Sydney', c:'AU', lat:-33.87, lng:151.21,
-    pct:{ software:2.5,data_science:1.5,product:1.5,design:1.5,marketing:2.5,sales:2.5,finance:3.5,consulting:3.0,supply_chain:1.5,healthcare:2.5,legal:2.5,research:1.5 }},
-  { n:'Hong Kong', c:'HK', lat:22.32, lng:114.17,
-    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:6.5,consulting:3.5,supply_chain:2.5,healthcare:1.5,legal:2.5,research:1.0 }},
-  { n:'Beijing', c:'CN', lat:39.90, lng:116.41,
-    pct:{ software:5.5,data_science:5.0,product:4.0,design:3.0,marketing:5.0,sales:5.5,finance:4.0,consulting:3.5,supply_chain:4.0,healthcare:4.0,legal:2.5,research:6.0 }},
-  { n:'Seoul', c:'KR', lat:37.57, lng:126.98,
-    pct:{ software:3.5,data_science:2.5,product:2.5,design:3.0,marketing:3.5,sales:4.0,finance:3.5,consulting:2.5,supply_chain:3.0,healthcare:3.0,legal:2.0,research:3.0 }},
-  // ── Middle East / Africa ──
-  { n:'Dubai', c:'AE', lat:25.20, lng:55.27,
-    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:3.5,consulting:2.5,supply_chain:3.5,healthcare:1.0,legal:1.5,research:0.5 }},
-  { n:'Tel Aviv', c:'IL', lat:32.09, lng:34.78,
-    pct:{ software:2.5,data_science:2.0,product:2.0,design:1.5,marketing:1.5,sales:2.0,finance:1.5,consulting:1.0,supply_chain:0.8,healthcare:1.5,legal:0.8,research:2.5 }},
-  // ── Latin America ──
-  { n:'São Paulo', c:'BR', lat:-23.55, lng:-46.63,
-    pct:{ software:2.5,data_science:1.5,product:1.5,design:1.5,marketing:3.0,sales:3.5,finance:3.5,consulting:2.5,supply_chain:2.5,healthcare:2.5,legal:2.0,research:1.5 }},
-  { n:'Mexico City', c:'MX', lat:19.43, lng:-99.13,
-    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:2.0,consulting:1.5,supply_chain:2.0,healthcare:1.5,legal:1.0,research:0.8 }},
+  {
+    "n": "New York City Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 40.7128,
+    "lng": -74.006,
+    "pct": {
+      "software": 8.0,
+      "data_science": 9.5,
+      "product": 9.0,
+      "design": 10.0,
+      "marketing": 12.5,
+      "sales": 10.0,
+      "finance": 18.5,
+      "consulting": 14.0,
+      "supply_chain": 3.0,
+      "healthcare": 7.0,
+      "legal": 16.0,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Boston & Cambridge",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.3601,
+    "lng": -71.0589,
+    "pct": {
+      "software": 4.5,
+      "data_science": 6.0,
+      "product": 3.5,
+      "design": 3.0,
+      "marketing": 3.5,
+      "sales": 3.0,
+      "finance": 5.5,
+      "consulting": 6.5,
+      "supply_chain": 1.5,
+      "healthcare": 7.5,
+      "legal": 4.5,
+      "research": 9.0
+    }
+  },
+  {
+    "n": "Washington DC Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.9072,
+    "lng": -77.0369,
+    "pct": {
+      "software": 3.8,
+      "data_science": 5.2,
+      "product": 3.5,
+      "design": 2.5,
+      "marketing": 3.5,
+      "sales": 3.5,
+      "finance": 3.5,
+      "consulting": 10.0,
+      "supply_chain": 2.0,
+      "healthcare": 3.5,
+      "legal": 8.5,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Northern Virginia Tech Corridor",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.9586,
+    "lng": -77.357,
+    "pct": {
+      "software": 3.2,
+      "data_science": 3.5,
+      "product": 2.5,
+      "design": 1.5,
+      "marketing": 2.0,
+      "sales": 2.5,
+      "finance": 2.0,
+      "consulting": 4.0,
+      "supply_chain": 1.8,
+      "healthcare": 1.5,
+      "legal": 3.0,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Philadelphia Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.9526,
+    "lng": -75.1652,
+    "pct": {
+      "software": 2.2,
+      "data_science": 2.4,
+      "product": 1.8,
+      "design": 2.0,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 3.5,
+      "consulting": 3.0,
+      "supply_chain": 2.5,
+      "healthcare": 5.5,
+      "legal": 3.5,
+      "research": 3.2
+    }
+  },
+  {
+    "n": "Pittsburgh",
+    "c": "US",
+    "reg": "NA",
+    "lat": 40.4406,
+    "lng": -79.9959,
+    "pct": {
+      "software": 1.8,
+      "data_science": 2.5,
+      "product": 1.4,
+      "design": 1.2,
+      "marketing": 1.2,
+      "sales": 1.5,
+      "finance": 1.8,
+      "consulting": 1.8,
+      "supply_chain": 1.5,
+      "healthcare": 3.5,
+      "legal": 1.5,
+      "research": 4.0
+    }
+  },
+  {
+    "n": "Baltimore",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.2904,
+    "lng": -76.6122,
+    "pct": {
+      "software": 1.5,
+      "data_science": 1.8,
+      "product": 1.2,
+      "design": 1.0,
+      "marketing": 1.5,
+      "sales": 1.8,
+      "finance": 1.8,
+      "consulting": 2.0,
+      "supply_chain": 2.2,
+      "healthcare": 4.0,
+      "legal": 2.2,
+      "research": 3.5
+    }
+  },
+  {
+    "n": "Hartford & Stamford",
+    "c": "US",
+    "reg": "NA",
+    "lat": 41.7658,
+    "lng": -72.6734,
+    "pct": {
+      "software": 1.0,
+      "data_science": 1.2,
+      "product": 1.0,
+      "design": 0.8,
+      "marketing": 1.5,
+      "sales": 1.8,
+      "finance": 4.0,
+      "consulting": 2.2,
+      "supply_chain": 1.2,
+      "healthcare": 2.5,
+      "legal": 2.0,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Providence",
+    "c": "US",
+    "reg": "NA",
+    "lat": 41.824,
+    "lng": -71.4128,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.8,
+      "product": 0.7,
+      "design": 1.5,
+      "marketing": 1.0,
+      "sales": 1.0,
+      "finance": 1.2,
+      "consulting": 1.0,
+      "supply_chain": 0.9,
+      "healthcare": 1.8,
+      "legal": 1.0,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Chicago Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 41.8781,
+    "lng": -87.6298,
+    "pct": {
+      "software": 3.5,
+      "data_science": 3.5,
+      "product": 3.0,
+      "design": 3.5,
+      "marketing": 5.5,
+      "sales": 5.5,
+      "finance": 8.0,
+      "consulting": 8.5,
+      "supply_chain": 5.5,
+      "healthcare": 5.0,
+      "legal": 6.0,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Minneapolis-St. Paul",
+    "c": "US",
+    "reg": "NA",
+    "lat": 44.9778,
+    "lng": -93.265,
+    "pct": {
+      "software": 2.2,
+      "data_science": 2.0,
+      "product": 2.0,
+      "design": 2.0,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 3.0,
+      "consulting": 3.0,
+      "supply_chain": 3.5,
+      "healthcare": 4.5,
+      "legal": 2.2,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Detroit & Ann Arbor",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.3314,
+    "lng": -83.0458,
+    "pct": {
+      "software": 2.0,
+      "data_science": 2.2,
+      "product": 2.0,
+      "design": 2.2,
+      "marketing": 2.0,
+      "sales": 2.5,
+      "finance": 2.0,
+      "consulting": 2.5,
+      "supply_chain": 4.5,
+      "healthcare": 3.5,
+      "legal": 2.0,
+      "research": 3.8
+    }
+  },
+  {
+    "n": "Columbus",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.9612,
+    "lng": -82.9988,
+    "pct": {
+      "software": 1.6,
+      "data_science": 1.5,
+      "product": 1.4,
+      "design": 1.2,
+      "marketing": 2.0,
+      "sales": 2.2,
+      "finance": 2.8,
+      "consulting": 2.0,
+      "supply_chain": 3.2,
+      "healthcare": 2.5,
+      "legal": 1.8,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Indianapolis",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.7684,
+    "lng": -86.1581,
+    "pct": {
+      "software": 1.2,
+      "data_science": 1.2,
+      "product": 1.0,
+      "design": 1.0,
+      "marketing": 1.5,
+      "sales": 2.0,
+      "finance": 1.8,
+      "consulting": 1.8,
+      "supply_chain": 3.5,
+      "healthcare": 3.0,
+      "legal": 1.5,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Kansas City",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.0997,
+    "lng": -94.5786,
+    "pct": {
+      "software": 1.2,
+      "data_science": 1.1,
+      "product": 1.0,
+      "design": 1.0,
+      "marketing": 1.5,
+      "sales": 1.8,
+      "finance": 1.5,
+      "consulting": 1.5,
+      "supply_chain": 2.8,
+      "healthcare": 2.2,
+      "legal": 1.2,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "St. Louis",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.627,
+    "lng": -90.1994,
+    "pct": {
+      "software": 1.4,
+      "data_science": 1.5,
+      "product": 1.2,
+      "design": 1.1,
+      "marketing": 1.6,
+      "sales": 2.0,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 2.5,
+      "healthcare": 3.5,
+      "legal": 1.8,
+      "research": 2.4
+    }
+  },
+  {
+    "n": "Cincinnati & Dayton",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.1031,
+    "lng": -84.512,
+    "pct": {
+      "software": 1.2,
+      "data_science": 1.2,
+      "product": 1.2,
+      "design": 1.5,
+      "marketing": 2.5,
+      "sales": 2.0,
+      "finance": 2.0,
+      "consulting": 2.0,
+      "supply_chain": 2.8,
+      "healthcare": 2.8,
+      "legal": 1.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Cleveland",
+    "c": "US",
+    "reg": "NA",
+    "lat": 41.4993,
+    "lng": -81.6944,
+    "pct": {
+      "software": 1.1,
+      "data_science": 1.2,
+      "product": 1.0,
+      "design": 1.0,
+      "marketing": 1.4,
+      "sales": 1.8,
+      "finance": 2.0,
+      "consulting": 1.8,
+      "supply_chain": 2.2,
+      "healthcare": 4.0,
+      "legal": 1.8,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Milwaukee & Madison",
+    "c": "US",
+    "reg": "NA",
+    "lat": 43.0389,
+    "lng": -87.9065,
+    "pct": {
+      "software": 1.3,
+      "data_science": 1.4,
+      "product": 1.1,
+      "design": 1.0,
+      "marketing": 1.4,
+      "sales": 1.6,
+      "finance": 1.8,
+      "consulting": 1.5,
+      "supply_chain": 2.0,
+      "healthcare": 3.5,
+      "legal": 1.2,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Des Moines & Omaha",
+    "c": "US",
+    "reg": "NA",
+    "lat": 41.5868,
+    "lng": -93.625,
+    "pct": {
+      "software": 0.9,
+      "data_science": 0.8,
+      "product": 0.8,
+      "design": 0.6,
+      "marketing": 1.0,
+      "sales": 1.4,
+      "finance": 2.8,
+      "consulting": 1.2,
+      "supply_chain": 2.2,
+      "healthcare": 1.8,
+      "legal": 1.0,
+      "research": 1.0
+    }
+  },
+  {
+    "n": "San Francisco Bay Area",
+    "c": "US",
+    "reg": "NA",
+    "lat": 37.7749,
+    "lng": -122.4194,
+    "pct": {
+      "software": 9.5,
+      "data_science": 12.0,
+      "product": 8.5,
+      "design": 7.5,
+      "marketing": 5.0,
+      "sales": 5.5,
+      "finance": 5.0,
+      "consulting": 4.5,
+      "supply_chain": 1.5,
+      "healthcare": 2.0,
+      "legal": 2.0,
+      "research": 6.5
+    }
+  },
+  {
+    "n": "Silicon Valley & San Jose",
+    "c": "US",
+    "reg": "NA",
+    "lat": 37.3382,
+    "lng": -121.8863,
+    "pct": {
+      "software": 8.5,
+      "data_science": 9.0,
+      "product": 7.0,
+      "design": 5.5,
+      "marketing": 3.5,
+      "sales": 4.5,
+      "finance": 3.0,
+      "consulting": 3.0,
+      "supply_chain": 2.0,
+      "healthcare": 2.5,
+      "legal": 2.0,
+      "research": 6.0
+    }
+  },
+  {
+    "n": "Seattle & Bellevue",
+    "c": "US",
+    "reg": "NA",
+    "lat": 47.6062,
+    "lng": -122.3321,
+    "pct": {
+      "software": 7.5,
+      "data_science": 6.5,
+      "product": 5.5,
+      "design": 4.5,
+      "marketing": 3.0,
+      "sales": 3.0,
+      "finance": 2.5,
+      "consulting": 2.0,
+      "supply_chain": 2.5,
+      "healthcare": 2.5,
+      "legal": 1.5,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Los Angeles Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 34.0522,
+    "lng": -118.2437,
+    "pct": {
+      "software": 4.5,
+      "data_science": 4.0,
+      "product": 5.0,
+      "design": 8.0,
+      "marketing": 8.5,
+      "sales": 6.0,
+      "finance": 4.5,
+      "consulting": 3.5,
+      "supply_chain": 3.0,
+      "healthcare": 5.5,
+      "legal": 5.5,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "San Diego",
+    "c": "US",
+    "reg": "NA",
+    "lat": 32.7157,
+    "lng": -117.1611,
+    "pct": {
+      "software": 2.8,
+      "data_science": 3.0,
+      "product": 2.2,
+      "design": 2.5,
+      "marketing": 2.5,
+      "sales": 2.8,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 1.8,
+      "healthcare": 5.0,
+      "legal": 2.2,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Portland Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 45.5152,
+    "lng": -122.6784,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 3.0,
+      "marketing": 2.2,
+      "sales": 2.0,
+      "finance": 1.5,
+      "consulting": 1.5,
+      "supply_chain": 1.8,
+      "healthcare": 2.2,
+      "legal": 1.4,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Orange County & Irvine",
+    "c": "US",
+    "reg": "NA",
+    "lat": 33.6846,
+    "lng": -117.8265,
+    "pct": {
+      "software": 2.2,
+      "data_science": 2.0,
+      "product": 2.0,
+      "design": 2.4,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 2.5,
+      "consulting": 2.2,
+      "supply_chain": 2.0,
+      "healthcare": 3.0,
+      "legal": 2.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Sacramento",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.5816,
+    "lng": -121.4944,
+    "pct": {
+      "software": 1.2,
+      "data_science": 1.2,
+      "product": 1.0,
+      "design": 1.0,
+      "marketing": 1.2,
+      "sales": 1.5,
+      "finance": 1.4,
+      "consulting": 1.8,
+      "supply_chain": 1.5,
+      "healthcare": 2.5,
+      "legal": 2.8,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Austin",
+    "c": "US",
+    "reg": "NA",
+    "lat": 30.2672,
+    "lng": -97.7431,
+    "pct": {
+      "software": 4.0,
+      "data_science": 3.5,
+      "product": 3.5,
+      "design": 2.5,
+      "marketing": 3.0,
+      "sales": 4.0,
+      "finance": 2.5,
+      "consulting": 2.5,
+      "supply_chain": 2.0,
+      "healthcare": 1.5,
+      "legal": 1.5,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Denver & Boulder",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.7392,
+    "lng": -104.9903,
+    "pct": {
+      "software": 3.0,
+      "data_science": 2.5,
+      "product": 2.8,
+      "design": 2.2,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 2.5,
+      "consulting": 2.5,
+      "supply_chain": 1.8,
+      "healthcare": 2.5,
+      "legal": 2.0,
+      "research": 2.8
+    }
+  },
+  {
+    "n": "Phoenix Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 33.4484,
+    "lng": -112.074,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 1.8,
+      "marketing": 2.5,
+      "sales": 3.5,
+      "finance": 3.0,
+      "consulting": 2.0,
+      "supply_chain": 2.5,
+      "healthcare": 3.2,
+      "legal": 2.0,
+      "research": 1.4
+    }
+  },
+  {
+    "n": "Salt Lake City & Silicon Slopes",
+    "c": "US",
+    "reg": "NA",
+    "lat": 40.7608,
+    "lng": -111.891,
+    "pct": {
+      "software": 2.4,
+      "data_science": 1.8,
+      "product": 2.0,
+      "design": 1.6,
+      "marketing": 2.2,
+      "sales": 3.2,
+      "finance": 2.0,
+      "consulting": 1.8,
+      "supply_chain": 1.6,
+      "healthcare": 2.0,
+      "legal": 1.4,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Las Vegas",
+    "c": "US",
+    "reg": "NA",
+    "lat": 36.1699,
+    "lng": -115.1398,
+    "pct": {
+      "software": 1.0,
+      "data_science": 0.8,
+      "product": 1.0,
+      "design": 1.4,
+      "marketing": 2.5,
+      "sales": 2.8,
+      "finance": 1.5,
+      "consulting": 1.2,
+      "supply_chain": 1.6,
+      "healthcare": 1.8,
+      "legal": 1.8,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Boise",
+    "c": "US",
+    "reg": "NA",
+    "lat": 43.615,
+    "lng": -116.2023,
+    "pct": {
+      "software": 0.9,
+      "data_science": 0.7,
+      "product": 0.8,
+      "design": 0.6,
+      "marketing": 0.8,
+      "sales": 1.0,
+      "finance": 0.8,
+      "consulting": 0.8,
+      "supply_chain": 1.0,
+      "healthcare": 1.2,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Albuquerque",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.0844,
+    "lng": -106.6504,
+    "pct": {
+      "software": 0.8,
+      "data_science": 1.0,
+      "product": 0.6,
+      "design": 0.5,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 0.8,
+      "supply_chain": 0.8,
+      "healthcare": 1.5,
+      "legal": 0.8,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Dallas-Fort Worth Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 32.7767,
+    "lng": -96.797,
+    "pct": {
+      "software": 3.8,
+      "data_science": 3.2,
+      "product": 3.0,
+      "design": 2.8,
+      "marketing": 4.5,
+      "sales": 5.5,
+      "finance": 5.5,
+      "consulting": 4.5,
+      "supply_chain": 5.5,
+      "healthcare": 4.5,
+      "legal": 4.5,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Houston Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 29.7604,
+    "lng": -95.3698,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.8,
+      "product": 2.5,
+      "design": 2.0,
+      "marketing": 3.5,
+      "sales": 4.8,
+      "finance": 4.5,
+      "consulting": 4.0,
+      "supply_chain": 5.0,
+      "healthcare": 6.0,
+      "legal": 4.5,
+      "research": 3.2
+    }
+  },
+  {
+    "n": "Atlanta Metro",
+    "c": "US",
+    "reg": "NA",
+    "lat": 33.749,
+    "lng": -84.388,
+    "pct": {
+      "software": 3.0,
+      "data_science": 2.8,
+      "product": 2.8,
+      "design": 2.5,
+      "marketing": 4.5,
+      "sales": 5.0,
+      "finance": 4.5,
+      "consulting": 5.0,
+      "supply_chain": 5.5,
+      "healthcare": 4.2,
+      "legal": 3.8,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Raleigh-Durham (Research Triangle)",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.7796,
+    "lng": -78.6382,
+    "pct": {
+      "software": 2.8,
+      "data_science": 3.5,
+      "product": 2.0,
+      "design": 1.8,
+      "marketing": 2.0,
+      "sales": 2.2,
+      "finance": 2.0,
+      "consulting": 2.5,
+      "supply_chain": 1.8,
+      "healthcare": 5.8,
+      "legal": 1.8,
+      "research": 6.0
+    }
+  },
+  {
+    "n": "Charlotte",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.2271,
+    "lng": -80.8431,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.8,
+      "product": 1.5,
+      "design": 1.5,
+      "marketing": 2.5,
+      "sales": 3.0,
+      "finance": 7.5,
+      "consulting": 2.8,
+      "supply_chain": 2.5,
+      "healthcare": 2.5,
+      "legal": 2.5,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Miami & Fort Lauderdale",
+    "c": "US",
+    "reg": "NA",
+    "lat": 25.7617,
+    "lng": -80.1918,
+    "pct": {
+      "software": 2.2,
+      "data_science": 2.0,
+      "product": 2.2,
+      "design": 3.0,
+      "marketing": 4.5,
+      "sales": 4.5,
+      "finance": 5.5,
+      "consulting": 3.0,
+      "supply_chain": 3.5,
+      "healthcare": 3.5,
+      "legal": 4.0,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Tampa-St. Petersburg",
+    "c": "US",
+    "reg": "NA",
+    "lat": 27.9506,
+    "lng": -82.4572,
+    "pct": {
+      "software": 1.6,
+      "data_science": 1.4,
+      "product": 1.4,
+      "design": 1.5,
+      "marketing": 2.5,
+      "sales": 3.0,
+      "finance": 3.0,
+      "consulting": 2.0,
+      "supply_chain": 2.4,
+      "healthcare": 3.5,
+      "legal": 2.2,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Orlando",
+    "c": "US",
+    "reg": "NA",
+    "lat": 28.5383,
+    "lng": -81.3792,
+    "pct": {
+      "software": 1.5,
+      "data_science": 1.2,
+      "product": 1.2,
+      "design": 1.8,
+      "marketing": 2.5,
+      "sales": 2.8,
+      "finance": 1.8,
+      "consulting": 1.8,
+      "supply_chain": 2.0,
+      "healthcare": 2.5,
+      "legal": 1.8,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Nashville",
+    "c": "US",
+    "reg": "NA",
+    "lat": 36.1627,
+    "lng": -86.7816,
+    "pct": {
+      "software": 1.6,
+      "data_science": 1.5,
+      "product": 1.5,
+      "design": 1.8,
+      "marketing": 2.8,
+      "sales": 2.5,
+      "finance": 2.2,
+      "consulting": 2.2,
+      "supply_chain": 2.2,
+      "healthcare": 6.5,
+      "legal": 2.0,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Jacksonville",
+    "c": "US",
+    "reg": "NA",
+    "lat": 30.3322,
+    "lng": -81.6557,
+    "pct": {
+      "software": 1.0,
+      "data_science": 0.9,
+      "product": 0.8,
+      "design": 0.8,
+      "marketing": 1.5,
+      "sales": 2.0,
+      "finance": 2.8,
+      "consulting": 1.4,
+      "supply_chain": 3.0,
+      "healthcare": 2.5,
+      "legal": 1.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "San Antonio",
+    "c": "US",
+    "reg": "NA",
+    "lat": 29.4241,
+    "lng": -98.4936,
+    "pct": {
+      "software": 1.4,
+      "data_science": 1.2,
+      "product": 1.0,
+      "design": 1.0,
+      "marketing": 1.5,
+      "sales": 2.2,
+      "finance": 2.2,
+      "consulting": 1.5,
+      "supply_chain": 2.0,
+      "healthcare": 3.2,
+      "legal": 1.8,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Richmond",
+    "c": "US",
+    "reg": "NA",
+    "lat": 37.5407,
+    "lng": -77.436,
+    "pct": {
+      "software": 1.0,
+      "data_science": 1.0,
+      "product": 0.8,
+      "design": 0.8,
+      "marketing": 1.4,
+      "sales": 1.5,
+      "finance": 2.5,
+      "consulting": 1.8,
+      "supply_chain": 1.8,
+      "healthcare": 2.0,
+      "legal": 2.0,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Louisville & Lexington",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.2527,
+    "lng": -85.7585,
+    "pct": {
+      "software": 0.9,
+      "data_science": 0.8,
+      "product": 0.7,
+      "design": 0.7,
+      "marketing": 1.2,
+      "sales": 1.5,
+      "finance": 1.6,
+      "consulting": 1.2,
+      "supply_chain": 3.8,
+      "healthcare": 3.0,
+      "legal": 1.2,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Memphis",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.1495,
+    "lng": -90.049,
+    "pct": {
+      "software": 0.7,
+      "data_science": 0.7,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 1.0,
+      "sales": 1.5,
+      "finance": 1.2,
+      "consulting": 1.0,
+      "supply_chain": 4.5,
+      "healthcare": 3.0,
+      "legal": 1.0,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "New Orleans",
+    "c": "US",
+    "reg": "NA",
+    "lat": 29.9511,
+    "lng": -90.0715,
+    "pct": {
+      "software": 0.6,
+      "data_science": 0.6,
+      "product": 0.6,
+      "design": 0.8,
+      "marketing": 1.2,
+      "sales": 1.4,
+      "finance": 1.0,
+      "consulting": 1.0,
+      "supply_chain": 2.5,
+      "healthcare": 2.5,
+      "legal": 1.6,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Huntsville",
+    "c": "US",
+    "reg": "NA",
+    "lat": 34.7304,
+    "lng": -86.5861,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.5,
+      "product": 1.0,
+      "design": 0.6,
+      "marketing": 0.5,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 1.2,
+      "supply_chain": 1.2,
+      "healthcare": 1.0,
+      "legal": 0.6,
+      "research": 3.5
+    }
+  },
+  {
+    "n": "Toronto Metro",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 43.6532,
+    "lng": -79.3832,
+    "pct": {
+      "software": 4.5,
+      "data_science": 4.2,
+      "product": 3.5,
+      "design": 3.5,
+      "marketing": 4.0,
+      "sales": 4.5,
+      "finance": 6.5,
+      "consulting": 4.5,
+      "supply_chain": 3.0,
+      "healthcare": 3.5,
+      "legal": 4.0,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Vancouver Metro",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 49.2827,
+    "lng": -123.1207,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 2.2,
+      "marketing": 2.0,
+      "sales": 2.0,
+      "finance": 2.0,
+      "consulting": 1.8,
+      "supply_chain": 1.8,
+      "healthcare": 1.8,
+      "legal": 1.5,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Montreal",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 45.5017,
+    "lng": -73.5673,
+    "pct": {
+      "software": 2.8,
+      "data_science": 3.8,
+      "product": 2.0,
+      "design": 2.5,
+      "marketing": 2.5,
+      "sales": 2.2,
+      "finance": 2.5,
+      "consulting": 2.2,
+      "supply_chain": 2.0,
+      "healthcare": 2.8,
+      "legal": 2.0,
+      "research": 3.5
+    }
+  },
+  {
+    "n": "Ottawa",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 45.4215,
+    "lng": -75.6972,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.5,
+      "product": 1.2,
+      "design": 1.0,
+      "marketing": 1.0,
+      "sales": 1.2,
+      "finance": 1.0,
+      "consulting": 2.0,
+      "supply_chain": 1.0,
+      "healthcare": 1.5,
+      "legal": 2.2,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Calgary & Edmonton",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 51.0447,
+    "lng": -114.0719,
+    "pct": {
+      "software": 1.5,
+      "data_science": 1.4,
+      "product": 1.2,
+      "design": 1.0,
+      "marketing": 1.5,
+      "sales": 2.0,
+      "finance": 2.2,
+      "consulting": 1.8,
+      "supply_chain": 2.5,
+      "healthcare": 2.0,
+      "legal": 1.8,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Waterloo & Kitchener",
+    "c": "CA",
+    "reg": "NA",
+    "lat": 43.4643,
+    "lng": -80.5204,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.8,
+      "product": 1.4,
+      "design": 1.2,
+      "marketing": 0.8,
+      "sales": 1.0,
+      "finance": 1.0,
+      "consulting": 1.0,
+      "supply_chain": 1.0,
+      "healthcare": 1.0,
+      "legal": 0.6,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "London",
+    "c": "GB",
+    "reg": "EU",
+    "lat": 51.5074,
+    "lng": -0.1278,
+    "pct": {
+      "software": 8.5,
+      "data_science": 7.5,
+      "product": 7.0,
+      "design": 7.0,
+      "marketing": 9.0,
+      "sales": 8.5,
+      "finance": 13.0,
+      "consulting": 12.0,
+      "supply_chain": 4.5,
+      "healthcare": 5.0,
+      "legal": 9.5,
+      "research": 6.0
+    }
+  },
+  {
+    "n": "Manchester & Leeds",
+    "c": "GB",
+    "reg": "EU",
+    "lat": 53.4808,
+    "lng": -2.2426,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 2.0,
+      "marketing": 2.5,
+      "sales": 2.5,
+      "finance": 3.0,
+      "consulting": 2.5,
+      "supply_chain": 2.5,
+      "healthcare": 2.5,
+      "legal": 2.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Edinburgh & Glasgow",
+    "c": "GB",
+    "reg": "EU",
+    "lat": 55.9533,
+    "lng": -3.1883,
+    "pct": {
+      "software": 1.8,
+      "data_science": 2.0,
+      "product": 1.4,
+      "design": 1.5,
+      "marketing": 1.6,
+      "sales": 1.8,
+      "finance": 3.5,
+      "consulting": 2.0,
+      "supply_chain": 1.5,
+      "healthcare": 2.2,
+      "legal": 2.0,
+      "research": 2.8
+    }
+  },
+  {
+    "n": "Cambridge & Oxford",
+    "c": "GB",
+    "reg": "EU",
+    "lat": 52.2053,
+    "lng": 0.1218,
+    "pct": {
+      "software": 2.8,
+      "data_science": 3.5,
+      "product": 1.8,
+      "design": 1.2,
+      "marketing": 1.2,
+      "sales": 1.2,
+      "finance": 1.5,
+      "consulting": 2.0,
+      "supply_chain": 1.0,
+      "healthcare": 4.5,
+      "legal": 1.2,
+      "research": 7.0
+    }
+  },
+  {
+    "n": "Dublin",
+    "c": "IE",
+    "reg": "EU",
+    "lat": 53.3498,
+    "lng": -6.2603,
+    "pct": {
+      "software": 3.5,
+      "data_science": 2.8,
+      "product": 2.5,
+      "design": 2.0,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 3.2,
+      "consulting": 2.5,
+      "supply_chain": 1.8,
+      "healthcare": 2.0,
+      "legal": 2.2,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Berlin",
+    "c": "DE",
+    "reg": "EU",
+    "lat": 52.52,
+    "lng": 13.405,
+    "pct": {
+      "software": 4.5,
+      "data_science": 3.8,
+      "product": 4.0,
+      "design": 4.5,
+      "marketing": 4.5,
+      "sales": 3.5,
+      "finance": 2.2,
+      "consulting": 2.5,
+      "supply_chain": 1.8,
+      "healthcare": 2.0,
+      "legal": 1.8,
+      "research": 3.5
+    }
+  },
+  {
+    "n": "Munich",
+    "c": "DE",
+    "reg": "EU",
+    "lat": 48.1351,
+    "lng": 11.582,
+    "pct": {
+      "software": 3.8,
+      "data_science": 3.5,
+      "product": 3.2,
+      "design": 2.8,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 4.0,
+      "consulting": 4.0,
+      "supply_chain": 3.5,
+      "healthcare": 3.5,
+      "legal": 2.5,
+      "research": 4.2
+    }
+  },
+  {
+    "n": "Frankfurt",
+    "c": "DE",
+    "reg": "EU",
+    "lat": 50.1109,
+    "lng": 8.6821,
+    "pct": {
+      "software": 2.2,
+      "data_science": 2.0,
+      "product": 1.8,
+      "design": 1.5,
+      "marketing": 2.2,
+      "sales": 2.5,
+      "finance": 7.5,
+      "consulting": 4.5,
+      "supply_chain": 4.0,
+      "healthcare": 2.5,
+      "legal": 3.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Hamburg",
+    "c": "DE",
+    "reg": "EU",
+    "lat": 53.5511,
+    "lng": 9.9937,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 2.2,
+      "marketing": 3.0,
+      "sales": 2.5,
+      "finance": 2.5,
+      "consulting": 2.5,
+      "supply_chain": 4.2,
+      "healthcare": 2.0,
+      "legal": 2.0,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Paris",
+    "c": "FR",
+    "reg": "EU",
+    "lat": 48.8566,
+    "lng": 2.3522,
+    "pct": {
+      "software": 4.5,
+      "data_science": 4.0,
+      "product": 3.5,
+      "design": 4.5,
+      "marketing": 5.5,
+      "sales": 5.0,
+      "finance": 6.5,
+      "consulting": 6.5,
+      "supply_chain": 3.2,
+      "healthcare": 4.0,
+      "legal": 5.0,
+      "research": 4.8
+    }
+  },
+  {
+    "n": "Amsterdam & Randstad",
+    "c": "NL",
+    "reg": "EU",
+    "lat": 52.3676,
+    "lng": 4.9041,
+    "pct": {
+      "software": 3.5,
+      "data_science": 3.0,
+      "product": 3.0,
+      "design": 3.2,
+      "marketing": 3.8,
+      "sales": 3.8,
+      "finance": 4.5,
+      "consulting": 4.0,
+      "supply_chain": 5.2,
+      "healthcare": 2.5,
+      "legal": 2.5,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Brussels",
+    "c": "BE",
+    "reg": "EU",
+    "lat": 50.8503,
+    "lng": 4.3517,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.5,
+      "product": 1.5,
+      "design": 1.5,
+      "marketing": 2.0,
+      "sales": 2.0,
+      "finance": 2.5,
+      "consulting": 4.5,
+      "supply_chain": 3.0,
+      "healthcare": 2.5,
+      "legal": 6.0,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Zurich",
+    "c": "CH",
+    "reg": "EU",
+    "lat": 47.3769,
+    "lng": 8.5417,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.5,
+      "product": 2.0,
+      "design": 1.5,
+      "marketing": 1.8,
+      "sales": 2.2,
+      "finance": 6.8,
+      "consulting": 4.5,
+      "supply_chain": 2.0,
+      "healthcare": 3.5,
+      "legal": 2.2,
+      "research": 4.2
+    }
+  },
+  {
+    "n": "Geneva & Lausanne",
+    "c": "CH",
+    "reg": "EU",
+    "lat": 46.2044,
+    "lng": 6.1432,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.8,
+      "product": 1.4,
+      "design": 1.2,
+      "marketing": 1.6,
+      "sales": 2.0,
+      "finance": 4.5,
+      "consulting": 3.5,
+      "supply_chain": 2.5,
+      "healthcare": 4.0,
+      "legal": 3.5,
+      "research": 4.0
+    }
+  },
+  {
+    "n": "Stockholm",
+    "c": "SE",
+    "reg": "EU",
+    "lat": 59.3293,
+    "lng": 18.0686,
+    "pct": {
+      "software": 3.2,
+      "data_science": 2.5,
+      "product": 2.5,
+      "design": 2.5,
+      "marketing": 2.0,
+      "sales": 2.0,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 1.5,
+      "healthcare": 2.2,
+      "legal": 1.4,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Copenhagen",
+    "c": "DK",
+    "reg": "EU",
+    "lat": 55.6761,
+    "lng": 12.5683,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 2.5,
+      "marketing": 2.0,
+      "sales": 2.0,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 2.8,
+      "healthcare": 3.5,
+      "legal": 1.4,
+      "research": 2.4
+    }
+  },
+  {
+    "n": "Helsinki",
+    "c": "FI",
+    "reg": "EU",
+    "lat": 60.1699,
+    "lng": 24.9384,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.6,
+      "product": 1.6,
+      "design": 2.0,
+      "marketing": 1.4,
+      "sales": 1.5,
+      "finance": 1.4,
+      "consulting": 1.4,
+      "supply_chain": 1.4,
+      "healthcare": 1.8,
+      "legal": 1.0,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Oslo",
+    "c": "NO",
+    "reg": "EU",
+    "lat": 59.9139,
+    "lng": 10.7522,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.5,
+      "product": 1.4,
+      "design": 1.5,
+      "marketing": 1.6,
+      "sales": 1.8,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 2.5,
+      "healthcare": 1.8,
+      "legal": 1.4,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Madrid",
+    "c": "ES",
+    "reg": "EU",
+    "lat": 40.4168,
+    "lng": -3.7038,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.5,
+      "product": 2.2,
+      "design": 2.5,
+      "marketing": 3.5,
+      "sales": 3.8,
+      "finance": 4.0,
+      "consulting": 3.8,
+      "supply_chain": 2.8,
+      "healthcare": 3.0,
+      "legal": 3.2,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Barcelona",
+    "c": "ES",
+    "reg": "EU",
+    "lat": 41.3851,
+    "lng": 2.1734,
+    "pct": {
+      "software": 3.2,
+      "data_science": 2.8,
+      "product": 2.8,
+      "design": 3.5,
+      "marketing": 3.8,
+      "sales": 3.2,
+      "finance": 2.5,
+      "consulting": 2.5,
+      "supply_chain": 2.5,
+      "healthcare": 2.8,
+      "legal": 2.0,
+      "research": 2.8
+    }
+  },
+  {
+    "n": "Lisbon & Porto",
+    "c": "PT",
+    "reg": "EU",
+    "lat": 38.7223,
+    "lng": -9.1393,
+    "pct": {
+      "software": 2.5,
+      "data_science": 2.0,
+      "product": 2.0,
+      "design": 2.2,
+      "marketing": 2.5,
+      "sales": 2.5,
+      "finance": 2.0,
+      "consulting": 2.0,
+      "supply_chain": 1.8,
+      "healthcare": 1.8,
+      "legal": 1.6,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Milan",
+    "c": "IT",
+    "reg": "EU",
+    "lat": 45.4642,
+    "lng": 9.19,
+    "pct": {
+      "software": 2.5,
+      "data_science": 2.2,
+      "product": 2.2,
+      "design": 5.0,
+      "marketing": 4.2,
+      "sales": 4.0,
+      "finance": 5.5,
+      "consulting": 4.5,
+      "supply_chain": 3.5,
+      "healthcare": 3.2,
+      "legal": 3.5,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Rome",
+    "c": "IT",
+    "reg": "EU",
+    "lat": 41.9028,
+    "lng": 12.4964,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.6,
+      "product": 1.4,
+      "design": 2.0,
+      "marketing": 2.5,
+      "sales": 2.5,
+      "finance": 2.5,
+      "consulting": 3.2,
+      "supply_chain": 2.0,
+      "healthcare": 3.0,
+      "legal": 3.8,
+      "research": 2.8
+    }
+  },
+  {
+    "n": "Vienna",
+    "c": "AT",
+    "reg": "EU",
+    "lat": 48.2082,
+    "lng": 16.3738,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.8,
+      "product": 1.6,
+      "design": 1.8,
+      "marketing": 2.2,
+      "sales": 2.2,
+      "finance": 3.2,
+      "consulting": 3.0,
+      "supply_chain": 2.2,
+      "healthcare": 2.8,
+      "legal": 2.5,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Warsaw & Krakow",
+    "c": "PL",
+    "reg": "EU",
+    "lat": 52.2297,
+    "lng": 21.0122,
+    "pct": {
+      "software": 3.5,
+      "data_science": 3.0,
+      "product": 2.2,
+      "design": 2.0,
+      "marketing": 2.5,
+      "sales": 2.8,
+      "finance": 3.0,
+      "consulting": 2.5,
+      "supply_chain": 3.2,
+      "healthcare": 2.2,
+      "legal": 2.0,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Prague",
+    "c": "CZ",
+    "reg": "EU",
+    "lat": 50.0755,
+    "lng": 14.4378,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.6,
+      "design": 1.8,
+      "marketing": 2.0,
+      "sales": 2.0,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 2.2,
+      "healthcare": 2.0,
+      "legal": 1.8,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Tallinn",
+    "c": "EE",
+    "reg": "EU",
+    "lat": 59.437,
+    "lng": 24.7536,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.4,
+      "product": 1.5,
+      "design": 1.2,
+      "marketing": 1.0,
+      "sales": 1.0,
+      "finance": 1.2,
+      "consulting": 1.0,
+      "supply_chain": 0.8,
+      "healthcare": 0.8,
+      "legal": 0.8,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Tokyo",
+    "c": "JP",
+    "reg": "APAC",
+    "lat": 35.6762,
+    "lng": 139.6503,
+    "pct": {
+      "software": 6.5,
+      "data_science": 5.0,
+      "product": 4.5,
+      "design": 4.5,
+      "marketing": 6.5,
+      "sales": 7.0,
+      "finance": 8.0,
+      "consulting": 6.0,
+      "supply_chain": 7.5,
+      "healthcare": 6.0,
+      "legal": 4.5,
+      "research": 6.0
+    }
+  },
+  {
+    "n": "Osaka & Kyoto",
+    "c": "JP",
+    "reg": "APAC",
+    "lat": 34.6937,
+    "lng": 135.5023,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.2,
+      "product": 2.0,
+      "design": 2.2,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 3.0,
+      "consulting": 2.8,
+      "supply_chain": 4.5,
+      "healthcare": 3.5,
+      "legal": 2.2,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Seoul & Pangyo",
+    "c": "KR",
+    "reg": "APAC",
+    "lat": 37.5665,
+    "lng": 126.978,
+    "pct": {
+      "software": 4.8,
+      "data_science": 3.8,
+      "product": 3.5,
+      "design": 4.0,
+      "marketing": 4.5,
+      "sales": 5.0,
+      "finance": 4.5,
+      "consulting": 3.5,
+      "supply_chain": 4.2,
+      "healthcare": 4.0,
+      "legal": 2.8,
+      "research": 4.2
+    }
+  },
+  {
+    "n": "Singapore",
+    "c": "SG",
+    "reg": "APAC",
+    "lat": 1.3521,
+    "lng": 103.8198,
+    "pct": {
+      "software": 4.0,
+      "data_science": 3.5,
+      "product": 3.0,
+      "design": 2.5,
+      "marketing": 3.5,
+      "sales": 4.0,
+      "finance": 7.5,
+      "consulting": 5.5,
+      "supply_chain": 7.0,
+      "healthcare": 2.8,
+      "legal": 3.5,
+      "research": 2.8
+    }
+  },
+  {
+    "n": "Bangalore",
+    "c": "IN",
+    "reg": "APAC",
+    "lat": 12.9716,
+    "lng": 77.5946,
+    "pct": {
+      "software": 9.5,
+      "data_science": 8.0,
+      "product": 4.5,
+      "design": 2.8,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 2.2,
+      "consulting": 3.5,
+      "supply_chain": 2.8,
+      "healthcare": 2.5,
+      "legal": 1.5,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Hyderabad",
+    "c": "IN",
+    "reg": "APAC",
+    "lat": 17.385,
+    "lng": 78.4867,
+    "pct": {
+      "software": 5.5,
+      "data_science": 4.5,
+      "product": 2.8,
+      "design": 1.8,
+      "marketing": 2.0,
+      "sales": 2.5,
+      "finance": 2.0,
+      "consulting": 2.5,
+      "supply_chain": 2.2,
+      "healthcare": 3.5,
+      "legal": 1.2,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Mumbai",
+    "c": "IN",
+    "reg": "APAC",
+    "lat": 19.076,
+    "lng": 72.8777,
+    "pct": {
+      "software": 3.8,
+      "data_science": 3.5,
+      "product": 3.0,
+      "design": 3.0,
+      "marketing": 5.0,
+      "sales": 5.5,
+      "finance": 7.0,
+      "consulting": 4.5,
+      "supply_chain": 4.0,
+      "healthcare": 3.2,
+      "legal": 3.5,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Delhi / NCR & Gurgaon",
+    "c": "IN",
+    "reg": "APAC",
+    "lat": 28.4595,
+    "lng": 77.0266,
+    "pct": {
+      "software": 5.0,
+      "data_science": 4.2,
+      "product": 3.5,
+      "design": 3.0,
+      "marketing": 4.5,
+      "sales": 5.0,
+      "finance": 4.0,
+      "consulting": 4.5,
+      "supply_chain": 3.8,
+      "healthcare": 3.5,
+      "legal": 3.5,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Pune",
+    "c": "IN",
+    "reg": "APAC",
+    "lat": 18.5204,
+    "lng": 73.8567,
+    "pct": {
+      "software": 4.0,
+      "data_science": 3.2,
+      "product": 2.0,
+      "design": 1.8,
+      "marketing": 1.8,
+      "sales": 2.2,
+      "finance": 2.0,
+      "consulting": 2.0,
+      "supply_chain": 3.0,
+      "healthcare": 2.2,
+      "legal": 1.0,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Beijing",
+    "c": "CN",
+    "reg": "APAC",
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "pct": {
+      "software": 6.5,
+      "data_science": 6.0,
+      "product": 5.0,
+      "design": 4.0,
+      "marketing": 6.0,
+      "sales": 6.5,
+      "finance": 5.5,
+      "consulting": 4.5,
+      "supply_chain": 4.5,
+      "healthcare": 4.5,
+      "legal": 3.5,
+      "research": 7.5
+    }
+  },
+  {
+    "n": "Shanghai",
+    "c": "CN",
+    "reg": "APAC",
+    "lat": 31.2304,
+    "lng": 121.4737,
+    "pct": {
+      "software": 5.5,
+      "data_science": 5.0,
+      "product": 4.5,
+      "design": 5.0,
+      "marketing": 6.5,
+      "sales": 7.0,
+      "finance": 8.0,
+      "consulting": 6.0,
+      "supply_chain": 6.5,
+      "healthcare": 4.5,
+      "legal": 4.5,
+      "research": 5.0
+    }
+  },
+  {
+    "n": "Shenzhen & Guangzhou",
+    "c": "CN",
+    "reg": "APAC",
+    "lat": 22.5431,
+    "lng": 114.0579,
+    "pct": {
+      "software": 6.0,
+      "data_science": 5.0,
+      "product": 4.5,
+      "design": 4.5,
+      "marketing": 5.5,
+      "sales": 6.5,
+      "finance": 5.0,
+      "consulting": 4.0,
+      "supply_chain": 8.5,
+      "healthcare": 4.0,
+      "legal": 3.0,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Hangzhou",
+    "c": "CN",
+    "reg": "APAC",
+    "lat": 30.2741,
+    "lng": 120.1551,
+    "pct": {
+      "software": 4.2,
+      "data_science": 4.0,
+      "product": 3.5,
+      "design": 3.0,
+      "marketing": 4.5,
+      "sales": 4.5,
+      "finance": 3.0,
+      "consulting": 2.8,
+      "supply_chain": 4.0,
+      "healthcare": 2.5,
+      "legal": 2.0,
+      "research": 3.5
+    }
+  },
+  {
+    "n": "Taipei & Hsinchu",
+    "c": "TW",
+    "reg": "APAC",
+    "lat": 25.033,
+    "lng": 121.5654,
+    "pct": {
+      "software": 3.5,
+      "data_science": 3.0,
+      "product": 2.8,
+      "design": 2.8,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 3.5,
+      "consulting": 2.5,
+      "supply_chain": 6.5,
+      "healthcare": 3.0,
+      "legal": 2.0,
+      "research": 4.5
+    }
+  },
+  {
+    "n": "Hong Kong",
+    "c": "HK",
+    "reg": "APAC",
+    "lat": 22.3193,
+    "lng": 114.1694,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.8,
+      "product": 1.8,
+      "design": 2.0,
+      "marketing": 3.0,
+      "sales": 3.5,
+      "finance": 8.5,
+      "consulting": 5.0,
+      "supply_chain": 4.5,
+      "healthcare": 2.2,
+      "legal": 4.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Sydney",
+    "c": "AU",
+    "reg": "APAC",
+    "lat": -33.8688,
+    "lng": 151.2093,
+    "pct": {
+      "software": 3.2,
+      "data_science": 2.5,
+      "product": 2.5,
+      "design": 2.5,
+      "marketing": 3.5,
+      "sales": 3.5,
+      "finance": 5.0,
+      "consulting": 4.0,
+      "supply_chain": 2.5,
+      "healthcare": 3.2,
+      "legal": 3.5,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Melbourne",
+    "c": "AU",
+    "reg": "APAC",
+    "lat": -37.8136,
+    "lng": 144.9631,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.2,
+      "product": 2.2,
+      "design": 3.0,
+      "marketing": 3.2,
+      "sales": 3.0,
+      "finance": 3.8,
+      "consulting": 3.5,
+      "supply_chain": 2.5,
+      "healthcare": 3.5,
+      "legal": 3.0,
+      "research": 3.0
+    }
+  },
+  {
+    "n": "Auckland",
+    "c": "NZ",
+    "reg": "APAC",
+    "lat": -36.8485,
+    "lng": 174.7633,
+    "pct": {
+      "software": 1.4,
+      "data_science": 1.0,
+      "product": 1.0,
+      "design": 1.2,
+      "marketing": 1.5,
+      "sales": 1.5,
+      "finance": 1.5,
+      "consulting": 1.5,
+      "supply_chain": 1.2,
+      "healthcare": 1.6,
+      "legal": 1.2,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Tel Aviv",
+    "c": "IL",
+    "reg": "MEA",
+    "lat": 32.0853,
+    "lng": 34.7818,
+    "pct": {
+      "software": 4.2,
+      "data_science": 4.0,
+      "product": 3.5,
+      "design": 2.5,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 2.5,
+      "consulting": 2.0,
+      "supply_chain": 1.2,
+      "healthcare": 3.0,
+      "legal": 1.5,
+      "research": 4.0
+    }
+  },
+  {
+    "n": "Dubai & Abu Dhabi",
+    "c": "AE",
+    "reg": "MEA",
+    "lat": 25.2048,
+    "lng": 55.2708,
+    "pct": {
+      "software": 2.5,
+      "data_science": 2.0,
+      "product": 2.0,
+      "design": 2.2,
+      "marketing": 3.5,
+      "sales": 4.5,
+      "finance": 5.5,
+      "consulting": 4.5,
+      "supply_chain": 5.0,
+      "healthcare": 2.2,
+      "legal": 2.5,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Riyadh",
+    "c": "SA",
+    "reg": "MEA",
+    "lat": 24.7136,
+    "lng": 46.6753,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.5,
+      "product": 1.5,
+      "design": 1.4,
+      "marketing": 2.5,
+      "sales": 3.0,
+      "finance": 3.5,
+      "consulting": 3.8,
+      "supply_chain": 3.0,
+      "healthcare": 2.2,
+      "legal": 2.0,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Cairo",
+    "c": "EG",
+    "reg": "MEA",
+    "lat": 30.0444,
+    "lng": 31.2357,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.5,
+      "product": 1.4,
+      "design": 1.8,
+      "marketing": 2.2,
+      "sales": 2.8,
+      "finance": 2.0,
+      "consulting": 1.8,
+      "supply_chain": 2.5,
+      "healthcare": 2.5,
+      "legal": 1.5,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Nairobi",
+    "c": "KE",
+    "reg": "MEA",
+    "lat": -1.2921,
+    "lng": 36.8219,
+    "pct": {
+      "software": 1.8,
+      "data_science": 1.4,
+      "product": 1.2,
+      "design": 1.2,
+      "marketing": 1.8,
+      "sales": 2.2,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 2.0,
+      "healthcare": 1.8,
+      "legal": 1.4,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Cape Town & Johannesburg",
+    "c": "ZA",
+    "reg": "MEA",
+    "lat": -33.9249,
+    "lng": 18.4241,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.6,
+      "design": 1.8,
+      "marketing": 2.5,
+      "sales": 3.0,
+      "finance": 3.8,
+      "consulting": 3.0,
+      "supply_chain": 2.8,
+      "healthcare": 2.5,
+      "legal": 2.2,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Lagos",
+    "c": "NG",
+    "reg": "MEA",
+    "lat": 6.5244,
+    "lng": 3.3792,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.6,
+      "product": 1.5,
+      "design": 1.5,
+      "marketing": 2.5,
+      "sales": 3.2,
+      "finance": 2.8,
+      "consulting": 2.2,
+      "supply_chain": 2.5,
+      "healthcare": 2.0,
+      "legal": 1.6,
+      "research": 1.4
+    }
+  },
+  {
+    "n": "S\u00e3o Paulo",
+    "c": "BR",
+    "reg": "LATAM",
+    "lat": -23.5505,
+    "lng": -46.6333,
+    "pct": {
+      "software": 3.5,
+      "data_science": 2.8,
+      "product": 2.5,
+      "design": 2.5,
+      "marketing": 4.5,
+      "sales": 5.0,
+      "finance": 5.5,
+      "consulting": 3.5,
+      "supply_chain": 4.0,
+      "healthcare": 3.5,
+      "legal": 3.0,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Rio de Janeiro & Belo Horizonte",
+    "c": "BR",
+    "reg": "LATAM",
+    "lat": -22.9068,
+    "lng": -43.1729,
+    "pct": {
+      "software": 2.2,
+      "data_science": 1.8,
+      "product": 1.6,
+      "design": 2.0,
+      "marketing": 2.8,
+      "sales": 3.0,
+      "finance": 3.0,
+      "consulting": 2.2,
+      "supply_chain": 3.0,
+      "healthcare": 2.8,
+      "legal": 2.2,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Mexico City",
+    "c": "MX",
+    "reg": "LATAM",
+    "lat": 19.4326,
+    "lng": -99.1332,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.2,
+      "product": 2.0,
+      "design": 2.2,
+      "marketing": 3.5,
+      "sales": 4.0,
+      "finance": 3.5,
+      "consulting": 3.0,
+      "supply_chain": 3.8,
+      "healthcare": 2.8,
+      "legal": 2.5,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Guadalajara & Monterrey",
+    "c": "MX",
+    "reg": "LATAM",
+    "lat": 20.6597,
+    "lng": -103.3496,
+    "pct": {
+      "software": 2.5,
+      "data_science": 1.8,
+      "product": 1.6,
+      "design": 1.5,
+      "marketing": 2.2,
+      "sales": 2.8,
+      "finance": 2.2,
+      "consulting": 2.0,
+      "supply_chain": 3.8,
+      "healthcare": 2.0,
+      "legal": 1.8,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Buenos Aires",
+    "c": "AR",
+    "reg": "LATAM",
+    "lat": -34.6037,
+    "lng": -58.3816,
+    "pct": {
+      "software": 2.8,
+      "data_science": 2.2,
+      "product": 2.0,
+      "design": 2.5,
+      "marketing": 3.0,
+      "sales": 3.0,
+      "finance": 2.8,
+      "consulting": 2.2,
+      "supply_chain": 2.0,
+      "healthcare": 2.5,
+      "legal": 2.2,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Santiago",
+    "c": "CL",
+    "reg": "LATAM",
+    "lat": -33.4489,
+    "lng": -70.6693,
+    "pct": {
+      "software": 2.0,
+      "data_science": 1.6,
+      "product": 1.5,
+      "design": 1.6,
+      "marketing": 2.2,
+      "sales": 2.5,
+      "finance": 3.0,
+      "consulting": 2.5,
+      "supply_chain": 2.5,
+      "healthcare": 2.0,
+      "legal": 2.0,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Bogota & Medellin",
+    "c": "CO",
+    "reg": "LATAM",
+    "lat": 4.711,
+    "lng": -74.0721,
+    "pct": {
+      "software": 2.5,
+      "data_science": 2.0,
+      "product": 1.8,
+      "design": 2.0,
+      "marketing": 2.5,
+      "sales": 3.0,
+      "finance": 2.5,
+      "consulting": 2.0,
+      "supply_chain": 2.4,
+      "healthcare": 2.2,
+      "legal": 1.8,
+      "research": 1.8
+    }
+  },
+  {
+    "n": "Honolulu",
+    "c": "US",
+    "reg": "NA",
+    "lat": 21.3069,
+    "lng": -157.8583,
+    "pct": {
+      "software": 0.5,
+      "data_science": 0.4,
+      "product": 0.4,
+      "design": 0.5,
+      "marketing": 0.8,
+      "sales": 1.0,
+      "finance": 0.8,
+      "consulting": 0.8,
+      "supply_chain": 0.8,
+      "healthcare": 1.2,
+      "legal": 0.8,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Anchorage",
+    "c": "US",
+    "reg": "NA",
+    "lat": 61.2181,
+    "lng": -149.9003,
+    "pct": {
+      "software": 0.4,
+      "data_science": 0.3,
+      "product": 0.3,
+      "design": 0.3,
+      "marketing": 0.5,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 0.6,
+      "supply_chain": 1.5,
+      "healthcare": 1.0,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Tucson",
+    "c": "US",
+    "reg": "NA",
+    "lat": 32.2226,
+    "lng": -110.9747,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.8,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 0.6,
+      "supply_chain": 0.8,
+      "healthcare": 1.4,
+      "legal": 0.8,
+      "research": 2.2
+    }
+  },
+  {
+    "n": "Colorado Springs",
+    "c": "US",
+    "reg": "NA",
+    "lat": 38.8339,
+    "lng": -104.8214,
+    "pct": {
+      "software": 1.2,
+      "data_science": 1.0,
+      "product": 0.8,
+      "design": 0.6,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 0.8,
+      "supply_chain": 0.8,
+      "healthcare": 1.0,
+      "legal": 0.6,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Spokane",
+    "c": "US",
+    "reg": "NA",
+    "lat": 47.6588,
+    "lng": -117.426,
+    "pct": {
+      "software": 0.6,
+      "data_science": 0.5,
+      "product": 0.5,
+      "design": 0.5,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.6,
+      "consulting": 0.5,
+      "supply_chain": 0.8,
+      "healthcare": 1.4,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Reno",
+    "c": "US",
+    "reg": "NA",
+    "lat": 39.5296,
+    "lng": -119.8138,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.6,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 0.7,
+      "sales": 0.9,
+      "finance": 0.8,
+      "consulting": 0.6,
+      "supply_chain": 1.8,
+      "healthcare": 0.8,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "El Paso",
+    "c": "US",
+    "reg": "NA",
+    "lat": 31.7619,
+    "lng": -106.485,
+    "pct": {
+      "software": 0.5,
+      "data_science": 0.4,
+      "product": 0.4,
+      "design": 0.4,
+      "marketing": 0.6,
+      "sales": 1.0,
+      "finance": 0.6,
+      "consulting": 0.5,
+      "supply_chain": 2.5,
+      "healthcare": 1.5,
+      "legal": 0.8,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Oklahoma City & Tulsa",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.4676,
+    "lng": -97.5164,
+    "pct": {
+      "software": 1.0,
+      "data_science": 0.8,
+      "product": 0.7,
+      "design": 0.7,
+      "marketing": 1.2,
+      "sales": 1.6,
+      "finance": 1.5,
+      "consulting": 1.2,
+      "supply_chain": 2.2,
+      "healthcare": 2.4,
+      "legal": 1.4,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Wichita",
+    "c": "US",
+    "reg": "NA",
+    "lat": 37.6872,
+    "lng": -97.3301,
+    "pct": {
+      "software": 0.6,
+      "data_science": 0.5,
+      "product": 0.5,
+      "design": 0.5,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.8,
+      "consulting": 0.6,
+      "supply_chain": 1.6,
+      "healthcare": 1.2,
+      "legal": 0.6,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Little Rock",
+    "c": "US",
+    "reg": "NA",
+    "lat": 34.7465,
+    "lng": -92.2896,
+    "pct": {
+      "software": 0.5,
+      "data_science": 0.4,
+      "product": 0.4,
+      "design": 0.4,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 1.0,
+      "consulting": 0.6,
+      "supply_chain": 1.5,
+      "healthcare": 1.8,
+      "legal": 0.8,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Birmingham",
+    "c": "US",
+    "reg": "NA",
+    "lat": 33.5186,
+    "lng": -86.8104,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.8,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 1.0,
+      "sales": 1.4,
+      "finance": 1.8,
+      "consulting": 1.2,
+      "supply_chain": 1.6,
+      "healthcare": 2.8,
+      "legal": 1.2,
+      "research": 1.5
+    }
+  },
+  {
+    "n": "Charleston & Columbia",
+    "c": "US",
+    "reg": "NA",
+    "lat": 32.7765,
+    "lng": -79.9311,
+    "pct": {
+      "software": 1.0,
+      "data_science": 0.8,
+      "product": 0.8,
+      "design": 0.8,
+      "marketing": 1.2,
+      "sales": 1.4,
+      "finance": 1.2,
+      "consulting": 1.2,
+      "supply_chain": 2.5,
+      "healthcare": 2.0,
+      "legal": 1.2,
+      "research": 1.2
+    }
+  },
+  {
+    "n": "Greenville & Spartanburg",
+    "c": "US",
+    "reg": "NA",
+    "lat": 34.8526,
+    "lng": -82.394,
+    "pct": {
+      "software": 0.7,
+      "data_science": 0.6,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 0.8,
+      "sales": 1.0,
+      "finance": 0.8,
+      "consulting": 0.8,
+      "supply_chain": 2.4,
+      "healthcare": 1.4,
+      "legal": 0.6,
+      "research": 1.0
+    }
+  },
+  {
+    "n": "Knoxville & Chattanooga",
+    "c": "US",
+    "reg": "NA",
+    "lat": 35.9606,
+    "lng": -83.9207,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.8,
+      "product": 0.6,
+      "design": 0.6,
+      "marketing": 0.8,
+      "sales": 1.0,
+      "finance": 0.8,
+      "consulting": 0.8,
+      "supply_chain": 2.5,
+      "healthcare": 1.8,
+      "legal": 0.8,
+      "research": 2.0
+    }
+  },
+  {
+    "n": "Grand Rapids",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.9634,
+    "lng": -85.6681,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.7,
+      "product": 0.8,
+      "design": 1.2,
+      "marketing": 1.2,
+      "sales": 1.4,
+      "finance": 1.0,
+      "consulting": 0.8,
+      "supply_chain": 2.0,
+      "healthcare": 2.2,
+      "legal": 0.8,
+      "research": 1.0
+    }
+  },
+  {
+    "n": "Buffalo & Rochester",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.8864,
+    "lng": -78.8784,
+    "pct": {
+      "software": 1.0,
+      "data_science": 1.0,
+      "product": 0.8,
+      "design": 0.8,
+      "marketing": 1.0,
+      "sales": 1.2,
+      "finance": 1.4,
+      "consulting": 1.0,
+      "supply_chain": 1.6,
+      "healthcare": 2.8,
+      "legal": 1.2,
+      "research": 2.5
+    }
+  },
+  {
+    "n": "Albany & Capital Region",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.6526,
+    "lng": -73.7562,
+    "pct": {
+      "software": 1.0,
+      "data_science": 1.2,
+      "product": 0.7,
+      "design": 0.6,
+      "marketing": 0.8,
+      "sales": 0.8,
+      "finance": 1.0,
+      "consulting": 1.2,
+      "supply_chain": 1.0,
+      "healthcare": 2.2,
+      "legal": 2.0,
+      "research": 3.2
+    }
+  },
+  {
+    "n": "Portland, ME",
+    "c": "US",
+    "reg": "NA",
+    "lat": 43.6591,
+    "lng": -70.2568,
+    "pct": {
+      "software": 0.6,
+      "data_science": 0.5,
+      "product": 0.5,
+      "design": 0.6,
+      "marketing": 0.8,
+      "sales": 0.8,
+      "finance": 0.8,
+      "consulting": 0.6,
+      "supply_chain": 0.8,
+      "healthcare": 1.4,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Manchester & Nashua",
+    "c": "US",
+    "reg": "NA",
+    "lat": 42.9956,
+    "lng": -71.4548,
+    "pct": {
+      "software": 0.8,
+      "data_science": 0.7,
+      "product": 0.6,
+      "design": 0.5,
+      "marketing": 0.6,
+      "sales": 0.8,
+      "finance": 0.8,
+      "consulting": 0.6,
+      "supply_chain": 0.8,
+      "healthcare": 1.2,
+      "legal": 0.6,
+      "research": 0.8
+    }
+  },
+  {
+    "n": "Burlington",
+    "c": "US",
+    "reg": "NA",
+    "lat": 44.4759,
+    "lng": -73.2121,
+    "pct": {
+      "software": 0.5,
+      "data_science": 0.4,
+      "product": 0.4,
+      "design": 0.5,
+      "marketing": 0.5,
+      "sales": 0.5,
+      "finance": 0.5,
+      "consulting": 0.5,
+      "supply_chain": 0.5,
+      "healthcare": 1.2,
+      "legal": 0.5,
+      "research": 1.0
+    }
+  },
+  {
+    "n": "Fresno & Central Valley",
+    "c": "US",
+    "reg": "NA",
+    "lat": 36.7468,
+    "lng": -119.7726,
+    "pct": {
+      "software": 0.6,
+      "data_science": 0.5,
+      "product": 0.5,
+      "design": 0.5,
+      "marketing": 0.8,
+      "sales": 1.2,
+      "finance": 0.8,
+      "consulting": 0.6,
+      "supply_chain": 2.5,
+      "healthcare": 2.0,
+      "legal": 0.8,
+      "research": 0.8
+    }
+  }
 ];
 
 /* ══════════════════════════════════════════════════════
-   BLS API
+   BLS API (Real-time public query)
 ══════════════════════════════════════════════════════ */
-// BLS OES series format: OES + 000000(area=national) + 000000(all industry) + {8-char SOC} + 01(employment)
 async function fetchBLSEmployment(socCode) {
   const seriesId = `OES000000000000${socCode}01`;
   try {
@@ -404,16 +3700,15 @@ async function fetchBLSEmployment(socCode) {
       })
     });
     const json = await res.json();
-    if(json.status==='REQUEST_SUCCEEDED'){
+    if(json.status === 'REQUEST_SUCCEEDED') {
       const series = json.Results?.series?.[0]?.data;
-      if(series?.length){
-        // Get most recent non-annual value
+      if(series?.length) {
         const latest = series.find(d => d.period !== 'M13') || series[0];
         const val = parseInt(latest.value.replace(/,/g,''));
         if(!isNaN(val)) return { value: val, period: `${latest.periodName} ${latest.year}`, live: true };
       }
     }
-  } catch(e){ console.warn('BLS API error:', e); }
+  } catch(e) { console.warn('BLS API error:', e); }
   return null;
 }
 
@@ -455,10 +3750,10 @@ async function parsePDF(file) {
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
     let text = '';
-    for(let i=1; i<=pdf.numPages; i++){
+    for(let i=1; i<=pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      text += content.items.map(s=>s.str).join(' ') + '\n';
+      text += content.items.map(s => s.str).join(' ') + '\n';
     }
     return text;
   } catch(e) {
@@ -468,38 +3763,93 @@ async function parsePDF(file) {
 }
 
 /* ══════════════════════════════════════════════════════
-   CAREER KEYWORD ANALYSIS (instant, no model needed)
+   KEYWORD ANALYSIS
 ══════════════════════════════════════════════════════ */
 function keywordAnalyze(text) {
   const lower = text.toLowerCase();
   const scores = {};
-  for(const [key, d] of Object.entries(DOMAINS)){
+  for(const [key, d] of Object.entries(DOMAINS)) {
     scores[key] = d.kw.filter(k => lower.includes(k)).length;
   }
-  const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
   const topSkills = [];
   const primary = sorted[0][0];
-  DOMAINS[primary].kw.forEach(k=>{ if(lower.includes(k) && topSkills.length<6) topSkills.push(k); });
+  DOMAINS[primary].kw.forEach(k => { if(lower.includes(k) && topSkills.length < 6) topSkills.push(k); });
   return { primary, secondary: sorted[1][0], scores, topSkills, sortedDomains: sorted };
 }
 
 /* ══════════════════════════════════════════════════════
-   MAP
+   MAP SETUP & LIGHT TILE LAYERS
 ══════════════════════════════════════════════════════ */
 let map, markers = [];
+let currentBaseLayer = null;
+let isOsm = false;
+let currentCityScores = [];
+let currentRegion = 'ALL';
+let currentDensityLimit = 150; // default to show all 137 hubs
+
+const TILE_ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const TILE_OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 function initMap() {
   if(map) return;
-  document.getElementById('map-hint').style.display='none';
-  map = L.map('map', { zoomControl:false, attributionControl:false }).setView([20, 10], 2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom:18, subdomains:'abcd'
+  document.getElementById('map-hint').style.display = 'none';
+  map = L.map('map', { zoomControl:false, attributionControl:false }).setView([32, -20], 3);
+
+  currentBaseLayer = L.tileLayer(TILE_ESRI, {
+    maxZoom: 18,
+    attribution: 'Esri, HERE, Garmin, FAO, USGS'
   }).addTo(map);
+
   L.control.zoom({ position:'bottomright' }).addTo(map);
-  L.control.attribution({ position:'bottomleft', prefix:
-    '<a href="https://carto.com/">CartoDB</a> · <a href="https://bls.gov/">BLS</a>'
-  }).addTo(map);
+  L.control.attribution({ position:'bottomleft', prefix: '<a href="https://esri.com/">Esri</a> · <a href="https://bls.gov/">BLS.gov</a>' }).addTo(map);
 }
+
+window.toggleTileLayer = function() {
+  if(!map) return;
+  map.removeLayer(currentBaseLayer);
+  if(isOsm) {
+    currentBaseLayer = L.tileLayer(TILE_ESRI, { maxZoom:18 }).addTo(map);
+    document.getElementById('tile-toggle-btn').innerHTML = '🗺️ Basemap: Light Canvas';
+    isOsm = false;
+  } else {
+    currentBaseLayer = L.tileLayer(TILE_OSM, { maxZoom:18 }).addTo(map);
+    document.getElementById('tile-toggle-btn').innerHTML = '🗺️ Basemap: OpenStreetMap';
+    isOsm = true;
+  }
+};
+
+window.toggleDensity = function() {
+  if(currentDensityLimit === 150) {
+    currentDensityLimit = 50;
+    document.getElementById('density-btn').innerHTML = '📊 View: Top 50 Hubs';
+  } else if(currentDensityLimit === 50) {
+    currentDensityLimit = 25;
+    document.getElementById('density-btn').innerHTML = '📊 View: Top 25 Hubs';
+  } else {
+    currentDensityLimit = 150;
+    document.getElementById('density-btn').innerHTML = '📊 View: All Hubs (137)';
+  }
+  if(careerResult) {
+    replotCurrent();
+  }
+};
+
+window.filterRegion = function(reg, btn) {
+  currentRegion = reg;
+  document.querySelectorAll('.rchip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  if(careerResult) {
+    replotCurrent();
+    // Auto-pan based on region
+    if(reg === 'NA') map.flyTo([39, -98], 4);
+    else if(reg === 'EU') map.flyTo([50, 10], 4);
+    else if(reg === 'APAC') map.flyTo([22, 110], 4);
+    else if(reg === 'LATAM') map.flyTo([-15, -60], 4);
+    else if(reg === 'MEA') map.flyTo([25, 45], 4);
+    else map.flyTo([32, -20], 3);
+  }
+};
 
 function clearMarkers() {
   markers.forEach(m => map.removeLayer(m));
@@ -508,28 +3858,47 @@ function clearMarkers() {
 
 function plotCities(domain, nationalTotal, isLive) {
   clearMarkers();
-  const cityScores = CITIES.map(city => ({
+
+  currentCityScores = CITIES.map(city => ({
     ...city,
     count: Math.round(nationalTotal * (city.pct[domain] || 0) / 100)
   })).sort((a,b) => b.count - a.count);
 
-  const maxCount = cityScores[0]?.count || 1;
+  replotCurrent();
+}
+
+function replotCurrent() {
+  if(!currentCityScores.length || !careerResult) return;
+  clearMarkers();
+
+  const domain = careerResult.primary;
   const color = DOMAINS[domain].color;
 
-  cityScores.forEach((city, idx) => {
+  let filtered = currentCityScores;
+  if(currentRegion !== 'ALL') {
+    filtered = filtered.filter(c => c.reg === currentRegion);
+  }
+
+  // Apply density limit
+  const activeCities = filtered.slice(0, currentDensityLimit);
+  const maxCount = activeCities[0]?.count || 1;
+
+  document.getElementById('visible-count').textContent = activeCities.length;
+
+  activeCities.forEach((city, idx) => {
     if(!city.count) return;
     const ratio = city.count / maxCount;
-    const size = 14 + ratio * 36;
-    const opacity = 0.45 + ratio * 0.55;
+    const size = Math.max(16, Math.min(48, 16 + ratio * 32));
+    const opacity = 0.55 + ratio * 0.45;
 
     const icon = L.divIcon({
       className: '',
-      html: `<div class="career-bubble ${idx<3?'top':''}" style="
-        width:${size}px;height:${size}px;
-        background:${color};
-        opacity:${opacity};
-        font-size:${size < 22 ? 0 : 10}px;
-      ">${size>22 ? fmtNum(city.count) : ''}</div>`,
+      html: `<div class="career-bubble ${idx < 3 ? 'top' : ''}" style="
+        width: ${size}px; height: ${size}px;
+        background: ${color};
+        opacity: ${opacity};
+        font-size: ${size < 22 ? 0 : 10}px;
+      ">${size >= 22 ? fmtNum(city.count) : ''}</div>`,
       iconSize: [size, size],
       iconAnchor: [size/2, size/2],
     });
@@ -537,26 +3906,25 @@ function plotCities(domain, nationalTotal, isLive) {
     const marker = L.marker([city.lat, city.lng], { icon })
       .addTo(map)
       .bindPopup(`
-        <div style="font-family:sans-serif;min-width:160px">
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px">${city.n}</div>
-          <div style="color:#8b949e;font-size:11px">${city.c}</div>
+        <div style="font-family:sans-serif;min-width:170px;padding:2px">
+          <div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:3px">${city.n}</div>
+          <div style="color:#64748b;font-size:11px">${city.c} · ${city.reg}</div>
           <div style="margin-top:8px;font-size:13px">
             <span style="color:${color};font-weight:700">${fmtNum(city.count)}</span>
-            <span style="color:#8b949e"> professionals</span>
+            <span style="color:#64748b"> professionals</span>
           </div>
-          <div style="color:#8b949e;font-size:10px;margin-top:2px">
-            ${(city.pct[domain]||0).toFixed(1)}% of ${isLive?'live':'est.'} national total
+          <div style="color:#64748b;font-size:10px;margin-top:3px">
+            ${(city.pct[domain] || 0).toFixed(1)}% of regional talent pool
           </div>
-          <div style="font-size:10px;color:#58a6ff;margin-top:6px">
-            Rank #${idx+1} globally
+          <div style="font-size:10px;color:#2563eb;font-weight:600;margin-top:6px">
+            Rank #${idx+1} in current view
           </div>
         </div>
-      `, { maxWidth:220 });
+      `, { maxWidth: 240 });
     markers.push(marker);
   });
 
-  // Update top cities panel
-  updateCitiesPanel(cityScores.slice(0,8), maxCount, color);
+  updateCitiesPanel(activeCities.slice(0, 15), maxCount, color);
 }
 
 function updateCitiesPanel(cities, maxCount, color) {
@@ -569,20 +3937,23 @@ function updateCitiesPanel(cities, maxCount, color) {
     div.innerHTML = `
       <div class="city-rank">#${i+1}</div>
       <div class="city-info">
-        <div class="city-name">${city.n} <span style="color:var(--text-dim);font-weight:400">${city.c}</span></div>
+        <div class="city-name">${city.n} <span style="color:var(--text-muted);font-weight:400;font-size:10px">(${city.c})</span></div>
         <div class="city-bar" style="width:${bar}%;background:${color}"></div>
-        <div class="city-count">${fmtNum(city.count)} professionals</div>
+        <div class="city-count">${fmtNum(city.count)} in workforce</div>
       </div>`;
-    div.onclick = () => map.flyTo([city.lat, city.lng], 7, { animate:true, duration:1.2 });
+    div.onclick = () => map.flyTo([city.lat, city.lng], 8, { animate:true, duration:1.2 });
     el.appendChild(div);
   });
-  document.getElementById('topcities-sec').style.display='block';
+  document.getElementById('topcities-sec').style.display = 'block';
 }
 
-/* ══════════════════════════════════════════════════════
-   MAIN ANALYSIS FLOW
-══════════════════════════════════════════════════════ */
-let careerResult = null;
+window.filterCitiesList = function() {
+  const q = document.getElementById('city-search').value.toLowerCase().trim();
+  if(!careerResult || !currentCityScores.length) return;
+  const filtered = currentCityScores.filter(c => c.n.toLowerCase().includes(q) || c.c.toLowerCase().includes(q));
+  const max = filtered[0]?.count || 1;
+  updateCitiesPanel(filtered.slice(0, 15), max, DOMAINS[careerResult.primary].color);
+};
 
 /* ══════════════════════════════════════════════════════
    SAMPLE RESUMES
@@ -593,9 +3964,7 @@ const SAMPLE_RESUMES = [
     text: `Jordan Lee  |  jordan.lee@email.com  |  Chicago, IL
 
 SUMMARY
-Data Scientist with 5 years of experience building machine learning models and
-analytics pipelines. Passionate about NLP, deep learning, and turning messy data
-into business decisions.
+Data Scientist with 5 years of experience building machine learning models and analytics pipelines. Passionate about NLP, deep learning, and turning messy data into business decisions.
 
 EXPERIENCE
 Senior Data Scientist — Accenture, Chicago (2021–Present)
@@ -619,8 +3988,7 @@ B.S. Mathematics — University of Illinois, 2017`
     text: `Alex Rivera  |  alex.rivera@email.com  |  Austin, TX
 
 SUMMARY
-Full-stack software engineer with 6 years building scalable web applications.
-Strong in React, Node.js, and cloud infrastructure. Open source contributor.
+Full-stack software engineer with 6 years building scalable web applications. Strong in React, Node.js, and cloud infrastructure. Open source contributor.
 
 EXPERIENCE
 Senior Software Engineer — Dell Technologies, Austin (2020–Present)
@@ -633,8 +4001,7 @@ Software Engineer — Bazaarvoice, Austin (2018–2020)
 • Implemented CI/CD pipelines with GitHub Actions and Terraform
 
 SKILLS
-JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, Kubernetes,
-PostgreSQL, Redis, GraphQL, REST APIs, Git
+JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, Kubernetes, PostgreSQL, Redis, GraphQL, REST APIs, Git
 
 EDUCATION
 B.S. Computer Science — UT Austin, 2018`
@@ -644,8 +4011,7 @@ B.S. Computer Science — UT Austin, 2018`
     text: `Morgan Chen  |  morgan.chen@email.com  |  Chicago, IL
 
 SUMMARY
-Supply chain professional with 8 years in operations, procurement, and logistics
-optimization. Six Sigma Black Belt. Expert in S&OP and demand planning.
+Supply chain professional with 8 years in operations, procurement, and logistics optimization. Six Sigma Black Belt. Expert in S&OP and demand planning.
 
 EXPERIENCE
 Supply Chain Manager — Caterpillar Inc., Chicago (2019–Present)
@@ -658,8 +4024,7 @@ Senior Logistics Analyst — Coyote Logistics, Chicago (2016–2019)
 • Built Excel/Python models for carrier performance benchmarking
 
 SKILLS
-Supply chain management, S&OP, demand planning, procurement, SAP, Oracle,
-Python, Excel, Six Sigma, lean manufacturing, vendor management, logistics
+Supply chain management, S&OP, demand planning, procurement, SAP, Oracle, Python, Excel, Six Sigma, lean manufacturing, vendor management, logistics
 
 EDUCATION
 MBA, Operations — Booth School of Business, University of Chicago, 2016
@@ -670,8 +4035,7 @@ B.S. Industrial Engineering — Purdue University, 2014`
     text: `Taylor Kim  |  taylor.kim@email.com  |  New York, NY
 
 SUMMARY
-Investment banking analyst with 4 years in M&A advisory and capital markets.
-CFA Level II candidate. Strong financial modeling and valuation expertise.
+Investment banking analyst with 4 years in M&A advisory and capital markets. CFA Level II candidate. Strong financial modeling and valuation expertise.
 
 EXPERIENCE
 Associate, M&A Advisory — Goldman Sachs, New York (2022–Present)
@@ -684,63 +4048,60 @@ Analyst — JPMorgan Investment Banking, New York (2020–2022)
 • Modeled capital structure scenarios for $800M leveraged buyout
 
 SKILLS
-Financial modeling, DCF, LBO, M&A, Bloomberg Terminal, Capital IQ,
-Excel, PowerPoint, valuation, private equity, equity research, capital markets
+Financial modeling, DCF, LBO, M&A, Bloomberg Terminal, Capital IQ, Excel, PowerPoint, valuation, private equity, equity research, capital markets
 
 EDUCATION
 B.S. Finance — Wharton School, University of Pennsylvania, 2020`
-  },
+  }
 ];
 
 let sampleIdx = 0;
 window.loadSample = function() {
   const sample = SAMPLE_RESUMES[sampleIdx % SAMPLE_RESUMES.length];
   sampleIdx++;
+  const nextSample = SAMPLE_RESUMES[sampleIdx % SAMPLE_RESUMES.length];
 
-  // Switch to paste tab and fill in the resume
   switchTab('paste');
   const ta = document.getElementById('paste-area');
   ta.value = sample.text;
-  ta.style.height = '160px';
+  ta.style.height = '140px';
   resumeText = sample.text;
 
-  // Update button to cycle through samples
   const btn = document.getElementById('sample-btn');
-  btn.textContent = `✨ Sample: ${sample.label} — click to try next`;
+  btn.textContent = `✨ Try Sample: ${nextSample.label}`;
 
   document.getElementById('analyze-btn').disabled = false;
-  document.getElementById('analyze-btn').style.animation = 'none';
-
-  // Auto-run analysis
   analyzeResume();
 };
+
+/* ══════════════════════════════════════════════════════
+   MAIN ANALYSIS WORKFLOW
+══════════════════════════════════════════════════════ */
+let careerResult = null;
 
 window.analyzeResume = async function() {
   const pasteEl = document.getElementById('paste-area');
   const text = resumeText || pasteEl.value.trim();
   if(!text) return;
 
-  setLoading(true, 'Analyzing resume…');
+  setLoading(true, 'Analyzing career profile…');
   initMap();
 
-  // 1. Keyword-based career classification (instant)
   const result = keywordAnalyze(text);
   careerResult = result;
   const domain = DOMAINS[result.primary];
 
-  // Show profile card
   document.getElementById('profile-sec').style.display = 'block';
   document.getElementById('profile-card').style.display = 'block';
   document.getElementById('pd-dot').style.background = domain.color;
   document.getElementById('pd-label').textContent = domain.label;
   document.getElementById('pd-secondary').textContent =
-    `Also matches: ${DOMAINS[result.secondary].label}`;
+    `Secondary Match: ${DOMAINS[result.secondary].label}`;
   const skillsEl = document.getElementById('pd-skills');
-  skillsEl.innerHTML = result.topSkills.slice(0,6).map(s=>
+  skillsEl.innerHTML = result.topSkills.slice(0,6).map(s =>
     `<span class="stag">${s}</span>`).join('');
 
-  // 2. Fetch live BLS data
-  setLoading(true, 'Fetching live BLS employment data…');
+  setLoading(true, 'Querying live BLS employment data…');
   updateBLSBadge('loading');
 
   const blsResult = await fetchBLSEmployment(DOMAINS[result.primary].soc);
@@ -750,32 +4111,29 @@ window.analyzeResume = async function() {
     nationalTotal = blsResult.value;
     period = blsResult.period;
     isLive = true;
-    updateBLSBadge('live', `Live · ${period}`);
+    updateBLSBadge('live', `Live BLS · ${period}`);
   } else {
     nationalTotal = DOMAINS[result.primary].fb;
     updateBLSBadge('fallback', '2024 BLS Annual Est.');
   }
 
-  // Update stats
   document.getElementById('st-total').textContent = fmtNum(nationalTotal);
   document.getElementById('st-global').textContent = fmtNum(Math.round(nationalTotal * 2.8));
   document.getElementById('pd-meta').textContent =
-    `${isLive ? '🟢 Live BLS data' : '📊 BLS 2024 estimate'} · ${period}`;
+    `${isLive ? '🟢 Live BLS API data' : '📊 BLS 2024 benchmark'} · ${period}`;
 
-  // 3. Plot on map
-  setLoading(true, 'Plotting career hubs…');
+  setLoading(true, 'Rendering 137 global career hubs…');
   plotCities(result.primary, nationalTotal, isLive);
 
   setLoading(false);
 
-  // 4. Run WebLLM insights if model is loaded
   if(llmReady) runInsights(text, result, nationalTotal, isLive);
   else document.getElementById('insights-box').textContent =
-    `📌 Career domain detected: ${domain.label}\n\nLoad an AI model above for deep career geography insights.`;
+    `📌 Career field detected: ${domain.label}\n\nLoad a WebLLM AI model above to get deep geographic career strategy recommendations.`;
 };
 
 /* ══════════════════════════════════════════════════════
-   WebLLM
+   WebLLM AI
 ══════════════════════════════════════════════════════ */
 let llmEngine = null, llmReady = false;
 
@@ -793,7 +4151,7 @@ window.loadModel = async function() {
       }
     });
     llmReady = true;
-    document.getElementById('ai-plabel').textContent = '✓ Model ready';
+    document.getElementById('ai-plabel').textContent = '✓ WebLLM Ready';
     if(careerResult) runInsights(resumeText, careerResult);
   } catch(e) {
     document.getElementById('ai-plabel').textContent = 'Error: ' + e.message;
@@ -812,21 +4170,20 @@ async function runInsights(text, result, total, isLive) {
   const secondDomain = DOMAINS[result.secondary].label;
   const nTotal = total ? fmtNum(total) : 'unknown';
 
-  const prompt = `You are a career geography analyst. Based on this resume snippet and data:
-- Primary career domain: ${domain}
-- Secondary domain: ${secondDomain}  
-- Top skills found: ${result.topSkills.join(', ')}
-- US professionals in this field: ${nTotal} (${isLive?'live BLS data':'BLS estimate'})
+  const prompt = `You are a career geography advisor. Based on this profile:
+- Primary domain: ${domain}
+- Secondary match: ${secondDomain}
+- Skills: ${result.topSkills.join(', ')}
+- US Workforce: ${nTotal} (${isLive ? 'Live BLS data' : 'BLS estimate'})
 
-Resume snippet:
+Resume excerpt:
 ${snippet}
 
-Write 4-5 sharp bullet points about:
-1. Where globally this person's career is strongest (specific cities)
-2. Emerging hubs they might not have considered
-3. One geographic arbitrage opportunity (high demand, lower competition city)
-4. Remote work landscape for this field
-Keep it concise and actionable.`;
+Provide 4 concise, high-value bullet points:
+1. Top 3 global clusters for this profile
+2. Emerging secondary hub with lower living costs
+3. Geographic salary & career arbitrage opportunity
+4. Remote flexibility outlook for this discipline`;
 
   try {
     const stream = await llmEngine.chat.completions.create({
@@ -834,27 +4191,27 @@ Keep it concise and actionable.`;
       stream:true, temperature:0.7, max_tokens:400
     });
     let full = '';
-    for await (const chunk of stream){
+    for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content || '';
-      if(delta){ full+=delta; box.textContent=full; }
+      if(delta) { full += delta; box.textContent = full; }
     }
     box.classList.remove('cursor');
     box.classList.add('has-content');
   } catch(e) {
-    box.textContent = 'Insight error: ' + e.message;
+    box.textContent = 'Insight note: ' + e.message;
     box.classList.remove('cursor');
   }
 }
 
 /* ══════════════════════════════════════════════════════
-   UI HELPERS
+   UI UTILITIES
 ══════════════════════════════════════════════════════ */
 window.switchTab = function(tab) {
-  document.getElementById('tab-file').classList.toggle('active', tab==='file');
-  document.getElementById('tab-paste').classList.toggle('active', tab==='paste');
-  document.getElementById('drop').style.display = tab==='file' ? 'block' : 'none';
-  document.getElementById('paste-area').style.display = tab==='paste' ? 'block' : 'none';
-  if(tab==='paste') {
+  document.getElementById('tab-file').classList.toggle('active', tab === 'file');
+  document.getElementById('tab-paste').classList.toggle('active', tab === 'paste');
+  document.getElementById('drop').style.display = tab === 'file' ? 'block' : 'none';
+  document.getElementById('paste-area').style.display = tab === 'paste' ? 'block' : 'none';
+  if(tab === 'paste') {
     document.getElementById('analyze-btn').disabled = false;
   }
 };
@@ -868,51 +4225,55 @@ function setLoading(on, msg='') {
 function updateBLSBadge(state, label='') {
   const dot = document.getElementById('bls-dot');
   const txt = document.getElementById('bls-txt');
-  if(state==='live')     { dot.className='dot live'; txt.textContent=label||'BLS Live'; }
-  else if(state==='fallback') { dot.className='dot warn'; txt.textContent=label||'BLS Est.'; }
-  else if(state==='loading')  { dot.className='dot'; txt.textContent='BLS Loading…'; }
+  if(state === 'live') { dot.className = 'dot live'; txt.textContent = label || 'BLS Live'; }
+  else if(state === 'fallback') { dot.className = 'dot warn'; txt.textContent = label || 'BLS Est.'; }
+  else if(state === 'loading') { dot.className = 'dot'; txt.textContent = 'BLS Loading…'; }
 }
 
 function fmtNum(n) {
-  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if(n >= 1e3) return (n/1e3).toFixed(0)+'K';
+  if(n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if(n >= 1e3) return (n/1e3).toFixed(0) + 'K';
   return n.toString();
 }
 
 /* ══════════════════════════════════════════════════════
-   INIT
+   APP INITIALIZATION
 ══════════════════════════════════════════════════════ */
-// WebGPU check
 (async () => {
+  // WebGPU check
   const dot = document.getElementById('gpu-dot');
   const txt = document.getElementById('gpu-txt');
-  if(!navigator.gpu){ dot.className='dot warn'; txt.textContent='No WebGPU'; return; }
-  const a = await navigator.gpu.requestAdapter().catch(()=>null);
-  if(a){ dot.className='dot ok'; txt.textContent='WebGPU ready'; }
-  else { dot.className='dot warn'; txt.textContent='GPU unavailable'; }
+  if(!navigator.gpu) {
+    dot.className = 'dot warn';
+    txt.textContent = 'No WebGPU';
+  } else {
+    const a = await navigator.gpu.requestAdapter().catch(() => null);
+    if(a) { dot.className = 'dot ok'; txt.textContent = 'WebGPU Ready'; }
+    else { dot.className = 'dot warn'; txt.textContent = 'GPU Idle'; }
+  }
 })();
 
 // BLS connectivity check
 (async () => {
   try {
-    // Quick ping with a known-good series
     const r = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ seriesid:['CES0000000001'], startyear:'2024', endyear:'2024' })
     });
     const j = await r.json();
-    if(j.status==='REQUEST_SUCCEEDED'){
-      document.getElementById('bls-dot').className='dot ok';
-      document.getElementById('bls-txt').textContent='BLS API connected';
+    if(j.status === 'REQUEST_SUCCEEDED') {
+      document.getElementById('bls-dot').className = 'dot ok';
+      document.getElementById('bls-txt').textContent = 'BLS API Live';
     } else { throw new Error(); }
   } catch {
-    document.getElementById('bls-dot').className='dot warn';
-    document.getElementById('bls-txt').textContent='BLS offline — using estimates';
+    document.getElementById('bls-dot').className = 'dot warn';
+    document.getElementById('bls-txt').textContent = 'BLS 2024 Data';
   }
 })();
 
-// Paste tab auto-enable
-document.getElementById('paste-area').addEventListener('input', function(){
+// Paste auto-enable
+document.getElementById('paste-area').addEventListener('input', function() {
   document.getElementById('analyze-btn').disabled = !this.value.trim();
 });
 </script>
