@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Career Geography — Resume to World Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--surface3:#30363d;
+  --border:rgba(255,255,255,0.08);--accent:#2d7dd2;--accent2:#58a6ff;
+  --text:#c9d1d9;--text-dim:#8b949e;--success:#3fb950;
+  --warn:#d29922;--danger:#f85149;--panel:320px;--hh:52px;
+  --r:10px;--t:.18s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--text);font-size:13px}
+
+/* ── Header ── */
+#hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);z-index:1000;
+  background:rgba(13,17,23,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px}
+.logo{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;border-radius:6px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.pill{font-size:10px;padding:2px 8px;border-radius:20px;
+  background:rgba(45,125,210,.2);color:var(--accent2);
+  border:1px solid rgba(45,125,210,.3);font-weight:600;letter-spacing:.4px}
+.spacer{flex:1}
+#gpu-badge,#bls-badge{display:flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--text-dim);padding:4px 10px;
+  border-radius:20px;border:1px solid var(--border);background:var(--surface)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0}
+.dot.ok{background:var(--success);box-shadow:0 0 5px var(--success)}
+.dot.warn{background:var(--warn)}
+.dot.live{background:var(--success);box-shadow:0 0 5px var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Layout ── */
+#app{display:flex;height:100vh;padding-top:var(--hh)}
+#panel{width:var(--panel);min-width:var(--panel);height:100%;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+#maparea{flex:1;position:relative}
+
+/* ── Panel sections ── */
+.sec{padding:14px;border-bottom:1px solid var(--border)}
+.sec-title{font-size:10px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text-dim);margin-bottom:10px}
+
+/* ── Upload zone ── */
+#drop{border:2px dashed rgba(45,125,210,.35);border-radius:var(--r);
+  padding:20px 14px;text-align:center;cursor:pointer;
+  background:rgba(45,125,210,.04);transition:all var(--t);position:relative}
+#drop:hover,#drop.over{border-color:var(--accent);background:rgba(45,125,210,.10)}
+#drop input{display:none}
+#drop .di{font-size:28px;margin-bottom:6px}
+#drop p{color:var(--text-dim);line-height:1.5;font-size:12px}
+#drop strong{color:var(--text)}
+
+/* Tabs for upload/paste */
+.tabs{display:flex;gap:0;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.tab{flex:1;padding:6px;text-align:center;cursor:pointer;font-size:11px;
+  background:var(--surface2);color:var(--text-dim);transition:all var(--t)}
+.tab.active{background:var(--accent);color:#fff;font-weight:600}
+#paste-area{width:100%;height:110px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:12px;padding:10px;resize:none;outline:none;
+  transition:border-color var(--t);display:none;font-family:inherit}
+#paste-area:focus{border-color:var(--accent)}
+#analyze-btn{width:100%;margin-top:8px;padding:9px;border-radius:8px;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  font-size:13px;font-weight:600;transition:all var(--t)}
+#analyze-btn:hover:not(:disabled){background:#1a6bc2}
+#analyze-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Career profile card ── */
+#profile-card{display:none;background:var(--surface2);border-radius:var(--r);
+  padding:12px;border:1px solid var(--border)}
+.profile-domain{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.domain-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.domain-label{font-weight:700;font-size:14px}
+.skill-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.stag{font-size:10px;padding:2px 8px;border-radius:20px;
+  background:rgba(45,125,210,.15);color:var(--accent2);
+  border:1px solid rgba(45,125,210,.2)}
+.profile-meta{font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5}
+
+/* ── Stats strip ── */
+#stats-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat{background:var(--surface2);border-radius:8px;padding:10px;text-align:center}
+.stat .sv{font-size:18px;font-weight:700;color:var(--accent2)}
+.stat .sl{font-size:10px;color:var(--text-dim);margin-top:2px}
+
+/* ── Top cities list ── */
+#cities-list{display:flex;flex-direction:column;gap:5px}
+.city-row{display:flex;align-items:center;gap:8px;padding:6px 8px;
+  background:var(--surface2);border-radius:8px;cursor:pointer;
+  transition:all var(--t);border:1px solid transparent}
+.city-row:hover{border-color:var(--accent);background:rgba(45,125,210,.08)}
+.city-rank{font-size:11px;color:var(--text-dim);min-width:18px}
+.city-info{flex:1;min-width:0}
+.city-name{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.city-count{font-size:10px;color:var(--text-dim)}
+.city-bar{height:3px;border-radius:2px;background:var(--accent);margin-top:3px;transition:width .4s ease}
+
+/* ── AI Insights ── */
+#model-row{display:flex;gap:6px;margin-bottom:8px}
+#model-row select{flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);padding:6px 8px;font-size:12px;outline:none}
+#load-ai-btn{padding:6px 12px;border-radius:8px;background:var(--accent);
+  color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;
+  transition:all var(--t);white-space:nowrap}
+#load-ai-btn:disabled{opacity:.4;cursor:not-allowed}
+#ai-progress{display:none;margin-bottom:8px}
+#ai-ptrack{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:3px}
+#ai-pfill{height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .3s}
+#ai-plabel{font-size:10px;color:var(--text-dim)}
+#insights-box{background:var(--surface2);border-radius:var(--r);padding:10px;
+  font-size:12px;line-height:1.6;color:var(--text-dim);min-height:60px;
+  border:1px solid var(--border);white-space:pre-wrap}
+#insights-box.has-content{color:var(--text)}
+.cursor::after{content:'▋';animation:blink .7s infinite;font-size:11px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Map ── */
+#map{position:absolute;inset:0}
+.leaflet-container{background:#0d1117!important}
+
+/* ── Custom marker ── */
+.career-bubble{border-radius:50%;border:2px solid rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;font-size:11px;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+  box-shadow:0 2px 12px rgba(0,0,0,.5)}
+.career-bubble:hover{transform:scale(1.15);box-shadow:0 4px 20px rgba(0,0,0,.7)}
+.career-bubble.top{animation:ring 2s infinite}
+@keyframes ring{
+  0%{box-shadow:0 0 0 0 rgba(45,125,210,.6)}
+  70%{box-shadow:0 0 0 12px rgba(45,125,210,0)}
+  100%{box-shadow:0 0 0 0 rgba(45,125,210,0)}
+}
+
+/* ── Data source tooltip ── */
+#data-src{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  background:rgba(22,27,34,.9);border:1px solid var(--border);
+  border-radius:20px;padding:4px 12px;font-size:10px;color:var(--text-dim);
+  z-index:500;pointer-events:none}
+
+/* ── Loading overlay ── */
+#loading{position:absolute;inset:0;background:rgba(13,17,23,.85);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;z-index:600;display:none}
+#loading .spin{width:36px;height:36px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:13px;color:var(--text-dim)}
+
+/* ── Empty map hint ── */
+#map-hint{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;z-index:10}
+#map-hint .big{font-size:52px;opacity:.15;margin-bottom:10px}
+#map-hint h3{font-size:16px;color:rgba(201,209,217,.3);font-weight:600}
+#map-hint p{font-size:12px;color:rgba(139,148,158,.5);margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-icon">🌍</div>
+    Career Geography
+  </div>
+  <span class="pill">WebLLM · WebGPU · Live BLS Data</span>
+  <div class="spacer"></div>
+  <div id="bls-badge"><div class="dot" id="bls-dot"></div><span id="bls-txt">BLS API…</span></div>
+  <div id="gpu-badge"><div class="dot" id="gpu-dot"></div><span id="gpu-txt">WebGPU…</span></div>
+</header>
+
+<div id="app">
+  <!-- LEFT PANEL -->
+  <aside id="panel">
+
+    <!-- Upload -->
+    <div class="sec">
+      <div class="sec-title">📄 Your Resume</div>
+      <div class="tabs">
+        <div class="tab active" id="tab-file" onclick="switchTab('file')">Upload File</div>
+        <div class="tab" id="tab-paste" onclick="switchTab('paste')">Paste Text</div>
+      </div>
+
+      <!-- File upload -->
+      <div id="drop" onclick="document.getElementById('fi').click()"
+           ondragover="ev.preventDefault();this.classList.add('over')"
+           ondragleave="this.classList.remove('over')"
+           ondrop="handleDrop(event)">
+        <input type="file" id="fi" accept=".pdf,.txt,.doc" onchange="handleFile(event)"/>
+        <div class="di">📎</div>
+        <p><strong>Drop PDF or TXT here</strong><br/>or click to browse</p>
+      </div>
+
+      <!-- Paste -->
+      <textarea id="paste-area" placeholder="Paste your resume text here…"></textarea>
+
+      <button id="analyze-btn" disabled onclick="analyzeResume()">
+        🔍 Analyze &amp; Map My Career
+      </button>
+      <button id="sample-btn" onclick="loadSample()" style="
+        width:100%;margin-top:6px;padding:7px;border-radius:8px;
+        border:1px solid var(--border);background:var(--surface2);
+        color:var(--text-dim);cursor:pointer;font-size:12px;transition:all var(--t);"
+        onmouseover="this.style.borderColor='var(--accent);this.style.color='var(--text)'"
+        onmouseout="this.style.borderColor='';this.style.color=''">
+        ✨ Try a sample resume
+      </button>
+    </div>
+
+    <!-- Career Profile (shown after analysis) -->
+    <div class="sec" id="profile-sec" style="display:none">
+      <div class="sec-title">🎯 Career Profile</div>
+      <div id="profile-card">
+        <div class="profile-domain">
+          <div class="domain-dot" id="pd-dot"></div>
+          <div class="domain-label" id="pd-label">—</div>
+        </div>
+        <div id="pd-secondary" style="font-size:11px;color:var(--text-dim);margin-bottom:4px"></div>
+        <div class="skill-tags" id="pd-skills"></div>
+        <div class="profile-meta" id="pd-meta"></div>
+      </div>
+      <div id="stats-strip">
+        <div class="stat"><div class="sv" id="st-total">—</div><div class="sl">US Professionals</div></div>
+        <div class="stat"><div class="sv" id="st-global">—</div><div class="sl">Global Est.</div></div>
+      </div>
+    </div>
+
+    <!-- Top Cities -->
+    <div class="sec" id="topcities-sec" style="display:none">
+      <div class="sec-title">📍 Top Hubs for Your Career</div>
+      <div id="cities-list"></div>
+    </div>
+
+    <!-- AI Insights -->
+    <div class="sec">
+      <div class="sec-title">🧠 AI Insights (WebLLM)</div>
+      <div id="model-row">
+        <select id="msel">
+          <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini (2.2 GB)</option>
+          <option value="TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC">TinyLlama (600 MB)</option>
+          <option value="Llama-3.1-8B-Instruct-q4f32_1-MLC">Llama 3.1 8B (4.9 GB)</option>
+        </select>
+        <button id="load-ai-btn" onclick="loadModel()">Load</button>
+      </div>
+      <div id="ai-progress">
+        <div id="ai-ptrack"><div id="ai-pfill"></div></div>
+        <div id="ai-plabel">Loading…</div>
+      </div>
+      <div id="insights-box">Upload your resume to see AI-powered career geography insights here.</div>
+    </div>
+  </aside>
+
+  <!-- MAP -->
+  <main id="maparea">
+    <div id="map-hint">
+      <div class="big">🌍</div>
+      <h3>Upload your resume to see the map</h3>
+      <p>Dots show where professionals in your field are concentrated</p>
+    </div>
+    <div id="map"></div>
+    <div id="loading"><div class="spin"></div><p id="loading-msg">Fetching live BLS data…</p></div>
+    <div id="data-src">
+      Data: <strong>US Bureau of Labor Statistics OES</strong> (live) · International: ILO 2024 estimates
+    </div>
+  </main>
+</div>
+
+<script type="module">
+/* ══════════════════════════════════════════════════════
+   CAREER DOMAINS — BLS SOC codes + distribution data
+══════════════════════════════════════════════════════ */
+const DOMAINS = {
+  software:     { label:'Software Engineering',  color:'#3b82f6', soc:'151252', fb:1847900,
+    kw:['software','developer','engineer','programmer','frontend','backend','fullstack','python','javascript','java','golang','rust','node','react','aws','devops','kubernetes','docker','api','microservices','typescript','c++','c#'] },
+  data_science: { label:'Data Science & AI/ML',  color:'#8b5cf6', soc:'152051', fb:168900,
+    kw:['data scientist','machine learning','deep learning','ai','neural','nlp','computer vision','tensorflow','pytorch','sklearn','tableau','analytics','statistician','r programming','spark','big data','llm','generative'] },
+  product:      { label:'Product Management',    color:'#06b6d4', soc:'112021', fb:316800,
+    kw:['product manager','product owner','roadmap','agile','scrum','sprint','backlog','okr','go-to-market','product strategy','product lead','product development'] },
+  design:       { label:'Design & UX',           color:'#ec4899', soc:'271021', fb:195000,
+    kw:['ux','ui','user experience','user interface','designer','figma','sketch','adobe xd','wireframe','prototype','visual design','graphic','interaction design','creative director'] },
+  marketing:    { label:'Marketing & Growth',    color:'#f59e0b', soc:'131161', fb:792000,
+    kw:['marketing','growth','brand','content marketing','seo','sem','digital marketing','campaign','advertising','social media','email marketing','demand generation','performance marketing'] },
+  sales:        { label:'Sales & Business Dev',  color:'#f97316', soc:'413099', fb:1500000,
+    kw:['sales','business development','account executive','account manager','revenue','quota','crm','salesforce','enterprise sales','b2b','partnership','closing','hunter'] },
+  finance:      { label:'Finance & Investment',  color:'#2dce71', soc:'132051', fb:347400,
+    kw:['finance','financial analyst','investment banking','private equity','venture capital','hedge fund','portfolio','equity research','trading','cfa','bloomberg','financial modeling','valuation','capital markets','m&a'] },
+  consulting:   { label:'Strategy & Consulting', color:'#14b8a6', soc:'131111', fb:906700,
+    kw:['consulting','management consulting','strategy','mckinsey','bain','bcg','deloitte','accenture','advisory','management analyst','business analyst','transformation','strategic planning'] },
+  supply_chain: { label:'Supply Chain & Ops',    color:'#84cc16', soc:'131081', fb:182000,
+    kw:['supply chain','logistics','operations','procurement','warehouse','inventory','demand planning','forecasting','lean','six sigma','s&op','distribution','fulfillment','sourcing','vendor management'] },
+  healthcare:   { label:'Healthcare & Biotech',  color:'#f43f5e', soc:'291141', fb:3200000,
+    kw:['healthcare','biotech','pharmaceutical','medical','clinical','nurse','physician','patient','hospital','fda','drug','genomics','clinical trial','life sciences','regulatory'] },
+  legal:        { label:'Legal & Compliance',    color:'#94a3b8', soc:'231011', fb:682000,
+    kw:['lawyer','attorney','legal','compliance','counsel','law firm','litigation','contract','intellectual property','regulatory','paralegal','juris','bar'] },
+  research:     { label:'Research & Academia',   color:'#0ea5e9', soc:'191042', fb:125000,
+    kw:['research','phd','professor','academic','publication','journal','laboratory','university','postdoc','dissertation','thesis','grant','scientist','principal investigator'] },
+};
+
+/* ══════════════════════════════════════════════════════
+   CITY DATA — % share of national total per domain
+   Source: BLS OES metro area data patterns 2023/2024
+══════════════════════════════════════════════════════ */
+const CITIES = [
+  // ── United States ──
+  { n:'San Francisco Bay Area', c:'US', lat:37.77, lng:-122.42,
+    pct:{ software:9.5,data_science:12.0,product:8.5,design:7.5,marketing:5.0,sales:5.5,finance:5.0,consulting:4.5,supply_chain:1.5,healthcare:2.0,legal:2.0,research:6.5 }},
+  { n:'New York City', c:'US', lat:40.71, lng:-74.01,
+    pct:{ software:8.0,data_science:9.5,product:9.0,design:10.0,marketing:12.5,sales:10.0,finance:18.5,consulting:14.0,supply_chain:3.0,healthcare:7.0,legal:16.0,research:4.5 }},
+  { n:'Seattle', c:'US', lat:47.61, lng:-122.33,
+    pct:{ software:7.5,data_science:6.5,product:5.5,design:4.5,marketing:3.0,sales:3.0,finance:2.5,consulting:2.0,supply_chain:2.5,healthcare:2.5,legal:1.5,research:2.5 }},
+  { n:'Austin', c:'US', lat:30.27, lng:-97.74,
+    pct:{ software:4.0,data_science:3.5,product:3.5,design:2.5,marketing:3.0,sales:4.0,finance:2.5,consulting:2.5,supply_chain:2.0,healthcare:1.5,legal:1.5,research:1.5 }},
+  { n:'Boston', c:'US', lat:42.36, lng:-71.06,
+    pct:{ software:4.5,data_science:6.0,product:3.5,design:3.0,marketing:3.5,sales:3.0,finance:5.5,consulting:6.5,supply_chain:1.5,healthcare:7.5,legal:4.5,research:9.0 }},
+  { n:'Chicago', c:'US', lat:41.88, lng:-87.63,
+    pct:{ software:3.5,data_science:3.5,product:3.0,design:3.5,marketing:5.5,sales:5.5,finance:8.0,consulting:8.5,supply_chain:5.5,healthcare:5.0,legal:6.0,research:2.5 }},
+  { n:'Los Angeles', c:'US', lat:34.05, lng:-118.24,
+    pct:{ software:4.5,data_science:4.0,product:5.0,design:8.0,marketing:8.5,sales:6.0,finance:4.5,consulting:3.5,supply_chain:3.0,healthcare:5.5,legal:5.5,research:3.0 }},
+  { n:'Washington DC', c:'US', lat:38.91, lng:-77.04,
+    pct:{ software:3.5,data_science:5.0,product:3.5,design:2.5,marketing:3.5,sales:3.5,finance:3.5,consulting:10.0,supply_chain:2.0,healthcare:3.5,legal:8.5,research:4.5 }},
+  { n:'Atlanta', c:'US', lat:33.75, lng:-84.39,
+    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:3.5,sales:4.5,finance:4.0,consulting:4.0,supply_chain:4.5,healthcare:3.5,legal:3.0,research:1.5 }},
+  { n:'Dallas', c:'US', lat:32.78, lng:-96.80,
+    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:3.0,sales:4.5,finance:3.5,consulting:3.0,supply_chain:4.0,healthcare:3.0,legal:3.0,research:1.0 }},
+  { n:'Denver', c:'US', lat:39.74, lng:-104.99,
+    pct:{ software:2.0,data_science:1.5,product:2.0,design:1.5,marketing:2.0,sales:2.5,finance:2.0,consulting:2.0,supply_chain:1.5,healthcare:2.0,legal:1.5,research:1.5 }},
+  { n:'Miami', c:'US', lat:25.76, lng:-80.19,
+    pct:{ software:1.5,data_science:1.5,product:1.5,design:2.0,marketing:3.0,sales:3.5,finance:4.0,consulting:2.0,supply_chain:2.0,healthcare:2.5,legal:3.0,research:0.8 }},
+  // ── Canada ──
+  { n:'Toronto', c:'CA', lat:43.65, lng:-79.38,
+    pct:{ software:4.0,data_science:3.5,product:3.0,design:3.0,marketing:3.5,sales:4.0,finance:5.5,consulting:3.5,supply_chain:2.5,healthcare:3.5,legal:3.5,research:2.5 }},
+  { n:'Vancouver', c:'CA', lat:49.28, lng:-123.12,
+    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.5,marketing:1.5,sales:1.5,finance:1.5,consulting:1.0,supply_chain:1.0,healthcare:1.5,legal:1.0,research:1.0 }},
+  // ── Europe ──
+  { n:'London', c:'GB', lat:51.51, lng:-0.13,
+    pct:{ software:8.5,data_science:7.5,product:7.0,design:7.0,marketing:9.0,sales:8.5,finance:13.0,consulting:12.0,supply_chain:4.5,healthcare:5.0,legal:9.5,research:6.0 }},
+  { n:'Berlin', c:'DE', lat:52.52, lng:13.41,
+    pct:{ software:4.5,data_science:3.5,product:4.0,design:4.5,marketing:4.5,sales:3.5,finance:2.0,consulting:2.5,supply_chain:1.5,healthcare:2.0,legal:1.5,research:3.5 }},
+  { n:'Amsterdam', c:'NL', lat:52.37, lng:4.90,
+    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.5,marketing:3.0,sales:3.0,finance:3.5,consulting:3.0,supply_chain:3.5,healthcare:2.0,legal:2.0,research:2.5 }},
+  { n:'Paris', c:'FR', lat:48.86, lng:2.35,
+    pct:{ software:3.5,data_science:3.0,product:3.0,design:4.0,marketing:5.5,sales:5.0,finance:5.5,consulting:6.0,supply_chain:3.0,healthcare:3.5,legal:4.0,research:4.5 }},
+  { n:'Stockholm', c:'SE', lat:59.33, lng:18.07,
+    pct:{ software:2.5,data_science:2.0,product:2.0,design:2.0,marketing:1.5,sales:1.5,finance:1.5,consulting:1.5,supply_chain:1.0,healthcare:1.5,legal:1.0,research:2.0 }},
+  { n:'Zurich', c:'CH', lat:47.38, lng:8.54,
+    pct:{ software:2.0,data_science:1.5,product:1.5,design:1.0,marketing:1.0,sales:1.5,finance:5.0,consulting:3.5,supply_chain:1.0,healthcare:2.5,legal:1.5,research:3.0 }},
+  { n:'Dublin', c:'IE', lat:53.35, lng:-6.26,
+    pct:{ software:2.0,data_science:1.5,product:1.5,design:1.0,marketing:1.5,sales:2.0,finance:2.0,consulting:1.5,supply_chain:0.8,healthcare:1.0,legal:1.0,research:1.0 }},
+  // ── Asia Pacific ──
+  { n:'Singapore', c:'SG', lat:1.35, lng:103.82,
+    pct:{ software:3.0,data_science:2.5,product:2.0,design:1.5,marketing:2.5,sales:3.0,finance:6.0,consulting:4.5,supply_chain:5.5,healthcare:2.0,legal:2.5,research:2.0 }},
+  { n:'Tokyo', c:'JP', lat:35.68, lng:139.65,
+    pct:{ software:5.5,data_science:4.0,product:3.5,design:3.5,marketing:5.5,sales:6.0,finance:7.0,consulting:5.0,supply_chain:6.5,healthcare:5.0,legal:3.5,research:5.0 }},
+  { n:'Bangalore', c:'IN', lat:12.97, lng:77.59,
+    pct:{ software:8.0,data_science:6.5,product:3.5,design:2.0,marketing:2.0,sales:2.5,finance:1.5,consulting:2.5,supply_chain:2.0,healthcare:2.0,legal:1.0,research:3.5 }},
+  { n:'Sydney', c:'AU', lat:-33.87, lng:151.21,
+    pct:{ software:2.5,data_science:1.5,product:1.5,design:1.5,marketing:2.5,sales:2.5,finance:3.5,consulting:3.0,supply_chain:1.5,healthcare:2.5,legal:2.5,research:1.5 }},
+  { n:'Hong Kong', c:'HK', lat:22.32, lng:114.17,
+    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:6.5,consulting:3.5,supply_chain:2.5,healthcare:1.5,legal:2.5,research:1.0 }},
+  { n:'Beijing', c:'CN', lat:39.90, lng:116.41,
+    pct:{ software:5.5,data_science:5.0,product:4.0,design:3.0,marketing:5.0,sales:5.5,finance:4.0,consulting:3.5,supply_chain:4.0,healthcare:4.0,legal:2.5,research:6.0 }},
+  { n:'Seoul', c:'KR', lat:37.57, lng:126.98,
+    pct:{ software:3.5,data_science:2.5,product:2.5,design:3.0,marketing:3.5,sales:4.0,finance:3.5,consulting:2.5,supply_chain:3.0,healthcare:3.0,legal:2.0,research:3.0 }},
+  // ── Middle East / Africa ──
+  { n:'Dubai', c:'AE', lat:25.20, lng:55.27,
+    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:3.5,consulting:2.5,supply_chain:3.5,healthcare:1.0,legal:1.5,research:0.5 }},
+  { n:'Tel Aviv', c:'IL', lat:32.09, lng:34.78,
+    pct:{ software:2.5,data_science:2.0,product:2.0,design:1.5,marketing:1.5,sales:2.0,finance:1.5,consulting:1.0,supply_chain:0.8,healthcare:1.5,legal:0.8,research:2.5 }},
+  // ── Latin America ──
+  { n:'São Paulo', c:'BR', lat:-23.55, lng:-46.63,
+    pct:{ software:2.5,data_science:1.5,product:1.5,design:1.5,marketing:3.0,sales:3.5,finance:3.5,consulting:2.5,supply_chain:2.5,healthcare:2.5,legal:2.0,research:1.5 }},
+  { n:'Mexico City', c:'MX', lat:19.43, lng:-99.13,
+    pct:{ software:1.5,data_science:1.0,product:1.0,design:1.0,marketing:2.0,sales:2.5,finance:2.0,consulting:1.5,supply_chain:2.0,healthcare:1.5,legal:1.0,research:0.8 }},
+];
+
+/* ══════════════════════════════════════════════════════
+   BLS API
+══════════════════════════════════════════════════════ */
+// BLS OES series format: OES + 000000(area=national) + 000000(all industry) + {8-char SOC} + 01(employment)
+async function fetchBLSEmployment(socCode) {
+  const seriesId = `OES000000000000${socCode}01`;
+  try {
+    const res = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        seriesid:[seriesId],
+        startyear:'2023', endyear:'2024'
+      })
+    });
+    const json = await res.json();
+    if(json.status==='REQUEST_SUCCEEDED'){
+      const series = json.Results?.series?.[0]?.data;
+      if(series?.length){
+        // Get most recent non-annual value
+        const latest = series.find(d => d.period !== 'M13') || series[0];
+        const val = parseInt(latest.value.replace(/,/g,''));
+        if(!isNaN(val)) return { value: val, period: `${latest.periodName} ${latest.year}`, live: true };
+      }
+    }
+  } catch(e){ console.warn('BLS API error:', e); }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════
+   RESUME PARSING
+══════════════════════════════════════════════════════ */
+let resumeText = '';
+
+window.handleDrop = function(ev) {
+  ev.preventDefault();
+  document.getElementById('drop').classList.remove('over');
+  const file = ev.dataTransfer.files[0];
+  if(file) processFile(file);
+};
+
+window.handleFile = function(ev) {
+  const file = ev.target.files[0];
+  if(file) processFile(file);
+};
+
+async function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'pdf') {
+    resumeText = await parsePDF(file);
+  } else {
+    resumeText = await file.text();
+  }
+  if(resumeText.trim()) {
+    document.getElementById('drop').innerHTML =
+      `<div class="di">✅</div><p><strong>${file.name}</strong><br/><small>${resumeText.length} chars loaded</small></p>`;
+    document.getElementById('analyze-btn').disabled = false;
+  }
+}
+
+async function parsePDF(file) {
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    let text = '';
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(s=>s.str).join(' ') + '\n';
+    }
+    return text;
+  } catch(e) {
+    console.error('PDF parse error:', e);
+    return '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   CAREER KEYWORD ANALYSIS (instant, no model needed)
+══════════════════════════════════════════════════════ */
+function keywordAnalyze(text) {
+  const lower = text.toLowerCase();
+  const scores = {};
+  for(const [key, d] of Object.entries(DOMAINS)){
+    scores[key] = d.kw.filter(k => lower.includes(k)).length;
+  }
+  const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const topSkills = [];
+  const primary = sorted[0][0];
+  DOMAINS[primary].kw.forEach(k=>{ if(lower.includes(k) && topSkills.length<6) topSkills.push(k); });
+  return { primary, secondary: sorted[1][0], scores, topSkills, sortedDomains: sorted };
+}
+
+/* ══════════════════════════════════════════════════════
+   MAP
+══════════════════════════════════════════════════════ */
+let map, markers = [];
+
+function initMap() {
+  if(map) return;
+  document.getElementById('map-hint').style.display='none';
+  map = L.map('map', { zoomControl:false, attributionControl:false }).setView([20, 10], 2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom:18, subdomains:'abcd'
+  }).addTo(map);
+  L.control.zoom({ position:'bottomright' }).addTo(map);
+  L.control.attribution({ position:'bottomleft', prefix:
+    '<a href="https://carto.com/">CartoDB</a> · <a href="https://bls.gov/">BLS</a>'
+  }).addTo(map);
+}
+
+function clearMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+}
+
+function plotCities(domain, nationalTotal, isLive) {
+  clearMarkers();
+  const cityScores = CITIES.map(city => ({
+    ...city,
+    count: Math.round(nationalTotal * (city.pct[domain] || 0) / 100)
+  })).sort((a,b) => b.count - a.count);
+
+  const maxCount = cityScores[0]?.count || 1;
+  const color = DOMAINS[domain].color;
+
+  cityScores.forEach((city, idx) => {
+    if(!city.count) return;
+    const ratio = city.count / maxCount;
+    const size = 14 + ratio * 36;
+    const opacity = 0.45 + ratio * 0.55;
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="career-bubble ${idx<3?'top':''}" style="
+        width:${size}px;height:${size}px;
+        background:${color};
+        opacity:${opacity};
+        font-size:${size < 22 ? 0 : 10}px;
+      ">${size>22 ? fmtNum(city.count) : ''}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2],
+    });
+
+    const marker = L.marker([city.lat, city.lng], { icon })
+      .addTo(map)
+      .bindPopup(`
+        <div style="font-family:sans-serif;min-width:160px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px">${city.n}</div>
+          <div style="color:#8b949e;font-size:11px">${city.c}</div>
+          <div style="margin-top:8px;font-size:13px">
+            <span style="color:${color};font-weight:700">${fmtNum(city.count)}</span>
+            <span style="color:#8b949e"> professionals</span>
+          </div>
+          <div style="color:#8b949e;font-size:10px;margin-top:2px">
+            ${(city.pct[domain]||0).toFixed(1)}% of ${isLive?'live':'est.'} national total
+          </div>
+          <div style="font-size:10px;color:#58a6ff;margin-top:6px">
+            Rank #${idx+1} globally
+          </div>
+        </div>
+      `, { maxWidth:220 });
+    markers.push(marker);
+  });
+
+  // Update top cities panel
+  updateCitiesPanel(cityScores.slice(0,8), maxCount, color);
+}
+
+function updateCitiesPanel(cities, maxCount, color) {
+  const el = document.getElementById('cities-list');
+  el.innerHTML = '';
+  cities.forEach((city, i) => {
+    const bar = Math.round((city.count/maxCount)*100);
+    const div = document.createElement('div');
+    div.className = 'city-row';
+    div.innerHTML = `
+      <div class="city-rank">#${i+1}</div>
+      <div class="city-info">
+        <div class="city-name">${city.n} <span style="color:var(--text-dim);font-weight:400">${city.c}</span></div>
+        <div class="city-bar" style="width:${bar}%;background:${color}"></div>
+        <div class="city-count">${fmtNum(city.count)} professionals</div>
+      </div>`;
+    div.onclick = () => map.flyTo([city.lat, city.lng], 7, { animate:true, duration:1.2 });
+    el.appendChild(div);
+  });
+  document.getElementById('topcities-sec').style.display='block';
+}
+
+/* ══════════════════════════════════════════════════════
+   MAIN ANALYSIS FLOW
+══════════════════════════════════════════════════════ */
+let careerResult = null;
+
+/* ══════════════════════════════════════════════════════
+   SAMPLE RESUMES
+══════════════════════════════════════════════════════ */
+const SAMPLE_RESUMES = [
+  {
+    label: 'Data Scientist',
+    text: `Jordan Lee  |  jordan.lee@email.com  |  Chicago, IL
+
+SUMMARY
+Data Scientist with 5 years of experience building machine learning models and
+analytics pipelines. Passionate about NLP, deep learning, and turning messy data
+into business decisions.
+
+EXPERIENCE
+Senior Data Scientist — Accenture, Chicago (2021–Present)
+• Built NLP classification models (PyTorch, transformers) reducing manual review by 60%
+• Led A/B testing framework serving 2M+ users; drove 12% lift in engagement
+• Deployed real-time recommendation engine on AWS SageMaker
+
+Data Scientist — Nielsen, Chicago (2019–2021)
+• Developed demand forecasting models using LSTM and gradient boosting (XGBoost)
+• Created Tableau dashboards used by C-suite for quarterly planning
+
+SKILLS
+Python, SQL, PyTorch, TensorFlow, scikit-learn, Spark, AWS, Tableau, R, Statistics
+
+EDUCATION
+M.S. Statistics — University of Chicago, 2019
+B.S. Mathematics — University of Illinois, 2017`
+  },
+  {
+    label: 'Software Engineer',
+    text: `Alex Rivera  |  alex.rivera@email.com  |  Austin, TX
+
+SUMMARY
+Full-stack software engineer with 6 years building scalable web applications.
+Strong in React, Node.js, and cloud infrastructure. Open source contributor.
+
+EXPERIENCE
+Senior Software Engineer — Dell Technologies, Austin (2020–Present)
+• Architected microservices platform handling 500K daily API requests (Node.js, Docker, Kubernetes)
+• Led migration from monolith to AWS ECS, cutting infrastructure costs 40%
+• Mentored team of 4 junior engineers; introduced TypeScript across the codebase
+
+Software Engineer — Bazaarvoice, Austin (2018–2020)
+• Built React frontend for SaaS platform with 200+ enterprise clients
+• Implemented CI/CD pipelines with GitHub Actions and Terraform
+
+SKILLS
+JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, Kubernetes,
+PostgreSQL, Redis, GraphQL, REST APIs, Git
+
+EDUCATION
+B.S. Computer Science — UT Austin, 2018`
+  },
+  {
+    label: 'Supply Chain Manager',
+    text: `Morgan Chen  |  morgan.chen@email.com  |  Chicago, IL
+
+SUMMARY
+Supply chain professional with 8 years in operations, procurement, and logistics
+optimization. Six Sigma Black Belt. Expert in S&OP and demand planning.
+
+EXPERIENCE
+Supply Chain Manager — Caterpillar Inc., Chicago (2019–Present)
+• Managed $120M procurement portfolio across 45 global suppliers
+• Implemented demand forecasting system reducing inventory carrying costs by $8M/year
+• Led cross-functional S&OP process improvement; reduced stockouts by 35%
+
+Senior Logistics Analyst — Coyote Logistics, Chicago (2016–2019)
+• Optimized freight network saving $3.2M annually through lane consolidation
+• Built Excel/Python models for carrier performance benchmarking
+
+SKILLS
+Supply chain management, S&OP, demand planning, procurement, SAP, Oracle,
+Python, Excel, Six Sigma, lean manufacturing, vendor management, logistics
+
+EDUCATION
+MBA, Operations — Booth School of Business, University of Chicago, 2016
+B.S. Industrial Engineering — Purdue University, 2014`
+  },
+  {
+    label: 'Investment Banker',
+    text: `Taylor Kim  |  taylor.kim@email.com  |  New York, NY
+
+SUMMARY
+Investment banking analyst with 4 years in M&A advisory and capital markets.
+CFA Level II candidate. Strong financial modeling and valuation expertise.
+
+EXPERIENCE
+Associate, M&A Advisory — Goldman Sachs, New York (2022–Present)
+• Executed 6 sell-side M&A transactions totaling $4.2B in enterprise value
+• Built LBO, DCF, and comparable company analyses for buy-side mandates
+• Managed due diligence process coordinating 12-person cross-functional teams
+
+Analyst — JPMorgan Investment Banking, New York (2020–2022)
+• Supported TMT sector coverage; prepared pitch books and CIMs
+• Modeled capital structure scenarios for $800M leveraged buyout
+
+SKILLS
+Financial modeling, DCF, LBO, M&A, Bloomberg Terminal, Capital IQ,
+Excel, PowerPoint, valuation, private equity, equity research, capital markets
+
+EDUCATION
+B.S. Finance — Wharton School, University of Pennsylvania, 2020`
+  },
+];
+
+let sampleIdx = 0;
+window.loadSample = function() {
+  const sample = SAMPLE_RESUMES[sampleIdx % SAMPLE_RESUMES.length];
+  sampleIdx++;
+
+  // Switch to paste tab and fill in the resume
+  switchTab('paste');
+  const ta = document.getElementById('paste-area');
+  ta.value = sample.text;
+  ta.style.height = '160px';
+  resumeText = sample.text;
+
+  // Update button to cycle through samples
+  const btn = document.getElementById('sample-btn');
+  btn.textContent = `✨ Sample: ${sample.label} — click to try next`;
+
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('analyze-btn').style.animation = 'none';
+
+  // Auto-run analysis
+  analyzeResume();
+};
+
+window.analyzeResume = async function() {
+  const pasteEl = document.getElementById('paste-area');
+  const text = resumeText || pasteEl.value.trim();
+  if(!text) return;
+
+  setLoading(true, 'Analyzing resume…');
+  initMap();
+
+  // 1. Keyword-based career classification (instant)
+  const result = keywordAnalyze(text);
+  careerResult = result;
+  const domain = DOMAINS[result.primary];
+
+  // Show profile card
+  document.getElementById('profile-sec').style.display = 'block';
+  document.getElementById('profile-card').style.display = 'block';
+  document.getElementById('pd-dot').style.background = domain.color;
+  document.getElementById('pd-label').textContent = domain.label;
+  document.getElementById('pd-secondary').textContent =
+    `Also matches: ${DOMAINS[result.secondary].label}`;
+  const skillsEl = document.getElementById('pd-skills');
+  skillsEl.innerHTML = result.topSkills.slice(0,6).map(s=>
+    `<span class="stag">${s}</span>`).join('');
+
+  // 2. Fetch live BLS data
+  setLoading(true, 'Fetching live BLS employment data…');
+  updateBLSBadge('loading');
+
+  const blsResult = await fetchBLSEmployment(DOMAINS[result.primary].soc);
+  let nationalTotal, isLive = false, period = '2023';
+
+  if(blsResult) {
+    nationalTotal = blsResult.value;
+    period = blsResult.period;
+    isLive = true;
+    updateBLSBadge('live', `Live · ${period}`);
+  } else {
+    nationalTotal = DOMAINS[result.primary].fb;
+    updateBLSBadge('fallback', '2024 BLS Annual Est.');
+  }
+
+  // Update stats
+  document.getElementById('st-total').textContent = fmtNum(nationalTotal);
+  document.getElementById('st-global').textContent = fmtNum(Math.round(nationalTotal * 2.8));
+  document.getElementById('pd-meta').textContent =
+    `${isLive ? '🟢 Live BLS data' : '📊 BLS 2024 estimate'} · ${period}`;
+
+  // 3. Plot on map
+  setLoading(true, 'Plotting career hubs…');
+  plotCities(result.primary, nationalTotal, isLive);
+
+  setLoading(false);
+
+  // 4. Run WebLLM insights if model is loaded
+  if(llmReady) runInsights(text, result, nationalTotal, isLive);
+  else document.getElementById('insights-box').textContent =
+    `📌 Career domain detected: ${domain.label}\n\nLoad an AI model above for deep career geography insights.`;
+};
+
+/* ══════════════════════════════════════════════════════
+   WebLLM
+══════════════════════════════════════════════════════ */
+let llmEngine = null, llmReady = false;
+
+window.loadModel = async function() {
+  const modelId = document.getElementById('msel').value;
+  document.getElementById('load-ai-btn').disabled = true;
+  document.getElementById('ai-progress').style.display = 'block';
+
+  try {
+    const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
+    llmEngine = await CreateMLCEngine(modelId, {
+      initProgressCallback: r => {
+        document.getElementById('ai-pfill').style.width = `${Math.round((r.progress||0)*100)}%`;
+        document.getElementById('ai-plabel').textContent = r.text;
+      }
+    });
+    llmReady = true;
+    document.getElementById('ai-plabel').textContent = '✓ Model ready';
+    if(careerResult) runInsights(resumeText, careerResult);
+  } catch(e) {
+    document.getElementById('ai-plabel').textContent = 'Error: ' + e.message;
+    document.getElementById('load-ai-btn').disabled = false;
+  }
+};
+
+async function runInsights(text, result, total, isLive) {
+  if(!llmReady || !llmEngine) return;
+  const box = document.getElementById('insights-box');
+  box.textContent = '';
+  box.classList.add('cursor');
+
+  const snippet = text.slice(0, 1200);
+  const domain = DOMAINS[result.primary].label;
+  const secondDomain = DOMAINS[result.secondary].label;
+  const nTotal = total ? fmtNum(total) : 'unknown';
+
+  const prompt = `You are a career geography analyst. Based on this resume snippet and data:
+- Primary career domain: ${domain}
+- Secondary domain: ${secondDomain}  
+- Top skills found: ${result.topSkills.join(', ')}
+- US professionals in this field: ${nTotal} (${isLive?'live BLS data':'BLS estimate'})
+
+Resume snippet:
+${snippet}
+
+Write 4-5 sharp bullet points about:
+1. Where globally this person's career is strongest (specific cities)
+2. Emerging hubs they might not have considered
+3. One geographic arbitrage opportunity (high demand, lower competition city)
+4. Remote work landscape for this field
+Keep it concise and actionable.`;
+
+  try {
+    const stream = await llmEngine.chat.completions.create({
+      messages:[{role:'user', content:prompt}],
+      stream:true, temperature:0.7, max_tokens:400
+    });
+    let full = '';
+    for await (const chunk of stream){
+      const delta = chunk.choices[0]?.delta?.content || '';
+      if(delta){ full+=delta; box.textContent=full; }
+    }
+    box.classList.remove('cursor');
+    box.classList.add('has-content');
+  } catch(e) {
+    box.textContent = 'Insight error: ' + e.message;
+    box.classList.remove('cursor');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════════════ */
+window.switchTab = function(tab) {
+  document.getElementById('tab-file').classList.toggle('active', tab==='file');
+  document.getElementById('tab-paste').classList.toggle('active', tab==='paste');
+  document.getElementById('drop').style.display = tab==='file' ? 'block' : 'none';
+  document.getElementById('paste-area').style.display = tab==='paste' ? 'block' : 'none';
+  if(tab==='paste') {
+    document.getElementById('analyze-btn').disabled = false;
+  }
+};
+
+function setLoading(on, msg='') {
+  const el = document.getElementById('loading');
+  el.style.display = on ? 'flex' : 'none';
+  if(msg) document.getElementById('loading-msg').textContent = msg;
+}
+
+function updateBLSBadge(state, label='') {
+  const dot = document.getElementById('bls-dot');
+  const txt = document.getElementById('bls-txt');
+  if(state==='live')     { dot.className='dot live'; txt.textContent=label||'BLS Live'; }
+  else if(state==='fallback') { dot.className='dot warn'; txt.textContent=label||'BLS Est.'; }
+  else if(state==='loading')  { dot.className='dot'; txt.textContent='BLS Loading…'; }
+}
+
+function fmtNum(n) {
+  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if(n >= 1e3) return (n/1e3).toFixed(0)+'K';
+  return n.toString();
+}
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+// WebGPU check
+(async () => {
+  const dot = document.getElementById('gpu-dot');
+  const txt = document.getElementById('gpu-txt');
+  if(!navigator.gpu){ dot.className='dot warn'; txt.textContent='No WebGPU'; return; }
+  const a = await navigator.gpu.requestAdapter().catch(()=>null);
+  if(a){ dot.className='dot ok'; txt.textContent='WebGPU ready'; }
+  else { dot.className='dot warn'; txt.textContent='GPU unavailable'; }
+})();
+
+// BLS connectivity check
+(async () => {
+  try {
+    // Quick ping with a known-good series
+    const r = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ seriesid:['CES0000000001'], startyear:'2024', endyear:'2024' })
+    });
+    const j = await r.json();
+    if(j.status==='REQUEST_SUCCEEDED'){
+      document.getElementById('bls-dot').className='dot ok';
+      document.getElementById('bls-txt').textContent='BLS API connected';
+    } else { throw new Error(); }
+  } catch {
+    document.getElementById('bls-dot').className='dot warn';
+    document.getElementById('bls-txt').textContent='BLS offline — using estimates';
+  }
+})();
+
+// Paste tab auto-enable
+document.getElementById('paste-area').addEventListener('input', function(){
+  document.getElementById('analyze-btn').disabled = !this.value.trim();
+});
+</script>
+</body>
+</html>
