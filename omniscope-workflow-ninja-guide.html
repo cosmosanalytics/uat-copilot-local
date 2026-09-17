@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Omniscope Guided Walkthrough</title>
+<title>Omniscope Ninja Copilot</title>
 <style>
   :root{
     --bg:#f6f7f5; --panel:#ffffff; --panel-inset:#f0f1ee; --border:#dcded9; --border-soft:#e8e9e5;
@@ -56,6 +56,7 @@
   .pill.done{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-dim); }
   .pill.current{ background:var(--plum-bg); color:var(--plum); border:1px solid #d9c4e8; }
   .pill.upcoming{ background:var(--panel-inset); color:var(--text-faint); border:1px solid var(--border); }
+  .pill.opt{ background:var(--panel-inset); color:var(--text-faint); border:1px solid var(--border); }
 
   .status-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
   .status-dot.loading{ background:var(--amber); animation:pulse 1.1s infinite; }
@@ -71,6 +72,7 @@
 
   .footnote{ font-size:11px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
   .intro-card{ background:var(--accent-bg); border-color:var(--accent-dim); }
+  .warn-card{ background:var(--amber-bg); border-color:var(--amber-dim); }
 
   .track-bar{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
   .track-btn{ flex:1; min-width:220px; text-align:left; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; background:var(--panel); cursor:pointer; font-family:inherit; }
@@ -90,13 +92,15 @@
   .step-row .s-body{ flex:1; }
   .step-row .s-text{ font-size:12.5px; line-height:1.5; }
   .step-row .s-hint{ font-size:11.5px; color:var(--text-faint); margin-top:2px; line-height:1.4; }
+  .step-row .s-copy{ margin-top:6px; }
 
-  .spec-box{ background:var(--panel-inset); border:1px solid var(--border-soft); border-radius:8px; padding:12px 14px; font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; line-height:1.5; color:var(--text-dim); }
+  .spec-box{ background:var(--panel-inset); border:1px solid var(--border-soft); border-radius:8px; padding:12px 14px; font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; line-height:1.5; color:var(--text-dim); max-height:260px; overflow:auto; }
+  .copy-toast{ font-size:11px; color:var(--accent); margin-left:6px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Omniscope Guided <span>Walkthrough</span></h1>
+  <h1>Omniscope Ninja <span>Copilot</span></h1>
   <span class="badge">vision model · SmolVLM via WebGPU · nothing uploaded</span>
   <div class="spacer"></div>
   <span class="gpu-pill mono" id="gpuPill">checking WebGPU…</span>
@@ -107,18 +111,29 @@
   <div class="card intro-card">
     <h2><span class="num">i</span>What this is</h2>
     <p class="help" style="margin-bottom:0">
-      A step-by-step guide to three things in Visokio Omniscope: signing in with your Google account, building a workflow
-      automatically by describing it to <b>Ask the Workflow Ninja</b>, and building a report automatically by describing it
-      to <b>Report Ninja</b>. Each step tells you exactly what to do in Omniscope, then a small vision-language model
-      (SmolVLM) looks at a screenshot of what's actually on your screen and tells you whether it looks like that step is
-      done — the same engine and worker used by the UAT Outcome Accountability console. It only advises; you decide when to
-      move on. Nothing is uploaded — the model and the screenshot both stay in this browser tab.
+      A step-by-step copilot for automating two things in Visokio Omniscope entirely from chat: building a data
+      workflow with <b>Ask the Workflow Ninja</b>, and building a dashboard with <b>Report Ninja</b> — no manual
+      block-wiring or chart-dragging, all done by typing instructions into their chat panels. You paste your own
+      sample data and functional spec below, this page turns it into ready-to-paste chat messages, then at each step
+      a small vision-language model (SmolVLM) looks at a screenshot of your actual screen and tells you whether that
+      step looks done. It only advises; you decide when to move on. Nothing is uploaded — the model and the
+      screenshot both stay in this browser tab.
+    </p>
+  </div>
+
+  <div class="card warn-card">
+    <h2><span class="num">!</span>The one rule that matters</h2>
+    <p class="help" style="margin-bottom:0">
+      Everything you do to Omniscope goes through the chat box in the Workflow Ninja or Report Ninja panel —
+      never click, drag, or configure anything on the canvas or report yourself. If a block needs fixing, tell the
+      Ninja in chat what's wrong; it can read its own output and correct itself. This keeps the whole process
+      reproducible from a transcript instead of a recording of mouse movements.
     </p>
   </div>
 
   <div class="card" style="margin-bottom:0">
     <h2><span class="num">1</span>Setup</h2>
-    <p class="help">Load the vision model once, then choose how it sees your screen. This only needs to be done once for all three guides below.</p>
+    <p class="help">Load the vision model once, then choose how it sees your screen. This only needs to be done once for the whole run below.</p>
     <label for="modelSelect">Model</label>
     <select id="modelSelect">
       <option value="HuggingFaceTB/SmolVLM-256M-Instruct">SmolVLM-256M-Instruct — smallest, fastest (~350 MB)</option>
@@ -136,7 +151,7 @@
       <div class="mode-btn" id="modeUploadBtn">Upload a screenshot</div>
     </div>
     <div id="shareArea" style="margin-top:10px">
-      <div class="no-share" id="noShareMsg">Not sharing yet.</div>
+      <div class="no-share" id="noShareMsg">Not sharing yet. When prompted, share the browser tab or window where Omniscope is open.</div>
       <video id="preview" autoplay muted style="display:none"></video>
       <div class="btn-row"><button class="btn" id="shareBtn">Share screen</button></div>
     </div>
@@ -146,18 +161,55 @@
     </div>
   </div>
 
+  <div class="card" style="margin-top:18px">
+    <h2><span class="num">2</span>Your data and functional spec</h2>
+    <p class="help">
+      Paste your own sample tables and build spec here. Workflow Ninja will not invent data on its own — if you
+      skip this, it spends a minute searching your whole account for something matching, then stops and asks you
+      for exact column names. Giving it real data up front is what makes the rest of this run fast and reliable.
+    </p>
+    <label for="dataInput">Sample data (any format — CSV, a pasted table, plain text description of the columns)</label>
+    <textarea id="dataInput" placeholder="e.g.&#10;Sales History (SKU, warehouse, month, units_sold):&#10;SKU001,East,2026-06,120&#10;SKU001,East,2026-07,135&#10;...">Sales History (SKU, warehouse, month, units_sold):
+SKU001,East,2026-06,120
+SKU001,East,2026-07,135
+SKU001,East,2026-08,150
+SKU002,West,2026-06,80
+SKU002,West,2026-07,75
+SKU002,West,2026-08,90
+
+Item Master (SKU, lead_time_days, safety_stock):
+SKU001,14,50
+SKU002,21,30
+
+Current Inventory (SKU, warehouse, on_hand):
+SKU001,East,140
+SKU002,West,60</textarea>
+
+    <label for="specInput">Functional spec (what the workflow should compute, in plain language or numbered steps)</label>
+    <textarea id="specInput" placeholder="e.g.&#10;1. Forecast next month's demand as the trailing 3-month average...">1. Forecast next month's demand per SKU and warehouse as the trailing 3-month average of units sold.
+2. Compute a reorder point per SKU and warehouse as (forecast demand / 30 * lead time days) + safety stock.
+3. Flag any SKU/warehouse combination where current on-hand inventory is below its reorder point.
+4. Summarize: total SKUs flagged, flagged SKUs grouped by warehouse, and the top 5 most at-risk SKU/warehouse combinations ranked by how far below reorder point they are.</textarea>
+
+    <label for="namesInput">Names for the Text Input blocks (comma-separated, in the same order your tables appear above)</label>
+    <input type="text" id="namesInput" value="Sales History, Item Master, Current Inventory">
+
+    <div class="btn-row"><button class="btn primary" id="buildPromptsBtn">Build chat messages from this</button> <span class="copy-toast" id="buildToast"></span></div>
+  </div>
+
   <div class="track-bar" style="margin-top:18px">
-    <button class="track-btn active" data-track="login"><span class="t-num">1</span><span class="t-title">Sign in with Google</span><div class="t-sub">Open Omniscope and log in using your Google account.</div></button>
-    <button class="track-btn" data-track="workflow"><span class="t-num">2</span><span class="t-title">Ask the Workflow Ninja</span><div class="t-sub">Paste a functional spec in chat and watch a workflow get built automatically.</div></button>
-    <button class="track-btn" data-track="report"><span class="t-num">3</span><span class="t-title">Report Ninja</span><div class="t-sub">Paste the same spec and watch a report get built automatically.</div></button>
+    <button class="track-btn active" data-track="directory"><span class="t-num">1</span><span class="t-title">Open your Omniscope directory</span><div class="t-sub">Share the screen where your Omniscope account is open and create the project.</div></button>
+    <button class="track-btn" data-track="workflow"><span class="t-num">2</span><span class="t-title">Ask the Workflow Ninja</span><div class="t-sub">Send your data and spec in chat and watch the pipeline get built automatically.</div></button>
+    <button class="track-btn" data-track="report"><span class="t-num">3</span><span class="t-title">Report Ninja</span><div class="t-sub">Let it propose and build a dashboard on top of the finished workflow.</div></button>
   </div>
 
   <div class="card" id="trackCard">
     <h2 id="trackTitle"></h2>
     <p class="help" id="trackHelp"></p>
     <div id="specWrap" style="display:none">
-      <label style="margin-top:0">Sample functional spec (paste this into the Ninja chat when the step tells you to)</label>
+      <label style="margin-top:0" id="specLabel">Ready-to-paste chat message (built from the data + spec above)</label>
       <div class="spec-box" id="specBox"></div>
+      <div class="btn-row"><button class="btn small" id="copySpecBtn">Copy this message</button> <span class="copy-toast" id="specToast"></span></div>
     </div>
     <div class="step-list" id="stepList"></div>
     <div class="btn-row">
@@ -171,10 +223,10 @@
 
   <div class="footnote">
     Runs fully client-side: a SmolVLM model via Transformers.js on WebGPU, loaded through <span class="mono">vision-worker.js</span>
-    (must be deployed alongside this file). Progress through each guide is kept only in this browser tab's memory — reload
-    the page and it resets. Nothing about your screen, your Google account, or anything you type into Omniscope is sent
-    anywhere; the only network calls are the one-time model weight download (cached after first load) and whatever
-    Omniscope itself does in its own tab.
+    (must be deployed alongside this file). Progress through this run is kept only in this browser tab's memory — reload
+    the page and it resets. Nothing about your screen or anything you type into Omniscope is sent anywhere; the only
+    network calls are the one-time model weight download (cached after first load) and whatever Omniscope itself
+    does in its own tab.
   </div>
 </div>
 
@@ -196,75 +248,112 @@ const uploadPreview = el('uploadPreview');
 const trackTitle = el('trackTitle');
 const trackHelp = el('trackHelp');
 const specWrap = el('specWrap');
+const specLabel = el('specLabel');
 const specBox = el('specBox');
+const copySpecBtn = el('copySpecBtn');
+const specToast = el('specToast');
 const stepList = el('stepList');
 const checkStepBtn = el('checkStepBtn');
 const markDoneBtn = el('markDoneBtn');
 const prevStepBtn = el('prevStepBtn');
 const nextStepBtn = el('nextStepBtn');
 const assessArea = el('assessArea');
+const dataInput = el('dataInput');
+const specInput = el('specInput');
+const namesInput = el('namesInput');
+const buildPromptsBtn = el('buildPromptsBtn');
+const buildToast = el('buildToast');
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// ---------------- the sample functional spec, shared by the Workflow Ninja and Report Ninja tracks ----------------
-const SAMPLE_SPEC = `Simple supply chain planning — monthly SKU/warehouse view
+// ---------------- turns the data + spec text boxes into the two ready-to-paste chat messages ----------------
+let workflowPrompt = '';
+let reportPrompt = '';
 
-Inputs: monthly sales history by SKU and warehouse (SKU, warehouse, month, units sold),
-and a small item master (SKU, lead time in days, safety stock in units).
+function buildPrompts() {
+  const data = dataInput.value.trim();
+  const spec = specInput.value.trim();
+  const names = namesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+  const namesList = names.length ? names.map(n => `"${n}"`).join(', ') : '(use sensible names based on the data below)';
 
-Build:
-1. Forecast next month's demand per SKU and warehouse as the trailing 3-month average of units sold.
-2. Compute a reorder point per SKU and warehouse as (forecast demand / 30 * lead time days) + safety stock.
-3. Flag any SKU/warehouse combination where current on-hand inventory is below its reorder point.
-4. Summarize: total SKUs flagged, flagged SKUs grouped by warehouse, and the top 5 most at-risk
-   SKU/warehouse combinations ranked by how far below reorder point they are.`;
+  workflowPrompt =
+`Please create Text Input blocks from the following sample data, using these exact names: ${namesList}.
+
+${data}
+
+Then, using those blocks, build a workflow that does the following and connects the final output into the Report block:
+${spec}`;
+
+  reportPrompt =
+`The workflow above is already connected to this Report. Please review the data it produced and propose (or directly build) a dashboard layout that surfaces the results of this spec clearly, especially any flagged/summary values:
+
+${spec}`;
+
+  renderTrackChrome();
+  buildToast.textContent = 'Messages ready — switch to track 2 or 3 to copy them.';
+  setTimeout(() => { buildToast.textContent = ''; }, 4000);
+}
+buildPromptsBtn.addEventListener('click', buildPrompts);
+
+async function copyText(text, toastEl) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toastEl.textContent = 'Copied!';
+  } catch (e) {
+    toastEl.textContent = 'Could not copy automatically — select the text above and copy manually.';
+  }
+  setTimeout(() => { toastEl.textContent = ''; }, 3000);
+}
+copySpecBtn.addEventListener('click', () => copyText(specBox.textContent, specToast));
 
 // ---------------- the three guided tracks ----------------
 const TRACKS = {
-  login: {
-    title: 'Sign in with Google',
-    help: 'Log into Visokio Omniscope using your Google account. Do each step in Omniscope, then check it against the AI before moving on.',
+  directory: {
+    title: 'Open your Omniscope directory',
+    help: 'Get to a fresh, empty project on the Workflow canvas — this is the starting point both Ninja steps build from.',
     showSpec: false,
     steps: [
-      { text: 'Open the Omniscope sign-in page in your browser.', hint: 'You should see a login screen with a "Sign in" or "Continue with Google" option.' },
-      { text: 'Click "Continue with Google" (or the Google icon) on the sign-in screen.', hint: 'This opens a Google account picker, either in the same window or a popup.' },
-      { text: 'Choose your Google account, or enter your Google email and password if prompted.', hint: 'You should see either your account listed to click, or a standard Google sign-in form.' },
-      { text: 'Approve any permissions Google asks Omniscope to use, if prompted.', hint: 'A consent screen may appear listing what Omniscope can access — approve it to continue.' },
-      { text: 'Confirm you have landed on the Omniscope home or workspace screen, signed in.', hint: 'Your name, avatar, or email should now appear somewhere in the Omniscope interface (usually top-right).' },
+      { text: 'Share the browser tab or window where your Omniscope account is open, at the directory / home page (the one listing your projects and "Create a project" tiles).', hint: 'You should see tiles like "New project", "Import data file", "Instant Dashboard" across the top, and a list of your existing projects and folders below.' },
+      { text: 'Click "New project", give it a name, and click "Create".', hint: 'A dialog box appears with a "Name" field pre-filled with "Project" and selected — type over it, then click the blue "Create" button.' },
+      { text: 'Confirm you landed on the new project\'s Workflow canvas: an empty canvas with a single "Report" block already on it, and "Report" showing as a tab next to the project name at the top.', hint: 'The canvas is mostly blank with one small "Report" block (an eye icon) in the middle, and a "Click here to add blocks" hint near the top.' },
     ],
   },
   workflow: {
     title: 'Ask the Workflow Ninja',
-    help: 'Paste the sample supply-chain spec below into the Workflow Ninja chat and watch it build the workflow for you, step by step.',
+    help: 'Give it your real sample data plus your spec in one message, then watch it build the calculation pipeline itself. Verified end-to-end twice — each run took 5-7 minutes on a real account.',
     showSpec: true,
     steps: [
-      { text: 'In Omniscope, open "Ask the Workflow Ninja" (usually from the workflow/build area or a chat icon).', hint: 'You should see a chat panel labeled Workflow Ninja, with an empty input box.' },
-      { text: 'Paste the full sample functional spec above into the Workflow Ninja chat box and send it.', hint: 'The chat should show your pasted spec as a sent message.' },
-      { text: 'Watch the Workflow Ninja respond and begin proposing or adding workflow steps.', hint: 'You should see new nodes/steps appearing in a workflow canvas, or a plan listed in the chat.' },
-      { text: 'Let it finish building — you should see steps for the forecast, reorder point calculation, and the below-reorder-point flag.', hint: 'Look for distinct workflow steps or transforms matching those three calculations from the spec.' },
-      { text: 'Confirm the workflow is complete and runnable (no red/error markers on any step).', hint: 'Completed workflow steps are usually shown without warning icons, and a run/preview button is enabled.' },
+      { text: 'While on the Workflow canvas, click the three-dot menu (⋮) in the top-right corner of the toolbar.', hint: 'A menu opens with sections including "Share this project", "Lock", "Automation", "Clean up data", "Project history", and — the ones you want — "Ask the Workflow Ninja" and "Tidy workflow", right next to each other.' },
+      { text: 'Click "Ask the Workflow Ninja". A chat panel opens on the right with "What would you like to build?" and an "Ask me..." box at the bottom.', hint: 'The panel header reads "Workflow Ninja" with a small robot-and-pencil icon. A model name (e.g. gpt-5.6-luna) shows bottom-right of the input box, along with a live token/context percentage.' },
+      { text: 'Click into the chat box, paste the message built above (use the "Copy this message" button), and press Enter or click the send arrow.', hint: 'Type or paste in one go and send it as a single message. If the box contains multiline text and only the first line seems to get sent while the rest stays in the box, click into the box and click the send (arrow) button directly rather than pressing Enter again — that reliably sends the whole remaining text as-is.' },
+      { text: 'Watch the "Thinking..." trace under your message. It narrates itself in real time: "Listing blocks", "Inspecting block type ...", "Adding \'<name>\'", and so on, while new blocks and connections appear live on the canvas behind the panel.', hint: 'This is not instant — verified runs took roughly 5-7 minutes end-to-end for a 3-input, 9-block pipeline. Do not assume it is stuck; elapsed time is shown at the top of the trace ("Thought for N seconds").' },
+      { text: 'If it asks a clarifying question instead of building (e.g. asking you to paste the sample data again), that means your message did not fully send — reply with the missing part and send again.', hint: 'This happens if data was missing from what actually reached the chat. Workflow Ninja will not fabricate placeholder data; it always asks rather than guessing.' },
+      { text: 'If it hits a bad formula or wrong field reference mid-build, it will show a red error banner at the top of the canvas, then keep working and fix it itself in a later step — you do not need to intervene.', hint: 'Verified behavior: it referenced a field by its pre-rename name, hit a calculation error, then reconfigured that exact block a little later and cleared the error on its own.' },
+      { text: 'When finished, it posts a plain-language summary: which blocks it created, the formulas it used, and — because it opens the Report to check — the actual computed results.', hint: 'Look for a closing "Verified results" section listing real numbers (e.g. "2 SKU/warehouse combinations analyzed. 1 distinct SKU flagged.") — not just a list of block names.' },
+      { text: '(Optional) Open the same three-dot menu again and click "Tidy workflow" to auto-arrange the canvas.', hint: 'Verified behavior: this repositions blocks into a clean layout, but if Workflow Ninja already laid them out left-to-right sensibly it may show a toast saying "this workflow is already laid out - no blocks needed moving" — that is normal, not an error.' },
     ],
   },
   report: {
     title: 'Report Ninja',
-    help: 'Paste the same sample spec into Report Ninja and watch it build a report from the same data.',
+    help: 'Open the Report tab that the workflow above already feeds, then let Report Ninja propose and build a dashboard on top of it.',
     showSpec: true,
     steps: [
-      { text: 'In Omniscope, open "Report Ninja" (usually from the report/dashboard area or a chat icon).', hint: 'You should see a chat panel labeled Report Ninja, with an empty input box.' },
-      { text: 'Paste the same sample functional spec above into the Report Ninja chat box and send it.', hint: 'The chat should show your pasted spec as a sent message.' },
-      { text: 'Watch Report Ninja propose report elements — summary tiles, a table, or charts.', hint: 'You should see new tiles, tables, or charts appearing on a report canvas as it works.' },
-      { text: 'Confirm the report includes the total flagged SKUs, the by-warehouse breakdown, and the top-5 at-risk list from the spec.', hint: 'Look for a summary number, a grouped chart or table by warehouse, and a ranked list or table of 5 rows.' },
-      { text: 'Confirm the report has finished rendering with no error placeholders on any tile.', hint: 'Finished tiles show real numbers/charts; a still-loading or broken tile usually shows a spinner or error icon instead.' },
+      { text: 'Click the "Report" tab next to the project name at the top (not the Workflow canvas).', hint: 'The Report tab shows whatever the workflow has produced so far — by default this may just be a default chart/table auto-generated from the connected data.' },
+      { text: 'Click the three-dot menu (⋮) in the top-right corner — this is a different menu than the Workflow canvas one, specific to the Report view.', hint: 'Look for "Ask the Report Ninja..." near the bottom of the report-specific options, below things like "Refresh data", "Report settings...", "Duplicate report", and "Diagnose fields...".' },
+      { text: 'Click "Ask the Report Ninja...". A chat panel opens and, if the report already has data, it may immediately analyze it and propose a layout on its own — before you type anything.', hint: 'Verified behavior: it opened straight to a proposal like "the record-count bar chart adds little... I suggest an inventory-health layout focused on stock position, reorder requirements, and flagged items" with a one-click "Use suggestion" button.' },
+      { text: 'If it proposed something, click "Use suggestion". Otherwise, paste the report message built above and send it.', hint: 'If nothing matches your spec, it may ask a clarifying question rather than guess — same cautious behavior as the Workflow Ninja.' },
+      { text: 'Watch it rebuild the report layout in place — this is typically fast (well under a minute) since the data already exists.', hint: 'A small "Design updated" confirmation line appears in the chat once it finishes; the report canvas behind the panel updates live.' },
+      { text: 'Confirm the finished dashboard has real content: KPI tiles with numbers (not blank), at least one chart, and a detail table — matching what your spec asked for.', hint: 'Verified output included KPI tiles (e.g. Total On Hand, Total Reorder Point, Flagged Records), a bar chart, a comparison chart, a status pie chart, and a populated detail table — nothing blank or stuck spinning.' },
     ],
   },
 };
 
-let currentTrackKey = 'login';
+let currentTrackKey = 'directory';
 let currentStepIdx = 0;
 // completed[trackKey] = Set of step indices marked done
-const completed = { login: new Set(), workflow: new Set(), report: new Set() };
+const completed = { directory: new Set(), workflow: new Set(), report: new Set() };
 
 // Declared here (ahead of the worker-setup block below) because renderStepList() -> updateCheckEnabled()
 // reads modelReady during the initial render that happens right after the track/step state above.
@@ -273,10 +362,18 @@ let gpuOk = false;
 
 function renderTrackChrome() {
   const t = TRACKS[currentTrackKey];
-  trackTitle.innerHTML = `<span class="num">${{login:1,workflow:2,report:3}[currentTrackKey]}</span>${escapeHtml(t.title)}`;
+  trackTitle.innerHTML = `<span class="num">${{directory:1,workflow:2,report:3}[currentTrackKey]}</span>${escapeHtml(t.title)}`;
   trackHelp.textContent = t.help;
   specWrap.style.display = t.showSpec ? 'block' : 'none';
-  if (t.showSpec) specBox.textContent = SAMPLE_SPEC;
+  if (t.showSpec) {
+    if (currentTrackKey === 'workflow') {
+      specLabel.textContent = 'Ready-to-paste message for the Workflow Ninja chat (built from the data + spec above)';
+      specBox.textContent = workflowPrompt || '(click "Build chat messages from this" above first)';
+    } else if (currentTrackKey === 'report') {
+      specLabel.textContent = 'Ready-to-paste message for the Report Ninja chat (built from the spec above)';
+      specBox.textContent = reportPrompt || '(click "Build chat messages from this" above first)';
+    }
+  }
 }
 
 function renderStepList() {
@@ -397,7 +494,7 @@ function runInference(userText, imageDataUrl, onUpdate) {
       type: 'generate',
       data: {
         model_id: modelSelect.value,
-        systemText: 'You are a guide helping someone follow a step-by-step tutorial in a software application called Visokio Omniscope, by looking at a screenshot of their screen. Give 1-3 sentences of specific, concrete observation referencing exact buttons, fields, labels, or panels visible. Then end your response with exactly one line in this exact format: "RESULT: PASS" or "RESULT: FAIL" or "RESULT: UNCLEAR" (use UNCLEAR if the screen does not show enough to judge, or does not look like Omniscope at all).',
+        systemText: 'You are a guide helping someone follow a step-by-step process in a software application called Visokio Omniscope, by looking at a screenshot of their screen. Give 1-3 sentences of specific, concrete observation referencing exact buttons, fields, labels, or panels visible. Then end your response with exactly one line in this exact format: "RESULT: PASS" or "RESULT: FAIL" or "RESULT: UNCLEAR" (use UNCLEAR if the screen does not show enough to judge, or does not look like Omniscope at all).',
         userText,
         image: imageDataUrl,
       },
