@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Extended Thinking, Under the Hood</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1f2a;
+    --bg:#f7f6f3;
+    --bg-2:#edece6;
+    --panel:#ffffff;
+    --line:#dcdad2;
+    --muted:#6b6f7d;
+    --accent:#5b4bc4;
+    --accent-ink:#453994;
+    --accent-bg:#ece9fb;
+    --think:#a6650f;
+    --think-bg:#faf1de;
+    --final:#1f8a72;
+    --final-bg:#e3f4ee;
+    --danger:#c1493c;
+    --danger-bg:#faeae7;
+    --warn:#a67818;
+    --warn-bg:#faf1dc;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --serif:'Fraunces', Georgia, serif;
+    --sans:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent); color:#fff; }
+
+  .shell{ max-width:1320px; margin:0 auto; padding:22px 22px 40px; }
+
+  header.top{
+    display:flex; flex-direction:column; gap:8px;
+    padding-bottom:20px; border-bottom:1px solid var(--line); margin-bottom:20px;
+  }
+  .kicker{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); font-weight:600;
+  }
+  h1{ font-family:var(--serif); font-size:clamp(24px,3.4vw,34px); font-weight:600; margin:0; letter-spacing:-.01em; }
+  .sub{ color:var(--muted); font-size:14px; line-height:1.65; max-width:82ch; }
+  .sub b{ color:var(--ink); }
+
+  .honesty{
+    background:var(--warn-bg); border:1px solid var(--warn); color:#5c4408;
+    border-radius:10px; padding:12px 14px; font-size:12.8px; line-height:1.6; margin-top:14px;
+  }
+  .honesty b{ color:var(--warn); }
+
+  .gpuwarn{
+    display:none; background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger);
+    border-radius:10px; padding:12px 14px; font-size:13px; margin-top:12px; line-height:1.5;
+  }
+  .gpuwarn.show{ display:block; }
+
+  .layout{ display:grid; grid-template-columns: 300px 1fr; gap:16px; align-items:start; }
+  @media (max-width:980px){ .layout{ grid-template-columns: 1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h3{
+    font-family:var(--sans); text-transform:uppercase; letter-spacing:.06em; font-size:11px; font-weight:700;
+    color:var(--muted); margin:0 0 12px; display:flex; align-items:center; justify-content:space-between;
+  }
+
+  .field{ margin-bottom:14px; }
+  .field:last-child{ margin-bottom:0; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:6px; color:var(--ink); }
+  select, textarea, input[type="range"]{
+    width:100%; font-family:var(--sans); font-size:13px; padding:9px 10px; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg-2); color:var(--ink);
+  }
+  textarea{ font-family:var(--mono); font-size:12px; resize:vertical; min-height:70px; }
+  input[type="range"]{ padding:0; accent-color:var(--accent); background:transparent; }
+  .hint{ font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:5px; }
+
+  .btn{
+    font-family:var(--sans); font-weight:700; font-size:13px; padding:10px 14px; border-radius:9px;
+    border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; width:100%;
+  }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.secondary{ background:#fff; color:var(--accent-ink); }
+  .btn.ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+
+  .progwrap{ margin-top:10px; display:none; }
+  .progwrap.show{ display:block; }
+  .progtrack{ height:8px; border-radius:5px; background:var(--bg-2); border:1px solid var(--line); overflow:hidden; }
+  .progfill{ height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  .progtext{ font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:5px; line-height:1.4; word-break:break-word; }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; font-weight:600;
+    padding:4px 9px; border-radius:999px;
+  }
+  .pill.accent{ background:var(--accent-bg); color:var(--accent-ink); }
+  .pill.final{ background:var(--final-bg); color:var(--final); }
+  .pill.warn{ background:var(--warn-bg); color:var(--warn); }
+  .pill.danger{ background:var(--danger-bg); color:var(--danger); }
+  .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  .budgetrow{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .budgetval{ font-family:var(--mono); font-weight:700; font-size:15px; color:var(--accent-ink); }
+
+  .runrow{ display:flex; gap:8px; margin-top:14px; }
+  .runrow .btn{ flex:1; }
+
+  /* ---- results ---- */
+  .resultsGrid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:820px){ .resultsGrid{ grid-template-columns:1fr; } }
+
+  .runcol{ border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel); }
+  .runcol .rhead{
+    padding:11px 13px; border-bottom:1px solid var(--line); background:var(--bg-2);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .runcol .rhead .title{ font-family:var(--mono); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .runcol .rbody{ padding:13px; }
+
+  .thinkblock{
+    border:1px dashed var(--think); background:var(--think-bg); border-radius:10px; padding:10px 12px; margin-bottom:12px;
+  }
+  .thinkblock .tlabel{
+    font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--think);
+    font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px;
+  }
+  .thinkblock pre{
+    margin:0; font-family:var(--mono); font-size:11.5px; white-space:pre-wrap; word-break:break-word; color:#4a3a12;
+    max-height:260px; overflow-y:auto;
+  }
+  .thinkblock.empty pre{ color:var(--muted); font-style:italic; }
+
+  .finalblock{ border:1px solid var(--final); background:var(--final-bg); border-radius:10px; padding:10px 12px; }
+  .finalblock .flabel{
+    font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--final);
+    font-weight:700; margin-bottom:6px;
+  }
+  .finalblock .body{ font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
+
+  .statsrow{
+    display:flex; gap:14px; margin-top:10px; font-family:var(--mono); font-size:11px; color:var(--muted); flex-wrap:wrap;
+  }
+  .statsrow b{ color:var(--ink); }
+
+  .empty-state{ color:var(--muted); font-size:13px; text-align:center; padding:40px 10px; }
+
+  .foot{
+    margin-top:24px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); line-height:1.6;
+  }
+  code.inline{
+    font-family:var(--mono); background:var(--bg-2); border:1px solid var(--line); padding:1px 6px; border-radius:5px; font-size:.92em;
+  }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:5px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <span class="kicker">Client-side reasoning demo · WebLLM + WebGPU, no backend</span>
+    <h1>Extended Thinking, Under the Hood</h1>
+    <p class="sub">Give a local model an explicit <b>reasoning budget</b> before it has to answer, and watch what changes. Run the same prompt with <b>no thinking budget</b> next to a <b>chosen budget</b>, side by side, using a model running entirely in your browser via WebGPU.</p>
+    <div class="honesty">
+      <b>What this actually is:</b> this page does not use Anthropic's real Extended Thinking feature (a distinct model capability, invoked with a <code class="inline">thinking: {budget_tokens: ...}</code> parameter on the Claude API, which produces genuine interleaved reasoning). It approximates the same <i>idea</i> — forcing a deliberate reasoning pass, bounded by a token budget, before the final answer — with plain two-stage prompting against a small open-source model in your browser. Useful for building intuition about why a reasoning budget matters; not a substitute for the real API feature.
+    </div>
+    <div class="gpuwarn" id="gpuWarn"></div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ================= LEFT: controls ================= -->
+    <div class="card">
+      <h3>Client · model</h3>
+
+      <div class="field">
+        <label>Model</label>
+        <select id="modelSelect"></select>
+        <p class="hint" id="modelHint">Pick a model, then load it. Weights download once and are cached by the browser after that.</p>
+      </div>
+
+      <button class="btn" id="loadBtn">Load model</button>
+
+      <div class="progwrap" id="progWrap">
+        <div class="progtrack"><div class="progfill" id="progFill"></div></div>
+        <div class="progtext" id="progText">—</div>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <label>Engine status</label>
+        <span class="pill accent" id="enginePill"><span class="dot"></span> Not loaded</span>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <div class="budgetrow">
+          <label style="margin:0">Thinking budget</label>
+          <span class="budgetval" id="budgetVal">128 tok</span>
+        </div>
+        <input type="range" id="budgetSlider" min="0" max="512" step="32" value="128">
+        <p class="hint">Max tokens the model is allowed to spend reasoning in a scratchpad before it must give a final answer. 0 = answer immediately, no scratchpad.</p>
+      </div>
+
+      <div class="field">
+        <label>Final answer length</label>
+        <input type="range" id="finalSlider" min="40" max="300" step="20" value="120">
+        <p class="hint"><span id="finalVal">120</span> max tokens for the final answer itself, in both runs.</p>
+      </div>
+    </div>
+
+    <!-- ================= RIGHT: problem + results ================= -->
+    <div class="card">
+      <h3>
+        <span>Problem</span>
+        <span class="pill final" id="runPill"><span class="dot"></span> Idle</span>
+      </h3>
+
+      <div class="field">
+        <label>Preset problem</label>
+        <select id="problemSelect">
+          <option value="riddle">A farmer has 17 sheep. All but 9 die. How many sheep are left?</option>
+          <option value="math">A store sells pencils in packs of 12 for $3, and erasers in packs of 8 for $2. I need exactly 36 pencils and exactly 24 erasers. What is the total cost?</option>
+          <option value="logic">Three boxes are labeled "Apples", "Oranges", and "Apples &amp; Oranges" — but every label is wrong. You may pick one fruit from one box to look at. Which box should you pick from, and how do you correctly relabel all three?</option>
+          <option value="custom">Custom problem</option>
+        </select>
+      </div>
+      <div class="field" id="customWrap" style="display:none">
+        <textarea id="customProblem" placeholder="Write a problem that benefits from step-by-step reasoning..."></textarea>
+      </div>
+
+      <div class="runrow">
+        <button class="btn secondary" id="runOneBtn" disabled>Run once (current budget) →</button>
+        <button class="btn" id="runCompareBtn" disabled>Compare: no thinking vs budget →</button>
+      </div>
+
+      <div id="resultsWrap" style="margin-top:16px">
+        <div class="empty-state">Load a model, pick a problem, then run to see the reasoning trace and final answer.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    Demo only. Model quality varies a lot at this scale (small models run fully client-side so the demo works with zero backend and zero API cost) — the point isn't that the model gets every problem right, it's seeing <i>how</i> the reasoning trace changes the final answer when it's allowed to work through the problem first versus forced to answer immediately. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU — nothing is sent to a server.
+  </div>
+</div>
+
+<script type="module">
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+
+/* =========================================================================
+   1. WebLLM engine management
+   ========================================================================= */
+
+let webllm = null;
+let engine = null;
+let currentModelId = null;
+
+const modelSelect = $("modelSelect");
+const loadBtn = $("loadBtn");
+const runOneBtn = $("runOneBtn");
+const runCompareBtn = $("runCompareBtn");
+const progWrap = $("progWrap");
+const progFill = $("progFill");
+const progText = $("progText");
+const budgetSlider = $("budgetSlider");
+const budgetVal = $("budgetVal");
+const finalSlider = $("finalSlider");
+const finalVal = $("finalVal");
+
+function fmtMB(mb) {
+  if (!mb) return "";
+  return mb > 1024 ? (mb / 1024).toFixed(1) + " GB" : Math.round(mb) + " MB";
+}
+
+function setEnginePill(state, text) {
+  const pill = $("enginePill");
+  pill.className = "pill " + state;
+  pill.innerHTML = `<span class="dot"></span> ${text}`;
+}
+function setRunPill(state, text) {
+  const pill = $("runPill");
+  pill.className = "pill " + state;
+  pill.innerHTML = `<span class="dot"></span> ${text}`;
+}
+
+async function populateModels() {
+  const hasGPU = !!(navigator.gpu);
+  if (!hasGPU) {
+    const w = $("gpuWarn");
+    w.textContent = "Your browser doesn't appear to support WebGPU, so no model can load here. Try the latest desktop Chrome or Edge with hardware acceleration on.";
+    w.classList.add("show");
+    $("modelHint").textContent = "WebGPU unavailable — this demo needs it.";
+    loadBtn.disabled = true;
+    return;
+  }
+
+  try {
+    // jsdelivr's esbuild-based +esm bundle — esm.sh has a known CJS/ESM interop bug
+    // with this package where internal calls like detectGPUDevice end up unreachable
+    // at runtime even though the import itself succeeds.
+    const mod = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+    webllm = mod;
+    const list = (mod.prebuiltAppConfig && mod.prebuiltAppConfig.model_list) || [];
+    let candidates = list
+      .filter(m => m.model_id && /instruct/i.test(m.model_id) && (!m.vram_required_MB || m.vram_required_MB < 4096))
+      .sort((a, b) => (a.vram_required_MB || 0) - (b.vram_required_MB || 0))
+      .slice(0, 15);
+    if (candidates.length === 0) candidates = list.slice(0, 15);
+
+    const seen = new Set();
+    candidates.forEach(m => {
+      if (seen.has(m.model_id)) return;
+      seen.add(m.model_id);
+      const opt = document.createElement("option");
+      opt.value = m.model_id;
+      opt.textContent = m.model_id + (m.vram_required_MB ? "  (~" + fmtMB(m.vram_required_MB) + ")" : "");
+      modelSelect.appendChild(opt);
+    });
+    if (candidates.length === 0) {
+      $("modelHint").textContent = "WebLLM's model registry came back empty — check the browser console for details.";
+      loadBtn.disabled = true;
+    }
+  } catch (e) {
+    console.error("Failed to load WebLLM library:", e);
+    $("modelHint").textContent = "Couldn't load the WebLLM library: " + (e && e.message ? e.message : e) + " (needs network access to cdn.jsdelivr.net).";
+    loadBtn.disabled = true;
+  }
+}
+
+async function loadSelectedModel() {
+  const id = modelSelect.value;
+  loadBtn.disabled = true;
+  runOneBtn.disabled = true;
+  runCompareBtn.disabled = true;
+  setEnginePill("accent", "Loading…");
+
+  try {
+    if (engine && engine.unload) { try { await engine.unload(); } catch (e) {} }
+    engine = null;
+
+    if (!webllm) throw new Error("WebLLM library not available.");
+    progWrap.classList.add("show");
+    progFill.style.width = "0%";
+    progText.textContent = "Starting download…";
+
+    engine = await webllm.CreateMLCEngine(id, {
+      initProgressCallback: (report) => {
+        const pct = Math.round((report.progress || 0) * 100);
+        progFill.style.width = pct + "%";
+        progText.textContent = report.text || (pct + "%");
+      }
+    });
+    currentModelId = id;
+    progWrap.classList.remove("show");
+    setEnginePill("final", "Loaded: " + id);
+    runOneBtn.disabled = false;
+    runCompareBtn.disabled = false;
+  } catch (e) {
+    console.error(e);
+    setEnginePill("danger", "Load failed");
+    showEngineError(String(e && e.message ? e.message : e));
+  } finally {
+    loadBtn.disabled = false;
+  }
+}
+
+function showEngineError(msg) {
+  $("resultsWrap").innerHTML = `<div class="runcol"><div class="rhead"><span class="title" style="color:var(--danger)">Engine error</span></div><div class="rbody"><pre style="white-space:pre-wrap;color:var(--danger);margin:0;font-family:var(--mono);font-size:12px;">${escapeHtml(msg)}</pre></div></div>`;
+}
+
+loadBtn.addEventListener("click", loadSelectedModel);
+populateModels();
+
+budgetSlider.addEventListener("input", () => { budgetVal.textContent = budgetSlider.value + " tok"; });
+finalSlider.addEventListener("input", () => { finalVal.textContent = finalSlider.value; });
+
+$("problemSelect").addEventListener("change", (e) => {
+  $("customWrap").style.display = e.target.value === "custom" ? "block" : "none";
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* =========================================================================
+   2. Two-stage "thinking budget" prompting
+   ========================================================================= */
+
+function getProblemText() {
+  const key = $("problemSelect").value;
+  if (key === "custom") return $("customProblem").value.trim() || "What is 17 * 23?";
+  return $("problemSelect").selectedOptions[0].textContent;
+}
+
+const THINK_SYS = "You are working through a problem in a private scratchpad before answering. Reason step by step, considering the details carefully. Do NOT give a final answer yet — only your reasoning. Stop as soon as you're confident, well within your token budget.";
+const FINAL_SYS = "Give ONLY the final answer to the problem, as concisely as possible (ideally one sentence, or just the number/result). Do not repeat your reasoning.";
+
+/** Runs one (thinking budget -> final answer) pass and returns timing/text stats. */
+async function runOnePass(problem, thinkBudget, finalBudget) {
+  const t0 = performance.now();
+  let thinking = "";
+  let thinkingTokens = 0;
+
+  if (thinkBudget > 0) {
+    const thinkRes = await engine.chat.completions.create({
+      messages: [
+        { role: "system", content: THINK_SYS },
+        { role: "user", content: "Problem: " + problem }
+      ],
+      temperature: 0.3,
+      max_tokens: thinkBudget
+    });
+    thinking = (thinkRes.choices[0].message.content || "").trim();
+    thinkingTokens = thinkRes.usage ? (thinkRes.usage.completion_tokens || 0) : estimateTokens(thinking);
+  }
+  const t1 = performance.now();
+
+  const finalMessages = [
+    { role: "system", content: FINAL_SYS },
+    { role: "user", content: "Problem: " + problem +
+        (thinking ? "\n\nYour prior reasoning:\n" + thinking : "") }
+  ];
+  const finalRes = await engine.chat.completions.create({
+    messages: finalMessages,
+    temperature: 0.2,
+    max_tokens: finalBudget
+  });
+  const finalText = (finalRes.choices[0].message.content || "").trim();
+  const finalTokens = finalRes.usage ? (finalRes.usage.completion_tokens || 0) : estimateTokens(finalText);
+  const t2 = performance.now();
+
+  return {
+    thinking, finalText,
+    thinkingTokens, finalTokens,
+    thinkMs: Math.round(t1 - t0),
+    finalMs: Math.round(t2 - t1),
+    totalMs: Math.round(t2 - t0)
+  };
+}
+
+function estimateTokens(s) { return Math.round((s || "").length / 4); }
+
+function renderRunCol(title, pillClass, result, budget) {
+  const thinkHtml = budget > 0
+    ? `<div class="thinkblock ${result.thinking ? "" : "empty"}">
+         <div class="tlabel"><span class="dot" style="background:var(--think)"></span> Thinking (budget ${budget} tok)</div>
+         <pre>${escapeHtml(result.thinking || "(model returned no reasoning text)")}</pre>
+       </div>`
+    : `<div class="thinkblock empty">
+         <div class="tlabel"><span class="dot" style="background:var(--muted)"></span> Thinking (budget 0 tok — skipped)</div>
+         <pre>No scratchpad — went straight to a final answer.</pre>
+       </div>`;
+
+  return `
+    <div class="runcol">
+      <div class="rhead">
+        <span class="title" style="color:var(--${pillClass})">${title}</span>
+        <span class="pill ${pillClass}"><span class="dot"></span> ${result.totalMs} ms</span>
+      </div>
+      <div class="rbody">
+        ${thinkHtml}
+        <div class="finalblock">
+          <div class="flabel">Final answer</div>
+          <div class="body">${escapeHtml(result.finalText || "(empty)")}</div>
+        </div>
+        <div class="statsrow">
+          <span>thinking tokens: <b>${budget > 0 ? result.thinkingTokens : 0}</b></span>
+          <span>final tokens: <b>${result.finalTokens}</b></span>
+          <span>thinking time: <b>${budget > 0 ? result.thinkMs : 0} ms</b></span>
+          <span>final time: <b>${result.finalMs} ms</b></span>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function runOnce() {
+  const problem = getProblemText();
+  const budget = parseInt(budgetSlider.value, 10);
+  const finalBudget = parseInt(finalSlider.value, 10);
+
+  runOneBtn.disabled = true;
+  runCompareBtn.disabled = true;
+  setRunPill("accent", "Running…");
+  $("resultsWrap").innerHTML = `<div class="resultsGrid"></div>`;
+
+  try {
+    const result = await runOnePass(problem, budget, finalBudget);
+    $("resultsWrap").innerHTML = `<div class="resultsGrid">${renderRunCol("This run", "accent", result, budget)}</div>`;
+  } catch (e) {
+    console.error(e);
+    showEngineError(String(e && e.message ? e.message : e));
+  } finally {
+    setRunPill("final", "Idle");
+    runOneBtn.disabled = false;
+    runCompareBtn.disabled = false;
+  }
+}
+
+async function runCompare() {
+  const problem = getProblemText();
+  const budget = parseInt(budgetSlider.value, 10);
+  const finalBudget = parseInt(finalSlider.value, 10);
+
+  runOneBtn.disabled = true;
+  runCompareBtn.disabled = true;
+  setRunPill("accent", "Running comparison…");
+  $("resultsWrap").innerHTML = `<div class="empty-state">Running no-thinking pass, then the ${budget}-token thinking pass…</div>`;
+
+  try {
+    const noThink = await runOnePass(problem, 0, finalBudget);
+    $("resultsWrap").innerHTML = `<div class="resultsGrid">${renderRunCol("No thinking budget", "warn", noThink, 0)}<div class="empty-state">Running with-thinking pass…</div></div>`;
+
+    const withThink = await runOnePass(problem, budget, finalBudget);
+    $("resultsWrap").innerHTML = `<div class="resultsGrid">${renderRunCol("No thinking budget", "warn", noThink, 0)}${renderRunCol("Thinking budget " + budget, "final", withThink, budget)}</div>`;
+  } catch (e) {
+    console.error(e);
+    showEngineError(String(e && e.message ? e.message : e));
+  } finally {
+    setRunPill("final", "Idle");
+    runOneBtn.disabled = false;
+    runCompareBtn.disabled = false;
+  }
+}
+
+runOneBtn.addEventListener("click", runOnce);
+runCompareBtn.addEventListener("click", runCompare);
+</script>
+</body>
+</html>
