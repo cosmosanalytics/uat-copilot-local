@@ -243,6 +243,7 @@
 
   <div class="foot">
     Demo / prototype architecture exercise. All planning data (24 months of history for three SKUs, BOM, capacity, safety-stock factors) is synthetic, generated deterministically in-page — nothing real. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU. State (review queue, audit log, committed overrides) persists in this browser's local storage only.
+    <br><span style="font-family:var(--mono)">Build 2026-09-18c — fixes the reasoning-budget "Last message should be from either user or tool" engine error.</span>
   </div>
 </div>
 
@@ -729,6 +730,19 @@ function extractJsonBlock(text){
   try { return JSON.parse(candidate.trim()); } catch(e) { return { __malformed:true, raw:candidate }; }
 }
 
+/** Defensive guard, used on EVERY chat-completion call below: WebLLM's chat.completions.create()
+ *  rejects any request whose message list doesn't end in "user" or "tool" role. Rather than trust
+ *  every call site to always append a bridging user turn correctly, every call routes through this
+ *  wrapper so a future edit that forgets the bridge message fails safe instead of throwing a raw
+ *  ENGINE ERROR at the person testing it. */
+async function chatComplete(engine, messages, opts){
+  const last = messages[messages.length - 1];
+  const safeMessages = (last && last.role === "assistant")
+    ? messages.concat([{ role:"user", content:"Continue: respond now." }])
+    : messages;
+  return engine.chat.completions.create({ messages: safeMessages, ...opts });
+}
+
 /* =========================================================================
    6. Router + agent loop
    ========================================================================= */
@@ -755,7 +769,7 @@ async function askCopilot(){
   addMsg("user", "You", question, false);
 
   try {
-    const clsRes = await tiers.fast.engine.chat.completions.create({ messages:[{role:"system",content:CLASSIFY_SYS},{role:"user",content:question}], temperature:0.1, max_tokens:6 });
+    const clsRes = await chatComplete(tiers.fast.engine, [{role:"system",content:CLASSIFY_SYS},{role:"user",content:question}], { temperature:0.1, max_tokens:6 });
     const clsText = (clsRes.choices[0].message.content || "").trim();
     const complex = /complex/i.test(clsText);
     const tierKey = complex ? "capable" : "fast";
@@ -775,7 +789,7 @@ async function askCopilot(){
     for (let turn = 0; turn < MAX_TURNS; turn++){
       let replyText = "";
       if (budget > 0 && turn === 0){
-        const thinkRes = await engine.chat.completions.create({ messages: messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), temperature:0.3, max_tokens: budget });
+        const thinkRes = await chatComplete(engine, messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), { temperature:0.3, max_tokens: budget });
         const thinking = (thinkRes.choices[0].message.content || "").trim();
         if (thinking) {
           addMsg("route", "Reasoning (budget " + budget + " tok)", thinking, true);
@@ -790,7 +804,7 @@ async function askCopilot(){
         turnCost += estimateTokens("reasoning prompt") * PRICE[tierKey].in + estimateTokens(thinking) * PRICE[tierKey].out;
       }
 
-      const completion = await engine.chat.completions.create({ messages, temperature:0.2, max_tokens:220 });
+      const completion = await chatComplete(engine, messages, { temperature:0.2, max_tokens:220 });
       replyText = (completion.choices[0].message.content || "").trim();
       const outTok = completion.usage ? (completion.usage.completion_tokens || estimateTokens(replyText)) : estimateTokens(replyText);
       turnCost += turnTokens * PRICE[tierKey].in + outTok * PRICE[tierKey].out;
