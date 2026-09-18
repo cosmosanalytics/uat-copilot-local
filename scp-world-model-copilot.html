@@ -150,11 +150,11 @@
     <div class="layout3">
       <div class="card">
         <h3>Client · model tiers</h3>
-        <div class="field"><label>Fast tier (optional — triage only, routing is forced to capable tier)</label><select id="fastSelect"></select></div>
+        <div class="field"><label>Fast tier (optional — triage only, routing is forced to capable tier; ~1&ndash;1.6GB models)</label><select id="fastSelect"></select></div>
         <button class="btn" id="fastLoadBtn">Load fast tier</button>
         <div class="progwrap" id="fastProgWrap"><div class="progtrack"><div class="progfill" id="fastProgFill"></div></div><div class="progtext" id="fastProgText">—</div></div>
         <div class="field" style="margin-top:10px"><span class="pill cheap" id="fastPill"><span class="dot"></span> Not loaded</span></div>
-        <div class="field" style="margin-top:12px"><label>Capable tier (complex + proposals)</label><select id="capableSelect"></select></div>
+        <div class="field" style="margin-top:12px"><label>Capable tier (complex + proposals; ~1.6&ndash;4GB models)</label><select id="capableSelect"></select></div>
         <button class="btn" id="capableLoadBtn">Load capable tier</button>
         <div class="progwrap" id="capableProgWrap"><div class="progtrack"><div class="progfill" id="capableProgFill"></div></div><div class="progtext" id="capableProgText">—</div></div>
         <div class="field" style="margin-top:10px"><span class="pill expensive" id="capablePill"><span class="dot"></span> Not loaded</span></div>
@@ -243,7 +243,7 @@
 
   <div class="foot">
     Demo / prototype architecture exercise. All planning data (24 months of history for three SKUs, BOM, capacity, safety-stock factors) is synthetic, generated deterministically in-page — nothing real. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU. State (review queue, audit log, committed overrides) persists in this browser's local storage only.
-    <br><span style="font-family:var(--mono)">Build 2026-09-18e — routing is now forced to the capable tier for every question, regardless of the fast-tier classifier's ROUTINE/COMPLEX call (which still runs and logs its verdict if the fast tier is loaded, purely for the routing demo — it no longer affects which tier actually answers). The fast tier is now optional; the Ask button only requires the capable tier to be loaded.</span>
+    <br><span style="font-family:var(--mono)">Build 2026-09-18f — routing is forced to the capable tier for every question, regardless of the fast-tier classifier's ROUTINE/COMPLEX call (which still runs and logs its verdict if the fast tier is loaded, purely for the routing demo — it no longer affects which tier actually answers). The fast tier is optional; the Ask button only requires the capable tier to be loaded. Model-tier size bands widened: fast tier now offers ~1&ndash;1.6GB models, capable tier ~1.6&ndash;4GB models (previously capped at ~1.6GB and ~6GB respectively).</span>
   </div>
 </div>
 
@@ -656,8 +656,8 @@ async function populateModels(){
     const list = (mod.prebuiltAppConfig && mod.prebuiltAppConfig.model_list) || [];
     const instruct = list.filter(m => m.model_id && /instruct/i.test(m.model_id));
     const bySize = instruct.slice().sort((a,b) => (a.vram_required_MB||0) - (b.vram_required_MB||0));
-    const fastCandidates = bySize.filter(m => !m.vram_required_MB || m.vram_required_MB < 1600).slice(0,12);
-    const capableCandidates = bySize.filter(m => m.vram_required_MB && m.vram_required_MB >= 1600 && m.vram_required_MB < 6000).slice(0,12);
+    const fastCandidates = bySize.filter(m => m.vram_required_MB && m.vram_required_MB > 1000 && m.vram_required_MB < 1600).slice(0,12);
+    const capableCandidates = bySize.filter(m => m.vram_required_MB && m.vram_required_MB >= 1600 && m.vram_required_MB < 4000).slice(0,12);
     fillSelect(tiers.fast.select, fastCandidates.length ? fastCandidates : bySize.slice(0,8));
     fillSelect(tiers.capable.select, capableCandidates.length ? capableCandidates : bySize.slice(-8));
   } catch (e) {
