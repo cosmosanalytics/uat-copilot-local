@@ -132,7 +132,7 @@
     <h1>Supply Chain Planning Copilot — the World Model</h1>
     <p class="sub">One coherent demo across four enterprise AI guardrails, all grounded in a single real, deterministic 11-stage planning engine (Aggregate → Forecast → Consensus → Disaggregate → Forecast Consumption → Dependent Demand → Firming → Capacity Pooling → Inventory → Monitor → Owner). The engine has no decision variables of its own — it's a fully-observed state-space model that deterministically computes the consequence of any candidate decision. The AI copilot sits <b>on top of</b> it, never replacing its math.</p>
     <div class="honesty">
-      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation, the SHA-256 hash-chained audit log, and the model-routing cost math are all real, working mechanics too. What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill (opening the model's own turn for it, mid-sentence) was attempted here and dropped — WebLLM's <code class="inline">chat.completions.create()</code> validates message roles and rejects a request whose last message is "assistant" outright, so there's no engine to be best-effort against; the reasoning scratchpad below is instead followed by an ordinary bridging user turn, and schema validation is what actually backstops the tool call regardless; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
+      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation and the SHA-256 hash-chained audit log are real, working mechanics too. Model routing is currently <b>forced to the capable tier</b> for every question — the fast-tier classifier still runs and logs its ROUTINE/COMPLEX verdict when that tier is loaded, but the verdict no longer changes which tier actually answers; the per-tier $/M-token cost math still runs against whichever tier actually executed. What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill (opening the model's own turn for it, mid-sentence) was attempted here and dropped — WebLLM's <code class="inline">chat.completions.create()</code> validates message roles and rejects a request whose last message is "assistant" outright, so there's no engine to be best-effort against; the reasoning scratchpad below is instead followed by an ordinary bridging user turn, and schema validation is what actually backstops the tool call regardless; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
     </div>
     <div class="gpuwarn" id="gpuWarn"></div>
   </header>
@@ -150,7 +150,7 @@
     <div class="layout3">
       <div class="card">
         <h3>Client · model tiers</h3>
-        <div class="field"><label>Fast tier (triage + routine)</label><select id="fastSelect"></select></div>
+        <div class="field"><label>Fast tier (optional — triage only, routing is forced to capable tier)</label><select id="fastSelect"></select></div>
         <button class="btn" id="fastLoadBtn">Load fast tier</button>
         <div class="progwrap" id="fastProgWrap"><div class="progtrack"><div class="progfill" id="fastProgFill"></div></div><div class="progtext" id="fastProgText">—</div></div>
         <div class="field" style="margin-top:10px"><span class="pill cheap" id="fastPill"><span class="dot"></span> Not loaded</span></div>
@@ -179,7 +179,7 @@
         </div>
         <div class="field" id="customWrap" style="display:none"><textarea id="customQuestion" placeholder="Ask about forecasts, alerts, capacity, or propose an adjustment..."></textarea></div>
         <button class="btn" id="askBtn" disabled>Ask the copilot →</button>
-        <div class="transcript" id="transcript" style="margin-top:12px"><div class="empty-state">Load both model tiers, then ask a question. Read-only questions stay on the fast tier; anything requiring a recommendation or a proposed change routes to the capable tier.</div></div>
+        <div class="transcript" id="transcript" style="margin-top:12px"><div class="empty-state">Load the capable tier, then ask a question. Routing is currently forced to the capable tier for every question (the fast tier is optional and only used to log what its triage classifier would have picked).</div></div>
       </div>
 
       <div class="card">
@@ -243,7 +243,7 @@
 
   <div class="foot">
     Demo / prototype architecture exercise. All planning data (24 months of history for three SKUs, BOM, capacity, safety-stock factors) is synthetic, generated deterministically in-page — nothing real. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU. State (review queue, audit log, committed overrides) persists in this browser's local storage only.
-    <br><span style="font-family:var(--mono)">Build 2026-09-18d — adds a worked tool_call example + right/wrong contrast to the system prompt, to help small models produce the exact JSON shape instead of function-call syntax like getForecast(SKU-A100).</span>
+    <br><span style="font-family:var(--mono)">Build 2026-09-18e — routing is now forced to the capable tier for every question, regardless of the fast-tier classifier's ROUTINE/COMPLEX call (which still runs and logs its verdict if the fast tier is loaded, purely for the routing demo — it no longer affects which tier actually answers). The fast tier is now optional; the Ask button only requires the capable tier to be loaded.</span>
   </div>
 </div>
 
@@ -686,7 +686,7 @@ async function loadTier(key){
     console.error(e); setPill(t.pill, "danger", "Load failed: "+(e && e.message ? e.message : e));
   } finally { t.loadBtn.disabled = false; }
 }
-function updateAskEnabled(){ $("askBtn").disabled = !(tiers.fast.engine && tiers.capable.engine); }
+function updateAskEnabled(){ $("askBtn").disabled = !tiers.capable.engine; }
 tiers.fast.loadBtn.addEventListener("click", () => loadTier("fast"));
 tiers.capable.loadBtn.addEventListener("click", () => loadTier("capable"));
 populateModels();
@@ -773,14 +773,20 @@ async function askCopilot(){
   addMsg("user", "You", question, false);
 
   try {
-    const clsRes = await chatComplete(tiers.fast.engine, [{role:"system",content:CLASSIFY_SYS},{role:"user",content:question}], { temperature:0.1, max_tokens:6 });
-    const clsText = (clsRes.choices[0].message.content || "").trim();
-    const complex = /complex/i.test(clsText);
-    const tierKey = complex ? "capable" : "fast";
-    const clsOutTok = clsRes.usage ? (clsRes.usage.completion_tokens || estimateTokens(clsText)) : estimateTokens(clsText);
-    const clsCost = estimateTokens(question) * PRICE.fast.in + clsOutTok * PRICE.fast.out;
-    addMsg("route", "Router (fast tier)", `${complex ? "COMPLEX" : "ROUTINE"} → routed to ${tierKey} tier`, false);
-    await appendAudit("turn-routed", `"${question.slice(0,80)}" -> ${complex?"COMPLEX":"ROUTINE"} -> ${tierKey} tier`);
+    let complex = false, clsCost = 0;
+    if (tiers.fast.engine){
+      const clsRes = await chatComplete(tiers.fast.engine, [{role:"system",content:CLASSIFY_SYS},{role:"user",content:question}], { temperature:0.1, max_tokens:6 });
+      const clsText = (clsRes.choices[0].message.content || "").trim();
+      complex = /complex/i.test(clsText);
+      const clsOutTok = clsRes.usage ? (clsRes.usage.completion_tokens || estimateTokens(clsText)) : estimateTokens(clsText);
+      clsCost = estimateTokens(question) * PRICE.fast.in + clsOutTok * PRICE.fast.out;
+      addMsg("route", "Router (fast tier)", `${complex ? "COMPLEX" : "ROUTINE"} — routing FORCED to capable tier regardless (fast tier disabled)`, false);
+      await appendAudit("turn-routed", `"${question.slice(0,80)}" -> ${complex?"COMPLEX":"ROUTINE"} classification -> capable tier (routing forced)`);
+    } else {
+      addMsg("route", "Router", "Fast tier not loaded — running on capable tier only.", false);
+      await appendAudit("turn-routed", `"${question.slice(0,80)}" -> capable tier (fast tier not loaded)`);
+    }
+    const tierKey = "capable";
 
     pill.innerHTML = `<span class="dot"></span> Reasoning (${tierKey})…`;
     const engine = tiers[tierKey].engine;
