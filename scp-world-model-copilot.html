@@ -132,7 +132,7 @@
     <h1>Supply Chain Planning Copilot — the World Model</h1>
     <p class="sub">One coherent demo across four enterprise AI guardrails, all grounded in a single real, deterministic 11-stage planning engine (Aggregate → Forecast → Consensus → Disaggregate → Forecast Consumption → Dependent Demand → Firming → Capacity Pooling → Inventory → Monitor → Owner). The engine has no decision variables of its own — it's a fully-observed state-space model that deterministically computes the consequence of any candidate decision. The AI copilot sits <b>on top of</b> it, never replacing its math.</p>
     <div class="honesty">
-      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation, the SHA-256 hash-chained audit log, and the model-routing cost math are all real, working mechanics too. What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill is attempted best-effort (WebLLM's adherence to a partial-assistant-turn continuation is engine/model-dependent) — schema validation is the real backstop regardless of whether pre-fill is honored; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
+      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation, the SHA-256 hash-chained audit log, and the model-routing cost math are all real, working mechanics too. What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill (opening the model's own turn for it, mid-sentence) was attempted here and dropped — WebLLM's <code class="inline">chat.completions.create()</code> validates message roles and rejects a request whose last message is "assistant" outright, so there's no engine to be best-effort against; the reasoning scratchpad below is instead followed by an ordinary bridging user turn, and schema validation is what actually backstops the tool call regardless; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
     </div>
     <div class="gpuwarn" id="gpuWarn"></div>
   </header>
@@ -695,7 +695,7 @@ budgetSlider.addEventListener("input", () => { budgetVal.textContent = budgetSli
 $("questionPreset").addEventListener("change", (e) => { $("customWrap").style.display = e.target.value === "custom" ? "block" : "none"; });
 
 /* =========================================================================
-   5. XML-tagged prompt construction (semantic isolation) + assistant pre-fill (best-effort)
+   5. XML-tagged prompt construction (semantic isolation)
    ========================================================================= */
 const TOOL_DOCS = Object.entries(TOOLS).map(([name,t]) => `- ${name}(${t.schema.required.join(", ")}) [world-model server]: ${name.startsWith("propose") ? "WRITE — queues a proposal for human review, does not apply immediately" : "READ — returns live data"}`).join("\n");
 const TOOL_DOCS_UAT = Object.entries(TOOLS_UAT).map(([name,t]) => `- ${name}(${t.schema.required.join(", ")}) [uat server]: ${(name==="recordTestResult"||name==="submitUATSignoff") ? "WRITE — records test evidence directly (not queued; it's evidence, not a plan change)" : "READ — returns live UAT status"}`).join("\n");
@@ -722,7 +722,6 @@ function currentWorldSnapshot(){
   return Object.keys(WORLD).map(sku => { const r = runWorldModel(sku, WORLD[sku]); return { sku, category:r.seg.category, model:r.sel.winner, alerts:r.alerts.length }; });
 }
 
-const PREFILL_PREFIX = "```tool_call\n"; // best-effort assistant pre-fill: nudges the model to open its turn already inside a tool_call fence
 function extractJsonBlock(text){
   const fenced = text.match(/```tool_call\s*([\s\S]*?)```/);
   const candidate = fenced ? fenced[1] : (text.match(/\{[\s\S]*\}/) || [null])[0];
@@ -778,29 +777,24 @@ async function askCopilot(){
       if (budget > 0 && turn === 0){
         const thinkRes = await engine.chat.completions.create({ messages: messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), temperature:0.3, max_tokens: budget });
         const thinking = (thinkRes.choices[0].message.content || "").trim();
-        if (thinking) { addMsg("route", "Reasoning (budget " + budget + " tok)", thinking, true); messages.push({ role:"assistant", content: "(reasoning) " + thinking }); }
+        if (thinking) {
+          addMsg("route", "Reasoning (budget " + budget + " tok)", thinking, true);
+          messages.push({ role:"assistant", content: "(reasoning) " + thinking });
+          // WebLLM's chat.completions.create() validates message roles and REJECTS a request whose last
+          // message is "assistant" (confirmed live: "Last message should be from either `user` or `tool`.").
+          // So the reasoning turn can't just sit there — it needs a bridging user turn before we can ask
+          // for the next completion, same as after any other assistant turn in this loop.
+          messages.push({ role:"user", content:"Now respond: either call a tool (fenced tool_call block) or give your final answer." });
+        }
         turnTokens += budget;
         turnCost += estimateTokens("reasoning prompt") * PRICE[tierKey].in + estimateTokens(thinking) * PRICE[tierKey].out;
       }
 
-      // Best-effort assistant pre-fill: append a partial assistant turn and hope the engine continues it
-      // rather than starting fresh. Whether this is honored is genuinely engine/model-dependent — WebLLM's
-      // OpenAI-shaped chat API doesn't guarantee continuation semantics on a trailing assistant message, so
-      // this is attempted, not relied on. Either way the schema+circuit-breaker check below is the real backstop.
-      const prefillMessages = PREFILL_PREFIX ? messages.concat([{ role:"assistant", content: PREFILL_PREFIX }]) : messages;
-      const completion = await engine.chat.completions.create({ messages: prefillMessages, temperature:0.2, max_tokens:220 });
-      let rawReply = (completion.choices[0].message.content || "").trim();
-      let prefillHonored = false;
-      if (PREFILL_PREFIX) {
-        if (rawReply.startsWith(PREFILL_PREFIX.trim())) { prefillHonored = true; replyText = rawReply; }
-        else { replyText = PREFILL_PREFIX + rawReply; } // engine ignored the pre-fill turn and restarted; splice it back in ourselves
-      } else {
-        replyText = rawReply;
-      }
+      const completion = await engine.chat.completions.create({ messages, temperature:0.2, max_tokens:220 });
+      replyText = (completion.choices[0].message.content || "").trim();
       const outTok = completion.usage ? (completion.usage.completion_tokens || estimateTokens(replyText)) : estimateTokens(replyText);
       turnCost += turnTokens * PRICE[tierKey].in + outTok * PRICE[tierKey].out;
       turnTokens = estimateTokens(replyText); // subsequent turns re-send growing history; approximate with reply size
-      if (turn === 0 && PREFILL_PREFIX) addMsg("route", "Pre-fill", prefillHonored ? "Engine continued the pre-filled assistant turn." : "Engine did not honor the pre-fill (started a fresh turn) — spliced the prefix back in for parsing. This engine-dependence is exactly why schema validation, not pre-fill, is the real backstop.", false);
 
       const call = extractJsonBlock(replyText);
       if (!call){ addMsg("final", "Copilot (" + tierKey + " tier)", replyText, false); break; }
