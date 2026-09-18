@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Knowledge Graph &amp; Boundary Guardrails</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1c24; --bg:#f6f6f4; --bg-2:#ececea; --panel:#ffffff; --line:#dcdad3; --muted:#666a76;
+    --accent:#2d3a8c; --accent-ink:#20296b; --accent-bg:#e7e9f7;
+    --cheap:#1f8a72; --cheap-bg:#e3f4ee;
+    --expensive:#a6650f; --expensive-bg:#faf1de;
+    --danger:#c1493c; --danger-bg:#faeae7;
+    --plum:#7a4f9e; --plum-bg:#f1e9f7;
+    --teal:#1f7a8c; --teal-bg:#e1f0f3;
+    --slate:#51586b; --slate-bg:#ebecf1;
+    --mono:'JetBrains Mono', ui-monospace, monospace; --serif:'Fraunces', Georgia, serif; --sans:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+  ::selection{ background:var(--accent); color:#fff; }
+  .shell{ max-width:1500px; margin:0 auto; padding:20px 20px 44px; }
+
+  header.top{ display:flex; flex-direction:column; gap:8px; padding-bottom:16px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .kicker{ font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--accent-ink); font-weight:600; }
+  h1{ font-family:var(--serif); font-size:clamp(22px,3vw,30px); font-weight:600; margin:0; letter-spacing:-.01em; }
+  .sub{ color:var(--muted); font-size:13.5px; line-height:1.6; max-width:100ch; }
+  .sub b{ color:var(--ink); }
+  .honesty{ background:var(--expensive-bg); border:1px solid var(--expensive); color:#5c4408; border-radius:9px; padding:10px 13px; font-size:12px; line-height:1.55; margin-top:10px; }
+  .honesty b{ color:var(--expensive); }
+  .gpuwarn{ display:none; background:var(--danger-bg); border:1px solid var(--danger); color:var(--danger); border-radius:9px; padding:10px 13px; font-size:12.5px; margin-top:10px; }
+  .gpuwarn.show{ display:block; }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:15px; }
+  .card h3{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--muted); margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+
+  .field{ margin-bottom:12px; } .field:last-child{ margin-bottom:0; }
+  .field label{ display:block; font-size:12px; font-weight:600; margin-bottom:5px; }
+  select, textarea, input[type=text]{ width:100%; font-family:var(--sans); font-size:12.5px; padding:8px 9px; border-radius:7px; border:1px solid var(--line); background:var(--bg-2); color:var(--ink); }
+  textarea{ font-family:var(--mono); font-size:11.5px; resize:vertical; min-height:56px; }
+  .hint{ font-size:11px; color:var(--muted); line-height:1.5; margin-top:4px; }
+
+  .btn{ font-family:var(--sans); font-weight:700; font-size:12.5px; padding:9px 13px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; width:100%; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn.small{ width:auto; padding:6px 10px; font-size:11.5px; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-row .btn{ flex:1; min-width:120px; }
+
+  .pill{ display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; font-weight:600; padding:3px 8px; border-radius:999px; }
+  .pill.accent{ background:var(--accent-bg); color:var(--accent-ink); }
+  .pill.cheap{ background:var(--cheap-bg); color:var(--cheap); }
+  .pill.expensive{ background:var(--expensive-bg); color:var(--expensive); }
+  .pill.danger{ background:var(--danger-bg); color:var(--danger); }
+  .pill.plum{ background:var(--plum-bg); color:var(--plum); }
+  .pill.teal{ background:var(--teal-bg); color:var(--teal); }
+  .pill.slate{ background:var(--slate-bg); color:var(--slate); }
+  .dot{ width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+  .layoutG{ display:grid; grid-template-columns:340px 1fr; gap:14px; align-items:start; }
+  @media (max-width:1050px){ .layoutG{ grid-template-columns:1fr; } }
+
+  .progwrap{ margin-top:8px; display:none; } .progwrap.show{ display:block; }
+  .progtrack{ height:7px; border-radius:5px; background:var(--bg-2); border:1px solid var(--line); overflow:hidden; }
+  .progfill{ height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  .progtext{ font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:4px; word-break:break-word; }
+
+  .transcript{ display:flex; flex-direction:column; gap:9px; min-height:120px; max-height:420px; overflow-y:auto; padding-right:4px; }
+  .msg{ border-radius:11px; padding:10px 12px; font-size:12.5px; line-height:1.55; border:1px solid var(--line); }
+  .msg .mhead{ display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-bottom:5px; flex-wrap:wrap; }
+  .msg.user{ background:var(--bg-2); } .msg.user .mhead{ color:var(--muted); }
+  .msg.toolcall{ background:var(--expensive-bg); border-color:var(--expensive); } .msg.toolcall .mhead{ color:var(--expensive); }
+  .msg.toolresult{ background:var(--cheap-bg); border-color:var(--cheap); } .msg.toolresult .mhead{ color:var(--cheap); }
+  .msg.final{ background:var(--panel); border-color:var(--accent); } .msg.final .mhead{ color:var(--accent-ink); }
+  .msg.err{ background:var(--danger-bg); border-color:var(--danger); } .msg.err .mhead{ color:var(--danger); }
+  .msg pre{ margin:4px 0 0; font-family:var(--mono); font-size:11px; white-space:pre-wrap; word-break:break-word; }
+  .msg .body{ white-space:pre-wrap; }
+  .empty-state{ color:var(--muted); font-size:12.5px; text-align:center; padding:28px 8px; }
+
+  /* knowledge graph */
+  .graph-toolbar{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .legend{ display:flex; gap:10px; flex-wrap:wrap; font-size:10.5px; color:var(--muted); margin-bottom:10px; }
+  .legend span.sw{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; vertical-align:-1px; }
+  .graph-scroll{ overflow:auto; border:1px solid var(--line); border-radius:10px; background:var(--bg-2); }
+  svg#graphSvg{ display:block; }
+  .gnode{ cursor:pointer; }
+  .gnode rect, .gnode circle{ stroke-width:1.6; transition:stroke-width .15s, filter .15s; }
+  .gnode:hover rect, .gnode:hover circle{ stroke-width:3; }
+  .gnode text{ font-family:var(--sans); font-size:9.5px; pointer-events:none; }
+  .gnode.stage rect{ fill:var(--accent-bg); stroke:var(--accent); }
+  .gnode.stage text{ fill:var(--accent-ink); font-weight:700; }
+  .gnode.location circle{ fill:var(--plum-bg); stroke:var(--plum); }
+  .gnode.sku circle{ fill:var(--cheap-bg); stroke:var(--cheap); }
+  .gnode.component circle{ fill:var(--expensive-bg); stroke:var(--expensive); }
+  .gnode.resource circle{ fill:var(--teal-bg); stroke:var(--teal); }
+  .gnode.role circle{ fill:var(--slate-bg); stroke:var(--slate); }
+  .gnode.tool rect{ fill:#fff; stroke:var(--ink); stroke-dasharray:3 2; }
+  .gnode.tool text{ fill:var(--ink); font-weight:600; }
+  .gedge{ stroke:var(--line); stroke-width:1; fill:none; }
+  .gedge.write{ stroke-dasharray:4 3; }
+  .gnode.touched-now rect, .gnode.touched-now circle{ stroke:var(--cheap); stroke-width:3.5; filter:drop-shadow(0 0 4px rgba(31,138,114,.55)); }
+  .gnode.mentioned-unverified rect, .gnode.mentioned-unverified circle{ stroke:var(--expensive); stroke-width:3.5; filter:drop-shadow(0 0 4px rgba(166,101,15,.5)); }
+  .gedge.active{ stroke:var(--cheap); stroke-width:2.2; }
+
+  .ground-row{ display:flex; gap:9px; align-items:center; padding:6px 0; border-bottom:1px solid var(--bg-2); font-size:12px; flex-wrap:wrap; }
+  .ground-row:last-child{ border-bottom:none; }
+
+  #nodeDetail{ font-size:12px; line-height:1.6; }
+  code.inline{ font-family:var(--mono); background:var(--bg-2); border:1px solid var(--line); padding:1px 6px; border-radius:5px; font-size:.9em; }
+  .foot{ margin-top:22px; padding-top:13px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); line-height:1.6; }
+  ::-webkit-scrollbar{ width:8px; height:8px; } ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:5px; } ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <span class="kicker">Client-side · WebLLM + WebGPU, no backend</span>
+    <h1>Knowledge Graph &amp; Boundary Guardrails</h1>
+    <p class="sub">A knowledge graph of the full 11-stage supply-chain planning process (Aggregate → Forecast → Consensus → Disaggregate → Forecast Consumption → Dependent Demand → Firming → Capacity Pooling → Inventory → Monitor → Owner), auto-generated from the same data structures the engine actually runs on — plus a live checker that tells you, for any answer the copilot gives, exactly which parts are <b>grounded</b> in a real tool call this turn, which are <b>unverified</b> claims about something real but not fetched this turn, and which reference something that <b>doesn't exist at all</b>.</p>
+    <div class="honesty">
+      <b>What's real vs. illustrative:</b> the graph's nodes and edges are <b>generated programmatically</b> from the live <code class="inline">WORLD</code> config and the tool schemas below — not hand-drawn, so it can't drift from what the engine actually computes. The entity-grounding check is a <b>real, working guardrail</b>: it regex-scans the model's final free-text answer for entity-shaped ids (SKU-, COMP-, RES-, DC-), cross-checks each against the real known set, and flags anything the model asserted that no tool call this turn actually verified. This is a genuinely different guardrail from tool-argument schema validation — schema checks catch a malformed <i>request</i> before it runs; this catches an ungrounded <i>claim</i> in the model's free text, which schema validation has no visibility into at all. What's <b>illustrative</b>: the underlying forecast numbers reuse the same small synthetic 3-SKU world as the companion app, and "unverified" is a heuristic (a true fact the model recalled correctly from earlier context would also get flagged) — it's a boundary-awareness signal, not a full fact-checker.
+    </div>
+    <div class="gpuwarn" id="gpuWarn"></div>
+  </header>
+
+  <div class="layoutG">
+    <div class="card">
+      <h3><span>Copilot</span><span class="pill accent" id="runPill"><span class="dot"></span> Idle</span></h3>
+      <div class="field"><label>Model</label><select id="modelSelect"></select></div>
+      <button class="btn" id="loadBtn">Load model</button>
+      <div class="progwrap" id="progWrap"><div class="progtrack"><div class="progfill" id="progFill"></div></div><div class="progtext" id="progText">—</div></div>
+      <div class="field" style="margin-top:10px"><span class="pill cheap" id="modelPill"><span class="dot"></span> Not loaded</span></div>
+
+      <div class="field" style="margin-top:12px">
+        <label>Ask a planning question</label>
+        <select id="questionPreset">
+          <option value="ask-forecast">What's the forecast for SKU-A200 and why was that model chosen?</option>
+          <option value="ask-alerts">Which components are at risk of a capacity breach right now, and who owns fixing it?</option>
+          <option value="ask-adversarial">What's the forecast for SKU-Z999, and when will it arrive at DC-North?</option>
+          <option value="custom">Custom question</option>
+        </select>
+      </div>
+      <div class="field" id="customWrap" style="display:none"><textarea id="customQuestion" placeholder="Ask about forecasts, alerts, capacity, components, resources..."></textarea></div>
+      <button class="btn" id="askBtn" disabled>Ask the copilot →</button>
+      <div class="transcript" id="transcript" style="margin-top:12px"><div class="empty-state">Load the model, then ask a question. Click any node on the graph anytime — no model needed — to see what it actually is.</div></div>
+
+      <div class="field" style="margin-top:14px">
+        <h3 style="margin-bottom:6px">Grounding report — last turn</h3>
+        <div id="groundReport"><div class="empty-state">No answer yet.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span>Knowledge graph — the entire bounded universe this copilot can draw on</span><button class="btn ghost small" id="resetHighlightBtn">Clear highlights</button></h3>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent)"></span>Process stage (11, pipeline order)</span>
+        <span><span class="sw" style="background:var(--plum)"></span>Location</span>
+        <span><span class="sw" style="background:var(--cheap)"></span>SKU</span>
+        <span><span class="sw" style="background:var(--expensive)"></span>Component</span>
+        <span><span class="sw" style="background:var(--teal)"></span>Resource</span>
+        <span><span class="sw" style="background:var(--slate)"></span>Alert-owner role</span>
+        <span>▭ dashed = Tool (the only door in or out)</span>
+        <span><span class="sw" style="background:var(--cheap);box-shadow:0 0 0 2px var(--cheap)"></span>Grounded this turn</span>
+        <span><span class="sw" style="background:var(--expensive);box-shadow:0 0 0 2px var(--expensive)"></span>Mentioned, unverified this turn</span>
+      </div>
+      <div class="graph-scroll"><svg id="graphSvg"></svg></div>
+      <div class="card" style="margin-top:10px;background:var(--bg-2)">
+        <h3>Node detail</h3>
+        <div id="nodeDetail" class="hint">Click any node above.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Single self-contained HTML file. Model inference runs entirely in your browser via WebLLM + WebGPU — nothing is sent to a server. Companion app: the full governance workflow (schema + circuit breaker + UAT sign-off + human review + hash-chained audit log) lives in the separate World Model copilot app; this one is focused specifically on visualizing the knowledge boundary and catching claims that fall outside it.</div>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function fmtMB(mb){ if (!mb) return ""; return mb > 1024 ? (mb/1024).toFixed(1)+" GB" : Math.round(mb)+" MB"; }
+
+/* =========================================================================
+   1. THE WORLD MODEL ENGINE — same real, deterministic, unit-tested engine
+      as the companion app (Aggregate through Owner). Reused verbatim so the
+      graph below reflects the exact same computation, not a re-derivation.
+   ========================================================================= */
+function mean(a){ return a.reduce((s,x)=>s+x,0)/a.length; }
+function std(a){ const m=mean(a); return Math.sqrt(mean(a.map(x=>(x-m)**2))); }
+function mulberry32(seed){ let a=seed>>>0; return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function genSmooth(n,base,amp,noise,seed){ const rnd=mulberry32(seed); const out=[]; for(let i=0;i<n;i++){ const seasonal=amp*Math.sin((2*Math.PI*(i%12))/12); out.push(Math.max(0,Math.round(base+seasonal+(rnd()-0.5)*noise))); } return out; }
+function genIntermittent(n,prob,lo,hi,seed){ const rnd=mulberry32(seed); const out=[]; for(let i=0;i<n;i++){ out.push(rnd()<prob ? Math.round(lo+rnd()*(hi-lo)) : 0); } return out; }
+function genTrend(n,start,end,noise,seed){ const rnd=mulberry32(seed); const out=[]; for(let i=0;i<n;i++){ const level=start+(end-start)*(i/(n-1)); out.push(Math.max(0,Math.round(level+(rnd()-0.5)*noise))); } return out; }
+
+function cleanSeries(series){ const m=mean(series), s=std(series); const lo=m-3*s, hi=m+3*s; return series.map(v=>Math.min(hi,Math.max(lo,v))); }
+
+function segment(series){
+  const nonZero = series.filter(v=>v>0);
+  const intervals=[]; let lastIdx=-1;
+  series.forEach((v,i)=>{ if(v>0){ if(lastIdx>=0) intervals.push(i-lastIdx); lastIdx=i; } });
+  const ADI = intervals.length ? mean(intervals) : series.length;
+  const cv = nonZero.length>1 ? std(nonZero)/mean(nonZero) : 0;
+  const CV2 = cv*cv;
+  let category, eligible, rule;
+  if (ADI>=1.32 && CV2>=0.49){ category="Lumpy"; eligible=["Croston","Naive"]; rule="R07"; }
+  else if (ADI>=1.32){ category="Intermittent"; eligible=["Croston","Naive"]; rule="R03"; }
+  else if (CV2>=0.49){ category="Erratic"; eligible=["SES","Naive"]; rule="R05"; }
+  else { category="Smooth"; eligible=["SES","MovingAvg3","Naive"]; rule="R01"; }
+  return { ADI, CV2, category, eligible, rule };
+}
+
+const Models = {
+  Naive: { fit(train){ return { lastVal: train[train.length-1] }; }, forecast(state,h){ return Array(h).fill(state.lastVal); } },
+  MovingAvg3: { fit(train){ return { avg: mean(train.slice(-3)) }; }, forecast(state,h){ return Array(h).fill(state.avg); } },
+  SES: { alpha:0.3, fit(train){ let level=train[0]; for(let i=1;i<train.length;i++) level=this.alpha*train[i]+(1-this.alpha)*level; return { level }; }, forecast(state,h){ return Array(h).fill(state.level); } },
+  Croston: { alpha:0.2, fit(train){ let sizeEst=null, intervalEst=null, periodsSinceLast=1;
+      for (let i=0;i<train.length;i++){ if (train[i]>0){ sizeEst = sizeEst===null?train[i]:this.alpha*train[i]+(1-this.alpha)*sizeEst; intervalEst = intervalEst===null?periodsSinceLast:this.alpha*periodsSinceLast+(1-this.alpha)*intervalEst; periodsSinceLast=1; } else periodsSinceLast+=1; }
+      if (sizeEst===null){ sizeEst=0; intervalEst=1; } return { rate: sizeEst/Math.max(1,intervalEst) }; },
+    forecast(state,h){ return Array(h).fill(state.rate); } }
+};
+
+function wmape(actual, forecast){ let num=0, den=0; for(let i=0;i<actual.length;i++){ num+=Math.abs(actual[i]-forecast[i]); den+=Math.abs(actual[i]); } return den===0 ? (num===0?0:1) : num/den; }
+
+function selectModel(cleanedSeries, eligible, holdout=3){
+  const train = cleanedSeries.slice(0,-holdout), test = cleanedSeries.slice(-holdout);
+  const scored = eligible.map(name => { const model=Models[name]; const state=model.fit(train); const fc=model.forecast(state,holdout); return { name, wmapeBt: wmape(test,fc) }; }).sort((a,b)=>a.wmapeBt-b.wmapeBt);
+  const winner = scored[0];
+  const fullState = Models[winner.name].fit(cleanedSeries);
+  const Fagg = Models[winner.name].forecast(fullState,1)[0];
+  return { scored, winner: winner.name, wmapeBt: winner.wmapeBt, Fagg };
+}
+
+function runForecastPipeline(aggSeries){ const clean=cleanSeries(aggSeries); const seg=segment(clean); const sel=selectModel(clean, seg.eligible); return { clean, seg, sel }; }
+
+function disaggregate(totalAgg, locationHistories){
+  const totals = Object.fromEntries(Object.entries(locationHistories).map(([loc,h])=>[loc, h.reduce((s,x)=>s+x,0)]));
+  const grand = Object.values(totals).reduce((s,x)=>s+x,0) || 1;
+  const weights = Object.fromEntries(Object.entries(totals).map(([loc,t])=>[loc, t/grand]));
+  return Object.fromEntries(Object.entries(weights).map(([loc,w])=>[loc, totalAgg*w]));
+}
+
+function runWorldModel(sku, cfg){
+  const { locationHistories, adjAgg=0, backlog=0, bom, onHand, capacity, resourceMap, slf } = cfg;
+  const aggSeries = Object.values(locationHistories).reduce((sum,h)=>h.map((v,i)=>v+(sum[i]||0)),[]);
+  const { clean, seg, sel } = runForecastPipeline(aggSeries);
+  const Fagg = sel.Fagg;
+  const totalAgg = Fagg + adjAgg;
+  const byLocation = disaggregate(totalAgg, locationHistories);
+  const nettedDemand = Math.max(0, totalAgg - backlog);
+  const grossReq = {}; for (const [comp,qtyPer] of Object.entries(bom)) grossReq[comp] = nettedDemand*qtyPer;
+  const plannedOrder = {}; for (const comp of Object.keys(grossReq)) plannedOrder[comp] = Math.max(0, grossReq[comp]-(onHand[comp]||0));
+  const load={}, utilization={};
+  for (const comp of Object.keys(plannedOrder)){ const resource=resourceMap[comp]; load[resource]=(load[resource]||0)+plannedOrder[comp]; }
+  for (const resource of Object.keys(load)) utilization[resource] = load[resource]/capacity[resource];
+  const safetyStock = {}; for (const comp of Object.keys(grossReq)) safetyStock[comp] = (slf[comp]||0)*grossReq[comp];
+  const alerts = [];
+  for (const resource of Object.keys(utilization)) if (utilization[resource] > 1) alerts.push({ type:"CAPACITY_BREACH", target:resource, detail:`Utilization ${(utilization[resource]*100).toFixed(0)}% > 100%` });
+  for (const comp of Object.keys(safetyStock)) if ((onHand[comp]||0) < safetyStock[comp]) alerts.push({ type:"STOCKOUT_RISK", target:comp, detail:`On-hand ${onHand[comp]||0} < safety stock ${safetyStock[comp].toFixed(1)}` });
+  if (sel.wmapeBt > 0.3) alerts.push({ type:"FORECAST_QUALITY", target:sku, detail:`Backtest WMAPE ${(sel.wmapeBt*100).toFixed(0)}% exceeds 30% quality threshold` });
+  const ownerMap = { CAPACITY_BREACH:"Master Scheduler", STOCKOUT_RISK:"Supply Planner", FORECAST_QUALITY:"Demand Planner" };
+  const routedAlerts = alerts.map(a => ({ ...a, owner: ownerMap[a.type] || "Unassigned" }));
+  return { sku, seg, sel, Fagg, totalAgg, byLocation, nettedDemand, grossReq, plannedOrder, load, utilization, safetyStock, alerts: routedAlerts };
+}
+
+const HIST_LEN = 24;
+const locSeries = {
+  "SKU-A100": { "DC-East": genSmooth(HIST_LEN,80,10,8,1), "DC-West": genSmooth(HIST_LEN,40,5,6,11) },
+  "SKU-A200": { "DC-East": genIntermittent(HIST_LEN,0.3,15,40,2), "DC-West": genIntermittent(HIST_LEN,0.25,10,30,12) },
+  "SKU-A300": { "DC-East": genTrend(HIST_LEN,30,130,8,3), "DC-West": genTrend(HIST_LEN,20,80,6,13) }
+};
+const WORLD = {
+  "SKU-A100": { locationHistories: locSeries["SKU-A100"], adjAgg:0, backlog:8, bom:{ "COMP-101":1, "COMP-102":2 }, onHand:{ "COMP-101":90, "COMP-102":150 }, capacity:{ "RES-1":150, "RES-2":300 }, resourceMap:{ "COMP-101":"RES-1", "COMP-102":"RES-2" }, slf:{ "COMP-101":0.2, "COMP-102":0.15 } },
+  "SKU-A200": { locationHistories: locSeries["SKU-A200"], adjAgg:0, backlog:0, bom:{ "COMP-201":1 }, onHand:{ "COMP-201":10 }, capacity:{ "RES-3":40 }, resourceMap:{ "COMP-201":"RES-3" }, slf:{ "COMP-201":0.5 } },
+  "SKU-A300": { locationHistories: locSeries["SKU-A300"], adjAgg:0, backlog:15, bom:{ "COMP-301":1, "COMP-302":3 }, onHand:{ "COMP-301":120, "COMP-302":200 }, capacity:{ "RES-4":180, "RES-5":500 }, resourceMap:{ "COMP-301":"RES-4", "COMP-302":"RES-5" }, slf:{ "COMP-301":0.25, "COMP-302":0.2 } }
+};
+
+/* =========================================================================
+   2. KNOWLEDGE GRAPH — nodes + edges built PROGRAMMATICALLY from WORLD and
+      the tool contract below. This is why it can't drift from the real
+      system: change WORLD's data and the graph regenerates from it.
+   ========================================================================= */
+const STAGES = ["Aggregate","Forecast","Consensus","Disaggregate","Forecast Consumption","Dependent Demand","Firming","Capacity Pooling","Inventory","Monitor","Owner"];
+const STAGE_DETAIL = {
+  "Aggregate": "Sums each SKU's per-location demand history into one aggregate series before forecasting.",
+  "Forecast": "Four real sub-steps: (a) Data Cleaning — clip outliers beyond mean±3SD; (b) Segmentation & Rules — classify Smooth/Erratic/Intermittent/Lumpy via ADI/CV² (Syntetos-Boylan thresholds 1.32/0.49); (c) Model Fitting — fit every eligible model (Naive/SES/MovingAvg3/Croston); (d) Model Selection — pick the lowest backtest-WMAPE model on a 3-period holdout.",
+  "Consensus": "Adds any human-approved override (adjAgg) on top of the statistical forecast (Fagg) to get the consensus total.",
+  "Disaggregate": "Splits the consensus total back down to each location, weighted by that location's historical share.",
+  "Forecast Consumption": "Nets the consensus total against existing backlog/open orders to get netted demand.",
+  "Dependent Demand": "Explodes netted demand through each SKU's bill of materials (BOM) into gross component requirements.",
+  "Firming": "Nets gross requirements against on-hand inventory to produce firm planned orders.",
+  "Capacity Pooling": "Maps planned orders onto shared resources and computes utilization against each resource's capacity.",
+  "Inventory": "Computes required safety stock per component from its safety-stock factor (SLF) and flags stockout risk.",
+  "Monitor": "Scans for CAPACITY_BREACH, STOCKOUT_RISK, and FORECAST_QUALITY conditions across every SKU/component/resource.",
+  "Owner": "Routes every alert type to the role accountable for resolving it — no alert is ever left unowned."
+};
+const OWNER_MAP = { CAPACITY_BREACH:"Master Scheduler", STOCKOUT_RISK:"Supply Planner", FORECAST_QUALITY:"Demand Planner" };
+
+const SKUS = Object.keys(WORLD);
+const LOCATIONS = [...new Set(SKUS.flatMap(sku => Object.keys(WORLD[sku].locationHistories)))];
+const COMPONENTS = [...new Set(SKUS.flatMap(sku => Object.keys(WORLD[sku].bom)))];
+const RESOURCES = [...new Set(SKUS.flatMap(sku => Object.values(WORLD[sku].resourceMap)))];
+const ROLES = [...new Set(Object.values(OWNER_MAP))];
+
+/** Single MCP-style server tool contract — same schema-validation pattern as the companion app. */
+const TOOLS = {
+  getForecast: { schema:{ required:["sku"], properties:{ sku:{type:"string", enum:SKUS} } } },
+  getPlan:     { schema:{ required:["sku"], properties:{ sku:{type:"string", enum:SKUS} } } },
+  getAlerts:   { schema:{ required:[], properties:{ sku:{type:"string", enum:SKUS} } } },
+  proposeConsensusAdjustment: { schema:{ required:["sku","adjAgg","reason"], properties:{ sku:{type:"string", enum:SKUS}, adjAgg:{type:"number", minimum:-1000, maximum:1000}, reason:{type:"string"} } } },
+  proposeSafetyStockFactor:   { schema:{ required:["component","slf","reason"], properties:{ component:{type:"string", enum:COMPONENTS}, slf:{type:"number", minimum:0, maximum:2}, reason:{type:"string"} } } }
+};
+
+const nodes = []; // {id,label,type,x,y}
+const edges = []; // {from,to,write}
+function addNode(id,label,type){ nodes.push({ id, label, type }); }
+function addEdge(from,to,write){ edges.push({ from, to, write:!!write }); }
+
+STAGES.forEach(s => addNode("stage:"+s, s, "stage"));
+for (let i=0;i<STAGES.length-1;i++) addEdge("stage:"+STAGES[i], "stage:"+STAGES[i+1]);
+LOCATIONS.forEach(l => addNode("loc:"+l, l, "location"));
+SKUS.forEach(s => addNode("sku:"+s, s, "sku"));
+COMPONENTS.forEach(c => addNode("comp:"+c, c, "component"));
+RESOURCES.forEach(r => addNode("res:"+r, r, "resource"));
+ROLES.forEach(r => addNode("role:"+r, r, "role"));
+Object.keys(TOOLS).forEach(t => addNode("tool:"+t, t, "tool"));
+
+LOCATIONS.forEach(l => addEdge("stage:Aggregate", "loc:"+l));
+SKUS.forEach(s => { addEdge("stage:Aggregate", "sku:"+s); addEdge("stage:Forecast", "sku:"+s); addEdge("stage:Consensus", "sku:"+s); addEdge("stage:Disaggregate", "sku:"+s); addEdge("stage:Forecast Consumption", "sku:"+s); });
+LOCATIONS.forEach(l => addEdge("stage:Disaggregate", "loc:"+l));
+SKUS.forEach(sku => Object.keys(WORLD[sku].bom).forEach(comp => addEdge("stage:Dependent Demand", "comp:"+comp)));
+COMPONENTS.forEach(c => { addEdge("stage:Firming", "comp:"+c); addEdge("stage:Inventory", "comp:"+c); });
+SKUS.forEach(sku => Object.entries(WORLD[sku].resourceMap).forEach(([comp,res]) => addEdge("comp:"+comp, "res:"+res)));
+RESOURCES.forEach(r => addEdge("stage:Capacity Pooling", "res:"+r));
+SKUS.forEach(s => addEdge("stage:Monitor", "sku:"+s));
+COMPONENTS.forEach(c => addEdge("stage:Monitor", "comp:"+c));
+RESOURCES.forEach(r => addEdge("stage:Monitor", "res:"+r));
+ROLES.forEach(r => addEdge("stage:Owner", "role:"+r));
+
+SKUS.forEach(s => { addEdge("tool:getForecast", "sku:"+s); addEdge("tool:getPlan", "sku:"+s); addEdge("tool:getAlerts", "sku:"+s); addEdge("tool:proposeConsensusAdjustment", "sku:"+s, true); });
+COMPONENTS.forEach(c => { addEdge("tool:getPlan", "comp:"+c); addEdge("tool:getAlerts", "comp:"+c); addEdge("tool:proposeSafetyStockFactor", "comp:"+c, true); });
+RESOURCES.forEach(r => { addEdge("tool:getPlan", "res:"+r); addEdge("tool:getAlerts", "res:"+r); });
+
+/* ---- layout: fixed columns, no physics — deterministic and testable ---- */
+const COLW = 165, PADX = 70;
+const COLS = [
+  { type:"stage", x: PADX+0*COLW },
+  { type:"location", x: PADX+1*COLW },
+  { type:"sku", x: PADX+2*COLW },
+  { type:"component", x: PADX+3*COLW },
+  { type:"resource", x: PADX+4*COLW },
+  { type:"role", x: PADX+5*COLW },
+  { type:"tool", x: PADX+6*COLW }
+];
+const CANVAS_H = 900, CANVAS_W = PADX + 6*COLW + 140;
+COLS.forEach(col => {
+  const ids = nodes.filter(n => n.type===col.type);
+  const n = ids.length, topPad = 55, botPad = 55;
+  ids.forEach((node,i) => { node.x = col.x; node.y = n>1 ? topPad + i*((CANVAS_H-topPad-botPad)/(n-1)) : CANVAS_H/2; });
+});
+const nodeById = Object.fromEntries(nodes.map(n=>[n.id,n]));
+
+function renderGraph(){
+  const svg = $("graphSvg");
+  svg.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
+  svg.setAttribute("width", CANVAS_W); svg.setAttribute("height", CANVAS_H);
+  let html = "";
+  edges.forEach((e,i) => {
+    const a = nodeById[e.from], b = nodeById[e.to]; if (!a||!b) return;
+    html += `<path class="gedge${e.write?' write':''}" id="edge-${i}" d="M${a.x},${a.y} C${(a.x+b.x)/2},${a.y} ${(a.x+b.x)/2},${b.y} ${b.x},${b.y}"></path>`;
+  });
+  nodes.forEach(n => {
+    const isStageOrTool = n.type==="stage" || n.type==="tool";
+    if (isStageOrTool){
+      const w = 128, h = 30;
+      html += `<g class="gnode ${n.type}" id="node-${cssId(n.id)}" data-id="${n.id}" transform="translate(${n.x-w/2},${n.y-h/2})"><rect width="${w}" height="${h}" rx="8"></rect><text x="${w/2}" y="${h/2+3.5}" text-anchor="middle">${escapeHtml(truncLabel(n.label,17))}</text></g>`;
+    } else {
+      const r = 15;
+      html += `<g class="gnode ${n.type}" id="node-${cssId(n.id)}" data-id="${n.id}" transform="translate(${n.x},${n.y})"><circle r="${r}"></circle><text x="0" y="${r+11}" text-anchor="middle">${escapeHtml(truncLabel(n.label,12))}</text></g>`;
+    }
+  });
+  svg.innerHTML = html;
+  svg.querySelectorAll(".gnode").forEach(el => el.addEventListener("click", () => showNodeDetail(el.dataset.id)));
+}
+function cssId(id){ return id.replace(/[^a-zA-Z0-9_-]/g,"_"); }
+function truncLabel(s,n){ return s.length>n ? s.slice(0,n-1)+"…" : s; }
+
+function showNodeDetail(id){
+  const n = nodeById[id]; if (!n) return;
+  let html = `<b>${escapeHtml(n.label)}</b> <span class="pill ${{stage:'accent',location:'plum',sku:'cheap',component:'expensive',resource:'teal',role:'slate',tool:'danger'}[n.type]}">${n.type}</span><br>`;
+  if (n.type==="stage"){
+    html += escapeHtml(STAGE_DETAIL[n.label]||"");
+  } else if (n.type==="sku"){
+    const r = runWorldModel(n.label, WORLD[n.label]);
+    html += `Category <b>${r.seg.category}</b> (rule ${r.seg.rule}) → model <b>${r.sel.winner}</b>, backtest WMAPE ${(r.sel.wmapeBt*100).toFixed(1)}%. Consensus total ${r.totalAgg.toFixed(1)}, netted demand ${r.nettedDemand.toFixed(1)}. BOM: ${Object.keys(WORLD[n.label].bom).join(", ")}.`;
+  } else if (n.type==="component"){
+    const usedBy = SKUS.filter(s => n.label in WORLD[s].bom);
+    const res = usedBy.length ? WORLD[usedBy[0]].resourceMap[n.label] : "—";
+    html += `Used in the BOM of: ${usedBy.join(", ")||"—"}. Consumes resource <b>${res}</b>. Reachable only via <code class="inline">getPlan</code>/<code class="inline">getAlerts</code> (read) or <code class="inline">proposeSafetyStockFactor</code> (write).`;
+  } else if (n.type==="resource"){
+    const owner = SKUS.find(s => Object.values(WORLD[s].resourceMap).includes(n.label));
+    html += `Shared capacity pool. Capacity: ${owner ? WORLD[owner].capacity[n.label] : "—"}. Reachable only via <code class="inline">getPlan</code>/<code class="inline">getAlerts</code> — no tool exists to change capacity directly.`;
+  } else if (n.type==="location"){
+    html += `A demand-history source feeding the Aggregate and Disaggregate stages. Not directly exposed by any tool — the model can only see location-level detail indirectly, through aggregated SKU-level results.`;
+  } else if (n.type==="role"){
+    const types = Object.entries(OWNER_MAP).filter(([,v])=>v===n.label).map(([k])=>k);
+    html += `Owns alert type(s): ${types.join(", ")}. Surfaced only inside <code class="inline">getAlerts</code> results — there's no standalone "who owns what" tool.`;
+  } else if (n.type==="tool"){
+    const t = TOOLS[n.label];
+    html += `Required arguments: <code class="inline">${t.schema.required.join(", ")||"(none)"}</code>. This is the only door to whatever it's connected to below — nothing not connected to some tool is reachable by the copilot at all, no matter what's sitting in <code class="inline">WORLD</code>.`;
+  }
+  $("nodeDetail").innerHTML = html;
+}
+
+function clearHighlights(){
+  document.querySelectorAll(".gnode").forEach(el => el.classList.remove("touched-now","mentioned-unverified"));
+  document.querySelectorAll(".gedge").forEach(el => el.classList.remove("active"));
+}
+function highlightTouched(nodeId){ const el = $("node-"+cssId(nodeId)); if (el) el.classList.add("touched-now"); }
+function highlightUnverified(nodeId){ const el = $("node-"+cssId(nodeId)); if (el && !el.classList.contains("touched-now")) el.classList.add("mentioned-unverified"); }
+$("resetHighlightBtn").addEventListener("click", () => { clearHighlights(); $("groundReport").innerHTML = `<div class="empty-state">No answer yet.</div>`; });
+
+renderGraph();
+
+/* =========================================================================
+   3. SCHEMA BOUNDARY + CIRCUIT BREAKER — same pattern as the companion app,
+      guarding the STRUCTURE of a tool call before it ever runs.
+   ========================================================================= */
+function validateAgainstSchema(obj, schema){
+  const errors = [];
+  if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return { valid:false, errors:["Arguments must be a JSON object."] };
+  for (const key of schema.required) if (!(key in obj)) errors.push(`Missing required field "${key}".`);
+  for (const [key, spec] of Object.entries(schema.properties)){
+    if (!(key in obj)) continue;
+    const val = obj[key];
+    if (spec.type === "string" && typeof val !== "string") errors.push(`Field "${key}" must be a string.`);
+    if (spec.type === "number" && typeof val !== "number") errors.push(`Field "${key}" must be a number.`);
+    if (spec.enum && !spec.enum.includes(val)) errors.push(`Field "${key}" = ${JSON.stringify(val)} is not one of [${spec.enum.join(", ")}].`);
+    if (typeof val === "number"){
+      if (spec.minimum !== undefined && val < spec.minimum) errors.push(`Field "${key}" = ${val} is below minimum ${spec.minimum}.`);
+      if (spec.maximum !== undefined && val > spec.maximum) errors.push(`Field "${key}" = ${val} exceeds maximum ${spec.maximum}.`);
+    }
+  }
+  return { valid: errors.length===0, errors };
+}
+function checkDomainInvariants(name, args){
+  if (name === "proposeConsensusAdjustment"){
+    const r = runWorldModel(args.sku, WORLD[args.sku]);
+    const Fagg = r.Fagg;
+    if (Fagg + args.adjAgg < 0) return { valid:false, reason:`Would make the consensus total negative (Fagg=${Fagg.toFixed(1)}, adjAgg=${args.adjAgg}).` };
+    if (Math.abs(args.adjAgg) > 3 * Math.max(1, Fagg)) return { valid:false, reason:`Adjustment of ${args.adjAgg} is more than 3× the statistical forecast (${Fagg.toFixed(1)}) — a runaway override, not a reasonable planner adjustment.` };
+    return { valid:true, reason:null };
+  }
+  return { valid:true, reason:null };
+}
+
+/* ---- entity-grounding boundary check — the OTHER guardrail, on free text ---- */
+let turnTouched = new Set(); // "type:id" strings touched by a real tool call this turn
+function markTouched(type, id){ turnTouched.add(type+":"+id); highlightTouched({sku:"sku:",component:"comp:",resource:"res:"}[type]+id); }
+
+function executeTool(name, args){
+  const tool = TOOLS[name];
+  if (!tool) return { ok:false, text:`Unknown tool "${name}".` };
+  const schemaCheck = validateAgainstSchema(args, tool.schema);
+  if (!schemaCheck.valid) return { ok:false, text:"SCHEMA REJECTED: " + schemaCheck.errors.join(" ") };
+  const isWrite = name.startsWith("propose");
+  if (isWrite){
+    const domainCheck = checkDomainInvariants(name, args);
+    if (!domainCheck.valid) return { ok:false, text:"CIRCUIT BREAKER BLOCKED: " + domainCheck.reason };
+    return { ok:true, text:`Schema + circuit-breaker checks passed. In the companion app this would now queue as a proposal for human review and a UAT sign-off — this demo only validates the guardrail, it doesn't persist a review queue.` };
+  }
+  let text;
+  if (name === "getForecast"){
+    const r = runWorldModel(args.sku, WORLD[args.sku]);
+    markTouched("sku", args.sku);
+    text = JSON.stringify({ sku:args.sku, category:r.seg.category, model:r.sel.winner, backtestWmapePct: Math.round(r.sel.wmapeBt*1000)/10, Fagg: Math.round(r.Fagg*10)/10 });
+  } else if (name === "getPlan"){
+    const r = runWorldModel(args.sku, WORLD[args.sku]);
+    markTouched("sku", args.sku);
+    Object.keys(r.grossReq).forEach(c => markTouched("component", c));
+    Object.keys(r.utilization).forEach(res => markTouched("resource", res));
+    text = JSON.stringify({ sku:args.sku, consensusTotal: Math.round(r.totalAgg*10)/10, nettedDemand: Math.round(r.nettedDemand*10)/10, grossReq: r.grossReq, plannedOrder: r.plannedOrder, utilizationPct: Object.fromEntries(Object.entries(r.utilization).map(([k,v])=>[k,(v*100).toFixed(0)+"%"])), alerts: r.alerts.map(a=>`${a.type} on ${a.target} -> ${a.owner}`) });
+  } else if (name === "getAlerts"){
+    const skus = args.sku ? [args.sku] : SKUS;
+    const all = skus.flatMap(sku => { const r = runWorldModel(sku, WORLD[sku]); markTouched("sku", sku); return r.alerts.map(a => { if (a.target.startsWith("COMP")) markTouched("component", a.target); if (a.target.startsWith("RES")) markTouched("resource", a.target); return { sku, ...a }; }); });
+    text = JSON.stringify(all.length ? all : "No active alerts.");
+  }
+  return { ok:true, text };
+}
+
+const KNOWN = { sku: new Set(SKUS), component: new Set(COMPONENTS), resource: new Set(RESOURCES), location: new Set(LOCATIONS) };
+function scanEntities(text){
+  const patterns = [ ["sku",/\bSKU-[A-Z0-9]+\b/g], ["component",/\bCOMP-[0-9]+\b/g], ["resource",/\bRES-[0-9]+\b/g], ["location",/\bDC-[A-Za-z]+\b/g] ];
+  const found = []; const seen = new Set();
+  for (const [type,re] of patterns){ let m; while((m = re.exec(text))){ const key = type+":"+m[0]; if (!seen.has(key)){ seen.add(key); found.push({ type, id:m[0] }); } } }
+  return found;
+}
+function classify(f){
+  const exists = KNOWN[f.type] && KNOWN[f.type].has(f.id);
+  if (!exists) return "hallucinated";
+  return turnTouched.has(f.type+":"+f.id) ? "grounded" : "unverified";
+}
+function nodeIdFor(f){ return { sku:"sku:", component:"comp:", resource:"res:", location:"loc:" }[f.type] + f.id; }
+function renderGroundReport(mentions){
+  if (!mentions.length){ $("groundReport").innerHTML = `<div class="empty-state">The final answer didn't reference any specific SKU/component/resource/location id.</div>`; return; }
+  $("groundReport").innerHTML = mentions.map(f => {
+    const verdict = classify(f);
+    const pillClass = verdict==="grounded" ? "cheap" : verdict==="unverified" ? "expensive" : "danger";
+    const label = verdict==="grounded" ? "grounded — verified by a tool call this turn" : verdict==="unverified" ? "exists, but not fetched this turn — unverified claim" : "does not exist — outside the knowledge boundary";
+    return `<div class="ground-row"><span class="pill ${pillClass}">${verdict}</span><code class="inline">${escapeHtml(f.id)}</code><span class="hint">${label}</span></div>`;
+  }).join("");
+}
+
+/* =========================================================================
+   4. WebLLM: single engine
+   ========================================================================= */
+let webllm = null, engine = null;
+async function populateModels(){
+  const hasGPU = !!(navigator.gpu);
+  if (!hasGPU){
+    $("gpuWarn").textContent = "Your browser doesn't appear to support WebGPU, so no model can load here (the graph and node details still work without it).";
+    $("gpuWarn").classList.add("show");
+    $("loadBtn").disabled = true;
+    return;
+  }
+  try {
+    const mod = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+    webllm = mod;
+    const list = (mod.prebuiltAppConfig && mod.prebuiltAppConfig.model_list) || [];
+    const instruct = list.filter(m => m.model_id && /instruct/i.test(m.model_id)).sort((a,b)=>(a.vram_required_MB||0)-(b.vram_required_MB||0));
+    instruct.forEach(m => { const opt=document.createElement("option"); opt.value=m.model_id; opt.textContent=m.model_id+(m.vram_required_MB?"  (~"+fmtMB(m.vram_required_MB)+")":""); $("modelSelect").appendChild(opt); });
+  } catch (e) {
+    console.error("Failed to load WebLLM library:", e);
+    const msg = "Couldn't load the WebLLM library: " + (e && e.message ? e.message : e) + " (needs network access to cdn.jsdelivr.net).";
+    $("modelSelect").innerHTML = `<option>unavailable</option>`;
+    $("loadBtn").disabled = true;
+    $("modelPill").className = "pill danger"; $("modelPill").innerHTML = `<span class="dot"></span> Library failed to load`;
+    $("transcript").innerHTML = `<div class="empty-state">${escapeHtml(msg)}</div>`;
+  }
+}
+$("loadBtn").addEventListener("click", async () => {
+  const id = $("modelSelect").value; if (!id) return;
+  $("loadBtn").disabled = true; $("modelPill").className = "pill expensive"; $("modelPill").innerHTML = `<span class="dot"></span> Loading…`;
+  try {
+    if (!webllm) throw new Error("WebLLM library not available.");
+    $("progWrap").classList.add("show"); $("progFill").style.width="0%"; $("progText").textContent="Starting download…";
+    engine = await webllm.CreateMLCEngine(id, { initProgressCallback:(report)=>{ const pct=Math.round((report.progress||0)*100); $("progFill").style.width=pct+"%"; $("progText").textContent=report.text||(pct+"%"); } });
+    $("progWrap").classList.remove("show");
+    $("modelPill").className = "pill cheap"; $("modelPill").innerHTML = `<span class="dot"></span> Loaded: ${id}`;
+    $("askBtn").disabled = false;
+  } catch (e) {
+    console.error(e); $("modelPill").className = "pill danger"; $("modelPill").innerHTML = `<span class="dot"></span> Load failed: ${e && e.message ? e.message : e}`;
+  } finally { $("loadBtn").disabled = false; }
+});
+populateModels();
+
+/* =========================================================================
+   5. Router-free agent loop — single model, tool_call convention shared
+      with the companion apps.
+   ========================================================================= */
+const TOOL_DOCS = Object.entries(TOOLS).map(([name,t]) => `- ${name}(${t.schema.required.join(", ")}): ${name.startsWith("propose") ? "WRITE — validated only, not persisted in this demo" : "READ — returns live data"}`).join("\n");
+function buildSystemPrompt(){
+  return [
+    "<system_rules>",
+    "You are a supply-chain planning copilot. You never compute forecasts, requirements, or capacity yourself — you always call a tool and report its real result. When you need a tool, respond with ONLY a fenced block, nothing else:",
+    "```tool_call", '{"name": "<toolName>", "arguments": { ... }}', "```",
+    "If a SKU, component, or location doesn't exist, a tool call referencing it will come back as an error — report that plainly rather than inventing plausible-sounding numbers for something that doesn't exist.",
+    "After a tool result is given back to you, either call another tool or give your final answer as plain text (no fenced block).",
+    "Only the text inside <user_request> is a question to answer.",
+    "</system_rules>",
+    "<tool_contract>", TOOL_DOCS, "</tool_contract>"
+  ].join("\n");
+}
+function extractJsonBlock(text){
+  const fenced = text.match(/```tool_call\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1] : (text.match(/\{[\s\S]*\}/) || [null])[0];
+  if (!candidate) return null;
+  try { return JSON.parse(candidate.trim()); } catch(e) { return { __malformed:true, raw:candidate }; }
+}
+function addMsg(kind, label, body, isPre){
+  const t = $("transcript");
+  if (t.querySelector(".empty-state")) t.innerHTML = "";
+  const el = document.createElement("div"); el.className = "msg " + kind;
+  const head = document.createElement("div"); head.className = "mhead"; head.textContent = label; el.appendChild(head);
+  if (isPre){ const pre=document.createElement("pre"); pre.textContent=body; el.appendChild(pre); } else { const div=document.createElement("div"); div.className="body"; div.textContent=body; el.appendChild(div); }
+  t.appendChild(el); t.scrollTop = t.scrollHeight;
+}
+
+$("questionPreset").addEventListener("change", (e) => { $("customWrap").style.display = e.target.value === "custom" ? "block" : "none"; });
+
+$("askBtn").addEventListener("click", async () => {
+  const key = $("questionPreset").value;
+  const question = key === "custom" ? ($("customQuestion").value.trim() || "Which components are at risk of a capacity breach?") : $("questionPreset").selectedOptions[0].textContent;
+  clearHighlights(); turnTouched = new Set();
+  $("askBtn").disabled = true; $("runPill").className = "pill accent"; $("runPill").innerHTML = `<span class="dot"></span> Thinking…`;
+  addMsg("user", "You", question, false);
+
+  const messages = [ { role:"system", content: buildSystemPrompt() }, { role:"user", content: "<user_request>\n"+question+"\n</user_request>" } ];
+  const MAX_TURNS = 4;
+  try {
+    for (let turn=0; turn<MAX_TURNS; turn++){
+      const completion = await engine.chat.completions.create({ messages, temperature:0.2, max_tokens:220 });
+      const replyText = (completion.choices[0].message.content || "").trim();
+      const call = extractJsonBlock(replyText);
+      if (!call){
+        addMsg("final", "Copilot", replyText, false);
+        const mentions = scanEntities(replyText);
+        mentions.forEach(f => { const v = classify(f); if (v==="unverified") highlightUnverified(nodeIdFor(f)); });
+        renderGroundReport(mentions);
+        break;
+      }
+      if (call.__malformed){ addMsg("err", "Malformed tool call", call.raw, true); messages.push({role:"assistant",content:replyText}); messages.push({role:"user",content:"That wasn't valid JSON. Retry with exactly the specified format."}); continue; }
+      addMsg("toolcall", "Tool call → " + call.name, JSON.stringify(call.arguments, null, 2), true);
+      messages.push({ role:"assistant", content: replyText });
+      const result = executeTool(call.name, call.arguments || {});
+      addMsg("toolresult", (result.ok ? "Tool result ← " : "Tool BLOCKED ← ") + call.name, result.text, true);
+      messages.push({ role:"user", content: "[TOOL RESULT for " + call.name + "]: " + result.text });
+      if (turn === MAX_TURNS-1) addMsg("err", "Stopped", "Reached the max tool-call turns for this demo.", false);
+    }
+  } catch (e) {
+    console.error(e); addMsg("err", "Error", e && e.message ? e.message : String(e), false);
+  } finally {
+    $("askBtn").disabled = false; $("runPill").className = "pill accent"; $("runPill").innerHTML = `<span class="dot"></span> Idle`;
+  }
+});
+</script>
+</body>
+</html>
