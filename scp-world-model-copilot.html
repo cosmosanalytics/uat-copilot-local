@@ -132,7 +132,7 @@
     <h1>Supply Chain Planning Copilot — the World Model</h1>
     <p class="sub">One coherent demo across four enterprise AI guardrails, all grounded in a single real, deterministic 11-stage planning engine (Aggregate → Forecast → Consensus → Disaggregate → Forecast Consumption → Dependent Demand → Firming → Capacity Pooling → Inventory → Monitor → Owner). The engine has no decision variables of its own — it's a fully-observed state-space model that deterministically computes the consequence of any candidate decision. The AI copilot sits <b>on top of</b> it, never replacing its math.</p>
     <div class="honesty">
-      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation, the SHA-256 hash-chained audit log, and the model-routing cost math are all real, working mechanics too: a fast-tier classifier call reads each question and routes ROUTINE lookups to the fast tier and COMPLEX (recommendation/proposal) questions to the capable tier — if the fast tier isn't loaded, everything just runs on the capable tier instead. What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill (opening the model's own turn for it, mid-sentence) was attempted here and dropped — WebLLM's <code class="inline">chat.completions.create()</code> validates message roles and rejects a request whose last message is "assistant" outright, so there's no engine to be best-effort against; the reasoning scratchpad below is instead followed by an ordinary bridging user turn, and schema validation is what actually backstops the tool call regardless; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
+      <b>What's real vs. illustrative:</b> the forecast sub-pipeline (data cleaning, ADI/CV² segmentation against the real Syntetos-Boylan thresholds, Naive/SES/Croston model fitting, backtest-WMAPE selection) and every downstream stage are <b>genuinely computed</b> in this page — not scripted. There are two genuinely independent tool servers: a World Model server (5 tools) and a separate UAT server (4 tools) with its own schema set and its own handler function — the copilot's dispatch step routes each tool_call to whichever server owns that tool name, rather than everything living behind one handler. The tool schema + circuit breaker run on both servers with domain-specific rules each (a runaway-forecast-override check on the World Model side; an all-tests-must-pass check before UAT sign-off on the other). Every proposed plan change automatically gets a UAT test suite generated for it and can't be approved in the Review tab until it's signed off — you can drive that whole checklist manually with no model loaded. The XML-tagged prompt isolation, the SHA-256 hash-chained audit log, and the model-routing cost math are all real, working mechanics too: a fast-tier classifier call reads each question and routes ROUTINE lookups to the fast tier and COMPLEX (recommendation/proposal) questions to the capable tier — if the fast tier isn't loaded, everything just runs on the capable tier instead; and if a routed fast-tier call throws mid-question, the app catches it and automatically falls back to the capable tier for the rest of that question (logged in both the trace and the audit log as a fallback, not silently retried). What's <b>illustrative</b>: $/M-token prices are modeled on published per-tier API pricing for small/fast vs. large/capable hosted models, applied to local models for intuition, not real billing; assistant-turn pre-fill (opening the model's own turn for it, mid-sentence) was attempted here and dropped — WebLLM's <code class="inline">chat.completions.create()</code> validates message roles and rejects a request whose last message is "assistant" outright, so there's no engine to be best-effort against; the reasoning scratchpad below is instead followed by an ordinary bridging user turn, and schema validation is what actually backstops the tool call regardless; the UAT test-case descriptions are auto-generated templates, not real test scripts from a production system; and the copilot itself approximates extended step-by-step reasoning with two-stage prompting (a separate capped "thinking" call before the final answer) rather than a model's native reasoning feature.
     </div>
     <div class="gpuwarn" id="gpuWarn"></div>
   </header>
@@ -243,7 +243,7 @@
 
   <div class="foot">
     Demo / prototype architecture exercise. All planning data (24 months of history for three SKUs, BOM, capacity, safety-stock factors) is synthetic, generated deterministically in-page — nothing real. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU. State (review queue, audit log, committed overrides) persists in this browser's local storage only.
-    <br><span style="font-family:var(--mono)">Build 2026-09-18g — restored real asymmetric routing (ROUTINE → fast tier, COMPLEX → capable tier) now that both tiers offer genuinely capable models: fast tier ~1&ndash;1.6GB, capable tier ~1.6&ndash;4GB. The fast tier stays optional — if it isn't loaded, every question runs on the capable tier instead.</span>
+    <br><span style="font-family:var(--mono)">Build 2026-09-18h — added automatic tier fallback: if a question was routed to the fast tier and that tier's engine call throws mid-question, the app now catches it and switches to the capable tier for the rest of that question (logged as a fallback in the trace + audit log), instead of surfacing an engine error. Builds on 2026-09-18g's restored asymmetric routing (ROUTINE → fast tier, COMPLEX → capable tier; fast tier ~1&ndash;1.6GB, capable tier ~1.6&ndash;4GB, fast tier optional).</span>
   </div>
 </div>
 
@@ -789,7 +789,7 @@ async function askCopilot(){
     }
 
     pill.innerHTML = `<span class="dot"></span> Reasoning (${tierKey})…`;
-    const engine = tiers[tierKey].engine;
+    let engine = tiers[tierKey].engine;
     const sysPrompt = buildSystemPrompt();
     const userTurn = buildUserTurn(question, currentWorldSnapshot());
     const messages = [{ role:"system", content: sysPrompt }, { role:"user", content: userTurn }];
@@ -799,7 +799,18 @@ async function askCopilot(){
     for (let turn = 0; turn < MAX_TURNS; turn++){
       let replyText = "";
       if (budget > 0 && turn === 0){
-        const thinkRes = await chatComplete(engine, messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), { temperature:0.3, max_tokens: budget });
+        let thinkRes;
+        try {
+          thinkRes = await chatComplete(engine, messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), { temperature:0.3, max_tokens: budget });
+        } catch (e) {
+          if (tierKey === "fast" && tiers.capable.engine){
+            addMsg("route", "Fallback", `Fast tier failed (${String(e && e.message ? e.message : e)}) — switching to capable tier for the rest of this question.`, false);
+            await appendAudit("tier-fallback", `fast tier engine error on "${question.slice(0,80)}" — falling back to capable tier: ${String(e && e.message ? e.message : e)}`);
+            tierKey = "capable"; engine = tiers.capable.engine;
+            pill.innerHTML = `<span class="dot"></span> Reasoning (${tierKey}, fallback)…`;
+            thinkRes = await chatComplete(engine, messages.concat([{role:"user", content:"Before acting, briefly reason (private scratchpad, not shown to the person) about which tool(s), if any, you need."}]), { temperature:0.3, max_tokens: budget });
+          } else { throw e; }
+        }
         const thinking = (thinkRes.choices[0].message.content || "").trim();
         if (thinking) {
           addMsg("route", "Reasoning (budget " + budget + " tok)", thinking, true);
@@ -814,7 +825,18 @@ async function askCopilot(){
         turnCost += estimateTokens("reasoning prompt") * PRICE[tierKey].in + estimateTokens(thinking) * PRICE[tierKey].out;
       }
 
-      const completion = await chatComplete(engine, messages, { temperature:0.2, max_tokens:220 });
+      let completion;
+      try {
+        completion = await chatComplete(engine, messages, { temperature:0.2, max_tokens:220 });
+      } catch (e) {
+        if (tierKey === "fast" && tiers.capable.engine){
+          addMsg("route", "Fallback", `Fast tier failed (${String(e && e.message ? e.message : e)}) — switching to capable tier for the rest of this question.`, false);
+          await appendAudit("tier-fallback", `fast tier engine error on "${question.slice(0,80)}" — falling back to capable tier: ${String(e && e.message ? e.message : e)}`);
+          tierKey = "capable"; engine = tiers.capable.engine;
+          pill.innerHTML = `<span class="dot"></span> Reasoning (${tierKey}, fallback)…`;
+          completion = await chatComplete(engine, messages, { temperature:0.2, max_tokens:220 });
+        } else { throw e; }
+      }
       replyText = (completion.choices[0].message.content || "").trim();
       const outTok = completion.usage ? (completion.usage.completion_tokens || estimateTokens(replyText)) : estimateTokens(replyText);
       turnCost += turnTokens * PRICE[tierKey].in + outTok * PRICE[tierKey].out;
