@@ -172,9 +172,9 @@
   <header class="top">
     <span class="kicker">Client-side reasoning demo · WebLLM + WebGPU, no backend</span>
     <h1>Extended Thinking, Under the Hood</h1>
-    <p class="sub">Give a local model an explicit <b>reasoning budget</b> before it has to answer, and watch what changes. Run the same prompt with <b>no thinking budget</b> next to a <b>chosen budget</b>, side by side, using a model running entirely in your browser via WebGPU.</p>
+    <p class="sub">Give a local model an explicit <b>reasoning budget</b> before it has to answer, and watch what changes. Run the same prompt with <b>no thinking budget</b> next to a <b>chosen budget</b>, side by side, using a model running entirely in your browser via WebGPU. Below that: the same "knowledge boundary" idea applied to <b>tool calls</b> — a strict schema boundary and a deterministic circuit breaker, catching bad model output before it can act.</p>
     <div class="honesty">
-      <b>What this actually is:</b> this page does not use Anthropic's real Extended Thinking feature (a distinct model capability, invoked with a <code class="inline">thinking: {budget_tokens: ...}</code> parameter on the Claude API, which produces genuine interleaved reasoning). It approximates the same <i>idea</i> — forcing a deliberate reasoning pass, bounded by a token budget, before the final answer — with plain two-stage prompting against a small open-source model in your browser. Useful for building intuition about why a reasoning budget matters; not a substitute for the real API feature.
+      <b>What's simulated vs. real:</b> the reasoning-budget section above does not use Anthropic's actual Extended Thinking feature (a distinct model capability, invoked with a <code class="inline">thinking: {budget_tokens: ...}</code> parameter on the Claude API, producing genuine interleaved reasoning) — it approximates the idea with plain two-stage prompting against a small open-source model. The <b>guardrails section below is different</b>: schema validation and the domain-rule circuit breaker are ordinary integration code, not model-specific, so that part is a real, working implementation of the pattern — it would work the same in front of Claude, Llama, or anything else.
     </div>
     <div class="gpuwarn" id="gpuWarn"></div>
   </header>
@@ -251,8 +251,63 @@
 
   </div>
 
+  <div class="card" style="margin-top:16px">
+    <h3>
+      <span>Guardrails · schema boundary + circuit breaker</span>
+      <span class="pill final" id="guardRunPill"><span class="dot"></span> Idle</span>
+    </h3>
+    <p class="sub" style="margin:0 0 14px">Same knowledge-boundary idea, applied to a <b>tool call</b> instead of a text answer. The model proposes a warehouse transfer as JSON; a <b>strict schema check</b> rejects malformed calls before anything runs; a <b>deterministic domain check</b> (mass balance — can't ship more than is on hand) blocks a well-formed but invalid call. Unlike the reasoning demo above, this part is a real, honest implementation of the pattern — schema validation and business-rule checks are ordinary integration code, not something that only works with a specific model or API.</p>
+
+    <div class="layout" style="grid-template-columns:300px 1fr">
+      <div>
+        <div class="field">
+          <label>Warehouse inventory (live)</label>
+          <table id="invTable" style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+            <thead><tr style="text-align:left;color:var(--muted)"><th style="padding:4px 0">Warehouse</th><th style="padding:4px 0">On hand</th></tr></thead>
+            <tbody id="invBody"></tbody>
+          </table>
+          <button class="btn ghost" id="resetInvBtn" style="margin-top:10px">Reset inventory</button>
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <label>Tool schema (enforced client-side)</label>
+          <pre style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--mono);font-size:10.5px;line-height:1.5;white-space:pre-wrap;margin:0;">{
+  "action": "transferInventory",
+  "from": "WH-A|WH-B|WH-C",
+  "to": "WH-A|WH-B|WH-C",
+  "quantity": integer, 1–5000
+}
+required: all 4 fields
+additionalProperties: false</pre>
+        </div>
+      </div>
+
+      <div>
+        <div class="field">
+          <label>Request</label>
+          <select id="transferScenario">
+            <option value="ok">Move 40 units from WH-B to WH-C</option>
+            <option value="overdraw">Move 900 units from WH-A to WH-C</option>
+            <option value="negative">Move -50 units from WH-A to WH-B (typo'd request)</option>
+            <option value="custom">Custom request</option>
+          </select>
+        </div>
+        <div class="field" id="transferCustomWrap" style="display:none">
+          <textarea id="transferCustom" placeholder="e.g. Move 200 units from WH-C to WH-A"></textarea>
+        </div>
+
+        <button class="btn" id="proposeBtn" disabled>Propose tool call →</button>
+        <p class="hint">Uses the thinking budget set above (currently applies here too), so the model reasons about the request before emitting the JSON call.</p>
+
+        <div id="guardResults" style="margin-top:14px">
+          <div class="empty-state">Load a model above, then propose a transfer to see it checked against the schema and the domain rule before (maybe) executing.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="foot">
-    Demo only. Model quality varies a lot at this scale (small models run fully client-side so the demo works with zero backend and zero API cost) — the point isn't that the model gets every problem right, it's seeing <i>how</i> the reasoning trace changes the final answer when it's allowed to work through the problem first versus forced to answer immediately. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU — nothing is sent to a server.
+    Demo only. Model quality varies a lot at this scale (small models run fully client-side so the demo works with zero backend and zero API cost) — the point isn't that the model gets every problem right, it's seeing <i>how</i> the reasoning trace changes the final answer when it's allowed to work through the problem first versus forced to answer immediately, and how schema + domain checks catch bad tool calls regardless of what the model outputs. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noopener">WebLLM</a> / WebGPU — nothing is sent to a server.
   </div>
 </div>
 
@@ -280,6 +335,7 @@ const budgetSlider = $("budgetSlider");
 const budgetVal = $("budgetVal");
 const finalSlider = $("finalSlider");
 const finalVal = $("finalVal");
+const proposeBtn = $("proposeBtn");
 
 function fmtMB(mb) {
   if (!mb) return "";
@@ -346,6 +402,7 @@ async function loadSelectedModel() {
   loadBtn.disabled = true;
   runOneBtn.disabled = true;
   runCompareBtn.disabled = true;
+  proposeBtn.disabled = true;
   setEnginePill("accent", "Loading…");
 
   try {
@@ -369,6 +426,7 @@ async function loadSelectedModel() {
     setEnginePill("final", "Loaded: " + id);
     runOneBtn.disabled = false;
     runCompareBtn.disabled = false;
+    proposeBtn.disabled = false;
   } catch (e) {
     console.error(e);
     setEnginePill("danger", "Load failed");
@@ -538,6 +596,217 @@ async function runCompare() {
 
 runOneBtn.addEventListener("click", runOnce);
 runCompareBtn.addEventListener("click", runCompare);
+
+/* =========================================================================
+   3. Guardrails: strict schema boundary + deterministic circuit breaker
+   ========================================================================= */
+
+const WAREHOUSES = ["WH-A", "WH-B", "WH-C"];
+let inventory = { "WH-A": 120, "WH-B": 40, "WH-C": 300 };
+const INVENTORY_DEFAULTS = { ...inventory };
+
+const TOOL_SCHEMA = {
+  type: "object",
+  required: ["action", "from", "to", "quantity"],
+  additionalProperties: false,
+  properties: {
+    action: { type: "string", enum: ["transferInventory"] },
+    from: { type: "string", enum: WAREHOUSES },
+    to: { type: "string", enum: WAREHOUSES },
+    quantity: { type: "number", minimum: 1, maximum: 5000 }
+  }
+};
+
+function renderInventory() {
+  $("invBody").innerHTML = WAREHOUSES.map(w =>
+    `<tr><td style="padding:4px 0">${w}</td><td style="padding:4px 0">${inventory[w]}</td></tr>`
+  ).join("");
+}
+renderInventory();
+
+$("resetInvBtn").addEventListener("click", () => {
+  inventory = { ...INVENTORY_DEFAULTS };
+  renderInventory();
+  $("guardResults").innerHTML = `<div class="empty-state">Inventory reset. Propose a transfer to try again.</div>`;
+});
+
+$("transferScenario").addEventListener("change", (e) => {
+  $("transferCustomWrap").style.display = e.target.value === "custom" ? "block" : "none";
+});
+
+function getTransferRequestText() {
+  const key = $("transferScenario").value;
+  const map = {
+    ok: "Move 40 units from WH-B to WH-C.",
+    overdraw: "Move 900 units from WH-A to WH-C.",
+    negative: "Move -50 units from WH-A to WH-B."
+  };
+  if (key === "custom") return $("transferCustom").value.trim() || "Move 50 units from WH-A to WH-C.";
+  return map[key];
+}
+
+/** Minimal hand-rolled JSON Schema check — deliberately small and readable,
+ *  not a general-purpose validator, but covers exactly what the schema above declares. */
+function validateAgainstSchema(obj, schema) {
+  const errors = [];
+  if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+    return { valid: false, errors: ["Top-level value is not a JSON object."] };
+  }
+  for (const key of schema.required) {
+    if (!(key in obj)) errors.push(`Missing required field "${key}".`);
+  }
+  if (schema.additionalProperties === false) {
+    for (const key of Object.keys(obj)) {
+      if (!(key in schema.properties)) errors.push(`Unexpected field "${key}" (additionalProperties: false).`);
+    }
+  }
+  for (const [key, spec] of Object.entries(schema.properties)) {
+    if (!(key in obj)) continue;
+    const val = obj[key];
+    if (spec.type === "string" && typeof val !== "string") errors.push(`Field "${key}" must be a string.`);
+    if (spec.type === "number" && typeof val !== "number") errors.push(`Field "${key}" must be a number.`);
+    if (spec.enum && !spec.enum.includes(val)) errors.push(`Field "${key}" = ${JSON.stringify(val)} is not one of [${spec.enum.join(", ")}].`);
+    if (typeof val === "number") {
+      if (spec.minimum !== undefined && val < spec.minimum) errors.push(`Field "${key}" = ${val} is below minimum ${spec.minimum}.`);
+      if (spec.maximum !== undefined && val > spec.maximum) errors.push(`Field "${key}" = ${val} exceeds maximum ${spec.maximum}.`);
+      if (!Number.isInteger(val)) errors.push(`Field "${key}" = ${val} must be an integer.`);
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/** Deterministic domain invariant — the "stop_reason interception" circuit breaker.
+ *  Runs only after the call is already schema-valid; checks a real-world constraint
+ *  (mass balance: can't ship more than is actually on hand) that no JSON schema alone
+ *  can express. */
+function checkDomainInvariants(call) {
+  if (call.from === call.to) {
+    return { valid: false, reason: `"from" and "to" are both ${call.from} — a warehouse can't transfer to itself.` };
+  }
+  const onHand = inventory[call.from];
+  if (call.quantity > onHand) {
+    return { valid: false, reason: `Mass-balance violation: ${call.from} only has ${onHand} units on hand, but the call requests shipping ${call.quantity}.` };
+  }
+  return { valid: true, reason: null };
+}
+
+function extractJsonObject(text) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return { ok: false, error: "No JSON object found in the model's output." };
+  try {
+    return { ok: true, value: JSON.parse(match[0]) };
+  } catch (e) {
+    return { ok: false, error: "Found a { ... } block but it isn't valid JSON: " + e.message };
+  }
+}
+
+const GUARD_THINK_SYS = "You are deciding how to fulfill a warehouse transfer request. Reason step by step in a private scratchpad: identify the source warehouse, destination warehouse, and quantity requested. Do NOT output the final JSON tool call yet — only your reasoning. Stay well within your token budget.";
+function guardFinalSys() {
+  return `Output exactly one JSON object for a warehouse transfer tool call, matching this schema, and nothing else — no explanation, no markdown code fences:\n${JSON.stringify(TOOL_SCHEMA, null, 2)}\nBase the field values on the request and your reasoning above.`;
+}
+
+async function proposeToolCall() {
+  const request = getTransferRequestText();
+  const budget = parseInt(budgetSlider.value, 10);
+
+  proposeBtn.disabled = true;
+  const pill = $("guardRunPill");
+  pill.className = "pill accent";
+  pill.innerHTML = `<span class="dot"></span> Reasoning…`;
+  $("guardResults").innerHTML = `<div class="empty-state">Model is proposing a tool call…</div>`;
+
+  try {
+    let thinking = "";
+    if (budget > 0) {
+      const thinkRes = await engine.chat.completions.create({
+        messages: [
+          { role: "system", content: GUARD_THINK_SYS },
+          { role: "user", content: "Request: " + request }
+        ],
+        temperature: 0.2,
+        max_tokens: budget
+      });
+      thinking = (thinkRes.choices[0].message.content || "").trim();
+    }
+
+    pill.innerHTML = `<span class="dot"></span> Generating tool call…`;
+    const finalRes = await engine.chat.completions.create({
+      messages: [
+        { role: "system", content: guardFinalSys() },
+        { role: "user", content: "Request: " + request + (thinking ? "\n\nYour prior reasoning:\n" + thinking : "") }
+      ],
+      temperature: 0.1,
+      max_tokens: 120
+    });
+    const rawOutput = (finalRes.choices[0].message.content || "").trim();
+
+    renderGuardResult(request, thinking, budget, rawOutput);
+  } catch (e) {
+    console.error(e);
+    $("guardResults").innerHTML = `<div class="finalblock" style="border-color:var(--danger);background:var(--danger-bg)"><div class="flabel" style="color:var(--danger)">Engine error</div><div class="body">${escapeHtml(String(e && e.message ? e.message : e))}</div></div>`;
+  } finally {
+    pill.className = "pill final";
+    pill.innerHTML = `<span class="dot"></span> Idle`;
+    proposeBtn.disabled = false;
+  }
+}
+
+function renderGuardResult(request, thinking, budget, rawOutput) {
+  const parsed = extractJsonObject(rawOutput);
+  let html = `<div class="finalblock" style="margin-bottom:12px"><div class="flabel">Request</div><div class="body">${escapeHtml(request)}</div></div>`;
+
+  if (budget > 0) {
+    html += `<div class="thinkblock"><div class="tlabel"><span class="dot" style="background:var(--think)"></span> Thinking (budget ${budget} tok)</div><pre>${escapeHtml(thinking || "(no reasoning text returned)")}</pre></div>`;
+  }
+
+  html += `<div class="thinkblock"><div class="tlabel"><span class="dot" style="background:var(--muted)"></span> Raw model output</div><pre>${escapeHtml(rawOutput || "(empty)")}</pre></div>`;
+
+  if (!parsed.ok) {
+    html += stageCard("danger", "1. Schema check — REJECTED", parsed.error, "The call never reaches the domain check. Malformed output is stopped here, before anything downstream sees it.");
+    $("guardResults").innerHTML = html;
+    return;
+  }
+
+  const schemaCheck = validateAgainstSchema(parsed.value, TOOL_SCHEMA);
+  html += `<div class="thinkblock" style="border-color:var(--line);background:var(--bg-2)"><div class="tlabel" style="color:var(--ink)"><span class="dot" style="background:var(--ink)"></span> Parsed JSON</div><pre>${escapeHtml(JSON.stringify(parsed.value, null, 2))}</pre></div>`;
+
+  if (!schemaCheck.valid) {
+    html += stageCard("danger", "1. Schema check — REJECTED", schemaCheck.errors.join(" "), "additionalProperties, min/max, and enum constraints caught this before the domain check ever ran.");
+    $("guardResults").innerHTML = html;
+    return;
+  }
+
+  html += stageCard("final", "1. Schema check — PASSED", "All required fields present, correct types, within range, no extra fields.", null);
+
+  const domainCheck = checkDomainInvariants(parsed.value);
+  if (!domainCheck.valid) {
+    html += stageCard("danger", "2. Circuit breaker (stop_reason interception) — BLOCKED", domainCheck.reason, "The call was well-formed but violated a real-world constraint the schema alone can't express — exactly the deterministic-invariant check the PDF's Q1 describes.");
+    $("guardResults").innerHTML = html;
+    return;
+  }
+
+  html += stageCard("final", "2. Circuit breaker — PASSED", "Quantity is within what's actually on hand; source and destination differ.", null);
+
+  // "Execute" the call
+  inventory[parsed.value.from] -= parsed.value.quantity;
+  inventory[parsed.value.to] += parsed.value.quantity;
+  renderInventory();
+  html += stageCard("final", "3. Executed", `Transferred ${parsed.value.quantity} units from ${parsed.value.from} to ${parsed.value.to}. Inventory table updated on the left.`, null);
+
+  $("guardResults").innerHTML = html;
+}
+
+function stageCard(kind, title, body, note) {
+  const colorVar = kind === "danger" ? "var(--danger)" : "var(--final)";
+  const bgVar = kind === "danger" ? "var(--danger-bg)" : "var(--final-bg)";
+  return `<div class="finalblock" style="margin-bottom:12px;border-color:${colorVar};background:${bgVar}">
+    <div class="flabel" style="color:${colorVar}">${escapeHtml(title)}</div>
+    <div class="body">${escapeHtml(body)}</div>
+    ${note ? `<div class="hint" style="margin-top:6px">${escapeHtml(note)}</div>` : ""}
+  </div>`;
+}
+
+proposeBtn.addEventListener("click", proposeToolCall);
 </script>
 </body>
 </html>
