@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build &amp; Audit a Knowledge Graph From Your Own Document</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#ffffff; --border:#e2e5ea; --text:#1a1d24; --muted:#6b7280;
+    --accent:#2a78d6; --accent2:#16192a; --mono:'SF Mono','Consolas','Menlo',monospace;
+    --green:#1a7a4c; --red:#c0392b; --gold:#b8860b; --violet:#4a3aa7;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:22px 28px 14px; border-bottom:1px solid var(--border); background:var(--card); }
+  header h1 { margin:0 0 4px; font-size:22px; }
+  header p.sub { margin:0; color:var(--muted); font-size:13.5px; max-width:840px; }
+  .wrap { max-width:1180px; margin:0 auto; padding:20px 28px 60px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  .honesty { background:#fff8e6; border:1px solid #f0d98c; border-radius:10px; padding:14px 18px; margin-bottom:18px; font-size:12.6px; line-height:1.55; color:#5c4a12; }
+  .honesty b { color:#4a3a0a; }
+  code.inline { background:rgba(0,0,0,.06); padding:1px 5px; border-radius:4px; font-family:var(--mono); font-size:11.5px; }
+  h3 { margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .field { flex:1; min-width:180px; }
+  label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  select, input[type=number], input[type=file], textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; font-size:13.5px; font-family:inherit; background:#fff; }
+  textarea { resize:vertical; min-height:130px; font-family:var(--mono); font-size:12px; }
+  .btn { background:var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:7px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.secondary { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .pill .dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .pill.idle { background:#eef0f4; color:#5b6472; }
+  .pill.loading { background:#fff3cd; color:#8a6300; }
+  .pill.ready { background:#dcf3e6; color:#136c3d; }
+  .pill.err { background:#fbe1df; color:#a3281c; }
+  .progwrap { margin-top:8px; height:6px; background:#eee; border-radius:4px; overflow:hidden; display:none; }
+  .progfill { height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  .progtext { font-size:11px; color:var(--muted); margin-top:3px; }
+  .gpuwarn { display:none; background:#fbe1df; color:#a3281c; padding:10px 14px; border-radius:8px; font-size:12.5px; margin-bottom:12px; }
+  .gpuwarn.show { display:block; }
+
+  .legend { display:flex; gap:22px; flex-wrap:wrap; align-items:center; font-size:12.5px; color:var(--muted); }
+  .legend .item { display:flex; align-items:center; gap:8px; }
+  .legend .swatch { width:34px; height:10px; border-radius:5px; }
+  .legend .grad-cov { background:linear-gradient(90deg, #d9dde3, var(--green)); }
+  .legend .grad-hue { background:linear-gradient(90deg, var(--red), var(--gold), var(--green)); }
+
+  .statgrid { display:flex; gap:12px; flex-wrap:wrap; }
+  .stat { flex:1; min-width:130px; background:#f8f9fb; border:1px solid var(--border); border-radius:9px; padding:10px 12px; }
+  .stat .k { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .stat .v { font-family:var(--mono); font-size:20px; font-weight:800; margin-top:2px; }
+  .stat .v.green { color:var(--green); } .stat .v.red { color:var(--red); } .stat .v.gold { color:var(--gold); }
+
+  svg text { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+
+  .log { max-height:230px; overflow-y:auto; font-size:12px; border:1px solid var(--border); border-radius:8px; }
+  .log .row2 { display:flex; gap:8px; padding:7px 10px; border-bottom:1px solid #f0f1f4; align-items:flex-start; }
+  .log .row2:last-child { border-bottom:none; }
+  .log .row2 .tag { flex:0 0 auto; font-family:var(--mono); font-size:10px; font-weight:800; padding:2px 7px; border-radius:5px; text-transform:uppercase; }
+  .log .row2 .tag.correct { background:#dcf3e6; color:#136c3d; }
+  .log .row2 .tag.wrong { background:#fbe1df; color:#a3281c; }
+  .log .row2 .tag.unclear { background:#eef0f4; color:#5b6472; }
+  .log .row2 .q { flex:1; color:var(--text); }
+  .log .row2 .q .expected { color:var(--muted); font-size:11px; display:block; margin-top:2px; }
+
+  footer { text-align:center; font-size:11.5px; color:var(--muted); padding:20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Build &amp; Audit a Knowledge Graph From Your Own Document</h1>
+  <p class="sub">Paste text or upload a .txt/.md file. It's chunked, a graph of (subject, relation, object) triples is extracted chunk by chunk, and then audited by retrieving each triple's source passage again and checking whether the model still says the passage supports it. Runs entirely in your browser via WebLLM / WebGPU &mdash; the document never leaves your machine.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="honesty" id="honestyBox">
+    <b>What "accuracy" means here &mdash; read this first:</b> This audits <b>faithfulness to your document</b>, not real-world truth. A triple is scored "correct" if, when the model is shown the retrieved passage again, it agrees the passage supports that relationship &mdash; that only tells you the graph reflects what your document says, not that your document is right about the world. If your source text itself is wrong, a faithful extraction of that wrong claim still scores as correct; this tool can't and doesn't try to catch that. <b>"RAG" here is lexical retrieval</b> &mdash; keyword/word-overlap scoring between a query and each chunk &mdash; not embedding-based semantic search, to keep this a single-model, single-file browser app with no second model to load. <b>Extraction uses a deliberately bounded JSON schema</b> (max 5 triples per chunk, capped string lengths) &mdash; an earlier app in this portfolio hit a real, confirmed WebLLM/XGrammar performance bug where unbounded schemas defeat the grammar-decoding cache; bounding it avoids that. Processing is capped at the first 24 chunks (~roughly the first several thousand words) to keep this runnable in-browser; longer documents are silently truncated past that, which is disclosed in the stats panel, not hidden. Small local models will extract noisy, incomplete, or occasionally malformed triples &mdash; this is a prototype for seeing the idea work, not a production extraction pipeline.
+  </div>
+
+  <div class="gpuwarn" id="gpuWarn"></div>
+
+  <div class="card">
+    <h3>Model</h3>
+    <div class="row">
+      <div class="field"><label>Model</label><select id="modelSelect"></select></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn" id="loadBtn">Load model</button></div>
+      <div class="field" style="flex:0 0 auto;"><span class="pill idle" id="modelPill"><span class="dot"></span> Not loaded</span></div>
+    </div>
+    <div class="progwrap" id="progWrap"><div class="progfill" id="progFill"></div></div>
+    <div class="progtext" id="progText"></div>
+  </div>
+
+  <div class="card">
+    <h3>1. Your document</h3>
+    <div class="row">
+      <div class="field" style="flex:2 1 320px;">
+        <label>Paste text</label>
+        <textarea id="docText" placeholder="Paste an article, report, or notes here…"></textarea>
+      </div>
+      <div class="field" style="flex:1 1 200px;">
+        <label>...or upload a .txt / .md file</label>
+        <input type="file" id="docFile" accept=".txt,.md,text/plain">
+        <div class="progtext" id="fileStatus"></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field" style="flex:0 0 auto;"><button class="btn" id="buildBtn" disabled>Build knowledge graph</button></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn secondary" id="sampleBtn">Load sample text</button></div>
+      <div class="field" style="flex:0 0 auto;"><span class="pill idle" id="buildPill"><span class="dot"></span> Idle</span></div>
+      <div class="field" style="flex:1;"><span class="progtext" id="chunkInfo"></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>How to read the graph</h3>
+    <div class="legend">
+      <div class="item"><span class="swatch" style="background:#c3c8d3;"></span> Thin gray line: the extracted graph — every triple the model pulled from the document, shown as soon as it's found, regardless of audit status</div>
+      <div class="item"><span class="swatch grad-hue"></span> Colored line drawn on top: audit overlay — only appears once that triple has been checked at least once. Hue: faithfulness (red = audit found the passage doesn't support it &rarr; green = audit confirmed it)</div>
+      <div class="item"><span class="swatch grad-cov"></span> Opacity of the overlay: audit coverage (how many times this triple has been re-checked against its source passage)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>2. Audit the graph</h3>
+    <p style="margin:0 0 10px; font-size:12.5px; color:var(--muted);">For each check: the triple's source chunk is retrieved again (lexical RAG), the model is shown <i>only</i> that passage, and asked whether it actually supports the claimed relationship. "Run faithfulness audit" samples a batch at random (can retest the same edge); "Audit every edge" instead walks the whole graph once so every edge gets at least one check.</p>
+    <div class="row">
+      <div class="field" style="max-width:180px;"><label>Checks per run</label><input type="number" id="auditBatchSize" value="8" min="1" max="40"></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn" id="auditBtn" disabled>Run faithfulness audit</button></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn secondary" id="auditAllBtn" disabled>Audit every edge (all at once)</button></div>
+      <div class="field" style="flex:0 0 auto;"><span class="pill idle" id="auditPill"><span class="dot"></span> Idle</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Coverage &amp; accuracy summary</h3>
+    <div class="statgrid">
+      <div class="stat"><div class="k">Chunks (used / total)</div><div class="v" id="statChunks">0 / 0</div></div>
+      <div class="stat"><div class="k">Triples extracted</div><div class="v" id="statTriples">0</div></div>
+      <div class="stat"><div class="k">Chunks with &ge;1 triple</div><div class="v gold" id="statChunkCoverage">&mdash;</div></div>
+      <div class="stat"><div class="k">Edges audited</div><div class="v" id="statEdgesAudited">0 / 0</div></div>
+      <div class="stat"><div class="k">Faithfulness rate</div><div class="v green" id="statFaithful">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>The extracted graph</h3>
+    <p style="margin:0 0 8px; font-size:11.5px; color:var(--muted);">The faint outline behind the graph is a nod to mapping an AI's knowledge graph the way neuroscience maps a brain's connectome &mdash; wiring you can trace and audit, not a black box.</p>
+    <svg id="graphSvg" viewBox="0 0 760 520" width="100%" height="520" role="img" aria-label="Knowledge graph extracted from the document, colored by audit results, over a faint stylized brain outline"></svg>
+  </div>
+
+  <div class="card">
+    <h3>Audit log (most recent first)</h3>
+    <div class="log" id="logList"><div class="row2"><span class="q" style="color:var(--muted);">No checks run yet.</span></div></div>
+  </div>
+
+</div>
+
+<footer>
+  Demo / prototype &mdash; document-grounded knowledge-graph extraction and faithfulness auditing, companion to the WebLLM knowledge-boundary trust-estimator prototype. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank">WebLLM</a> / WebGPU &mdash; nothing sent to a server.
+</footer>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const MAX_CHUNKS = 24;
+
+const SAMPLE_TEXT = `Project Aurora is a mid-sized manufacturer of precision motors. Its flagship product, the Aurora X200 motor, is assembled from two primary subcomponents: the Stator Core Unit and the Rotor Bearing Assembly. The Stator Core Unit is sourced from Ironforge Metals, a supplier based in Ohio. The Rotor Bearing Assembly is manufactured by Precision Bearings Inc, located in Michigan.
+
+The Aurora X200 motor depends heavily on a stable supply of the Rotor Bearing Assembly, since Precision Bearings Inc is currently the sole qualified supplier for that part. In contrast, the Stator Core Unit can be sourced from either Ironforge Metals or a backup supplier, Midwest Alloy Works, though Midwest Alloy Works has historically had longer lead times.
+
+Aurora's second product line, the Aurora X400 motor, shares the same Rotor Bearing Assembly as the X200, but uses a larger Stator Core Unit Pro variant instead of the standard Stator Core Unit. The Stator Core Unit Pro is sourced exclusively from Ironforge Metals.
+
+Ironforge Metals has supplied Aurora Motors for over a decade and is considered the company's most reliable supplier relationship, having only missed a shipment deadline twice in ten years. Precision Bearings Inc, while reliable in quality, has experienced two significant delays in the past year due to raw material shortages.
+
+Because both the X200 and X400 motors depend on Precision Bearings Inc for the Rotor Bearing Assembly, any disruption at Precision Bearings Inc would affect both product lines simultaneously — a single point of failure the supply chain team has flagged as a priority risk to diversify.`;
+
+/* ================= Pure logic (unit-tested separately) ================= */
+
+function chunkText(text, targetSize, overlap){
+  targetSize = targetSize || 600;
+  overlap = overlap || 80;
+  const clean = (text || "").replace(/\r\n/g, "\n").trim();
+  if (!clean) return [];
+  const paras = clean.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const chunks = [];
+  let cur = "";
+  paras.forEach(p => {
+    if ((cur + "\n\n" + p).length <= targetSize){
+      cur = cur ? cur + "\n\n" + p : p;
+    } else {
+      if (cur) chunks.push(cur);
+      if (p.length <= targetSize){
+        cur = p;
+      } else {
+        // hard-split a long paragraph on sentence boundaries
+        const sentences = p.split(/(?<=[.!?])\s+/);
+        let piece = "";
+        sentences.forEach(s => {
+          if ((piece + " " + s).trim().length <= targetSize){
+            piece = (piece ? piece + " " : "") + s;
+          } else {
+            if (piece) chunks.push(piece);
+            piece = s;
+          }
+        });
+        cur = piece;
+      }
+    }
+  });
+  if (cur) chunks.push(cur);
+  // apply light overlap by prepending tail of previous chunk (skip for first)
+  if (overlap > 0){
+    for (let i = 1; i < chunks.length; i++){
+      const prevTail = chunks[i-1].slice(-overlap);
+      chunks[i] = prevTail + " … " + chunks[i];
+    }
+  }
+  return chunks;
+}
+
+const STOPWORDS = new Set(["the","a","an","and","or","but","of","to","in","on","for","is","are","was","were","be","been","it","its","this","that","with","as","by","at","from","has","have","had","not","no","also","which","who","what","when","where","how"]);
+function tokenize(text){
+  return (text || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOPWORDS.has(w));
+}
+
+function scoreChunkRelevance(chunkText, queryTokens){
+  const chunkTokens = tokenize(chunkText);
+  if (chunkTokens.length === 0 || queryTokens.length === 0) return 0;
+  const chunkSet = new Set(chunkTokens);
+  let hits = 0;
+  queryTokens.forEach(t => { if (chunkSet.has(t)) hits++; });
+  return hits / queryTokens.length;
+}
+
+function retrieveTopChunks(chunks, query, k){
+  k = k || 1;
+  const qTokens = tokenize(query);
+  const scored = chunks.map((c, i) => ({ i, score: scoreChunkRelevance(c, qTokens) }));
+  scored.sort((a,b) => b.score - a.score);
+  return scored.slice(0, k).filter(s => s.score > 0).map(s => s.i);
+}
+
+function normalizeTripleKey(subject, relation, object){
+  const norm = s => (s||"").toLowerCase().trim().replace(/\s+/g," ");
+  return norm(subject) + "|" + norm(relation) + "|" + norm(object);
+}
+
+function parseTriplesFromJSON(jsonText){
+  try {
+    const obj = JSON.parse(jsonText);
+    if (!obj || !Array.isArray(obj.triples)) return [];
+    return obj.triples
+      .filter(t => t && typeof t.subject === "string" && typeof t.relation === "string" && typeof t.object === "string")
+      .map(t => ({ subject: t.subject.trim(), relation: t.relation.trim(), object: t.object.trim() }))
+      .filter(t => t.subject && t.relation && t.object);
+  } catch (e) {
+    return [];
+  }
+}
+
+function addTripleToGraph(graph, subject, relation, object, chunkIndex){
+  const key = normalizeTripleKey(subject, relation, object);
+  if (!graph.edges[key]){
+    graph.edges[key] = { subject, relation, object, corroboration: 0, chunkIndices: [], tested: 0, correct: 0, wrong: 0 };
+  }
+  const edge = graph.edges[key];
+  edge.corroboration++;
+  if (!edge.chunkIndices.includes(chunkIndex)) edge.chunkIndices.push(chunkIndex);
+  graph.nodes.add(subject);
+  graph.nodes.add(object);
+  return key;
+}
+
+function parseYesNo(text){
+  const m = /^\s*["'`]?\s*(yes|no|true|false)\b/i.exec(text || "");
+  if (!m) return null;
+  const w = m[1].toLowerCase();
+  return (w === "yes" || w === "true") ? true : false;
+}
+
+function hueForRatio(correct, tested){
+  if (tested === 0) return "#8b93a1";
+  const ratio = correct / tested;
+  function lerp(a,b,t){ return Math.round(a + (b-a)*t); }
+  let c1,c2,t;
+  if (ratio < 0.5){ c1=[192,57,43]; c2=[184,134,11]; t = ratio/0.5; }
+  else { c1=[184,134,11]; c2=[26,122,76]; t = (ratio-0.5)/0.5; }
+  const r = lerp(c1[0],c2[0],t), g = lerp(c1[1],c2[1],t), b = lerp(c1[2],c2[2],t);
+  return `rgb(${r},${g},${b})`;
+}
+function opacityForCoverage(tested, maxForFull){
+  maxForFull = maxForFull || 3;
+  return Math.min(1, tested / maxForFull) * 0.85 + (tested>0 ? 0.15 : 0);
+}
+
+/* simple force-directed layout: returns {nodeId: {x,y}} */
+function forceLayout(nodeIds, edgeList, width, height, iterations){
+  iterations = iterations || 220;
+  const n = nodeIds.length;
+  const pos = {}, vel = {};
+  nodeIds.forEach((id, i) => {
+    const angle = (2*Math.PI*i) / Math.max(1,n);
+    const r = Math.min(width,height) * 0.32;
+    pos[id] = { x: width/2 + r*Math.cos(angle), y: height/2 + r*Math.sin(angle) };
+    vel[id] = { x: 0, y: 0 };
+  });
+  const k = Math.sqrt((width*height) / Math.max(1,n)); // ideal distance
+  for (let iter = 0; iter < iterations; iter++){
+    const disp = {}; nodeIds.forEach(id => disp[id] = {x:0,y:0});
+    // repulsion
+    for (let a = 0; a < n; a++){
+      for (let b = a+1; b < n; b++){
+        const A = nodeIds[a], B = nodeIds[b];
+        let dx = pos[A].x - pos[B].x, dy = pos[A].y - pos[B].y;
+        let dist = Math.sqrt(dx*dx+dy*dy) || 0.01;
+        const force = (k*k) / dist;
+        dx/=dist; dy/=dist;
+        disp[A].x += dx*force; disp[A].y += dy*force;
+        disp[B].x -= dx*force; disp[B].y -= dy*force;
+      }
+    }
+    // attraction along edges
+    edgeList.forEach(([s,t]) => {
+      if (!pos[s] || !pos[t]) return;
+      let dx = pos[s].x - pos[t].x, dy = pos[s].y - pos[t].y;
+      let dist = Math.sqrt(dx*dx+dy*dy) || 0.01;
+      const force = (dist*dist) / k;
+      dx/=dist; dy/=dist;
+      disp[s].x -= dx*force; disp[s].y -= dy*force;
+      disp[t].x += dx*force; disp[t].y += dy*force;
+    });
+    // centering pull so isolated / weakly-connected nodes don't get flung to
+    // the boundary by repulsion with nothing to balance it — needs to be
+    // strong (not a token nudge) because displacement each step is direction-
+    // normalized then capped by `temp`, so a weak force never wins the
+    // tug-of-war against summed pairwise repulsion, it just gets outvoted
+    const cx = width/2, cy = height/2;
+    nodeIds.forEach(id => {
+      disp[id].x += (cx - pos[id].x) * 6;
+      disp[id].y += (cy - pos[id].y) * 6;
+    });
+    // apply, clamp to bounds, cool down over time
+    const temp = Math.max(1, 10 * (1 - iter/iterations));
+    nodeIds.forEach(id => {
+      let dx = disp[id].x, dy = disp[id].y;
+      const d = Math.sqrt(dx*dx+dy*dy) || 0.01;
+      const lim = Math.min(d, temp);
+      pos[id].x += (dx/d) * lim;
+      pos[id].y += (dy/d) * lim;
+      pos[id].x = Math.max(40, Math.min(width-40, pos[id].x));
+      pos[id].y = Math.max(40, Math.min(height-40, pos[id].y));
+    });
+  }
+  return pos;
+}
+
+/* ================= Runtime state ================= */
+let graph = { nodes: new Set(), edges: {} };
+let chunks = [];
+let logEntries = [];
+let webllm = null, engine = null;
+
+async function populateModels(){
+  const hasGPU = !!(navigator.gpu);
+  if (!hasGPU){
+    $("gpuWarn").textContent = "Your browser doesn't appear to support WebGPU, so no model can load here.";
+    $("gpuWarn").classList.add("show");
+    $("loadBtn").disabled = true;
+    return;
+  }
+  try {
+    const mod = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+    webllm = mod;
+    const list = (mod.prebuiltAppConfig && mod.prebuiltAppConfig.model_list) || [];
+    const instruct = list.filter(m => m.model_id && /instruct/i.test(m.model_id)).sort((a,b)=>(a.vram_required_MB||0)-(b.vram_required_MB||0));
+    instruct.forEach(m => { const opt=document.createElement("option"); opt.value=m.model_id; opt.textContent=m.model_id+(m.vram_required_MB?"  (~"+fmtMB(m.vram_required_MB)+")":""); $("modelSelect").appendChild(opt); });
+    const preferred = Array.from($("modelSelect").options).find(o => /^Qwen2\.5-1\.5B-Instruct/i.test(o.value));
+    if (preferred) $("modelSelect").value = preferred.value;
+  } catch (e) {
+    console.error("Failed to load WebLLM library:", e);
+    $("modelSelect").innerHTML = `<option>unavailable</option>`;
+    $("loadBtn").disabled = true;
+    setPill($("modelPill"),"err", "Library failed to load");
+  }
+}
+function fmtMB(mb){ return mb >= 1024 ? (mb/1024).toFixed(1)+"GB" : Math.round(mb)+"MB"; }
+function setPill(el, cls, text){ el.className = "pill "+cls; el.innerHTML = `<span class="dot"></span> ${text}`; }
+
+$("loadBtn").addEventListener("click", async () => {
+  const id = $("modelSelect").value; if (!id) return;
+  $("loadBtn").disabled = true; setPill($("modelPill"),"loading","Loading…");
+  $("progWrap").style.display = "block";
+  try {
+    engine = await webllm.CreateMLCEngine(id, { initProgressCallback: (p) => {
+      $("progFill").style.width = Math.round((p.progress||0)*100) + "%";
+      $("progText").textContent = p.text || "";
+    }});
+    setPill($("modelPill"),"ready", "Loaded: " + id);
+    $("buildBtn").disabled = false;
+  } catch (e) {
+    console.error(e);
+    setPill($("modelPill"),"err", "Load failed: " + (e && e.message ? e.message : e));
+  } finally {
+    $("loadBtn").disabled = false;
+  }
+});
+populateModels();
+
+$("docFile").addEventListener("change", () => {
+  const f = $("docFile").files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { $("docText").value = String(reader.result || ""); $("fileStatus").textContent = `Loaded ${f.name} (${f.size} bytes)`; };
+  reader.onerror = () => { $("fileStatus").textContent = "Failed to read file."; };
+  reader.readAsText(f);
+});
+
+const TRIPLE_SCHEMA = JSON.stringify({
+  type: "object",
+  properties: {
+    triples: {
+      type: "array",
+      maxItems: 5,
+      items: {
+        type: "object",
+        properties: {
+          subject: { type: "string", maxLength: 60 },
+          relation: { type: "string", maxLength: 30 },
+          object: { type: "string", maxLength: 60 }
+        },
+        required: ["subject","relation","object"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["triples"],
+  additionalProperties: false
+});
+
+async function extractTriplesFromChunk(chunk){
+  const r = await engine.chat.completions.create({
+    messages: [
+      {role:"system", content:"You extract factual relationships explicitly stated in a passage. Do not add outside knowledge. If nothing clear is stated, return an empty list."},
+      {role:"user", content: `Passage:\n"""\n${chunk}\n"""\n\nExtract up to 5 explicit (subject, relation, object) relationships stated in this passage, as short phrases.`}
+    ],
+    temperature: 0.3, max_tokens: 220,
+    response_format: { type: "json_object", schema: TRIPLE_SCHEMA }
+  });
+  return parseTriplesFromJSON(r.choices[0].message.content || "");
+}
+
+async function buildGraph(){
+  const raw = $("docText").value;
+  const allChunks = chunkText(raw);
+  chunks = allChunks.slice(0, MAX_CHUNKS);
+  graph = { nodes: new Set(), edges: {} };
+  $("buildBtn").disabled = true;
+  setPill($("buildPill"),"loading", `Extracting… 0/${chunks.length}`);
+  $("chunkInfo").textContent = allChunks.length > MAX_CHUNKS
+    ? `Document split into ${allChunks.length} chunks — processing the first ${MAX_CHUNKS} only.`
+    : `Document split into ${allChunks.length} chunk${allChunks.length===1?"":"s"}.`;
+
+  for (let i = 0; i < chunks.length; i++){
+    setPill($("buildPill"),"loading", `Extracting… ${i+1}/${chunks.length}`);
+    try {
+      const triples = await extractTriplesFromChunk(chunks[i]);
+      triples.forEach(t => addTripleToGraph(graph, t.subject, t.relation, t.object, i));
+    } catch (e) {
+      console.error("extraction failed on chunk", i, e);
+    }
+    renderAll();
+  }
+  setPill($("buildPill"),"ready", "Done");
+  const noEdges = Object.keys(graph.edges).length === 0;
+  $("auditBtn").disabled = noEdges;
+  $("auditAllBtn").disabled = noEdges;
+}
+
+async function checkFaithfulness(edgeKey){
+  const edge = graph.edges[edgeKey];
+  const query = `${edge.subject} ${edge.relation} ${edge.object}`;
+  const topChunkIdx = retrieveTopChunks(chunks, query, 1);
+  const passageIdx = topChunkIdx.length ? topChunkIdx[0] : (edge.chunkIndices[0] ?? 0);
+  const passage = chunks[passageIdx] || "";
+  const prompt = `Passage:\n"""\n${passage}\n"""\n\nBased ONLY on the passage above, is it true that "${edge.subject}" ${edge.relation} "${edge.object}"? Answer with a single word first — "Yes" or "No" — then one short sentence explaining why.`;
+  const r = await engine.chat.completions.create({
+    messages: [
+      {role:"system", content:"You check whether a claimed relationship is actually supported by a given passage. Answer strictly based on the passage."},
+      {role:"user", content: prompt}
+    ],
+    temperature: 0.2, max_tokens: 60
+  });
+  const answerText = r.choices[0].message.content || "";
+  const parsed = parseYesNo(answerText);
+  return { passageIdx, answerText, parsed };
+}
+
+function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+async function runAudit(){
+  const n = Math.max(1, Math.min(40, parseInt($("auditBatchSize").value,10) || 8));
+  const keys = Object.keys(graph.edges);
+  if (keys.length === 0) return;
+  $("auditBtn").disabled = true;
+  $("auditAllBtn").disabled = true;
+  setPill($("auditPill"),"loading", `Auditing… 0/${n}`);
+  for (let i = 0; i < n; i++){
+    const key = pickRandom(keys);
+    const edge = graph.edges[key];
+    setPill($("auditPill"),"loading", `Auditing… ${i+1}/${n}`);
+    let result;
+    try {
+      result = await checkFaithfulness(key);
+    } catch (e) {
+      console.error(e);
+      continue;
+    }
+    const verdict = result.parsed === null ? "unclear" : (result.parsed ? "correct" : "wrong");
+    if (verdict !== "unclear"){
+      edge.tested++;
+      if (verdict === "correct") edge.correct++; else edge.wrong++;
+    }
+    logEntries.unshift({ edge: {...edge}, verdict, answerText: result.answerText, passageIdx: result.passageIdx });
+    if (logEntries.length > 60) logEntries.pop();
+    renderAll();
+  }
+  setPill($("auditPill"),"ready", "Idle");
+  $("auditBtn").disabled = false;
+  $("auditAllBtn").disabled = false;
+}
+
+async function runFullAudit(){
+  // Walks every edge in the graph exactly once (in place of random sampling),
+  // so a single click gives full coverage instead of repeated batches.
+  const keys = Object.keys(graph.edges);
+  if (keys.length === 0) return;
+  const total = keys.length;
+  $("auditBtn").disabled = true;
+  $("auditAllBtn").disabled = true;
+  setPill($("auditPill"),"loading", `Auditing all… 0/${total}`);
+  for (let i = 0; i < total; i++){
+    const key = keys[i];
+    const edge = graph.edges[key];
+    setPill($("auditPill"),"loading", `Auditing all… ${i+1}/${total}`);
+    let result;
+    try {
+      result = await checkFaithfulness(key);
+    } catch (e) {
+      console.error(e);
+      continue;
+    }
+    const verdict = result.parsed === null ? "unclear" : (result.parsed ? "correct" : "wrong");
+    if (verdict !== "unclear"){
+      edge.tested++;
+      if (verdict === "correct") edge.correct++; else edge.wrong++;
+    }
+    logEntries.unshift({ edge: {...edge}, verdict, answerText: result.answerText, passageIdx: result.passageIdx });
+    if (logEntries.length > 60) logEntries.pop();
+    renderAll();
+  }
+  setPill($("auditPill"),"ready", "Idle");
+  $("auditBtn").disabled = false;
+  $("auditAllBtn").disabled = false;
+}
+
+/* ================= Rendering ================= */
+function renderStats(){
+  const totalChunks = chunkText($("docText").value).length;
+  $("statChunks").textContent = `${chunks.length} / ${totalChunks}`;
+  const edgeList = Object.values(graph.edges);
+  $("statTriples").textContent = edgeList.length;
+  const chunksWithTriples = new Set();
+  edgeList.forEach(e => e.chunkIndices.forEach(ci => chunksWithTriples.add(ci)));
+  $("statChunkCoverage").textContent = chunks.length ? Math.round(100*chunksWithTriples.size/chunks.length) + "%" : "—";
+  const testedEdges = edgeList.filter(e => e.tested > 0).length;
+  $("statEdgesAudited").textContent = `${testedEdges} / ${edgeList.length}`;
+  const totalTested = edgeList.reduce((a,e)=>a+e.tested,0);
+  const totalCorrect = edgeList.reduce((a,e)=>a+e.correct,0);
+  $("statFaithful").textContent = totalTested > 0 ? Math.round(100*totalCorrect/totalTested) + "%" : "—";
+}
+
+function smoothClosedPath(points){
+  let d = `M ${((points[0][0]+points[points.length-1][0])/2).toFixed(1)},${((points[0][1]+points[points.length-1][1])/2).toFixed(1)}`;
+  for (let i = 0; i < points.length; i++){
+    const p = points[i];
+    const next = points[(i+1) % points.length];
+    const mid = [(p[0]+next[0])/2, (p[1]+next[1])/2];
+    d += ` Q ${p[0].toFixed(1)},${p[1].toFixed(1)} ${mid[0].toFixed(1)},${mid[1].toFixed(1)}`;
+  }
+  d += " Z";
+  return d;
+}
+function brainOutlinePoints(cx, cy, rx, ry, steps){
+  const pts = [];
+  for (let i = 0; i < steps; i++){
+    const theta = (2*Math.PI*i) / steps;
+    const bump = 1 + 0.05*Math.sin(10*theta) + 0.035*Math.sin(17*theta+1.3) + 0.02*Math.sin(6*theta+0.6);
+    pts.push([cx + rx*bump*Math.cos(theta), cy + ry*bump*Math.sin(theta)]);
+  }
+  return pts;
+}
+function sineWavePath(xStart, xEnd, y, amplitude, frequency, phase, step){
+  step = step || 8;
+  let d = "";
+  for (let x = xStart; x <= xEnd; x += step){
+    const yy = y + amplitude*Math.sin(frequency*(x-xStart)+phase);
+    d += (x === xStart ? "M" : "L") + ` ${x.toFixed(1)},${yy.toFixed(1)} `;
+  }
+  return d;
+}
+function brainBackgroundSvg(){
+  // A procedurally-drawn, low-opacity brain silhouette behind the graph — a nod to the
+  // structural/functional connectome framing: an AI knowledge graph mapped the same
+  // way a brain's wiring is mapped, not a literal anatomical illustration.
+  const cx = 380, cy = 250, rx = 300, ry = 165;
+  const blobPath = smoothClosedPath(brainOutlinePoints(cx, cy, rx, ry, 48));
+  let gyri = [];
+  for (let i = 0; i < 9; i++){
+    const y = cy - ry*0.85 + i*(ry*1.7/8);
+    const amp = 9 + (i%3)*3;
+    const freq = 0.045 + (i%2)*0.015;
+    gyri.push(`<path d="${sineWavePath(cx-rx*0.95, cx+rx*0.95, y, amp, freq, i*0.7)}" fill="none" stroke="#4a3aa7" stroke-opacity="0.16" stroke-width="1.3"/>`);
+  }
+  const cerebY = cy + ry*0.92;
+  return `
+  <g class="brain-bg">
+    <path d="${blobPath}" fill="#4a3aa7" fill-opacity="0.045" stroke="#4a3aa7" stroke-opacity="0.22" stroke-width="1.8"/>
+    <clipPath id="brainClip"><path d="${blobPath}"/></clipPath>
+    <g clip-path="url(#brainClip)">
+      ${gyri.join("")}
+      <path d="M ${cx},${cy-ry*0.9} C ${cx-8},${cy-ry*0.3} ${cx-8},${cy+ry*0.3} ${cx},${cy+ry*0.85} C ${cx+8},${cy+ry*1.1} ${cx+8},${cy+ry*1.3} ${cx},${cy+ry*1.4}"
+            fill="none" stroke="#4a3aa7" stroke-opacity="0.28" stroke-width="2.2"/>
+    </g>
+    <ellipse cx="${cx}" cy="${cerebY.toFixed(1)}" rx="60" ry="30" fill="#4a3aa7" fill-opacity="0.04" stroke="#4a3aa7" stroke-opacity="0.2" stroke-width="1.4"/>
+    <path d="M ${cx-45},${cerebY.toFixed(1)} Q ${cx-15},${(cerebY-14).toFixed(1)} ${cx+15},${cerebY.toFixed(1)} Q ${cx+45},${(cerebY+10).toFixed(1)} ${cx+55},${(cerebY-4).toFixed(1)}"
+          fill="none" stroke="#4a3aa7" stroke-opacity="0.14" stroke-width="1.1"/>
+    <path d="M ${cx},${(cerebY+30).toFixed(1)} C ${cx-3},${(cerebY+45).toFixed(1)} ${cx-3},${(cerebY+55).toFixed(1)} ${cx},${(cerebY+62).toFixed(1)}" fill="none" stroke="#4a3aa7" stroke-opacity="0.22" stroke-width="2"/>
+  </g>`;
+}
+
+function renderGraph(){
+  const svg = $("graphSvg");
+  const nodeIds = Array.from(graph.nodes);
+  if (nodeIds.length === 0){
+    svg.innerHTML = brainBackgroundSvg() + `<text x="380" y="260" text-anchor="middle" fill="#9aa0ab" font-size="13">Build a graph to see it here.</text>`;
+    return;
+  }
+  const edgeList = Object.values(graph.edges).map(e => [e.subject, e.object]);
+  const pos = forceLayout(nodeIds, edgeList, 760, 520, 180);
+
+  let parts = [brainBackgroundSvg()];
+
+  // Layer 1 — the backbone: every triple the extraction step found, drawn the
+  // same neutral way regardless of whether it's been audited yet. This is
+  // "the graph as extracted" — always fully visible.
+  Object.values(graph.edges).forEach(e => {
+    const p1 = pos[e.subject], p2 = pos[e.object];
+    if (!p1 || !p2) return;
+    const width = 1.3 + Math.min(1, e.corroboration/4) * 2;
+    parts.push(`<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="#c3c8d3" stroke-width="${width.toFixed(1)}" opacity="0.65"><title>${e.subject} — ${e.relation} — ${e.object} (extracted, not yet audited)</title></line>`);
+  });
+
+  // Layer 2 — the audit overlay: only edges that have actually been tested get
+  // a second, colored stroke drawn on top, sized by how many times they were
+  // re-checked. Untested edges show only the layer-1 backbone line above.
+  Object.values(graph.edges).forEach(e => {
+    if (e.tested === 0) return;
+    const p1 = pos[e.subject], p2 = pos[e.object];
+    if (!p1 || !p2) return;
+    const hue = hueForRatio(e.correct, e.tested);
+    const op = opacityForCoverage(e.tested);
+    const width = 2 + Math.min(1, e.corroboration/4) * 3;
+    parts.push(`<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="${hue}" stroke-width="${width.toFixed(1)}" opacity="${op.toFixed(2)}" stroke-linecap="round"><title>${e.subject} — ${e.relation} — ${e.object}\ncorroborated ${e.corroboration}×, audited ${e.tested}× (${e.correct} confirmed, ${e.wrong} not supported)</title></line>`);
+  });
+
+  nodeIds.forEach(id => {
+    const p = pos[id];
+    parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="#eaf1fb" stroke="#2a78d6" stroke-width="1.4"/>`);
+    const label = id.length > 22 ? id.slice(0,20)+"…" : id;
+    parts.push(`<text x="${p.x.toFixed(1)}" y="${(p.y-11).toFixed(1)}" font-size="9.5" text-anchor="middle" fill="#16192a" font-weight="700">${escapeHtml(label)}</text>`);
+  });
+  svg.innerHTML = parts.join("");
+}
+
+function renderLog(){
+  const el = $("logList");
+  if (logEntries.length === 0){ el.innerHTML = `<div class="row2"><span class="q" style="color:var(--muted);">No checks run yet.</span></div>`; return; }
+  el.innerHTML = logEntries.map(e => {
+    const tagCls = e.verdict;
+    const claim = `${e.edge.subject} — ${e.edge.relation} — ${e.edge.object}`;
+    return `<div class="row2"><span class="tag ${tagCls}">${e.verdict}</span><span class="q">${escapeHtml(claim)}<span class="expected">${escapeHtml(e.answerText.slice(0,140))}</span></span></div>`;
+  }).join("");
+}
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+function renderAll(){ renderStats(); renderGraph(); renderLog(); }
+renderAll();
+
+$("docText").addEventListener("input", () => {
+  const n = chunkText($("docText").value).length;
+  $("chunkInfo").textContent = n ? `Will split into ${n} chunk${n===1?"":"s"}${n>MAX_CHUNKS ? ` — only the first ${MAX_CHUNKS} will be processed` : ""}.` : "";
+});
+$("buildBtn").addEventListener("click", () => { if (engine) buildGraph(); });
+$("sampleBtn").addEventListener("click", () => {
+  $("docText").value = SAMPLE_TEXT;
+  $("fileStatus").textContent = "";
+  const n = chunkText($("docText").value).length;
+  $("chunkInfo").textContent = n ? `Will split into ${n} chunk${n===1?"":"s"}${n>MAX_CHUNKS ? ` — only the first ${MAX_CHUNKS} will be processed` : ""}.` : "";
+});
+$("auditBtn").addEventListener("click", () => { if (engine) runAudit(); });
+$("auditAllBtn").addEventListener("click", () => { if (engine) runFullAudit(); });
+</script>
+</body>
+</html>
