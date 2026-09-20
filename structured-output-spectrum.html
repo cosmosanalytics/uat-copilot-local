@@ -76,7 +76,7 @@
 <div class="wrap">
 
   <div class="honesty" id="honestyBox">
-    <b>What's genuinely native here vs. built on top:</b> Levels 2, 6, and 7 use WebLLM's own <code class="inline">response_format</code> parameter (<code class="inline">json_object</code> with a schema, and <code class="inline">grammar</code> with a hand-written GBNF grammar) — this is real, verified grammar-constrained decoding backed by XGrammar under the hood (the same engine named at level 7 of the source spectrum), confirmed against WebLLM's own official examples and MLC's engineering blog. Levels 1, 3, 4, and 5 use <b>ordinary unconstrained generation</b> with application-level logic layered on top — a system prompt asking for JSON (L1), a prompted function-call convention rather than WebLLM's separate, less-documented native tool-calling API (L3, kept consistent with the fenced-block convention used across this portfolio's other apps), a validate-and-retry loop with the LLM (L4), and a deterministic client-side coercion/typed-failure layer with no LLM retry at all (L5). <b>Illustrative:</b> the worked example (extracting a task from a sentence) is a toy schema chosen for clarity, not a production form.
+    <b>What's genuinely native here vs. built on top:</b> Levels 2, 6, and 7 use WebLLM's own <code class="inline">response_format</code> parameter (<code class="inline">json_object</code> with a schema, and <code class="inline">grammar</code> with a hand-written GBNF grammar) — this is real, verified grammar-constrained decoding backed by XGrammar under the hood (the same engine named at level 7 of the source spectrum), confirmed against WebLLM's own official examples and MLC's engineering blog. Levels 1, 3, 4, and 5 use <b>ordinary unconstrained generation</b> with application-level logic layered on top — a system prompt asking for JSON (L1), a prompted function-call convention rather than WebLLM's separate, less-documented native tool-calling API (L3, kept consistent with the fenced-block convention used across this portfolio's other apps), a validate-and-retry loop with the LLM (L4), and a deterministic client-side coercion/typed-failure layer with no LLM retry at all (L5). <b>Illustrative:</b> the worked example (extracting a task from a sentence) is a toy schema chosen for clarity, not a production form. <b>Known issue:</b> Levels 2, 6, and 7 (constrained decoding) can hang indefinitely on some model/browser combinations — reproduced with SmolLM2-135M on a desktop GPU — which matches an open upstream bug in WebLLM's XGrammar grammar matcher (<a href="https://github.com/mlc-ai/web-llm/issues/807" target="_blank">mlc-ai/web-llm#807</a>), not a bug in this page's request logic. If a level runs past ~45s, the page will say so; reload and try a different model, or use Levels 1/3/4/5.
   </div>
 
   <div class="gpuwarn" id="gpuWarn"></div>
@@ -324,16 +324,25 @@ async function runLevel(n){
   outBox().innerHTML = "";
   const sentence = $("exampleInput").value.trim();
 
-  // Visible running indicator with elapsed time, so a slow call (grammar-constrained
-  // decoding can be noticeably slower on mobile/lower-power GPUs) never just looks frozen.
+  // Visible running indicator with elapsed time, so a slow call never just looks frozen —
+  // and past a point, tells you honestly that this isn't normal latency anymore.
   const statusDiv = document.createElement("div");
   statusDiv.className = "verdict";
   statusDiv.innerHTML = `<span class="pill loading"><span class="dot"></span> Running…</span><span id="runElapsed">0.0s</span>`;
   outBox().appendChild(statusDiv);
+  const usesConstrainedDecoding = (n === 2 || n === 6 || n === 7);
   const startedAt = performance.now();
   const timer = setInterval(() => {
     const el = $("runElapsed");
-    if (el) el.textContent = ((performance.now() - startedAt) / 1000).toFixed(1) + "s" + (performance.now() - startedAt > 15000 ? " — schema-constrained decoding can take a while on slower GPUs, still working" : "");
+    if (!el) return;
+    const secs = (performance.now() - startedAt) / 1000;
+    let suffix = "";
+    if (usesConstrainedDecoding && secs > 45){
+      suffix = " — this has gone well past normal latency. This matches a known class of bugs in WebLLM's XGrammar-backed grammar/JSON-schema decoding (crashes/stalls inside the grammar matcher, especially with small or heavily-quantized models — see mlc-ai/web-llm#807), not something wrong with your request. It likely won't recover on its own; reload the page and try a larger model, or use Levels 1, 3, 4, 5 which don't use constrained decoding.";
+    } else if (secs > 15){
+      suffix = usesConstrainedDecoding ? " — schema/grammar-constrained decoding can take a while, still working" : " — still working";
+    }
+    el.textContent = secs.toFixed(1) + "s" + suffix;
   }, 200);
 
   try {
@@ -360,7 +369,7 @@ async function level1(sentence){
   const r = await chatComplete({ messages: [
     { role:"system", content: `Please respond in JSON. ${SYS_TASK}` },
     { role:"user", content: sentence }
-  ], temperature:0.3, max_tokens:200 });
+  ], temperature:0.3, max_tokens:120 });
   const text = r.choices[0].message.content || "";
   addRaw("Raw model output", text);
   const parsed = extractJsonSubstring(text);
@@ -376,7 +385,7 @@ async function level2(sentence){
     r = await chatComplete({ messages: [
       { role:"system", content: SYS_TASK },
       { role:"user", content: sentence }
-    ], temperature:0.3, max_tokens:200,
+    ], temperature:0.3, max_tokens:120,
     response_format: { type:"json_object", schema: JSON.stringify({ type:"object" }) } });
   } catch (e) {
     addRaw("response_format:{type:\"json_object\"} call failed", String(e && e.message ? e.message : e));
@@ -400,7 +409,7 @@ async function level3(sentence){
   const r = await chatComplete({ messages: [
     { role:"system", content: TOOL_SYS },
     { role:"user", content: sentence }
-  ], temperature:0.3, max_tokens:200 });
+  ], temperature:0.3, max_tokens:120 });
   const text = r.choices[0].message.content || "";
   addRaw("Raw model output", text);
   const fenced = text.match(/```tool_call\s*([\s\S]*?)```/);
@@ -416,7 +425,7 @@ async function level4(sentence){
   const MAX_ATTEMPTS = 3;
   const messages = [ { role:"system", content: SYS_TASK }, { role:"user", content: sentence } ];
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
-    const r = await chatComplete({ messages, temperature:0.3, max_tokens:200 });
+    const r = await chatComplete({ messages, temperature:0.3, max_tokens:120 });
     const text = r.choices[0].message.content || "";
     const parsed = extractJsonSubstring(text);
     const attemptDiv = document.createElement("div");
@@ -451,7 +460,7 @@ async function level5(sentence){
   const r = await chatComplete({ messages: [
     { role:"system", content: `Extract a task from the sentence and describe it in whatever format feels natural — JSON, a sentence, a list, your choice. Mention: what the task is, who it's assigned to, its priority, and any due date.` },
     { role:"user", content: sentence }
-  ], temperature:0.5, max_tokens:200 });
+  ], temperature:0.5, max_tokens:120 });
   const text = r.choices[0].message.content || "";
   addRaw("Raw model output (deliberately unconstrained, no schema requested)", text);
   const coerced = coerceTask(text);
@@ -468,7 +477,7 @@ async function level6(sentence, silent){
   const r = await chatComplete({ messages: [
     { role:"system", content: SYS_TASK },
     { role:"user", content: sentence }
-  ], temperature:0.3, max_tokens:200,
+  ], temperature:0.3, max_tokens:120,
   response_format: { type:"json_object", schema: JSON.stringify(TASK_SCHEMA) } });
   const text = r.choices[0].message.content || "";
   if (silent) return text;
