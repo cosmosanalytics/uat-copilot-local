@@ -254,7 +254,7 @@ populateModels();
    ========================================================================= */
 const LEVELS = [
   { n:1, name:"Freeform prompting", tag:"applayer", desc:`"please respond in JSON" — no enforcement at all. Whatever comes out is what you get; no check, no retry.` },
-  { n:2, name:"Native JSON mode", tag:"native", desc:`WebLLM's response_format:{type:"json_object"} — guarantees syntactically valid JSON, but not your field shape. Passed with a maximally permissive schema so only the syntax guarantee is being tested.` },
+  { n:2, name:"Native JSON mode", tag:"native", desc:`WebLLM's response_format:{type:"json_object"} — guarantees syntactically valid JSON, but not your field shape. Passed with a bare {"type":"object"} schema (no field constraints) so only the syntax guarantee is being tested. (A fully empty {} schema — no type at all — lets the grammar compiler consider unbounded nesting depth, which can be very slow to compile on weaker/mobile hardware; bounding the type avoids that without adding shape constraints.)` },
   { n:3, name:"Function / tool calling", tag:"applayer", desc:`Model is given a function signature and asked to "call" it via a fenced tool_call block — still generated freely, exactly like this portfolio's other copilot apps. (WebLLM ships a separate, less-documented native tool-calling API; this level intentionally uses the same free-generation convention as the rest of this portfolio rather than that unverified path.)` },
   { n:4, name:"Instructor · Guardrails AI · Marvin style", tag:"applayer", desc:`Generate → validate against the schema client-side → if invalid, feed the exact validation error back to the model and ask it to retry (bounded attempts) → typed success or typed failure.` },
   { n:5, name:"BAML · DSPy style", tag:"applayer", desc:`Generate once → a deterministic client-side parser tries to coerce the raw output into the typed shape (extract JSON from prose, fix types, map synonyms) → a typed failure naming the exact field if it can't, with no LLM retry involved.` },
@@ -323,6 +323,19 @@ async function runLevel(n){
   const btn = $("runLevelBtn"); btn.disabled = true;
   outBox().innerHTML = "";
   const sentence = $("exampleInput").value.trim();
+
+  // Visible running indicator with elapsed time, so a slow call (grammar-constrained
+  // decoding can be noticeably slower on mobile/lower-power GPUs) never just looks frozen.
+  const statusDiv = document.createElement("div");
+  statusDiv.className = "verdict";
+  statusDiv.innerHTML = `<span class="pill loading"><span class="dot"></span> Running…</span><span id="runElapsed">0.0s</span>`;
+  outBox().appendChild(statusDiv);
+  const startedAt = performance.now();
+  const timer = setInterval(() => {
+    const el = $("runElapsed");
+    if (el) el.textContent = ((performance.now() - startedAt) / 1000).toFixed(1) + "s" + (performance.now() - startedAt > 15000 ? " — schema-constrained decoding can take a while on slower GPUs, still working" : "");
+  }, 200);
+
   try {
     if (n === 1) await level1(sentence);
     else if (n === 2) await level2(sentence);
@@ -335,6 +348,8 @@ async function runLevel(n){
     console.error(e);
     addRaw("Engine error", String(e && e.message ? e.message : e));
   } finally {
+    clearInterval(timer);
+    statusDiv.remove();
     btn.disabled = false;
   }
 }
@@ -362,7 +377,7 @@ async function level2(sentence){
       { role:"system", content: SYS_TASK },
       { role:"user", content: sentence }
     ], temperature:0.3, max_tokens:200,
-    response_format: { type:"json_object", schema: JSON.stringify({}) } });
+    response_format: { type:"json_object", schema: JSON.stringify({ type:"object" }) } });
   } catch (e) {
     addRaw("response_format:{type:\"json_object\"} call failed", String(e && e.message ? e.message : e));
     return;
