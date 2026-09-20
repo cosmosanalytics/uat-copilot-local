@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Structured-Output Spectrum — WebLLM Demo</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea; --text: #1a1d24; --muted: #6b7280;
+    --accent: #2f3e9e; --accent2: #1a3d6b; --mono: 'SF Mono', 'Consolas', 'Menlo', monospace;
+    --weak: #c0392b; --mid: #b8860b; --strong: #1a7a4c; --teal: #0e7c86; --slate: #475569;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 22px 28px 14px; border-bottom: 1px solid var(--border); background: var(--card); }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p.sub { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 28px 60px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+  .honesty { background: #fff8e6; border: 1px solid #f0d98c; border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; font-size: 12.8px; line-height: 1.55; color: #5c4a12; }
+  .honesty b { color: #4a3a0a; }
+  code.inline { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 11.5px; }
+  h3 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .row { display:flex; gap: 14px; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 220px; }
+  label { display:block; font-size: 12px; font-weight:600; color: var(--muted); margin-bottom:4px; }
+  select, input[type=text], textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; font-size:13.5px; font-family:inherit; background:#fff; }
+  textarea { resize: vertical; min-height: 56px; font-family: var(--mono); font-size:12.5px; }
+  .btn { background: var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:7px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.secondary { background:#fff; color: var(--accent); border:1px solid var(--accent); }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .pill .dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .pill.idle { background:#eef0f4; color:#5b6472; }
+  .pill.loading { background:#fff3cd; color:#8a6300; }
+  .pill.ready { background:#dcf3e6; color:#136c3d; }
+  .pill.err { background:#fbe1df; color:#a3281c; }
+  .progwrap { margin-top:8px; height:6px; background:#eee; border-radius:4px; overflow:hidden; display:none; }
+  .progfill { height:100%; background: var(--accent); width:0%; transition: width .2s; }
+  .progtext { font-size: 11px; color: var(--muted); margin-top:3px; }
+
+  /* spectrum bar */
+  .spectrum { display:flex; border-radius: 10px; overflow:hidden; border:1px solid var(--border); margin: 10px 0 4px; }
+  .spectrum .seg { flex:1; text-align:center; padding: 10px 4px; cursor:pointer; font-size:12px; font-weight:700; color:#fff; position:relative; transition: transform .1s; }
+  .spectrum .seg:hover { transform: translateY(-1px); }
+  .spectrum .seg.active { outline: 3px solid var(--accent2); outline-offset:-3px; }
+  .spectrum-caption { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:14px; }
+  .level-detail { border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:10px; }
+  .level-detail h4 { margin:0 0 4px; font-size:15px; }
+  .level-detail .tag { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:5px; margin-left:8px; vertical-align:middle; }
+  .tag.native { background:#dcf3e6; color:#136c3d; }
+  .tag.applayer { background:#e6ecfb; color:#2f3e9e; }
+  .level-detail p.desc { margin:6px 0 12px; font-size:13px; color:var(--slate); }
+  pre { background:#0f1117; color:#d7dbe3; padding:11px 13px; border-radius:8px; font-family: var(--mono); font-size:11.8px; overflow-x:auto; white-space:pre-wrap; word-break:break-word; margin:6px 0; }
+  .verdict { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; }
+  .verdict .badge { padding:3px 10px; border-radius:6px; font-weight:700; font-size:11.5px; }
+  .badge.ok { background:#dcf3e6; color:#136c3d; }
+  .badge.fail { background:#fbe1df; color:#a3281c; }
+  .attempt { border-left:3px solid var(--border); padding:6px 0 6px 10px; margin:6px 0; font-size:12px; }
+  .attempt.bad { border-left-color: var(--weak); }
+  .attempt.good { border-left-color: var(--strong); }
+  .chain-step { display:flex; align-items:center; gap:10px; margin:8px 0; }
+  .chain-step .stepno { width:22px; height:22px; border-radius:50%; background:var(--accent2); color:#fff; font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  footer { text-align:center; font-size:11.5px; color:var(--muted); padding: 20px; }
+  .gpuwarn { display:none; background:#fbe1df; color:#a3281c; padding:10px 14px; border-radius:8px; font-size:12.5px; margin-bottom:12px; }
+  .gpuwarn.show { display:block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>The Structured-Output Spectrum</h1>
+  <p class="sub">Seven ways to get structured output from an LLM, weak → strong, demonstrated live with a single WebLLM model running in your browser via WebGPU.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="honesty" id="honestyBox">
+    <b>What's genuinely native here vs. built on top:</b> Levels 2, 6, and 7 use WebLLM's own <code class="inline">response_format</code> parameter (<code class="inline">json_object</code> with a schema, and <code class="inline">grammar</code> with a hand-written GBNF grammar) — this is real, verified grammar-constrained decoding backed by XGrammar under the hood (the same engine named at level 7 of the source spectrum), confirmed against WebLLM's own official examples and MLC's engineering blog. Levels 1, 3, 4, and 5 use <b>ordinary unconstrained generation</b> with application-level logic layered on top — a system prompt asking for JSON (L1), a prompted function-call convention rather than WebLLM's separate, less-documented native tool-calling API (L3, kept consistent with the fenced-block convention used across this portfolio's other apps), a validate-and-retry loop with the LLM (L4), and a deterministic client-side coercion/typed-failure layer with no LLM retry at all (L5). <b>Illustrative:</b> the worked example (extracting a task from a sentence) is a toy schema chosen for clarity, not a production form.
+  </div>
+
+  <div class="gpuwarn" id="gpuWarn"></div>
+
+  <div class="card">
+    <h3>Model</h3>
+    <div class="row">
+      <div class="field">
+        <label>Model</label>
+        <select id="modelSelect"></select>
+      </div>
+      <div class="field" style="flex:0 0 auto; align-self:flex-end;">
+        <button class="btn" id="loadBtn">Load model</button>
+      </div>
+      <div class="field" style="flex:0 0 auto; align-self:flex-end;">
+        <span class="pill idle" id="modelPill"><span class="dot"></span> Not loaded</span>
+      </div>
+    </div>
+    <div class="progwrap" id="progWrap"><div class="progfill" id="progFill"></div></div>
+    <div class="progtext" id="progText"></div>
+  </div>
+
+  <div class="card">
+    <h3>Worked example</h3>
+    <div class="field">
+      <label>Sentence to extract a structured task from</label>
+      <textarea id="exampleInput">Ask Priya to review the safety-stock proposal for COMP-201 by Friday — this one's high priority, it's blocking the UAT sign-off.</textarea>
+    </div>
+    <p style="font-size:12px; color:var(--muted); margin: 8px 0 0;">Every level below extracts the same thing from this sentence: <code class="inline">{ task, assignee, priority: low|medium|high, dueDate }</code> — so you can compare how each technique handles the exact same request.</p>
+  </div>
+
+  <div class="card">
+    <h3>Spectrum</h3>
+    <div class="spectrum" id="spectrumBar"></div>
+    <div class="spectrum-caption"><span>WEAK — checked after generation</span><span>STRONG — invalid output impossible</span></div>
+    <div id="levelDetail"></div>
+  </div>
+
+  <div class="card">
+    <h3>Bonus: chained handoff</h3>
+    <p style="font-size:12.8px; color:var(--slate); margin:0 0 10px;">The source spectrum's closing point: structuring isn't a one-time gate. In a chained agent, the output of one LLM-to-tool handoff becomes the input to the next — and needs the same constraint applied again, not assumed to still hold.</p>
+    <button class="btn secondary" id="chainBtn" disabled>Run 2-step chained demo (Level 6 → Level 6)</button>
+    <div id="chainOutput"></div>
+  </div>
+
+</div>
+
+<footer>
+  Demo / prototype architecture exercise. Runs entirely in your browser via <a href="https://github.com/mlc-ai/web-llm" target="_blank">WebLLM</a> / WebGPU — nothing sent to a server. No planning data, no accounts, no persistence beyond this tab.
+</footer>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+
+/* =========================================================================
+   Shared schema + validators for the worked example
+   ========================================================================= */
+const TASK_SCHEMA = {
+  type: "object",
+  properties: {
+    task: { type: "string" },
+    assignee: { type: "string" },
+    priority: { type: "string", enum: ["low","medium","high"] },
+    dueDate: { type: "string" }
+  },
+  required: ["task","assignee","priority","dueDate"]
+};
+
+function validateTask(obj){
+  const errors = [];
+  if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return { valid:false, errors:["Top-level value must be a JSON object."] };
+  for (const key of TASK_SCHEMA.required) if (!(key in obj)) errors.push(`Missing required field "${key}".`);
+  if ("priority" in obj && !["low","medium","high"].includes(obj.priority)) errors.push(`"priority" must be one of low/medium/high, got "${obj.priority}".`);
+  if ("task" in obj && typeof obj.task !== "string") errors.push(`"task" must be a string.`);
+  if ("assignee" in obj && typeof obj.assignee !== "string") errors.push(`"assignee" must be a string.`);
+  if ("dueDate" in obj && typeof obj.dueDate !== "string") errors.push(`"dueDate" must be a string.`);
+  return { valid: errors.length === 0, errors };
+}
+
+function extractJsonSubstring(text){
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : (text.match(/\{[\s\S]*\}/) || [null])[0];
+  if (!candidate) return null;
+  try { return JSON.parse(candidate.trim()); } catch(e) { return { __unparsable:true, raw:candidate.trim() }; }
+}
+
+/** Level 5's coercion layer: try to salvage a usable typed object from loose/messy output,
+    rather than rejecting outright the way strict validation (Level 4) would. */
+function coerceTask(raw){
+  const failure = (field, reason) => ({ __coercionFailed:true, field, reason });
+  let obj = raw;
+  if (typeof raw === "string") obj = extractJsonSubstring(raw);
+  if (!obj || obj.__unparsable) return failure("(whole object)", "Could not locate any JSON-shaped object in the output.");
+  if (typeof obj !== "object" || Array.isArray(obj)) return failure("(whole object)", "Parsed value is not a JSON object.");
+
+  const out = {};
+  // task: coerce anything string-like
+  out.task = obj.task != null ? String(obj.task).trim() : null;
+  if (!out.task) return failure("task", "Missing or empty after coercion.");
+
+  // assignee: same
+  out.assignee = obj.assignee != null ? String(obj.assignee).trim() : null;
+  if (!out.assignee) return failure("assignee", "Missing or empty after coercion.");
+
+  // priority: fuzzy-match case/whitespace, map common synonyms
+  const rawPriority = (obj.priority != null ? String(obj.priority) : "").trim().toLowerCase();
+  const synonyms = { urgent:"high", critical:"high", normal:"medium", med:"medium", low:"low", medium:"medium", high:"high" };
+  out.priority = synonyms[rawPriority] || (["low","medium","high"].includes(rawPriority) ? rawPriority : null);
+  if (!out.priority) return failure("priority", `Could not coerce "${obj.priority}" to low/medium/high.`);
+
+  // dueDate: accept any non-empty string, coerce null/"none"/"n/a" to explicit null (valid "no date")
+  const rawDue = obj.dueDate != null ? String(obj.dueDate).trim() : "";
+  out.dueDate = (!rawDue || /^(none|n\/a|null)$/i.test(rawDue)) ? null : rawDue;
+
+  return out;
+}
+
+/* =========================================================================
+   WebLLM engine (single tier)
+   ========================================================================= */
+let webllm = null, engine = null;
+
+async function populateModels(){
+  const hasGPU = !!(navigator.gpu);
+  if (!hasGPU){
+    $("gpuWarn").textContent = "Your browser doesn't appear to support WebGPU, so no model can load here (this page needs live generation for every level — there's no offline fallback).";
+    $("gpuWarn").classList.add("show");
+    $("loadBtn").disabled = true;
+    return;
+  }
+  try {
+    const mod = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+    webllm = mod;
+    const list = (mod.prebuiltAppConfig && mod.prebuiltAppConfig.model_list) || [];
+    const instruct = list.filter(m => m.model_id && /instruct/i.test(m.model_id)).sort((a,b)=>(a.vram_required_MB||0)-(b.vram_required_MB||0));
+    instruct.forEach(m => { const opt=document.createElement("option"); opt.value=m.model_id; opt.textContent=m.model_id+(m.vram_required_MB?"  (~"+fmtMB(m.vram_required_MB)+")":""); $("modelSelect").appendChild(opt); });
+    const preferred = Array.from($("modelSelect").options).find(o => /^Qwen2\.5-1\.5B-Instruct/i.test(o.value));
+    if (preferred) $("modelSelect").value = preferred.value;
+  } catch (e) {
+    console.error("Failed to load WebLLM library:", e);
+    const msg = "Couldn't load the WebLLM library: " + (e && e.message ? e.message : e) + " (needs network access to cdn.jsdelivr.net).";
+    $("modelSelect").innerHTML = `<option>unavailable</option>`;
+    $("loadBtn").disabled = true;
+    setPill("err", "Library failed to load");
+    console.error(msg);
+  }
+}
+function fmtMB(mb){ return mb >= 1024 ? (mb/1024).toFixed(1)+"GB" : Math.round(mb)+"MB"; }
+function setPill(cls, text){ const el = $("modelPill"); el.className = "pill "+cls; el.innerHTML = `<span class="dot"></span> ${text}`; }
+
+$("loadBtn").addEventListener("click", async () => {
+  const id = $("modelSelect").value; if (!id) return;
+  $("loadBtn").disabled = true; setPill("loading","Loading…");
+  $("progWrap").style.display = "block";
+  try {
+    engine = await webllm.CreateMLCEngine(id, { initProgressCallback: (p) => {
+      $("progFill").style.width = Math.round((p.progress||0)*100) + "%";
+      $("progText").textContent = p.text || "";
+    }});
+    setPill("ready", "Loaded: " + id);
+    document.querySelectorAll(".run-btn").forEach(b => b.disabled = false);
+    $("chainBtn").disabled = false;
+  } catch (e) {
+    console.error(e);
+    setPill("err", "Load failed: " + (e && e.message ? e.message : e));
+  } finally {
+    $("loadBtn").disabled = false;
+  }
+});
+
+populateModels();
+
+/* =========================================================================
+   Level definitions
+   ========================================================================= */
+const LEVELS = [
+  { n:1, name:"Freeform prompting", tag:"applayer", desc:`"please respond in JSON" — no enforcement at all. Whatever comes out is what you get; no check, no retry.` },
+  { n:2, name:"Native JSON mode", tag:"native", desc:`WebLLM's response_format:{type:"json_object"} — guarantees syntactically valid JSON, but not your field shape. Passed with a maximally permissive schema so only the syntax guarantee is being tested.` },
+  { n:3, name:"Function / tool calling", tag:"applayer", desc:`Model is given a function signature and asked to "call" it via a fenced tool_call block — still generated freely, exactly like this portfolio's other copilot apps. (WebLLM ships a separate, less-documented native tool-calling API; this level intentionally uses the same free-generation convention as the rest of this portfolio rather than that unverified path.)` },
+  { n:4, name:"Instructor · Guardrails AI · Marvin style", tag:"applayer", desc:`Generate → validate against the schema client-side → if invalid, feed the exact validation error back to the model and ask it to retry (bounded attempts) → typed success or typed failure.` },
+  { n:5, name:"BAML · DSPy style", tag:"applayer", desc:`Generate once → a deterministic client-side parser tries to coerce the raw output into the typed shape (extract JSON from prose, fix types, map synonyms) → a typed failure naming the exact field if it can't, with no LLM retry involved.` },
+  { n:6, name:"Guidance · LM-format-enforcer style", tag:"native", desc:`WebLLM's response_format:{type:"json_object", schema} — decoding is constrained to the schema at the token level. Invalid output can't be generated in the first place.` },
+  { n:7, name:"Outlines · llguidance · XGrammar · AICI style", tag:"native", desc:`WebLLM's response_format:{type:"grammar", grammar} — a full custom context-free grammar (GBNF), not even JSON, enforced at the token level. Output is forced into a strict pipe-delimited line format.` },
+];
+
+const GRAMMAR = String.raw`root ::= "TASK|" text "|ASSIGNEE|" name "|PRIORITY|" priority "|DUE|" due
+text ::= [^|\n]+
+name ::= [^|\n]+
+priority ::= "low" | "medium" | "high"
+due ::= [^|\n]+
+`;
+
+let activeLevel = 1;
+function renderSpectrumBar(){
+  const bar = $("spectrumBar");
+  bar.innerHTML = "";
+  LEVELS.forEach(lv => {
+    const t = (lv.n-1)/6; // 0..1
+    const r = Math.round(90 + t*(20-90)); const g = Math.round(110 + t*(70-110)); const b = Math.round(200 + t*(120-200));
+    const el = document.createElement("div");
+    el.className = "seg" + (lv.n === activeLevel ? " active" : "");
+    el.style.background = `rgb(${r},${g},${b})`;
+    el.textContent = lv.n;
+    el.title = lv.name;
+    el.addEventListener("click", () => { activeLevel = lv.n; renderSpectrumBar(); renderLevelDetail(); });
+    bar.appendChild(el);
+  });
+}
+
+function renderLevelDetail(){
+  const lv = LEVELS.find(l => l.n === activeLevel);
+  const el = $("levelDetail");
+  el.innerHTML = `
+    <div class="level-detail">
+      <h4>${lv.n}. ${lv.name} <span class="tag ${lv.tag}">${lv.tag === "native" ? "WebLLM-native" : "app-layer logic"}</span></h4>
+      <p class="desc">${lv.desc}</p>
+      <button class="btn run-btn" id="runLevelBtn" disabled>Run level ${lv.n}</button>
+      <div id="levelOutput"></div>
+    </div>`;
+  $("runLevelBtn").disabled = !engine;
+  $("runLevelBtn").addEventListener("click", () => runLevel(lv.n));
+}
+
+function outBox(){ return $("levelOutput"); }
+function addRaw(label, text){
+  const d = document.createElement("div");
+  d.innerHTML = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:10px;">${label}</div>`;
+  const pre = document.createElement("pre"); pre.textContent = text;
+  d.appendChild(pre);
+  outBox().appendChild(d);
+}
+function addVerdict(ok, text){
+  const d = document.createElement("div");
+  d.className = "verdict";
+  d.innerHTML = `<span class="badge ${ok?"ok":"fail"}">${ok?"VALID":"INVALID / FAILED"}</span><span>${text}</span>`;
+  outBox().appendChild(d);
+}
+
+async function chatComplete(opts){
+  return engine.chat.completions.create(opts);
+}
+
+async function runLevel(n){
+  const btn = $("runLevelBtn"); btn.disabled = true;
+  outBox().innerHTML = "";
+  const sentence = $("exampleInput").value.trim();
+  try {
+    if (n === 1) await level1(sentence);
+    else if (n === 2) await level2(sentence);
+    else if (n === 3) await level3(sentence);
+    else if (n === 4) await level4(sentence);
+    else if (n === 5) await level5(sentence);
+    else if (n === 6) await level6(sentence);
+    else if (n === 7) await level7(sentence);
+  } catch (e) {
+    console.error(e);
+    addRaw("Engine error", String(e && e.message ? e.message : e));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const SYS_TASK = `Extract a task from the person's sentence. Respond with a JSON object with exactly these fields: task (string), assignee (string), priority (one of "low","medium","high"), dueDate (string, or "none" if not mentioned). Respond with ONLY the JSON object, nothing else.`;
+
+async function level1(sentence){
+  const r = await chatComplete({ messages: [
+    { role:"system", content: `Please respond in JSON. ${SYS_TASK}` },
+    { role:"user", content: sentence }
+  ], temperature:0.3, max_tokens:200 });
+  const text = r.choices[0].message.content || "";
+  addRaw("Raw model output", text);
+  const parsed = extractJsonSubstring(text);
+  if (!parsed || parsed.__unparsable){ addVerdict(false, "Output was not valid, parseable JSON."); return; }
+  const v = validateTask(parsed);
+  addRaw("Parsed", JSON.stringify(parsed, null, 2));
+  addVerdict(v.valid, v.valid ? "Happened to be valid JSON matching the shape — but nothing enforced this." : v.errors.join(" "));
+}
+
+async function level2(sentence){
+  let r;
+  try {
+    r = await chatComplete({ messages: [
+      { role:"system", content: SYS_TASK },
+      { role:"user", content: sentence }
+    ], temperature:0.3, max_tokens:200,
+    response_format: { type:"json_object", schema: JSON.stringify({}) } });
+  } catch (e) {
+    addRaw("response_format:{type:\"json_object\"} call failed", String(e && e.message ? e.message : e));
+    return;
+  }
+  const text = r.choices[0].message.content || "";
+  addRaw("Raw model output", text);
+  let parsed; try { parsed = JSON.parse(text); } catch(e){ parsed = null; }
+  if (!parsed){ addVerdict(false, "Even JSON mode did not produce parseable JSON — treat as a live finding, not expected."); return; }
+  const v = validateTask(parsed);
+  addRaw("Parsed", JSON.stringify(parsed, null, 2));
+  addVerdict(true, "Syntactically valid JSON guaranteed by the engine. Field shape is NOT guaranteed — " + (v.valid ? "this run happened to match anyway." : "and indeed it doesn't: " + v.errors.join(" ")));
+}
+
+const TOOL_SYS = `You have one function available: extractTask(task: string, assignee: string, priority: "low"|"medium"|"high", dueDate: string). When ready, respond with ONLY a fenced block like this:
+\`\`\`tool_call
+{"name":"extractTask","arguments":{"task":"...","assignee":"...","priority":"...","dueDate":"..."}}
+\`\`\``;
+
+async function level3(sentence){
+  const r = await chatComplete({ messages: [
+    { role:"system", content: TOOL_SYS },
+    { role:"user", content: sentence }
+  ], temperature:0.3, max_tokens:200 });
+  const text = r.choices[0].message.content || "";
+  addRaw("Raw model output", text);
+  const fenced = text.match(/```tool_call\s*([\s\S]*?)```/);
+  if (!fenced){ addVerdict(false, "No tool_call block found — model didn't follow the convention this time."); return; }
+  let call; try { call = JSON.parse(fenced[1].trim()); } catch(e){ addVerdict(false, "tool_call block was not valid JSON."); return; }
+  if (call.name !== "extractTask"){ addVerdict(false, `Called "${call.name}" instead of "extractTask".`); return; }
+  const v = validateTask(call.arguments || {});
+  addRaw("Parsed arguments", JSON.stringify(call.arguments, null, 2));
+  addVerdict(v.valid, v.valid ? "Function call matched the signature and arguments validate — but the provider generated this freely, nothing prevented a bad call." : v.errors.join(" "));
+}
+
+async function level4(sentence){
+  const MAX_ATTEMPTS = 3;
+  const messages = [ { role:"system", content: SYS_TASK }, { role:"user", content: sentence } ];
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
+    const r = await chatComplete({ messages, temperature:0.3, max_tokens:200 });
+    const text = r.choices[0].message.content || "";
+    const parsed = extractJsonSubstring(text);
+    const attemptDiv = document.createElement("div");
+    if (!parsed || parsed.__unparsable){
+      attemptDiv.className = "attempt bad";
+      attemptDiv.textContent = `Attempt ${attempt}: not parseable JSON.`;
+      outBox().appendChild(attemptDiv);
+      messages.push({ role:"assistant", content:text });
+      messages.push({ role:"user", content:"That wasn't valid JSON. Respond with ONLY a valid JSON object matching the required shape." });
+      continue;
+    }
+    const v = validateTask(parsed);
+    if (v.valid){
+      attemptDiv.className = "attempt good";
+      attemptDiv.textContent = `Attempt ${attempt}: valid.`;
+      outBox().appendChild(attemptDiv);
+      addRaw("Final parsed result", JSON.stringify(parsed, null, 2));
+      addVerdict(true, `Validated on attempt ${attempt} of ${MAX_ATTEMPTS}.`);
+      return;
+    } else {
+      attemptDiv.className = "attempt bad";
+      attemptDiv.textContent = `Attempt ${attempt}: ${v.errors.join(" ")}`;
+      outBox().appendChild(attemptDiv);
+      messages.push({ role:"assistant", content:text });
+      messages.push({ role:"user", content:"That didn't validate: " + v.errors.join(" ") + " Please fix and respond with ONLY the corrected JSON object." });
+    }
+  }
+  addVerdict(false, `Exhausted ${MAX_ATTEMPTS} attempts without a valid result — typed failure.`);
+}
+
+async function level5(sentence){
+  const r = await chatComplete({ messages: [
+    { role:"system", content: `Extract a task from the sentence and describe it in whatever format feels natural — JSON, a sentence, a list, your choice. Mention: what the task is, who it's assigned to, its priority, and any due date.` },
+    { role:"user", content: sentence }
+  ], temperature:0.5, max_tokens:200 });
+  const text = r.choices[0].message.content || "";
+  addRaw("Raw model output (deliberately unconstrained, no schema requested)", text);
+  const coerced = coerceTask(text);
+  if (coerced.__coercionFailed){
+    addRaw("Coercion attempt", `Failed at field "${coerced.field}": ${coerced.reason}`);
+    addVerdict(false, `Typed failure — coercion could not produce a valid object, and (unlike Level 4) no LLM retry was attempted.`);
+  } else {
+    addRaw("Coerced result", JSON.stringify(coerced, null, 2));
+    addVerdict(true, "Parser salvaged a valid typed object from loose/free-text output via deterministic coercion — no LLM retry involved.");
+  }
+}
+
+async function level6(sentence, silent){
+  const r = await chatComplete({ messages: [
+    { role:"system", content: SYS_TASK },
+    { role:"user", content: sentence }
+  ], temperature:0.3, max_tokens:200,
+  response_format: { type:"json_object", schema: JSON.stringify(TASK_SCHEMA) } });
+  const text = r.choices[0].message.content || "";
+  if (silent) return text;
+  addRaw("Raw model output", text);
+  const parsed = JSON.parse(text);
+  const v = validateTask(parsed);
+  addRaw("Parsed", JSON.stringify(parsed, null, 2));
+  addVerdict(v.valid, v.valid ? "Schema-constrained decoding — this is guaranteed to validate, every time, by construction." : "Unexpected: schema-constrained output failed validation — worth treating as a live finding.");
+}
+
+async function level7(sentence){
+  let r;
+  try {
+    r = await chatComplete({ messages: [
+      { role:"system", content: `Extract a task from the sentence. Respond in the exact required grammar format only.` },
+      { role:"user", content: sentence }
+    ], temperature:0.3, max_tokens:120,
+    response_format: { type:"grammar", grammar: GRAMMAR } });
+  } catch (e) {
+    addRaw("response_format:{type:\"grammar\"} call failed", String(e && e.message ? e.message : e));
+    return;
+  }
+  const text = r.choices[0].message.content || "";
+  addRaw("Raw model output (not JSON at all — a custom grammar)", text);
+  const m = text.match(/^TASK\|(.*)\|ASSIGNEE\|(.*)\|PRIORITY\|(low|medium|high)\|DUE\|(.*)$/s);
+  if (!m){ addVerdict(false, "Output didn't match the grammar — unexpected, since decoding was constrained to it."); return; }
+  const parsed = { task:m[1], assignee:m[2], priority:m[3], dueDate:m[4] };
+  addRaw("Parsed", JSON.stringify(parsed, null, 2));
+  addVerdict(true, "Full context-free grammar enforced at the token level — this exact format is the only thing the model could have produced.");
+}
+
+$("chainBtn").addEventListener("click", async () => {
+  $("chainBtn").disabled = true;
+  const out = $("chainOutput"); out.innerHTML = "";
+  try {
+    const sentence = $("exampleInput").value.trim();
+    const step1Div = document.createElement("div"); step1Div.className = "chain-step";
+    step1Div.innerHTML = `<div class="stepno">1</div><div>Call 1 (Level 6, schema-constrained): extract the task object from the sentence.</div>`;
+    out.appendChild(step1Div);
+    const step1Text = await level6(sentence, true);
+    addRaw2(out, "Call 1 output", step1Text);
+    const task = JSON.parse(step1Text);
+
+    const step2Div = document.createElement("div"); step2Div.className = "chain-step";
+    step2Div.innerHTML = `<div class="stepno">2</div><div>Call 2 (Level 6 again, new schema): using Call 1's structured output as input, draft a one-line follow-up reminder message — <b>this is a fresh handoff that needs its own constraint, not inherited from Call 1.</b></div>`;
+    out.appendChild(step2Div);
+    const REMINDER_SCHEMA = { type:"object", properties:{ message:{type:"string"}, sendTo:{type:"string"} }, required:["message","sendTo"] };
+    const r2 = await chatComplete({ messages: [
+      { role:"system", content: `Given this task JSON, draft a short one-line reminder message. Respond with JSON: {message: string, sendTo: string}.` },
+      { role:"user", content: JSON.stringify(task) }
+    ], temperature:0.3, max_tokens:150,
+    response_format: { type:"json_object", schema: JSON.stringify(REMINDER_SCHEMA) } });
+    const step2Text = r2.choices[0].message.content || "";
+    addRaw2(out, "Call 2 output", step2Text);
+    const reminder = JSON.parse(step2Text);
+    const okDiv = document.createElement("div"); okDiv.className = "verdict";
+    okDiv.innerHTML = `<span class="badge ok">CHAIN OK</span><span>Both hops were independently schema-constrained — the second call's validity didn't depend on trusting the first call's output was well-formed prose.</span>`;
+    out.appendChild(okDiv);
+  } catch (e) {
+    console.error(e);
+    const d = document.createElement("div"); d.className="verdict";
+    d.innerHTML = `<span class="badge fail">CHAIN ERROR</span><span>${String(e && e.message ? e.message : e)}</span>`;
+    out.appendChild(d);
+  } finally {
+    $("chainBtn").disabled = false;
+  }
+});
+function addRaw2(container, label, text){
+  const d = document.createElement("div");
+  d.innerHTML = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:6px;">${label}</div>`;
+  const pre = document.createElement("pre"); pre.textContent = text;
+  d.appendChild(pre);
+  container.appendChild(d);
+}
+
+renderSpectrumBar();
+renderLevelDetail();
+</script>
+</body>
+</html>
