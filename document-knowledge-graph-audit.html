@@ -167,10 +167,10 @@
     <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">The audit gives every tested edge a trust score (correct &divide; tested). This doesn't compute a threshold for you &mdash; it's a policy call you make based on how costly a wrong answer would be. <b>The check below is deliberately pessimistic</b> &mdash; the robust-MPC way: instead of comparing the raw score to the floor, it compares the <i>worst-case lower bound</i> of that score (a confidence interval that automatically widens for edges tested only a few times) to the floor. So an edge that happened to get 1/1 correct won't show as "safe" the way a well-tested 18/20 will &mdash; a lucky single audit can't fake its way past the floor. Set the floor below, and the graph splits into edges whose worst case still clears it (safe to answer from directly) and edges that don't (should be flagged or escalated to a human). Untested edges can't be judged either way yet.</p>
     <div class="policybar">
       <div class="slidewrap">
-        <label for="policyThreshold">Safe-zone floor &mdash; trust score must be &ge; this to auto-answer</label>
-        <input type="range" id="policyThreshold" min="0" max="100" value="70" step="5">
+        <label for="policyThreshold">Safe-zone floor &mdash; require at least this many consecutive correct audits</label>
+        <input type="range" id="policyThreshold" min="1" max="15" value="3" step="1">
       </div>
-      <div class="policyval" id="policyValLabel">70%</div>
+      <div class="policyval">&ge; <span id="policyValLabel">3</span> consecutive audits<div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;" id="policyEquivLabel"></div></div>
       <div class="togglewrap">
         <div class="toggle" id="viewToggle">
           <button type="button" id="viewGradientBtn" class="active">Gradient view</button>
@@ -178,6 +178,7 @@
         </div>
       </div>
     </div>
+    <p style="margin:6px 0 0; font-size:11.5px; color:var(--muted);" id="evidenceHint"></p>
     <div class="policystats">
       <div class="chip above">Above floor (auto-answer OK) <div class="v" id="statAbove">0</div></div>
       <div class="chip below">Below floor (flag / escalate) <div class="v" id="statBelow">0</div></div>
@@ -434,6 +435,30 @@ function edgeSafeZoneStatus(edge, thresholdPct){
   return lowerBoundPct >= thresholdPct ? "above" : "below";
 }
 
+// How much evidence a floor actually demands: the fewest all-correct audits
+// (n/n) whose worst-case lower bound would clear the given threshold. This is
+// what makes the safe-zone floor's cost in evidence visible instead of
+// surprising — e.g. a 70% floor needs 7 consecutive correct audits, not 1.
+// Returns null if not reachable within `cap` checks (still shown as "20+").
+function minPerfectChecksToClear(thresholdPct, cap){
+  cap = cap || 30;
+  if (thresholdPct <= 0) return 1;
+  for (let n = 1; n <= cap; n++){
+    if (wilsonLowerBound(n, n) * 100 >= thresholdPct) return n;
+  }
+  return null;
+}
+
+// The policy slider is set in an intuitive unit — "require at least N
+// consecutive correct audits" — rather than an abstract percentage nobody
+// can reason about. This converts that N into the equivalent worst-case-bound
+// percentage floor, which is what edgeSafeZoneStatus actually compares
+// against (so an edge doesn't literally need N audits in a row — it needs
+// enough evidence, of any mix, for its own lower bound to reach this same bar).
+function thresholdPctFromRequiredChecks(n){
+  return wilsonLowerBound(n, n) * 100;
+}
+
 async function populateModels(){
   const hasGPU = !!(navigator.gpu);
   if (!hasGPU){
@@ -652,7 +677,9 @@ function renderStats(){
   const totalCorrect = edgeList.reduce((a,e)=>a+e.correct,0);
   $("statFaithful").textContent = totalTested > 0 ? Math.round(100*totalCorrect/totalTested) + "%" : "—";
 
-  const thresholdPct = parseInt($("policyThreshold").value, 10);
+  const requiredChecks = parseInt($("policyThreshold").value, 10);
+  const thresholdPct = thresholdPctFromRequiredChecks(requiredChecks);
+  $("policyEquivLabel").textContent = `worst-case bound must reach ~${Math.round(thresholdPct)}%`;
   let above = 0, below = 0, untested = 0;
   edgeList.forEach(e => {
     const status = edgeSafeZoneStatus(e, thresholdPct);
@@ -663,6 +690,10 @@ function renderStats(){
   $("statAbove").textContent = above;
   $("statBelow").textContent = below;
   $("statUntested").textContent = untested;
+
+  const avgTested = testedEdges > 0 ? (totalTested / testedEdges) : 0;
+  const evidenceHint = $("evidenceHint");
+  evidenceHint.textContent = `Requiring ${requiredChecks} consecutive correct audit${requiredChecks===1?"":"s"} means each edge's worst-case trust score must reach about ${Math.round(thresholdPct)}% — right now audited edges average ${avgTested.toFixed(1)} check${avgTested===1?"":"s"} each. Lower the requirement, or run more audits, if everything is showing "below."`;
 }
 
 function smoothClosedPath(points){
@@ -751,7 +782,8 @@ function renderGraph(){
   // re-checked. Untested edges show only the layer-1 backbone line above.
   // Two view modes: "gradient" (continuous red→gold→green trust score) or
   // "policy" (binary above/below the chosen safe-zone floor).
-  const thresholdPct = parseInt($("policyThreshold").value, 10);
+  const requiredChecks = parseInt($("policyThreshold").value, 10);
+  const thresholdPct = thresholdPctFromRequiredChecks(requiredChecks);
   Object.values(graph.edges).forEach(e => {
     if (e.tested === 0) return;
     const p1 = pos[e.subject], p2 = pos[e.object];
@@ -765,8 +797,8 @@ function renderGraph(){
       hue = status === "above" ? "#1a7a4c" : "#c0392b";
       op = 0.9;
       statusNote = status === "above"
-        ? `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — clears the ${thresholdPct}% safe-zone floor`
-        : `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — below the ${thresholdPct}% safe-zone floor — flag / escalate`;
+        ? `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — clears the ≥${requiredChecks}-consecutive-audits floor (~${Math.round(thresholdPct)}%)`
+        : `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — below the ≥${requiredChecks}-consecutive-audits floor (~${Math.round(thresholdPct)}%) — flag / escalate`;
     } else {
       hue = hueForRatio(e.correct, e.tested);
       op = opacityForCoverage(e.tested);
@@ -813,7 +845,7 @@ $("auditBtn").addEventListener("click", () => { if (engine) runAudit(); });
 $("auditAllBtn").addEventListener("click", () => { if (engine) runFullAudit(); });
 
 $("policyThreshold").addEventListener("input", () => {
-  $("policyValLabel").textContent = `${$("policyThreshold").value}%`;
+  $("policyValLabel").textContent = $("policyThreshold").value;
   renderAll();
 });
 function setViewMode(mode){
