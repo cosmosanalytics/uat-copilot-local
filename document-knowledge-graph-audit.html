@@ -53,6 +53,21 @@
   .stat .v { font-family:var(--mono); font-size:20px; font-weight:800; margin-top:2px; }
   .stat .v.green { color:var(--green); } .stat .v.red { color:var(--red); } .stat .v.gold { color:var(--gold); }
 
+  .policybar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .policybar .slidewrap { flex:1; min-width:260px; }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  .policyval { font-family:var(--mono); font-weight:800; font-size:15px; color:var(--accent2); white-space:nowrap; }
+  .togglewrap { display:flex; align-items:center; gap:8px; }
+  .toggle { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .toggle button { background:#fff; border:none; padding:7px 13px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .toggle button.active { background:var(--accent); color:#fff; }
+  .policystats { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .policystats .chip { flex:1; min-width:150px; border-radius:9px; padding:8px 12px; font-size:12px; }
+  .policystats .chip .v { font-family:var(--mono); font-weight:800; font-size:16px; }
+  .policystats .chip.above { background:#dcf3e6; color:#136c3d; }
+  .policystats .chip.below { background:#fbe1df; color:#a3281c; }
+  .policystats .chip.untested { background:#eef0f4; color:#5b6472; }
+
   svg text { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
 
   .log { max-height:230px; overflow-y:auto; font-size:12px; border:1px solid var(--border); border-radius:8px; }
@@ -121,6 +136,7 @@
       <div class="item"><span class="swatch" style="background:#c3c8d3;"></span> Thin gray line: the extracted graph — every triple the model pulled from the document, shown as soon as it's found, regardless of audit status</div>
       <div class="item"><span class="swatch grad-hue"></span> Colored line drawn on top: audit overlay — only appears once that triple has been checked at least once. Hue: faithfulness (red = audit found the passage doesn't support it &rarr; green = audit confirmed it)</div>
       <div class="item"><span class="swatch grad-cov"></span> Opacity of the overlay: audit coverage (how many times this triple has been re-checked against its source passage)</div>
+      <div class="item"><span class="swatch" style="background:#1a7a4c;"></span><span class="swatch" style="background:#c0392b;"></span> Safe-zone view (below): solid green = clears your chosen trust-score floor, solid red = falls below it &mdash; a binary read instead of the continuous gradient</div>
     </div>
   </div>
 
@@ -143,6 +159,29 @@
       <div class="stat"><div class="k">Chunks with &ge;1 triple</div><div class="v gold" id="statChunkCoverage">&mdash;</div></div>
       <div class="stat"><div class="k">Edges audited</div><div class="v" id="statEdgesAudited">0 / 0</div></div>
       <div class="stat"><div class="k">Faithfulness rate</div><div class="v green" id="statFaithful">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>3. Apply a safe-zone policy</h3>
+    <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">The audit gives every tested edge a trust score (correct &divide; tested). This doesn't compute a threshold for you &mdash; it's a policy call you make based on how costly a wrong answer would be. Set the floor below, and the graph splits into edges that clear it (safe to answer from directly) and edges that don't (should be flagged or escalated to a human). Untested edges can't be judged either way yet.</p>
+    <div class="policybar">
+      <div class="slidewrap">
+        <label for="policyThreshold">Safe-zone floor &mdash; trust score must be &ge; this to auto-answer</label>
+        <input type="range" id="policyThreshold" min="0" max="100" value="70" step="5">
+      </div>
+      <div class="policyval" id="policyValLabel">70%</div>
+      <div class="togglewrap">
+        <div class="toggle" id="viewToggle">
+          <button type="button" id="viewGradientBtn" class="active">Gradient view</button>
+          <button type="button" id="viewPolicyBtn">Safe-zone view</button>
+        </div>
+      </div>
+    </div>
+    <div class="policystats">
+      <div class="chip above">Above floor (auto-answer OK) <div class="v" id="statAbove">0</div></div>
+      <div class="chip below">Below floor (flag / escalate) <div class="v" id="statBelow">0</div></div>
+      <div class="chip untested">Untested (unknown) <div class="v" id="statUntested">0</div></div>
     </div>
   </div>
 
@@ -362,6 +401,17 @@ let graph = { nodes: new Set(), edges: {} };
 let chunks = [];
 let logEntries = [];
 let webllm = null, engine = null;
+let viewMode = "gradient"; // "gradient" | "policy"
+
+// Classifies one edge against a safe-zone policy threshold (0-100).
+// Returns "untested" if it's never been audited (no verdict to judge yet),
+// otherwise "above" or "below" depending on whether its trust score (as a
+// percentage) clears the floor.
+function edgeSafeZoneStatus(edge, thresholdPct){
+  if (!edge || edge.tested === 0) return "untested";
+  const scorePct = (edge.correct / edge.tested) * 100;
+  return scorePct >= thresholdPct ? "above" : "below";
+}
 
 async function populateModels(){
   const hasGPU = !!(navigator.gpu);
@@ -580,6 +630,18 @@ function renderStats(){
   const totalTested = edgeList.reduce((a,e)=>a+e.tested,0);
   const totalCorrect = edgeList.reduce((a,e)=>a+e.correct,0);
   $("statFaithful").textContent = totalTested > 0 ? Math.round(100*totalCorrect/totalTested) + "%" : "—";
+
+  const thresholdPct = parseInt($("policyThreshold").value, 10);
+  let above = 0, below = 0, untested = 0;
+  edgeList.forEach(e => {
+    const status = edgeSafeZoneStatus(e, thresholdPct);
+    if (status === "above") above++;
+    else if (status === "below") below++;
+    else untested++;
+  });
+  $("statAbove").textContent = above;
+  $("statBelow").textContent = below;
+  $("statUntested").textContent = untested;
 }
 
 function smoothClosedPath(points){
@@ -666,14 +728,26 @@ function renderGraph(){
   // Layer 2 — the audit overlay: only edges that have actually been tested get
   // a second, colored stroke drawn on top, sized by how many times they were
   // re-checked. Untested edges show only the layer-1 backbone line above.
+  // Two view modes: "gradient" (continuous red→gold→green trust score) or
+  // "policy" (binary above/below the chosen safe-zone floor).
+  const thresholdPct = parseInt($("policyThreshold").value, 10);
   Object.values(graph.edges).forEach(e => {
     if (e.tested === 0) return;
     const p1 = pos[e.subject], p2 = pos[e.object];
     if (!p1 || !p2) return;
-    const hue = hueForRatio(e.correct, e.tested);
-    const op = opacityForCoverage(e.tested);
     const width = 2 + Math.min(1, e.corroboration/4) * 3;
-    parts.push(`<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="${hue}" stroke-width="${width.toFixed(1)}" opacity="${op.toFixed(2)}" stroke-linecap="round"><title>${e.subject} — ${e.relation} — ${e.object}\ncorroborated ${e.corroboration}×, audited ${e.tested}× (${e.correct} confirmed, ${e.wrong} not supported)</title></line>`);
+    let hue, op, statusNote;
+    if (viewMode === "policy"){
+      const status = edgeSafeZoneStatus(e, thresholdPct);
+      hue = status === "above" ? "#1a7a4c" : "#c0392b";
+      op = 0.9;
+      statusNote = status === "above" ? `clears the ${thresholdPct}% safe-zone floor` : `below the ${thresholdPct}% safe-zone floor — flag / escalate`;
+    } else {
+      hue = hueForRatio(e.correct, e.tested);
+      op = opacityForCoverage(e.tested);
+      statusNote = `corroborated ${e.corroboration}×, audited ${e.tested}× (${e.correct} confirmed, ${e.wrong} not supported)`;
+    }
+    parts.push(`<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="${hue}" stroke-width="${width.toFixed(1)}" opacity="${op.toFixed(2)}" stroke-linecap="round"><title>${e.subject} — ${e.relation} — ${e.object}\n${statusNote}</title></line>`);
   });
 
   nodeIds.forEach(id => {
@@ -712,6 +786,19 @@ $("sampleBtn").addEventListener("click", () => {
 });
 $("auditBtn").addEventListener("click", () => { if (engine) runAudit(); });
 $("auditAllBtn").addEventListener("click", () => { if (engine) runFullAudit(); });
+
+$("policyThreshold").addEventListener("input", () => {
+  $("policyValLabel").textContent = `${$("policyThreshold").value}%`;
+  renderAll();
+});
+function setViewMode(mode){
+  viewMode = mode;
+  $("viewGradientBtn").classList.toggle("active", mode === "gradient");
+  $("viewPolicyBtn").classList.toggle("active", mode === "policy");
+  renderGraph();
+}
+$("viewGradientBtn").addEventListener("click", () => setViewMode("gradient"));
+$("viewPolicyBtn").addEventListener("click", () => setViewMode("policy"));
 </script>
 </body>
 </html>
