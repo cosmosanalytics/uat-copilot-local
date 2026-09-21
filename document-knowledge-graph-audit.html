@@ -164,7 +164,7 @@
 
   <div class="card">
     <h3>3. Apply a safe-zone policy</h3>
-    <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">The audit gives every tested edge a trust score (correct &divide; tested). This doesn't compute a threshold for you &mdash; it's a policy call you make based on how costly a wrong answer would be. Set the floor below, and the graph splits into edges that clear it (safe to answer from directly) and edges that don't (should be flagged or escalated to a human). Untested edges can't be judged either way yet.</p>
+    <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">The audit gives every tested edge a trust score (correct &divide; tested). This doesn't compute a threshold for you &mdash; it's a policy call you make based on how costly a wrong answer would be. <b>The check below is deliberately pessimistic</b> &mdash; the robust-MPC way: instead of comparing the raw score to the floor, it compares the <i>worst-case lower bound</i> of that score (a confidence interval that automatically widens for edges tested only a few times) to the floor. So an edge that happened to get 1/1 correct won't show as "safe" the way a well-tested 18/20 will &mdash; a lucky single audit can't fake its way past the floor. Set the floor below, and the graph splits into edges whose worst case still clears it (safe to answer from directly) and edges that don't (should be flagged or escalated to a human). Untested edges can't be judged either way yet.</p>
     <div class="policybar">
       <div class="slidewrap">
         <label for="policyThreshold">Safe-zone floor &mdash; trust score must be &ge; this to auto-answer</label>
@@ -403,14 +403,35 @@ let logEntries = [];
 let webllm = null, engine = null;
 let viewMode = "gradient"; // "gradient" | "policy"
 
-// Classifies one edge against a safe-zone policy threshold (0-100).
-// Returns "untested" if it's never been audited (no verdict to judge yet),
-// otherwise "above" or "below" depending on whether its trust score (as a
-// percentage) clears the floor.
+// Wilson score interval lower bound for a binomial proportion: given `correct`
+// successes out of `tested` trials, returns the worst-case (pessimistic) end
+// of the confidence interval around correct/tested, as a fraction in [0,1].
+// z=1.645 is the standard one-sided-95%-ish multiplier. Unlike the raw ratio,
+// this automatically widens (pulls the lower bound down) when `tested` is
+// small, so a single lucky audit can't look as trustworthy as a well-tested
+// edge with the same raw percentage.
+function wilsonLowerBound(correct, tested, z){
+  z = z || 1.645;
+  if (tested === 0) return 0;
+  const n = tested, phat = correct / n, z2 = z * z;
+  const denom = 1 + z2 / n;
+  const center = phat + z2 / (2 * n);
+  const margin = z * Math.sqrt((phat * (1 - phat)) / n + z2 / (4 * n * n));
+  const lower = (center - margin) / denom;
+  return Math.max(0, Math.min(1, lower));
+}
+
+// Classifies one edge against a safe-zone policy threshold (0-100), the
+// "robust" way: instead of comparing the raw trust score (correct/tested) to
+// the floor, it compares the WORST-CASE end of that score's confidence
+// interval to the floor — the same worst-case-within-the-uncertainty-set
+// logic robust MPC uses to check a tube against a constraint, applied here to
+// how little (or much) an edge has actually been tested. Returns "untested"
+// if it's never been audited (no verdict to judge yet).
 function edgeSafeZoneStatus(edge, thresholdPct){
   if (!edge || edge.tested === 0) return "untested";
-  const scorePct = (edge.correct / edge.tested) * 100;
-  return scorePct >= thresholdPct ? "above" : "below";
+  const lowerBoundPct = wilsonLowerBound(edge.correct, edge.tested) * 100;
+  return lowerBoundPct >= thresholdPct ? "above" : "below";
 }
 
 async function populateModels(){
@@ -739,9 +760,13 @@ function renderGraph(){
     let hue, op, statusNote;
     if (viewMode === "policy"){
       const status = edgeSafeZoneStatus(e, thresholdPct);
+      const rawPct = Math.round(100 * e.correct / e.tested);
+      const lowerPct = Math.round(100 * wilsonLowerBound(e.correct, e.tested));
       hue = status === "above" ? "#1a7a4c" : "#c0392b";
       op = 0.9;
-      statusNote = status === "above" ? `clears the ${thresholdPct}% safe-zone floor` : `below the ${thresholdPct}% safe-zone floor — flag / escalate`;
+      statusNote = status === "above"
+        ? `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — clears the ${thresholdPct}% safe-zone floor`
+        : `raw score ${rawPct}%, worst-case lower bound ${lowerPct}% — below the ${thresholdPct}% safe-zone floor — flag / escalate`;
     } else {
       hue = hueForRatio(e.correct, e.tested);
       op = opacityForCoverage(e.tested);
