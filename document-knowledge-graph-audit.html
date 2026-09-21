@@ -142,11 +142,12 @@
 
   <div class="card">
     <h3>2. Audit the graph</h3>
-    <p style="margin:0 0 10px; font-size:12.5px; color:var(--muted);">For each check: the triple's source chunk is retrieved again (lexical RAG), the model is shown <i>only</i> that passage, and asked whether it actually supports the claimed relationship. "Run faithfulness audit" samples a batch at random (can retest the same edge); "Audit every edge" instead walks the whole graph once so every edge gets at least one check.</p>
+    <p style="margin:0 0 10px; font-size:12.5px; color:var(--muted);">For each check: the triple's source chunk is retrieved again (lexical RAG), the model is shown <i>only</i> that passage, and asked whether it actually supports the claimed relationship. "Run faithfulness audit" samples a batch at random (can retest the same edge); "Audit every edge" instead walks the whole graph &mdash; N times per edge &mdash; so every edge accumulates real, repeated evidence instead of just one check.</p>
     <div class="row">
       <div class="field" style="max-width:180px;"><label>Checks per run</label><input type="number" id="auditBatchSize" value="8" min="1" max="40"></div>
       <div class="field" style="flex:0 0 auto;"><button class="btn" id="auditBtn" disabled>Run faithfulness audit</button></div>
-      <div class="field" style="flex:0 0 auto;"><button class="btn secondary" id="auditAllBtn" disabled>Audit every edge (all at once)</button></div>
+      <div class="field" style="max-width:180px;"><label for="auditsPerEdge">Audits per edge</label><input type="number" id="auditsPerEdge" value="1" min="1" max="20"></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn secondary" id="auditAllBtn" disabled>Audit every edge</button></div>
       <div class="field" style="flex:0 0 auto;"><span class="pill idle" id="auditPill"><span class="dot"></span> Idle</span></div>
     </div>
   </div>
@@ -158,7 +159,6 @@
       <div class="stat"><div class="k">Triples extracted</div><div class="v" id="statTriples">0</div></div>
       <div class="stat"><div class="k">Chunks with &ge;1 triple</div><div class="v gold" id="statChunkCoverage">&mdash;</div></div>
       <div class="stat"><div class="k">Edges audited</div><div class="v" id="statEdgesAudited">0 / 0</div></div>
-      <div class="stat"><div class="k">Faithfulness rate</div><div class="v green" id="statFaithful">&mdash;</div></div>
     </div>
   </div>
 
@@ -168,9 +168,9 @@
     <div class="policybar">
       <div class="slidewrap">
         <label for="policyThreshold">Safe-zone floor &mdash; require at least this many consecutive correct audits</label>
-        <input type="range" id="policyThreshold" min="1" max="15" value="3" step="1">
+        <input type="range" id="policyThreshold" min="1" max="50" value="3" step="1">
       </div>
-      <div class="policyval">&ge; <span id="policyValLabel">3</span> consecutive audits<div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;" id="policyEquivLabel"></div></div>
+      <div class="policyval">&ge; <input type="number" id="policyThresholdNum" min="1" max="999" step="1" value="3" style="width:56px; font:inherit; font-weight:800; text-align:center; border:1.5px solid var(--border); border-radius:8px; padding:2px 4px;"> consecutive audits<div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;" id="policyEquivLabel"></div></div>
       <div class="togglewrap">
         <div class="toggle" id="viewToggle">
           <button type="button" id="viewGradientBtn" class="active">Gradient view</button>
@@ -629,33 +629,41 @@ async function runAudit(){
 }
 
 async function runFullAudit(){
-  // Walks every edge in the graph exactly once (in place of random sampling),
-  // so a single click gives full coverage instead of repeated batches.
+  // Walks every edge in the graph, checking each one N times (N = "Audits
+  // per edge") instead of just once, so every edge actually accumulates N
+  // real, independently-run checks — genuine evidence to weigh against the
+  // safe-zone floor, not a single spot-check.
   const keys = Object.keys(graph.edges);
   if (keys.length === 0) return;
-  const total = keys.length;
+  const perEdge = Math.max(1, Math.min(20, parseInt($("auditsPerEdge").value,10) || 1));
+  const total = keys.length * perEdge;
   $("auditBtn").disabled = true;
   $("auditAllBtn").disabled = true;
   setPill($("auditPill"),"loading", `Auditing all… 0/${total}`);
-  for (let i = 0; i < total; i++){
+  let done = 0;
+  for (let i = 0; i < keys.length; i++){
     const key = keys[i];
     const edge = graph.edges[key];
-    setPill($("auditPill"),"loading", `Auditing all… ${i+1}/${total}`);
-    let result;
-    try {
-      result = await checkFaithfulness(key);
-    } catch (e) {
-      console.error(e);
-      continue;
+    for (let r = 0; r < perEdge; r++){
+      setPill($("auditPill"),"loading", `Auditing all… ${done+1}/${total}`);
+      let result;
+      try {
+        result = await checkFaithfulness(key);
+      } catch (e) {
+        console.error(e);
+        done++;
+        continue;
+      }
+      const verdict = result.parsed === null ? "unclear" : (result.parsed ? "correct" : "wrong");
+      if (verdict !== "unclear"){
+        edge.tested++;
+        if (verdict === "correct") edge.correct++; else edge.wrong++;
+      }
+      logEntries.unshift({ edge: {...edge}, verdict, answerText: result.answerText, passageIdx: result.passageIdx });
+      if (logEntries.length > 60) logEntries.pop();
+      done++;
+      renderAll();
     }
-    const verdict = result.parsed === null ? "unclear" : (result.parsed ? "correct" : "wrong");
-    if (verdict !== "unclear"){
-      edge.tested++;
-      if (verdict === "correct") edge.correct++; else edge.wrong++;
-    }
-    logEntries.unshift({ edge: {...edge}, verdict, answerText: result.answerText, passageIdx: result.passageIdx });
-    if (logEntries.length > 60) logEntries.pop();
-    renderAll();
   }
   setPill($("auditPill"),"ready", "Idle");
   $("auditBtn").disabled = false;
@@ -674,10 +682,8 @@ function renderStats(){
   const testedEdges = edgeList.filter(e => e.tested > 0).length;
   $("statEdgesAudited").textContent = `${testedEdges} / ${edgeList.length}`;
   const totalTested = edgeList.reduce((a,e)=>a+e.tested,0);
-  const totalCorrect = edgeList.reduce((a,e)=>a+e.correct,0);
-  $("statFaithful").textContent = totalTested > 0 ? Math.round(100*totalCorrect/totalTested) + "%" : "—";
 
-  const requiredChecks = parseInt($("policyThreshold").value, 10);
+  const requiredChecks = Math.max(1, parseInt($("policyThresholdNum").value, 10) || 1);
   const thresholdPct = thresholdPctFromRequiredChecks(requiredChecks);
   $("policyEquivLabel").textContent = `worst-case bound must reach ~${Math.round(thresholdPct)}%`;
   let above = 0, below = 0, untested = 0;
@@ -782,7 +788,7 @@ function renderGraph(){
   // re-checked. Untested edges show only the layer-1 backbone line above.
   // Two view modes: "gradient" (continuous red→gold→green trust score) or
   // "policy" (binary above/below the chosen safe-zone floor).
-  const requiredChecks = parseInt($("policyThreshold").value, 10);
+  const requiredChecks = Math.max(1, parseInt($("policyThresholdNum").value, 10) || 1);
   const thresholdPct = thresholdPctFromRequiredChecks(requiredChecks);
   Object.values(graph.edges).forEach(e => {
     if (e.tested === 0) return;
@@ -844,8 +850,26 @@ $("sampleBtn").addEventListener("click", () => {
 $("auditBtn").addEventListener("click", () => { if (engine) runAudit(); });
 $("auditAllBtn").addEventListener("click", () => { if (engine) runFullAudit(); });
 
+// Slider and number box drive the same value; whichever the user just
+// touched updates the other, and the number box is allowed to go past the
+// slider's max (999) so you can type an exact large value directly.
 $("policyThreshold").addEventListener("input", () => {
-  $("policyValLabel").textContent = $("policyThreshold").value;
+  $("policyThresholdNum").value = $("policyThreshold").value;
+  renderAll();
+});
+$("policyThresholdNum").addEventListener("input", () => {
+  let n = parseInt($("policyThresholdNum").value, 10);
+  if (!Number.isFinite(n) || n < 1) return; // let them keep typing (e.g. clearing the field)
+  n = Math.min(999, n);
+  const sliderMax = parseInt($("policyThreshold").max, 10);
+  $("policyThreshold").value = Math.min(n, sliderMax);
+  renderAll();
+});
+$("policyThresholdNum").addEventListener("blur", () => {
+  let n = parseInt($("policyThresholdNum").value, 10);
+  if (!Number.isFinite(n) || n < 1) n = 1;
+  n = Math.min(999, n);
+  $("policyThresholdNum").value = n;
   renderAll();
 });
 function setViewMode(mode){
