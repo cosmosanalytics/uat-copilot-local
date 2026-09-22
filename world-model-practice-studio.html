@@ -655,14 +655,26 @@ function paramsInBillions(modelId) {
   m = modelId.match(/(\d+(?:\.\d+)?)\s*M\b/i); if (m) return parseFloat(m[1]) / 1000;
   return null;
 }
-const MIN_ORCH_PARAMS_B = 0.9; // tool-orchestration needs more instruction-following than plain chat
+// WebLLM enforces a hard allowlist for the `tools` (function-calling) API — passing `tools` to
+// any model outside it throws immediately ("X is not supported for ChatCompletionRequest.tools").
+// As of writing, only the Hermes-2-Pro / Hermes-3 family is supported; match by name rather than
+// hardcoding exact ids so newer Hermes builds in the catalog are picked up automatically.
+const FUNCTION_CALLING_RE = /^Hermes-(2-Pro|3)-/i;
 
 function populateModelList() {
   const all = webllm.prebuiltAppConfig.model_list;
-  const models = all
-    .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
-    .filter(m => { const p = paramsInBillions(m.model_id); return p === null || p >= MIN_ORCH_PARAMS_B; })
+  let models = all
+    .filter(m => FUNCTION_CALLING_RE.test(m.model_id))
     .sort((a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9));
+  let usingFallback = false;
+  if (models.length === 0) {
+    // catalog didn't have a known function-calling model — fall back to instruct models, but the
+    // agent loop will need its text-based fallback protocol since native tool calls will error.
+    usingFallback = true;
+    models = all
+      .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
+      .sort((a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9));
+  }
   const sel = $('chatModelSelect');
   sel.innerHTML = '';
   models.slice(0, 6).forEach((m, i) => {
@@ -673,7 +685,9 @@ function populateModelList() {
     sel.appendChild(opt);
   });
   if (models.length) {
-    $('llmStatus').textContent = 'Ready. Pick a model and press Send (the model loads on first use).';
+    $('llmStatus').textContent = usingFallback
+      ? 'No Hermes (function-calling) model found in the catalog — listing general instruct models instead; native tool calls will likely fail and fall back to the text protocol.'
+      : 'Ready — these models support native tool calling. Pick one and press Send (it loads on first use).';
     $('sendBtn').disabled = false;
   } else {
     $('llmStatus').textContent = 'No suitable orchestration model found in the WebLLM catalog.';
@@ -724,7 +738,13 @@ async function runAgentTurn(userText) {
         max_tokens: 400,
       });
     } catch (e) {
-      appendTranscript('assistant', 'Error calling the model: ' + e.message);
+      if (/not supported for ChatCompletionRequest\.tools/i.test(e.message)) {
+        appendTranscript('assistant',
+          `This model doesn't support native tool calling (${e.message}). ` +
+          `Pick a Hermes-family model from the dropdown above and try again.`);
+      } else {
+        appendTranscript('assistant', 'Error calling the model: ' + e.message);
+      }
       return;
     }
     const msg = reply.choices[0].message;
