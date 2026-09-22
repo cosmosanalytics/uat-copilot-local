@@ -101,22 +101,23 @@
     <button class="theme-toggle" id="themeToggle">Theme: light</button>
   </header>
   <p class="sub">
-    10 tool calls — one per stage of a single patient's standard US insurance-based care journey
-    (Registration → Eligibility → Prior Authorization → Clinical Encounter → Medical Coding →
-    Claim Submission → Adjudication → Payment Posting → Denial Management &amp; Appeals → Patient
-    Billing). Each tool is a pure, deterministic function modeling the real math and gating rules
-    of that stage (deductible/coinsurance/copay math, CPT/ICD-10 coding, prior-auth clinical
-    criteria, denial/appeal outcomes). This edition has no model in the loop at all — instead of an
-    LLM deciding which tool to call, you pick the action yourself from a plain menu below. Run
-    stages manually to study the logic, or use the menu to run the whole case in one click. Stage
-    order and definitions are adapted from published revenue-cycle-management and
-    utilization-management literature (see footer for sources) and simplified for illustration —
-    this is not medical, billing, or legal guidance.
+    11 tool calls — one per stage of a single patient's standard US insurance-based care journey
+    (Registration → Utilization Trend Forecast → Eligibility → Prior Authorization → Clinical
+    Encounter → Medical Coding → Claim Submission → Adjudication → Payment Posting → Denial
+    Management &amp; Appeals → Patient Billing). Each tool is a pure, deterministic function
+    modeling the real math and gating rules of that stage (deductible/coinsurance/copay math,
+    CPT/ICD-10 coding, a least-squares utilization-trend forecast, prior-auth clinical criteria,
+    denial/appeal outcomes). This edition has no model in the loop at all — instead of an LLM
+    deciding which tool to call, you pick the action yourself from a plain menu below. Run stages
+    manually to study the logic, or use the menu to run the whole case in one click. Stage order
+    and definitions are adapted from published revenue-cycle-management and utilization-management
+    literature (see footer for sources) and simplified for illustration — this is not medical,
+    billing, or legal guidance.
   </p>
 
   <div class="panel">
     <h2>Patient case</h2>
-    <div class="panel-note">Every path through this pipeline is the same 10-stage chain, grouped here into four beats. Edit a field, click "Apply inputs &amp; reset state" (it always resets the full chain, since a change anywhere invalidates everything downstream), then run stages manually to study the logic, or use the AI Orchestrator below to run the chain via tool calls.</div>
+    <div class="panel-note">Every path through this pipeline is the same 11-stage chain, grouped here into four beats. Edit a field, click "Apply inputs &amp; reset state" (it always resets the full chain, since a change anywhere invalidates everything downstream), then run stages manually to study the logic, or use the Menu orchestrator below to run the chain.</div>
     <div class="beat-tabs" id="beatTabs"></div>
     <div class="beat-desc" id="beatDesc"></div>
 
@@ -130,6 +131,15 @@
           <label>Payer <input type="text" id="in_payer" value="Aetna PPO"></label>
           <label>Coverage status
             <select id="in_covStatus"><option value="active" selected>active</option><option value="inactive">inactive</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="0">
+        <div class="fg-title">Utilization history</div>
+        <div class="grid-inputs wide">
+          <label>Monthly spend, oldest → newest, comma-separated ($) — feeds the Utilization Trend Forecast
+            <input type="text" id="in_utilizationHistory" value="120,145,160,175,190,205">
           </label>
         </div>
       </div>
@@ -247,13 +257,27 @@
     utilization-management process descriptions (TruBridge's 12 Steps of RCM, AMS Solutions' 8
     Stages of the Medical Claims Lifecycle, and the Wikipedia summary of Utilization Management's
     prospective / concurrent / retrospective review phases), simplified into a single illustrative
-    10-stage pipeline. Not a representation of any specific payer's actual rules.
+    11-stage pipeline. Not a representation of any specific payer's actual rules.
   </footer>
 </div>
 
 <script type="module">
 /* ============================== Healthcare Process core ============================== */
 function round2(x) { return Math.round(x * 100) / 100; }
+
+// least-squares linear regression over {x,y} points — used by the Utilization Trend Forecast stage
+function linreg(points) {
+  const n = points.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: points[0].y };
+  const xMean = points.reduce((s, p) => s + p.x, 0) / n;
+  const yMean = points.reduce((s, p) => s + p.y, 0) / n;
+  let num = 0, den = 0;
+  for (const p of points) { num += (p.x - xMean) * (p.y - yMean); den += (p.x - xMean) ** 2; }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = yMean - slope * xMean;
+  return { slope, intercept };
+}
 
 const PREAUTH_REQUIRED_CATEGORIES = new Set(['imaging_advanced', 'surgery', 'inpatient_admission']);
 const CPT_TABLE = {
@@ -289,13 +313,34 @@ function toolEligibility(state) {
   return { eligibility };
 }
 
+// ---- Utilization Trend Forecast (least-squares extrapolation over recent monthly utilization) ----
+function toolUtilizationForecast(state) {
+  if (!state.patientRecord) throw new Error('Run Registration first (patientRecord is missing).');
+  const readings = state.inputs.utilizationHistory || [];
+  const points = readings.map((v, i) => ({ x: i * 30, y: v })); // monthly spacing, oldest first
+  const { slope, intercept } = linreg(points);
+  const monthlySlope = round2(slope * 30);
+  const lastX = points.length ? points[points.length - 1].x : 0;
+  const horizonDays = 30;
+  const forecastedValue = round2(intercept + slope * (lastX + horizonDays));
+  const residuals = points.map(p => p.y - (intercept + slope * p.x));
+  const stdDev = points.length >= 2
+    ? round2(Math.sqrt(residuals.reduce((s, e) => s + e * e, 0) / points.length))
+    : 0;
+  const direction = monthlySlope > 5 ? 'worsening' : monthlySlope < -5 ? 'improving' : 'stable';
+  state.utilizationForecast = { readingCount: points.length, monthlySlope, forecastedValue, stdDev, direction };
+  return { utilizationForecast: state.utilizationForecast };
+}
+
 function toolPriorAuth(state) {
   if (!state.eligibility) throw new Error('Run Eligibility first (eligibility is missing).');
+  if (!state.utilizationForecast) throw new Error('Run Utilization Trend Forecast first (utilizationForecast is missing).');
   if (!state.eligibility.active) throw new Error('Cannot request prior auth: coverage is not active.');
   const { plannedService, clinicalCriteriaMet } = state.inputs;
   const required = PREAUTH_REQUIRED_CATEGORIES.has(plannedService.category);
-  const status = !required ? 'not_required' : (clinicalCriteriaMet ? 'approved' : 'denied');
-  state.priorAuth = { required, status, service: plannedService.name, category: plannedService.category };
+  const forecastSupportsNecessity = state.utilizationForecast.direction === 'worsening';
+  const status = !required ? 'not_required' : ((clinicalCriteriaMet || forecastSupportsNecessity) ? 'approved' : 'denied');
+  state.priorAuth = { required, status, service: plannedService.name, category: plannedService.category, forecastSupportsNecessity };
   return { priorAuth: state.priorAuth };
 }
 
@@ -407,15 +452,16 @@ function toolPatientBilling(state) {
 /* ============================== stage metadata ============================== */
 const STAGES = [
   { id: 'run_registration', num: 1, name: 'Registration', formula: 'PatientRecord = {Patient, Insurance}', desc: 'Captures patient demographic and insurance information at intake.', fn: toolRegistration, prereq: [], beat: 0 },
-  { id: 'run_eligibility', num: 2, name: 'Eligibility &amp; Benefits Verification', formula: 'Eligibility = Verify(Insurance, VisitDate)', desc: 'Confirms active coverage and pulls the benefit design (deductible, coinsurance, copay, OOP max).', fn: toolEligibility, prereq: ['run_registration'], beat: 0 },
-  { id: 'run_prior_auth', num: 3, name: 'Prior Authorization', formula: 'PriorAuth = f(ServiceCategory, ClinicalCriteria)', desc: 'Prospective utilization review — gates high-cost service categories on documented medical necessity before care is delivered.', fn: toolPriorAuth, prereq: ['run_eligibility'], beat: 1 },
-  { id: 'run_encounter', num: 4, name: 'Clinical Encounter', formula: 'Encounter = Document(Service, Diagnoses)', desc: 'Care is delivered and documented — blocked if a required prior auth was denied.', fn: toolEncounter, prereq: ['run_prior_auth'], beat: 1 },
-  { id: 'run_coding', num: 5, name: 'Medical Coding', formula: 'Coding = Lookup(CPT, ICD-10)', desc: 'Translates the documented service and diagnoses into billable CPT and ICD-10 codes.', fn: toolCoding, prereq: ['run_encounter'], beat: 1 },
-  { id: 'run_claim_submission', num: 6, name: 'Claim Submission', formula: 'Claim = {Codes, BilledAmount, Payer}', desc: 'Packages the coded encounter into a claim and transmits it to the payer.', fn: toolClaimSubmission, prereq: ['run_coding'], beat: 2 },
-  { id: 'run_adjudication', num: 7, name: 'Claim Adjudication', formula: 'PatientOwed = Deductible + Coinsurance + Copay, capped by OOPMax', desc: 'The payer applies the contracted allowed amount, then splits it into deductible, coinsurance/copay, and plan payment — or denies the claim outright.', fn: toolAdjudication, prereq: ['run_claim_submission'], beat: 2 },
-  { id: 'run_payment_posting', num: 8, name: 'Payment Posting', formula: 'Posted = {PlanPaid, PatientBalance}', desc: 'Records the plan payment and remaining patient balance — only runs on an approved claim.', fn: toolPaymentPosting, prereq: ['run_adjudication'], beat: 3 },
-  { id: 'run_denial_management', num: 9, name: 'Denial Management &amp; Appeals', formula: 'AppealOutcome = Overturned if Strength ≥ 0.6, else Upheld', desc: 'Retrospective review — a denied claim is appealed with supporting documentation; overturned reopens payment, upheld closes as a provider write-off.', fn: toolDenialManagement, prereq: ['run_adjudication'], beat: 3 },
-  { id: 'run_patient_billing', num: 10, name: 'Patient Billing &amp; Collections', formula: 'Statement = {AmountDue}', desc: 'Bills the patient for any remaining balance after insurance and appeals are resolved.', fn: toolPatientBilling, prereq: ['run_payment_posting', 'run_denial_management'], beat: 3 },
+  { id: 'run_utilization_forecast', num: 2, name: 'Utilization Trend Forecast', formula: 'Forecast_{t+1} = OLS(UtilizationHistory) extrapolated 30 days', desc: 'Forecasts the near-term utilization/cost trend from the patient\'s recent claims history via least-squares extrapolation. A worsening trend can independently support medical necessity at Prior Authorization, mirroring real predictive-risk-informed utilization review.', fn: toolUtilizationForecast, prereq: ['run_registration'], beat: 0 },
+  { id: 'run_eligibility', num: 3, name: 'Eligibility &amp; Benefits Verification', formula: 'Eligibility = Verify(Insurance, VisitDate)', desc: 'Confirms active coverage and pulls the benefit design (deductible, coinsurance, copay, OOP max).', fn: toolEligibility, prereq: ['run_registration'], beat: 0 },
+  { id: 'run_prior_auth', num: 4, name: 'Prior Authorization', formula: 'PriorAuth = f(ServiceCategory, ClinicalCriteria, UtilizationTrend)', desc: 'Prospective utilization review — gates high-cost service categories on documented medical necessity (or a worsening forecasted utilization trend) before care is delivered.', fn: toolPriorAuth, prereq: ['run_eligibility', 'run_utilization_forecast'], beat: 1 },
+  { id: 'run_encounter', num: 5, name: 'Clinical Encounter', formula: 'Encounter = Document(Service, Diagnoses)', desc: 'Care is delivered and documented — blocked if a required prior auth was denied.', fn: toolEncounter, prereq: ['run_prior_auth'], beat: 1 },
+  { id: 'run_coding', num: 6, name: 'Medical Coding', formula: 'Coding = Lookup(CPT, ICD-10)', desc: 'Translates the documented service and diagnoses into billable CPT and ICD-10 codes.', fn: toolCoding, prereq: ['run_encounter'], beat: 1 },
+  { id: 'run_claim_submission', num: 7, name: 'Claim Submission', formula: 'Claim = {Codes, BilledAmount, Payer}', desc: 'Packages the coded encounter into a claim and transmits it to the payer.', fn: toolClaimSubmission, prereq: ['run_coding'], beat: 2 },
+  { id: 'run_adjudication', num: 8, name: 'Claim Adjudication', formula: 'PatientOwed = Deductible + Coinsurance + Copay, capped by OOPMax', desc: 'The payer applies the contracted allowed amount, then splits it into deductible, coinsurance/copay, and plan payment — or denies the claim outright.', fn: toolAdjudication, prereq: ['run_claim_submission'], beat: 2 },
+  { id: 'run_payment_posting', num: 9, name: 'Payment Posting', formula: 'Posted = {PlanPaid, PatientBalance}', desc: 'Records the plan payment and remaining patient balance — only runs on an approved claim.', fn: toolPaymentPosting, prereq: ['run_adjudication'], beat: 3 },
+  { id: 'run_denial_management', num: 10, name: 'Denial Management &amp; Appeals', formula: 'AppealOutcome = Overturned if Strength ≥ 0.6, else Upheld', desc: 'Retrospective review — a denied claim is appealed with supporting documentation; overturned reopens payment, upheld closes as a provider write-off.', fn: toolDenialManagement, prereq: ['run_adjudication'], beat: 3 },
+  { id: 'run_patient_billing', num: 11, name: 'Patient Billing &amp; Collections', formula: 'Statement = {AmountDue}', desc: 'Bills the patient for any remaining balance after insurance and appeals are resolved.', fn: toolPatientBilling, prereq: ['run_payment_posting', 'run_denial_management'], beat: 3 },
 ];
 
 const BEATS = [
@@ -448,6 +494,7 @@ function defaultInputs() {
     allowedAmountRatio: parseFloat($('in_allowedRatio').value),
     appealStrength: parseFloat($('in_appealStrength').value),
     claimSeed: 1,
+    utilizationHistory: $('in_utilizationHistory').value.split(',').map(s => parseFloat(s.trim())).filter(v => !isNaN(v)),
   };
 }
 
@@ -548,8 +595,9 @@ function renderStateInspector() {
   if (!state || completed.size === 0) { el.innerHTML = '<div class="panel-note">Nothing computed yet — run a stage above.</div>'; return; }
   const rows = [];
   const push = (label, val) => { if (val !== undefined) rows.push([label, val]); };
+  if (state.utilizationForecast) push('Utilization Forecast', `${state.utilizationForecast.readingCount} reading(s), trend: <b>${state.utilizationForecast.direction}</b> (forecasted $${fmtVal(state.utilizationForecast.forecastedValue)} next month)`);
   if (state.eligibility) push('Eligibility', `active: ${fmtVal(state.eligibility.active)}${state.eligibility.reason ? ' — ' + state.eligibility.reason : ''}`);
-  if (state.priorAuth) push('Prior Auth', `${state.priorAuth.required ? 'required' : 'not required'} → <b>${state.priorAuth.status}</b>`);
+  if (state.priorAuth) push('Prior Auth', `${state.priorAuth.required ? 'required' : 'not required'} → <b>${state.priorAuth.status}</b>${state.priorAuth.required && state.priorAuth.forecastSupportsNecessity ? ' (supported by worsening utilization trend)' : ''}`);
   if (state.encounter) push('Encounter', `${state.encounter.service} (${state.encounter.diagnoses.join(', ')})`);
   if (state.coding) push('Coding', `CPT ${state.coding.cpt} / ICD-10 ${state.coding.icd10.join(', ')}`);
   if (state.claim) push('Claim', `${state.claim.claimId} — billed $${state.claim.billedAmount} — status: <b>${state.claim.status}</b>`);
@@ -604,7 +652,7 @@ function runWholeCase() {
     const res = runStage(st.id, 'menu');
     if (!res.ok) { $('menuStatus').textContent = `Stopped at stage ${st.num} (${st.name.replace(/&amp;/g, '&')}): ${res.error}`; return; }
   }
-  $('menuStatus').textContent = 'Whole case run complete — all 10 stages executed.';
+  $('menuStatus').textContent = `Whole case run complete — all ${STAGES.length} stages executed.`;
 }
 
 function populateMenu() {
@@ -612,7 +660,7 @@ function populateMenu() {
   sel.innerHTML = '';
   const allOpt = document.createElement('option');
   allOpt.value = '__all__';
-  allOpt.textContent = 'Run the whole case (all 10 stages, in order)';
+  allOpt.textContent = `Run the whole case (all ${STAGES.length} stages, in order)`;
   sel.appendChild(allOpt);
   STAGES.forEach(st => {
     const opt = document.createElement('option');

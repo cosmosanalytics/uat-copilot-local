@@ -101,19 +101,19 @@
     <button class="theme-toggle" id="themeToggle">Theme: light</button>
   </header>
   <p class="sub">
-    9 tool calls — one per stage of a single applicant's standard life insurance / annuity journey
-    (Application → Health Questionnaire → Records Check → Medical Exam → Underwriter Review →
-    Rating &amp; Premium Pricing → Policy Issuance → Premium Servicing / Accumulation → then either
-    Claims Processing or Annuitization, depending on the product family). Each tool is a pure,
-    deterministic function modeling the real math and gating rules of that stage (a debit-based
-    risk-classification engine, age/risk-adjusted premium pricing, contestability-period claim
-    investigation, surrender-charge schedules). This edition has no model in the loop at all —
-    instead of an LLM deciding which tool to call, you pick the action yourself from a plain menu
-    below. Run stages manually to study the logic, or use the menu to run the whole case in one
-    click. The stage sequence and product lines are modeled loosely on a typical life insurance and
-    annuity carrier's core business (see footer), simplified into a single illustrative pipeline —
-    not a representation of any specific insurer's actual underwriting manual, rate tables, or
-    contract terms.
+    10 tool calls — one per stage of a single applicant's standard life insurance / annuity journey
+    (Application → Health Questionnaire → Records Check → Medical Exam → Biometric Trend Forecast →
+    Underwriter Review → Rating &amp; Premium Pricing → Policy Issuance → Premium Servicing /
+    Accumulation → then either Claims Processing or Annuitization, depending on the product
+    family). Each tool is a pure, deterministic function modeling the real math and gating rules of
+    that stage (a debit-based risk-classification engine, a least-squares biometric-trend forecast,
+    age/risk-adjusted premium pricing, contestability-period claim investigation, surrender-charge
+    schedules). This edition has no model in the loop at all — instead of an LLM deciding which
+    tool to call, you pick the action yourself from a plain menu below. Run stages manually to
+    study the logic, or use the menu to run the whole case in one click. The stage sequence and
+    product lines are modeled loosely on a typical life insurance and annuity carrier's core
+    business (see footer), simplified into a single illustrative pipeline — not a representation of
+    any specific insurer's actual underwriting manual, rate tables, or contract terms.
   </p>
 
   <div class="panel">
@@ -140,6 +140,9 @@
           <label>HbA1c (%) <input type="number" id="in_hba1c" value="5.2" step="0.1"></label>
         </div>
         <div class="grid-inputs wide" style="margin-top:8px;">
+          <label>HbA1c history — oldest → newest, ~6mo apart, comma-separated (%) — feeds the Biometric Trend Forecast
+            <input type="text" id="in_biometricHistory" value="4.4,4.7,4.9,5.05,5.2">
+          </label>
           <label>Disclosed medical conditions (comma-separated, blank = none)
             <input type="text" id="in_conditions" value="">
           </label>
@@ -235,7 +238,7 @@
       Pick an action from the menu and click Execute — this calls the exact same stage functions
       shown above, directly, with no model deciding anything. It's the same job an LLM tool-calling
       orchestrator would do (choosing which tool to call next), just done by you from a plain menu
-      instead of by typing a request to a model. The menu's stage-9 option automatically matches
+      instead of by typing a request to a model. The menu's stage-10 option automatically matches
       whichever product family is currently selected above — the other branch (Claims Processing vs.
       Annuitization) isn't offered.
     </div>
@@ -255,7 +258,7 @@
     underwriting risk classification, and Annuity.org's explanation of the accumulation /
     surrender-charge / annuitization lifecycle), and product-line framing drawn from how life
     insurance and annuity carriers typically describe their business segments. Simplified into a
-    single illustrative 9-stage pipeline for demonstration — not a representation of any specific
+    single illustrative 10-stage pipeline for demonstration — not a representation of any specific
     insurer's actual underwriting manual, rate tables, or contract terms, and not financial or
     insurance advice.
   </footer>
@@ -264,6 +267,20 @@
 <script type="module">
 /* ============================== Financial Process core ============================== */
 function round2(x) { return Math.round(x * 100) / 100; }
+
+// least-squares linear regression over {x,y} points — used by the Biometric Trend Forecast stage
+function linreg(points) {
+  const n = points.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: points[0].y };
+  const xMean = points.reduce((s, p) => s + p.x, 0) / n;
+  const yMean = points.reduce((s, p) => s + p.y, 0) / n;
+  let num = 0, den = 0;
+  for (const p of points) { num += (p.x - xMean) * (p.y - yMean); den += (p.x - xMean) ** 2; }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = yMean - slope * xMean;
+  return { slope, intercept };
+}
 
 function addYears(dateStr, years) {
   const d = new Date(dateStr);
@@ -317,8 +334,26 @@ function toolMedicalExam(state) {
   return { medicalExam: state.medicalExam };
 }
 
-function toolUnderwriterReview(state) {
+// ---- Biometric Trend Forecast (least-squares extrapolation over the applicant's HbA1c history) ----
+function toolBiometricForecast(state) {
   if (!state.medicalExam) throw new Error('Run Medical Exam first (medicalExam is missing).');
+  const readings = state.inputs.biometricHistory || [];
+  const points = readings.map((v, i) => ({ x: i * 180, y: v })); // ~6-month spacing between checkups
+  const { slope, intercept } = linreg(points);
+  const semiAnnualSlope = round2(slope * 180);
+  const lastX = points.length ? points[points.length - 1].x : 0;
+  const forecastedValue = round2(intercept + slope * (lastX + 180));
+  const residuals = points.map(p => p.y - (intercept + slope * p.x));
+  const stdDev = points.length >= 2
+    ? round2(Math.sqrt(residuals.reduce((s, e) => s + e * e, 0) / points.length))
+    : 0;
+  const direction = semiAnnualSlope > 0.15 ? 'worsening' : semiAnnualSlope < -0.15 ? 'improving' : 'stable';
+  state.biometricForecast = { readingCount: points.length, semiAnnualSlope, forecastedValue, stdDev, direction };
+  return { biometricForecast: state.biometricForecast };
+}
+
+function toolUnderwriterReview(state) {
+  if (!state.biometricForecast) throw new Error('Run Biometric Trend Forecast first (biometricForecast is missing).');
   let debits = 0;
   const reasons = [];
   if (state.healthQuestionnaire.tobaccoUse) { debits += 3; reasons.push('tobacco use (+3)'); }
@@ -331,6 +366,7 @@ function toolUnderwriterReview(state) {
     if (state.medicalExam.vitals.systolicBP >= 140) { debits += 2; reasons.push('systolic BP >= 140 (+2)'); }
     if (state.medicalExam.vitals.hba1c >= 6.5) { debits += 3; reasons.push('HbA1c >= 6.5 / diabetic range (+3)'); }
   }
+  if (state.biometricForecast.direction === 'worsening') { debits += 2; reasons.push('worsening biometric (HbA1c) trend forecast (+2)'); }
   const tier = RISK_TIERS.find(t => debits <= t.maxDebits);
   const declined = debits >= 12;
   state.underwriting = { debits, reasons, tier: declined ? null : tier.name, riskMultiplier: declined ? null : tier.multiplier, declined };
@@ -411,12 +447,13 @@ const STAGES = [
   { id: 'run_health_questionnaire', num: 2, name: 'Health Questionnaire', formula: 'BMI = 703 · Weight / Height²', desc: 'Captures medical history, medications, and lifestyle information (tobacco use, disclosed conditions).', fn: toolHealthQuestionnaire, prereq: ['run_application'], beat: 0 },
   { id: 'run_records_check', num: 3, name: 'Records Check (MIB / APS)', formula: 'Discrepancy = |MIBFlags| > 0', desc: 'Third-party database check against the Medical Information Bureau / Attending Physician Statement to catch undisclosed conditions.', fn: toolRecordsCheck, prereq: ['run_health_questionnaire'], beat: 0 },
   { id: 'run_medical_exam', num: 4, name: 'Medical Exam', formula: 'Required = FaceAmount ≥ $500k OR Conditions > 0', desc: 'Conditionally required paramedical exam — blood pressure, cholesterol, HbA1c — for higher face amounts or disclosed conditions.', fn: toolMedicalExam, prereq: ['run_records_check'], beat: 0 },
-  { id: 'run_underwriter_review', num: 5, name: 'Underwriter Review', formula: 'Tier = RiskTable(Σ Debits)', desc: 'A debit-based risk classification engine assigns a rating tier (Preferred Plus → Table Rating) or an outright decline.', fn: toolUnderwriterReview, prereq: ['run_medical_exam'], beat: 1 },
-  { id: 'run_rating_pricing', num: 6, name: 'Rating &amp; Premium Pricing', formula: 'Premium = (Face/1000) · BaseRate · RiskMult · AgeAdj', desc: 'Translates the risk tier into a final annual premium — or confirms the decline from Underwriter Review.', fn: toolRatingPricing, prereq: ['run_underwriter_review'], beat: 1 },
-  { id: 'run_policy_issuance', num: 7, name: 'Policy Issuance', formula: 'Policy = {PolicyNumber, Premium, ContestabilityEnd}', desc: 'Issues the in-force policy — blocked if the application was declined at underwriting.', fn: toolPolicyIssuance, prereq: ['run_rating_pricing'], beat: 1 },
-  { id: 'run_premium_servicing', num: 8, name: 'Premium Servicing / Accumulation', formula: 'CashValue_t = (CashValue_{t-1} + Inflow) · (1 + CreditingRate)', desc: 'Years of premium (life) or contributions (annuity) compound into cash value — the accumulation phase.', fn: toolPremiumServicing, prereq: ['run_policy_issuance'], beat: 2 },
-  { id: 'run_claims_processing', num: 9, name: 'Claims Processing (life)', formula: 'Denied if WithinContestability AND Misrepresentation', desc: 'Death-benefit claim review — investigates for material misrepresentation if the claim falls within the 2-year contestability period. Life insurance only.', fn: toolClaimsProcessing, prereq: ['run_premium_servicing'], beat: 3 },
-  { id: 'run_annuitization', num: 9, name: 'Annuitization (annuity)', formula: 'SurrenderCharge = CashValue · Schedule(YearsInForce)', desc: 'Converts accumulated cash value into a lump sum (net of any surrender charge) or a periodic/lifetime payout stream. Annuity only.', fn: toolAnnuitization, prereq: ['run_premium_servicing'], beat: 3 },
+  { id: 'run_biometric_forecast', num: 5, name: 'Biometric Trend Forecast', formula: 'Forecast_{t+1} = OLS(HbA1cHistory) extrapolated 6 months', desc: 'Forecasts the applicant\'s HbA1c trend from their recent biometric history via least-squares extrapolation. A worsening trend adds underwriting debits alongside the current point-in-time reading — mirroring how real underwriting can weigh a trend, not just a single value.', fn: toolBiometricForecast, prereq: ['run_medical_exam'], beat: 0 },
+  { id: 'run_underwriter_review', num: 6, name: 'Underwriter Review', formula: 'Tier = RiskTable(Σ Debits)', desc: 'A debit-based risk classification engine assigns a rating tier (Preferred Plus → Table Rating) or an outright decline.', fn: toolUnderwriterReview, prereq: ['run_biometric_forecast'], beat: 1 },
+  { id: 'run_rating_pricing', num: 7, name: 'Rating &amp; Premium Pricing', formula: 'Premium = (Face/1000) · BaseRate · RiskMult · AgeAdj', desc: 'Translates the risk tier into a final annual premium — or confirms the decline from Underwriter Review.', fn: toolRatingPricing, prereq: ['run_underwriter_review'], beat: 1 },
+  { id: 'run_policy_issuance', num: 8, name: 'Policy Issuance', formula: 'Policy = {PolicyNumber, Premium, ContestabilityEnd}', desc: 'Issues the in-force policy — blocked if the application was declined at underwriting.', fn: toolPolicyIssuance, prereq: ['run_rating_pricing'], beat: 1 },
+  { id: 'run_premium_servicing', num: 9, name: 'Premium Servicing / Accumulation', formula: 'CashValue_t = (CashValue_{t-1} + Inflow) · (1 + CreditingRate)', desc: 'Years of premium (life) or contributions (annuity) compound into cash value — the accumulation phase.', fn: toolPremiumServicing, prereq: ['run_policy_issuance'], beat: 2 },
+  { id: 'run_claims_processing', num: 10, name: 'Claims Processing (life)', formula: 'Denied if WithinContestability AND Misrepresentation', desc: 'Death-benefit claim review — investigates for material misrepresentation if the claim falls within the 2-year contestability period. Life insurance only.', fn: toolClaimsProcessing, prereq: ['run_premium_servicing'], beat: 3 },
+  { id: 'run_annuitization', num: 10, name: 'Annuitization (annuity)', formula: 'SurrenderCharge = CashValue · Schedule(YearsInForce)', desc: 'Converts accumulated cash value into a lump sum (net of any surrender charge) or a periodic/lifetime payout stream. Annuity only.', fn: toolAnnuitization, prereq: ['run_premium_servicing'], beat: 3 },
 ];
 
 const BEATS = [
@@ -445,6 +482,7 @@ function defaultInputs() {
       medicalConditions: csvList($('in_conditions').value),
       systolicBP: parseFloat($('in_bp').value), cholesterolTotal: parseFloat($('in_chol').value), hba1c: parseFloat($('in_hba1c').value),
     },
+    biometricHistory: $('in_biometricHistory').value.split(',').map(s => parseFloat(s.trim())).filter(v => !isNaN(v)),
     product: { name: $('in_productName').value, faceAmount: parseFloat($('in_faceAmount').value), baseRatePer1000: parseFloat($('in_baseRate').value) },
     productFamily,
     applicationDate: $('in_appDate').value,
@@ -574,6 +612,7 @@ function renderStateInspector() {
   if (state.healthQuestionnaire) push('Health Questionnaire', `BMI ${fmtVal(state.healthQuestionnaire.bmi)}, conditions: ${fmtVal(state.healthQuestionnaire.conditions)}`);
   if (state.recordsCheck) push('Records Check', `discrepancy: ${fmtVal(state.recordsCheck.discrepancy)}${state.recordsCheck.mibFlags.length ? ' — ' + state.recordsCheck.mibFlags.join(', ') : ''}`);
   if (state.medicalExam) push('Medical Exam', state.medicalExam.required ? `required — BP ${state.medicalExam.vitals.systolicBP}, chol ${state.medicalExam.vitals.cholesterolTotal}, HbA1c ${state.medicalExam.vitals.hba1c}` : 'not required');
+  if (state.biometricForecast) push('Biometric Forecast', `${state.biometricForecast.readingCount} reading(s), trend: <b>${state.biometricForecast.direction}</b> (forecasted HbA1c ${fmtVal(state.biometricForecast.forecastedValue)}% in ~6mo)`);
   if (state.underwriting) push('Underwriter Review', state.underwriting.declined ? `<b>declined</b> (${state.underwriting.debits} debits)` : `<b>${state.underwriting.tier}</b> (${state.underwriting.debits} debits)`);
   if (state.pricing) push('Rating &amp; Pricing', state.pricing.decision === 'approved' ? `annual premium $${fmtVal(state.pricing.annualPremium)}` : '<b>declined</b>');
   if (state.policy) push('Policy', `${state.policy.policyNumber} — ${state.policy.status} — contestability ends ${state.policy.contestabilityPeriodEnds}`);
