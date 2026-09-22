@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Healthcare Process Studio (Simplified)</title>
+<title>Healthcare Process Studio</title>
 <style>
   :root {
     color-scheme: light;
@@ -97,7 +97,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Healthcare Process Studio (Simplified)</h1>
+    <h1>Healthcare Process Studio</h1>
     <button class="theme-toggle" id="themeToggle">Theme: light</button>
   </header>
   <p class="sub">
@@ -612,11 +612,27 @@ const TOOL_SCHEMAS = STAGES.map(st => ({
 }));
 
 function systemPrompt() {
-  return `You are an orchestrator for a 10-stage healthcare process pipeline.
-Never compute numbers. Call tools in sequence: ${STAGES.map(s => s.id).join(', ')}.
-Stage 10 requires both stage 8 and 9. If an encounter is denied, explain why.
-Call one tool at a time and briefly explain each result.
-If tools are unavailable, output a single line: {"tool": "<name>"} or {"final": "<msg>"}.`;
+  return `You are an orchestrator for a 10-stage healthcare process pipeline modeling one patient's
+insurance-based care journey. You NEVER compute numbers yourself — you only decide which tool to
+call next. Each tool takes no arguments; it reads the current case state and advances one stage.
+Call tools strictly in dependency order (stage N generally needs stage N-1, except stage 10
+Patient Billing needs BOTH stage 8 Payment Posting and stage 9 Denial Management to have run,
+since a denied claim skips straight to Denial Management without Payment Posting first).
+
+Stage order: ${STAGES.map(s => `${s.num}=${s.id}`).join(', ')}.
+
+Note: if Prior Authorization is denied for a service that requires it, Clinical Encounter will
+throw an error and the case cannot proceed further — that is expected, not a bug. Similarly, if
+Adjudication denies the claim, Payment Posting will throw until Denial Management resolves the
+appeal (either reopening payment via an overturned appeal, or closing the case as a write-off via
+an upheld appeal).
+
+When the user asks to run the whole case, call the stages in order, one tool call at a time,
+briefly noting what each stage's result means before moving to the next — including explaining
+any error you hit and why the case stopped there. When the user asks for one specific stage, call
+just that one (and any prerequisite stages it needs that haven't run yet). If you cannot use the
+tools API for some reason, respond with a single line of JSON only: {"tool": "<tool_name>"} to
+call a tool, or {"final": "<message>"} when you are done — nothing else on that line.`;
 }
 
 function appendTranscript(role, content) {
@@ -732,26 +748,26 @@ async function runAgentTurn(userText) {
   appendTranscript('user', userText);
 
   const engine = await ensureEngine();
-  let useToolsApi = true;
   const MAX_STEPS = 14;
   for (let step = 0; step < MAX_STEPS; step++) {
     let reply;
-        let callOpts = { messages, temperature: 0, max_tokens: 300 };
-    if (useToolsApi) {
-      callOpts.tools = TOOL_SCHEMAS;
-      callOpts.tool_choice = 'auto';
-    }
     try {
-      reply = await engine.chat.completions.create(callOpts);
+      reply = await engine.chat.completions.create({
+        messages,
+        tools: TOOL_SCHEMAS,
+        tool_choice: 'auto',
+        temperature: 0,
+        max_tokens: 400,
+      });
     } catch (e) {
-      if (useToolsApi && (/GrammarMatcher|deleted object|tools/i.test(e.message))) {
-        useToolsApi = false;
-        appendTranscript('assistant', '[Fast mode: switched to JSON tool mode to prevent WebAssembly GrammarMatcher crash]');
-        reply = await engine.chat.completions.create({ messages, temperature: 0, max_tokens: 300 });
+      if (/not supported for ChatCompletionRequest\.tools/i.test(e.message)) {
+        appendTranscript('assistant',
+          `This model doesn't support native tool calling (${e.message}). ` +
+          `Pick a Hermes-family model from the dropdown above and try again.`);
       } else {
         appendTranscript('assistant', 'Error calling the model: ' + e.message);
-        return;
       }
+      return;
     }
     const msg = reply.choices[0].message;
 
@@ -762,7 +778,7 @@ async function runAgentTurn(userText) {
         const name = tc.function.name;
         appendTranscript('tool', `→ calling ${name}`);
         const res = executeToolByName(name);
-        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ ok: res.ok, stage: name, status: res.ok ? 'completed' : 'error: ' + res.error }) });
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(res) });
         appendTranscript('tool', `← ${name}: ${res.ok ? 'ok' : 'error: ' + res.error}`);
       }
       continue;
