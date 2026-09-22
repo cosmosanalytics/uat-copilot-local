@@ -451,12 +451,16 @@ async function runAnalysis() {
 
 async function extractClaims(engine, text) {
   const prompt = `Extract every distinct atomic factual claim from the text below. A claim is a
-single self-contained statement (subject + relation + object), e.g. "Acme was founded in 2015".
+single self-contained statement (subject + relation + object).
 Split compound sentences into separate claims. Do not add facts that aren't in the text.
-Each claim must be written as a single complete, grammatical sentence (subject + verb, proper
-capitalization, ending punctuation) — never a bare noun phrase or sentence fragment.
+Each claim must be written as a single complete, plain-English, grammatical sentence (subject +
+verb, proper capitalization, ending punctuation) — never a bare noun phrase, never a JSON
+field name, never a sentence fragment. Never repeat the same claim twice.
 
-Return ONLY a JSON array of strings, nothing else, no markdown fences.
+Output ONLY a JSON array of strings, nothing else — no markdown fences, no keys, no commentary.
+
+Example output for the sentence "Acme was founded in 2015 by S. Lee.":
+["Acme was founded in 2015.", "S. Lee founded Acme."]
 
 Text:
 """${text}"""`;
@@ -465,9 +469,31 @@ Text:
     messages: [{ role: 'user', content: prompt }],
     temperature: 0,
     max_tokens: 900,
+    // small local models are prone to degenerate repetition loops (e.g. repeating the same
+    // JSON field over and over); penalize repeated tokens to cut that off early.
+    frequency_penalty: 0.4,
+    presence_penalty: 0.4,
   });
   const raw = reply.choices[0].message.content;
-  return parseClaims(raw);
+  const claims = parseClaims(raw);
+  if (claims._degenerate || claims.length === 0) {
+    throw new Error(
+      'The extraction model produced repetitive/malformed output instead of clean sentences. ' +
+      'Try a larger extraction model from the dropdown, or shorten the input text, and Analyze again.'
+    );
+  }
+  return claims;
+}
+
+// A claim should read like an English sentence: starts with a letter, has at least one space
+// (i.e. more than one word), and isn't a raw JSON fragment like `"key": "value"`.
+function looksLikeSentence(s) {
+  if (!s || s.length < 6 || s.length > 300) return false;
+  if (/^[{}\[\]]+$/.test(s)) return false;
+  if (/^"?[a-zA-Z_]+"?\s*:\s*/.test(s)) return false; // `"manufacturer_company": ...`
+  if (!/[a-zA-Z]{3,}/.test(s)) return false;
+  if (!/\s/.test(s.trim())) return false; // single token, not a sentence
+  return true;
 }
 
 function parseClaims(raw) {
@@ -476,16 +502,56 @@ function parseClaims(raw) {
   if (fence) s = fence[1].trim();
   const arrMatch = s.match(/\[[\s\S]*\]/);
   if (arrMatch) s = arrMatch[0];
+
+  let candidates = null;
   try {
     const parsed = JSON.parse(s);
-    if (Array.isArray(parsed)) {
-      return parsed.map(x => String(x).trim()).filter(Boolean);
-    }
-  } catch (e) { /* fall through */ }
-  // fallback: split into lines, strip bullets/numbers/quotes
-  return raw.split('\n')
-    .map(l => l.replace(/^[\s"\-\*\d\.\)]+/, '').replace(/["',]+$/, '').trim())
-    .filter(l => l.length > 8);
+    if (Array.isArray(parsed)) candidates = parsed.map(x => String(x).trim()).filter(Boolean);
+  } catch (e) { /* fall through to line-based fallback */ }
+
+  if (!candidates) {
+    // fallback: split into lines; pull the quoted value out of any `"key": "value"` fragments
+    // rather than keeping the raw line (which is what let JSON-schema echoes through before).
+    candidates = raw.split('\n').map(line => {
+      let l = line.trim();
+      const kv = l.match(/^"?[a-zA-Z_]+"?\s*:\s*"(.*)"?,?$/);
+      if (kv) l = kv[1];
+      return l.replace(/^[\s"\-\*\d\.\)]+/, '').replace(/["',]+$/, '').trim();
+    });
+  }
+
+  // drop anything that isn't sentence-shaped (but keep duplicates for now — their frequency
+  // is the signal looksDegenerate needs to catch a model stuck in a repetition loop)
+  const sentenceLike = candidates.map(c => c.trim()).filter(looksLikeSentence);
+  sentenceLike._degenerate = looksDegenerate(sentenceLike);
+
+  // now dedupe (case-insensitive) and cap the count for the cleaned-up result
+  const seen = new Set();
+  const cleaned = [];
+  for (const c of sentenceLike) {
+    const key = c.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(c);
+    if (cleaned.length >= 60) break; // sanity cap
+  }
+  cleaned._degenerate = sentenceLike._degenerate;
+  return cleaned;
+}
+
+// Flags a degenerate extraction: a model stuck repeating a near-identical claim (e.g.
+// "manufacturer_company": "Acme ..." over and over with a changing suffix) — measured on the
+// PRE-dedup list, since deduping is exactly what erases that repetition signal. Almost every
+// candidate sharing the same first two words means it was looping, not producing real variety.
+function looksDegenerate(sentenceLikeCandidates) {
+  if (sentenceLikeCandidates.length < 6) return false;
+  const prefixCounts = new Map();
+  for (const c of sentenceLikeCandidates) {
+    const prefix = c.toLowerCase().split(/\s+/).slice(0, 2).join(' ');
+    prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
+  }
+  const maxShare = Math.max(...prefixCounts.values()) / sentenceLikeCandidates.length;
+  return maxShare > 0.6;
 }
 
 async function embedClaims(engine, modelId, claims) {
