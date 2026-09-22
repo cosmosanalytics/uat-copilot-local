@@ -702,9 +702,17 @@ function populateModelList() {
   }
 }
 
-async function ensureEngine() {
+async function ensureEngine(opts = {}) {
   const modelId = $('chatModelSelect').value;
-  if (chatEngine && chatEngine.__modelId === modelId) return chatEngine;
+  if (!opts.forceReload && chatEngine && chatEngine.__modelId === modelId) return chatEngine;
+  if (chatEngine) {
+    // an errored/aborted generation can leave the engine's internal WASM grammar-matcher (used
+    // for constrained JSON tool-call decoding) in a disposed-but-still-referenced state, which
+    // throws "Cannot pass deleted object as a pointer of type GrammarMatcher" on the next call.
+    // Tear the old engine down rather than reusing it once that's happened.
+    try { if (typeof chatEngine.unload === 'function') await chatEngine.unload(); } catch (e) { /* best-effort */ }
+    chatEngine = null;
+  }
   $('llmStatus').textContent = 'Loading ' + modelId + '…';
   chatEngine = await webllm.CreateMLCEngine(modelId, {
     initProgressCallback: (p) => { $('llmStatus').textContent = (p.text || 'Loading…'); },
@@ -757,11 +765,21 @@ async function runAgentTurn(userText, opts = {}) {
       });
     } catch (e) {
       if (/cannot specify customized system prompt/i.test(e.message) && messages[0].role === 'system') {
-        // retry this whole turn with the system prompt folded into a user message instead
+        // retry this whole turn with the system prompt folded into a user message instead, on a
+        // freshly (re)loaded engine — the aborted call above can leave the WASM grammar-matcher
+        // in a disposed state that breaks any later call on the same engine instance.
         // (silentUserTurn: the user's line was already appended to the transcript above)
         systemPromptUnsupported = true;
         messages = [];
+        await ensureEngine({ forceReload: true });
         return runAgentTurn(userText, { silentUserTurn: true });
+      }
+      if (/deleted object as a pointer of type GrammarMatcher/i.test(e.message) && !opts.retriedAfterGrammarError) {
+        // same disposed-grammar-matcher issue, hit directly rather than via the system-prompt
+        // path — reload the engine and retry this exact turn once (messages/history untouched).
+        messages.pop(); // drop the just-pushed user turn so the retry doesn't push it twice
+        await ensureEngine({ forceReload: true });
+        return runAgentTurn(userText, { silentUserTurn: true, retriedAfterGrammarError: true });
       }
       if (/not supported for ChatCompletionRequest\.tools/i.test(e.message)) {
         appendTranscript('assistant',
