@@ -345,10 +345,25 @@ async function loadWebLLM() {
   }
 }
 
+// Pulls a rough parameter count (in billions) out of a model id like "Llama-3.2-1B-Instruct"
+// or "SmolLM2-135M-Instruct". Returns null if the id doesn't encode a size we can parse.
+function paramsInBillions(modelId) {
+  let m = modelId.match(/(\d+(?:\.\d+)?)\s*B\b/i);
+  if (m) return parseFloat(m[1]);
+  m = modelId.match(/(\d+(?:\.\d+)?)\s*M\b/i);
+  if (m) return parseFloat(m[1]) / 1000;
+  return null;
+}
+// Below this, small local models reliably fail at multi-step structured extraction (they tend
+// to echo prompt text or JSON-schema-looking fragments back instead of real sentences) — so
+// they're excluded from the extraction dropdown entirely rather than left as a default trap.
+const MIN_CHAT_PARAMS_B = 0.4;
+
 function populateModelLists() {
   const all = webllm.prebuiltAppConfig.model_list;
   const chatModels = all
     .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
+    .filter(m => { const p = paramsInBillions(m.model_id); return p === null || p >= MIN_CHAT_PARAMS_B; })
     .sort((a,b) => (a.vram_required_MB||9e9) - (b.vram_required_MB||9e9));
   const embedModels = all
     .filter(m => /embed/i.test(m.model_id))
@@ -359,7 +374,7 @@ function populateModelLists() {
 
   if (chatModels.length && embedModels.length) {
     analyzeBtn.disabled = false;
-    statusLine.textContent = 'Ready. Pick models (defaults are the smallest/fastest) and click Analyze.';
+    statusLine.textContent = 'Ready. Pick models (defaults favor the smallest model still capable of structured extraction) and click Analyze.';
   } else {
     statusLine.textContent = 'Could not find suitable models in the WebLLM catalog.';
   }
@@ -476,7 +491,9 @@ Text:
   });
   const raw = reply.choices[0].message.content;
   const claims = parseClaims(raw);
-  if (claims._degenerate || claims.length === 0) {
+  // fewer than 2 claims from a multi-sentence input is as much a sign of failure as an
+  // obvious repetition loop — a weak model often collapses to echoing one prompt fragment.
+  if (claims._degenerate || claims.length < 2) {
     throw new Error(
       'The extraction model produced repetitive/malformed output instead of clean sentences. ' +
       'Try a larger extraction model from the dropdown, or shorten the input text, and Analyze again.'
@@ -493,6 +510,8 @@ function looksLikeSentence(s) {
   if (/^"?[a-zA-Z_]+"?\s*:\s*/.test(s)) return false; // `"manufacturer_company": ...`
   if (!/[a-zA-Z]{3,}/.test(s)) return false;
   if (!/\s/.test(s.trim())) return false; // single token, not a sentence
+  // a weak model sometimes echoes our own instruction text back instead of a real claim
+  if (/^\[?json\s*array|array of strings|return only|output only/i.test(s)) return false;
   return true;
 }
 
