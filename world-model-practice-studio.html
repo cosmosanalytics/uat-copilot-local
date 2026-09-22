@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>World Model Practice Studio</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --page: #f9f9f7; --panel: #ffffff;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+    --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d; --panel: #232322;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { padding: 20px 16px 70px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  .sub { color: var(--text-secondary); font-size: 0.9rem; max-width: 760px; margin: 6px 0 18px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--panel); color: var(--text-secondary); border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; cursor: pointer; }
+  .panel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 0.95rem; margin: 0 0 4px; }
+  .panel .panel-note { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 12px; }
+  label { font-size: 0.76rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
+  input[type=text], input[type=number] { font-family: inherit; font-size: 0.83rem; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; background: var(--panel); color: var(--text-primary); width: 100%; }
+  select, button { font-family: inherit; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border); padding: 7px 12px; background: var(--panel); color: var(--text-primary); cursor: pointer; }
+  button.primary { background: var(--cat-1); color: #fff; border-color: transparent; font-weight: 600; }
+  button.small { padding: 4px 9px; font-size: 0.78rem; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:hover:not(:disabled) { filter: brightness(0.97); }
+  .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+  .grid-inputs.wide { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .field-group { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .field-group > .fg-title { font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+
+  .stage-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--panel); }
+  .stage-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .stage-num { width: 22px; height: 22px; border-radius: 50%; background: var(--cat-1); color: #fff; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .stage-num.done { background: var(--good); }
+  .stage-name { font-weight: 600; font-size: 0.92rem; }
+  .stage-desc { color: var(--text-secondary); font-size: 0.8rem; margin: 6px 0; }
+  .stage-eq { margin: 8px 0; font-size: 0.95rem; overflow-x: auto; }
+  .stage-actions { margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .stage-prereq { color: var(--text-muted); font-size: 0.74rem; }
+  .stage-result { margin-top: 10px; background: var(--page); border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; font-family: ui-monospace, "SF Mono", monospace; white-space: pre-wrap; word-break: break-word; display: none; }
+  .stage-result.show { display: block; }
+  .flag { display: inline-block; background: var(--warn); color: #3a2a00; border-radius: 5px; padding: 1px 6px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
+
+  table.state-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.state-table th, table.state-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.state-table th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; }
+  .neg { color: var(--crit); font-weight: 600; }
+
+  #toolLog { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+  .log-entry { padding: 8px 10px; border-bottom: 1px solid var(--grid); font-size: 0.78rem; }
+  .log-entry .log-head { display: flex; gap: 8px; align-items: center; font-family: ui-monospace, monospace; }
+  .log-src { font-size: 0.68rem; padding: 1px 6px; border-radius: 5px; background: var(--cat-1); color: #fff; }
+  .log-src.agent { background: var(--cat-7); }
+  .log-body { margin-top: 4px; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
+  .log-err { color: var(--crit); }
+
+  .chat-transcript { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); padding: 10px; margin-bottom: 10px; }
+  .msg { margin-bottom: 10px; font-size: 0.85rem; line-height: 1.4; }
+  .msg .role { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+  .msg.user .role { color: var(--cat-1); }
+  .msg.assistant .role { color: var(--cat-7); }
+  .msg.tool .role { color: var(--cat-3); }
+  textarea.chat-input { width: 100%; min-height: 60px; resize: vertical; font-family: inherit; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--panel); color: var(--text-primary); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .status { font-size: 0.8rem; color: var(--text-secondary); margin-top: 8px; }
+  .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  footer { color: var(--text-muted); font-size: 0.75rem; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>World Model Practice Studio</h1>
+    <button class="theme-toggle" id="themeToggle">Theme: light</button>
+  </header>
+  <p class="sub">
+    A small local LLM orchestrates 11 tool calls — one per stage of the World Model state-space
+    chain (Aggregate → Forecast → Consensus → Disaggregate → Forecast Consumption → Dependent
+    Demand → Firming → Capacity Pooling → Inventory → Monitor → Owner). Each tool is a pure,
+    deterministic function; the model's only job is deciding which to call, in what order. Run
+    stages manually to study the math, or let the agent orchestrate the whole chain.
+  </p>
+
+  <div class="panel" id="inputsPanel">
+    <h2>Data entry points</h2>
+    <div class="panel-note">
+      A small toy dataset: 3 series (WidgetA-East, WidgetA-West, WidgetB-East, 8 historical
+      periods) rolling up into 2 aggregate groups, exploding into 2 components via a simple BOM.
+      Edit any field, then click "Apply inputs & reset state" to re-run from scratch.
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Historical demand (A) — comma-separated, 8 periods each</div>
+      <div class="grid-inputs wide">
+        <label>WidgetA-East <input type="text" id="in_A0" value="10,11,10,12,11,10,12,45"></label>
+        <label>WidgetA-West <input type="text" id="in_A1" value="8,9,9,8,9,10,9,9"></label>
+        <label>WidgetB-East (intermittent) <input type="text" id="in_A2" value="5,0,6,0,5,0,6,0"></label>
+      </div>
+      <div class="panel-note" style="margin-top:8px;">
+        Aggregation is fixed for this example: Group 1 = WidgetA-East + WidgetA-West, Group 2 = WidgetB-East.
+        Note the period-8 spike in WidgetA-East — it's a deliberately injected outlier.
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Forecast — outlier bounds</div>
+      <div class="grid-inputs">
+        <label>Bounds multiplier (mean ± k·SD) <input type="number" id="in_boundsK" value="3" step="0.1"></label>
+      </div>
+      <div class="panel-note" style="margin-top:8px;">
+        At k=3 with only 8 points, a single extreme value inflates its own SD estimate enough
+        that it often escapes clipping (the classic "masking effect"). Try k=1 or 1.5 and re-run
+        Forecast to watch it get clipped instead — and watch the downstream Capacity alert disappear.
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Consensus — planner override (per aggregate group)</div>
+      <div class="grid-inputs">
+        <label>Adj — Group 1 (WidgetA) <input type="number" id="in_Adj0" value="0"></label>
+        <label>Adj — Group 2 (WidgetB) <input type="number" id="in_Adj1" value="-1"></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Forecast Consumption — backlog (per detail series)</div>
+      <div class="grid-inputs">
+        <label>Backlog — WidgetA-East <input type="number" id="in_Bk0" value="1"></label>
+        <label>Backlog — WidgetA-West <input type="number" id="in_Bk1" value="0"></label>
+        <label>Backlog — WidgetB-East <input type="number" id="in_Bk2" value="2"></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Dependent Demand — BOM (components × finished series), Firming — on-hand</div>
+      <div class="panel-note" style="margin-bottom:6px;">
+        Fixed BOM for this example: CompX needs 1 unit per WidgetA (either location); CompY needs
+        2 units per WidgetB.
+      </div>
+      <div class="grid-inputs">
+        <label>On-hand — CompX <input type="number" id="in_OH0" value="15"></label>
+        <label>On-hand — CompY <input type="number" id="in_OH1" value="5"></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Capacity Pooling</div>
+      <div class="grid-inputs">
+        <label>Resource hrs / unit — CompX <input type="number" id="in_RM0" value="2" step="0.1"></label>
+        <label>Resource hrs / unit — CompY <input type="number" id="in_RM1" value="1" step="0.1"></label>
+        <label>Resource capacity (hrs) <input type="number" id="in_Cap" value="40"></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Inventory — safety stock factor</div>
+      <div class="grid-inputs">
+        <label>SLF — CompX <input type="number" id="in_SLF0" value="0.2" step="0.05"></label>
+        <label>SLF — CompY <input type="number" id="in_SLF1" value="0.15" step="0.05"></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-title">Monitor — alert thresholds &amp; Owner — routing</div>
+      <div class="grid-inputs">
+        <label>Utilization threshold <input type="number" id="in_utilTh" value="1.0" step="0.05"></label>
+        <label>Large-order threshold — CompX <input type="number" id="in_poTh0" value="10"></label>
+        <label>Large-order threshold — CompY <input type="number" id="in_poTh1" value="10"></label>
+      </div>
+      <div class="grid-inputs wide" style="margin-top:8px;">
+        <label>Owner — Capacity Overload <input type="text" id="in_own0" value="Plant Manager"></label>
+        <label>Owner — Stockout Risk <input type="text" id="in_own1" value="Inventory Analyst"></label>
+        <label>Owner — Large Planned Order <input type="text" id="in_own2" value="Demand Planner"></label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="applyInputsBtn">Apply inputs &amp; reset state</button>
+      <span class="status" id="inputsStatus"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Stages</h2>
+    <div class="panel-note">Run each stage manually to study it step by step, or use the AI Orchestrator below to run the chain via tool calls.</div>
+    <div id="stagesContainer"></div>
+  </div>
+
+  <div class="panel">
+    <h2>World state</h2>
+    <div class="panel-note">Live values as each stage completes. Negative values flagged where physically implausible — worth tracing back, same as a UAT anomaly.</div>
+    <div id="stateInspector"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Tool call log</h2>
+    <div class="panel-note">Every execution — manual or agent-driven — with its arguments and result, so you can audit exactly what ran.</div>
+    <div id="toolLog"></div>
+  </div>
+
+  <div class="panel">
+    <h2>AI orchestrator</h2>
+    <div class="panel-note">
+      The model calls the same 11 tools shown above — it never computes numbers itself, only
+      decides which stage to run next. Runs fully client-side via WebGPU.
+    </div>
+    <div class="row" style="margin-top:0;">
+      <label style="min-width:260px;">Orchestrator model
+        <select id="chatModelSelect"><option>loading model list…</option></select>
+      </label>
+    </div>
+    <div class="status" id="llmStatus">Checking WebGPU support…</div>
+
+    <div class="quick-btns">
+      <button class="small" id="qbAll">Run the whole model</button>
+      <button class="small" id="qbReset">Reset chat</button>
+    </div>
+    <div class="chat-transcript" id="chatTranscript"></div>
+    <textarea class="chat-input" id="chatInput" placeholder='e.g. "Run stage 3" or "Walk through the whole model and explain each stage briefly"'></textarea>
+    <div class="row">
+      <button class="primary" id="sendBtn" disabled>Send</button>
+    </div>
+  </div>
+
+  <footer>Runs fully client-side with WebLLM + WebGPU. No text or model output is sent anywhere.</footer>
+</div>
+
+<script type="module">
+/* ============================== World Model core ============================== */
+function mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }
+function std(a) { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); }
+function matVec(M, v) { return M.map(row => row.reduce((s, x, j) => s + x * v[j], 0)); }
+function diagVec(d, v) { return d.map((di, i) => di * v[i]); }
+function transpose(M) { return M[0].map((_, j) => M.map(row => row[j])); }
+function relu(v) { return v.map(x => Math.max(0, x)); }
+function round2(x) { return Math.round(x * 100) / 100; }
+
+function toolAggregate(state) {
+  const { A, G } = state.inputs;
+  const T = A[0].length;
+  const A_agg = G.map(row => {
+    const out = new Array(T).fill(0);
+    for (let t = 0; t < T; t++) for (let i = 0; i < A.length; i++) out[t] += row[i] * A[i][t];
+    return out;
+  });
+  state.A_agg = A_agg;
+  return { A_agg: A_agg.map(r => r.map(round2)) };
+}
+
+function toolForecast(state) {
+  if (!state.A_agg) throw new Error('Run Aggregate first (A_agg is missing).');
+  const { boundsK } = state.inputs;
+  const groups = state.A_agg.map(row => {
+    const m = mean(row), sd = std(row);
+    const lo = m - boundsK * sd, hi = m + boundsK * sd;
+    const clean = row.map(x => Math.min(hi, Math.max(lo, x)));
+    const clippedAny = clean.some((x, i) => x !== row[i]);
+
+    const nz = clean.map((x, i) => x > 0 ? i : -1).filter(i => i >= 0);
+    const adi = nz.length ? clean.length / nz.length : Infinity;
+    const cm = mean(clean);
+    const cv2 = cm !== 0 ? (std(clean) / cm) ** 2 : Infinity;
+
+    let rule, eligible;
+    if (adi >= 1.32 && cv2 < 0.49) { rule = 'Intermittent (Croston)'; eligible = ['naive', 'croston']; }
+    else if (adi >= 1.32 && cv2 >= 0.49) { rule = 'Lumpy (TSB-family)'; eligible = ['naive', 'croston']; }
+    else if (adi < 1.32 && cv2 >= 0.49) { rule = 'Erratic'; eligible = ['naive', 'movavg']; }
+    else { rule = 'Smooth (ETS-family)'; eligible = ['naive', 'movavg', 'ses', 'trend']; }
+
+    const n = clean.length;
+    const holdoutActual = clean[n - 1];
+    const train = clean.slice(0, n - 1);
+    const models = {
+      naive: (s) => s[s.length - 1],
+      movavg: (s) => { const k = Math.min(3, s.length); return mean(s.slice(-k)); },
+      ses: (s, alpha = 0.4) => { let x = s[0]; for (let i = 1; i < s.length; i++) x = alpha * s[i] + (1 - alpha) * x; return x; },
+      trend: (s) => {
+        const xs = s.map((_, i) => i); const xm = mean(xs), ym = mean(s);
+        const num = xs.reduce((acc, x, i) => acc + (x - xm) * (s[i] - ym), 0);
+        const den = xs.reduce((acc, x) => acc + (x - xm) ** 2, 0);
+        const b = den !== 0 ? num / den : 0; const a = ym - b * xm;
+        return a + b * s.length;
+      },
+      croston: (s) => {
+        const nzVals = s.filter(x => x > 0);
+        const nzIdx = s.map((x, i) => x > 0 ? i : -1).filter(i => i >= 0);
+        if (nzVals.length === 0) return 0;
+        const avgDemand = mean(nzVals);
+        const intervals = nzIdx.length > 1 ? nzIdx.slice(1).map((idx, i) => idx - nzIdx[i]) : [s.length];
+        const avgInterval = mean(intervals.length ? intervals : [s.length]);
+        return avgInterval !== 0 ? avgDemand / avgInterval : 0;
+      },
+    };
+    const backtest = {};
+    for (const mdl of eligible) {
+      const pred = models[mdl](train);
+      const wmape = holdoutActual !== 0 ? Math.abs(holdoutActual - pred) / Math.abs(holdoutActual) : Math.abs(holdoutActual - pred);
+      backtest[mdl] = { pred: round2(pred), wmape: round2(wmape) };
+    }
+    const best = eligible.reduce((a, b) => backtest[a].wmape <= backtest[b].wmape ? a : b);
+    const forecast = models[best](clean);
+
+    return { mean: round2(m), sd: round2(sd), bounds: [round2(lo), round2(hi)], clippedAny,
+      clean: clean.map(round2), adi: round2(adi), cv2: round2(cv2), rule, eligible,
+      backtest, chosenModel: best, forecast: round2(forecast) };
+  });
+  state.forecastDetail = groups;
+  state.F_agg = groups.map(g => g.forecast);
+  return { groups, F_agg: state.F_agg };
+}
+
+function toolConsensus(state) {
+  if (!state.F_agg) throw new Error('Run Forecast first (F_agg is missing).');
+  const { Adj_agg } = state.inputs;
+  state.Total_agg = state.F_agg.map((f, i) => f + (Adj_agg[i] || 0));
+  return { Total_agg: state.Total_agg.map(round2) };
+}
+function toolDisaggregate(state) {
+  if (!state.Total_agg) throw new Error('Run Consensus first (Total_agg is missing).');
+  const { w, G } = state.inputs;
+  const spread = matVec(transpose(G), state.Total_agg);
+  state.Total = diagVec(w, spread);
+  return { Total: state.Total.map(round2) };
+}
+function toolForecastConsumption(state) {
+  if (!state.Total) throw new Error('Run Disaggregate first (Total is missing).');
+  const { Backlog } = state.inputs;
+  state.NettedDemand = state.Total.map((t, i) => t - (Backlog[i] || 0));
+  return { NettedDemand: state.NettedDemand.map(round2) };
+}
+function toolDependentDemand(state) {
+  if (!state.NettedDemand) throw new Error('Run Forecast Consumption first (NettedDemand is missing).');
+  const { BOM } = state.inputs;
+  state.GrossReq = matVec(BOM, state.NettedDemand);
+  return { GrossReq: state.GrossReq.map(round2) };
+}
+function toolFirming(state) {
+  if (!state.GrossReq) throw new Error('Run Dependent Demand first (GrossReq is missing).');
+  const { OnHand } = state.inputs;
+  state.PlannedOrder = relu(state.GrossReq.map((g, i) => g - (OnHand[i] || 0)));
+  return { PlannedOrder: state.PlannedOrder.map(round2) };
+}
+function toolCapacityPooling(state) {
+  if (!state.PlannedOrder) throw new Error('Run Firming first (PlannedOrder is missing).');
+  const { ResourceMap, Capacity } = state.inputs;
+  const Load = matVec(ResourceMap, state.PlannedOrder);
+  const Utilization = Load.map((l, i) => l / Capacity[i]);
+  state.Load = Load; state.Utilization = Utilization;
+  return { Load: Load.map(round2), Utilization: Utilization.map(round2) };
+}
+function toolInventory(state) {
+  if (!state.GrossReq) throw new Error('Run Dependent Demand first (GrossReq is missing).');
+  const { SLF } = state.inputs;
+  state.SafetyStock = diagVec(SLF, state.GrossReq);
+  return { SafetyStock: state.SafetyStock.map(round2) };
+}
+function toolMonitor(state) {
+  if (!state.Utilization || !state.SafetyStock || !state.PlannedOrder) throw new Error('Run Capacity Pooling and Inventory first before Monitor.');
+  const { utilThreshold, planOrderThreshold, OnHand } = state.inputs;
+  const alerts = [];
+  state.Utilization.forEach((u, i) => { if (u > utilThreshold) alerts.push({ code: 'Capacity Overload', index: i, value: round2(u) }); });
+  state.SafetyStock.forEach((ss, i) => { if ((OnHand[i] || 0) < ss) alerts.push({ code: 'Stockout Risk', index: i, value: round2(OnHand[i] || 0) }); });
+  state.PlannedOrder.forEach((po, i) => { if (po > (planOrderThreshold[i] ?? planOrderThreshold[0])) alerts.push({ code: 'Large Planned Order', index: i, value: round2(po) }); });
+  state.Alerts = alerts;
+  return { Alerts: alerts };
+}
+function toolOwner(state) {
+  if (!state.Alerts) throw new Error('Run Monitor first (Alerts is missing).');
+  const { OwnerMap } = state.inputs;
+  state.Owners = state.Alerts.map(a => ({ ...a, owner: OwnerMap[a.code] || 'Unassigned' }));
+  return { Owners: state.Owners };
+}
+
+/* ============================== stage metadata ============================== */
+const STAGES = [
+  { id: 'run_aggregate', num: 1, name: 'Aggregate', eq: 'A_{agg} = G \\cdot A', desc: 'Rolls detailed history up to the level demand is stable enough to forecast.', fn: toolAggregate, prereq: [] },
+  { id: 'run_forecast', num: 2, name: 'Forecast', eq: 'F_{agg} = F_{m^*},\\ \\ m^* = \\arg\\min_m WMAPE_{bt}(m)', desc: 'Cleans, classifies, fits eligible models per series, and picks the backtest winner.', fn: toolForecast, prereq: ['run_aggregate'] },
+  { id: 'run_consensus', num: 3, name: 'Consensus', eq: 'Total_{agg} = F_{agg} + Adj_{agg}', desc: "Blends the statistical forecast with a planner's manual adjustment.", fn: toolConsensus, prereq: ['run_forecast'] },
+  { id: 'run_disaggregate', num: 4, name: 'Disaggregate', eq: 'Total = \\mathrm{diag}(w) \\cdot G^\\top \\cdot Total_{agg}', desc: 'Splits the consensus total back to the detailed level via historical allocation weights.', fn: toolDisaggregate, prereq: ['run_consensus'] },
+  { id: 'run_forecast_consumption', num: 5, name: 'Forecast Consumption', eq: 'NettedDemand = Total - Backlog', desc: 'Subtracts unfulfilled prior orders.', fn: toolForecastConsumption, prereq: ['run_disaggregate'] },
+  { id: 'run_dependent_demand', num: 6, name: 'Dependent Demand', eq: 'GrossReq = BOM \\cdot NettedDemand', desc: 'Explodes finished-product demand into components.', fn: toolDependentDemand, prereq: ['run_forecast_consumption'] },
+  { id: 'run_firming', num: 7, name: 'Firming', eq: 'PlannedOrder = \\mathrm{ReLU}(GrossReq - OnHand)', desc: 'Orders enough to cover the visible gap.', fn: toolFirming, prereq: ['run_dependent_demand'] },
+  { id: 'run_capacity_pooling', num: 8, name: 'Capacity Pooling', eq: 'Load = ResourceMap \\cdot PlannedOrder,\\ \\ Utilization = \\tfrac{Load}{Capacity}', desc: 'Checks whether required resources are available.', fn: toolCapacityPooling, prereq: ['run_firming'] },
+  { id: 'run_inventory', num: 9, name: 'Inventory', eq: 'SafetyStock = \\mathrm{diag}(SLF) \\cdot GrossReq', desc: 'Buffer stock target, sized per component.', fn: toolInventory, prereq: ['run_dependent_demand'] },
+  { id: 'run_monitor', num: 10, name: 'Monitor', eq: 'Alert = \\mathbb{1}[\\,condition\\,]', desc: 'Flags capacity, demand, or inventory thresholds crossed.', fn: toolMonitor, prereq: ['run_capacity_pooling', 'run_inventory'] },
+  { id: 'run_owner', num: 11, name: 'Owner', eq: 'Owner = AlertFired \\cdot OwnerMap', desc: 'Routes each fired alert to the responsible role.', fn: toolOwner, prereq: ['run_monitor'] },
+];
+
+/* ============================== app state ============================== */
+const $ = (id) => document.getElementById(id);
+let state = null;
+let completed = new Set();
+
+function defaultInputs() {
+  const A = [
+    $('in_A0').value.split(',').map(Number),
+    $('in_A1').value.split(',').map(Number),
+    $('in_A2').value.split(',').map(Number),
+  ];
+  const G = [[1, 1, 0], [0, 0, 1]];
+  // derive disaggregation weights from raw historical share within each group
+  const g0mean = mean(A[0]) + mean(A[1]);
+  const g1mean = mean(A[2]);
+  const w = [mean(A[0]) / g0mean, mean(A[1]) / g0mean, g1mean !== 0 ? 1 : 1];
+  return {
+    A, G, w,
+    boundsK: parseFloat($('in_boundsK').value),
+    Adj_agg: [parseFloat($('in_Adj0').value), parseFloat($('in_Adj1').value)],
+    Backlog: [parseFloat($('in_Bk0').value), parseFloat($('in_Bk1').value), parseFloat($('in_Bk2').value)],
+    BOM: [[1, 1, 0], [0, 0, 2]],
+    OnHand: [parseFloat($('in_OH0').value), parseFloat($('in_OH1').value)],
+    ResourceMap: [[parseFloat($('in_RM0').value), parseFloat($('in_RM1').value)]],
+    Capacity: [parseFloat($('in_Cap').value)],
+    SLF: [parseFloat($('in_SLF0').value), parseFloat($('in_SLF1').value)],
+    utilThreshold: parseFloat($('in_utilTh').value),
+    planOrderThreshold: [parseFloat($('in_poTh0').value), parseFloat($('in_poTh1').value)],
+    OwnerMap: { 'Capacity Overload': $('in_own0').value, 'Stockout Risk': $('in_own1').value, 'Large Planned Order': $('in_own2').value },
+  };
+}
+
+function resetState() {
+  state = { inputs: defaultInputs() };
+  completed = new Set();
+  renderStages();
+  renderStateInspector();
+}
+
+/* ============================== rendering ============================== */
+function renderStages() {
+  const container = $('stagesContainer');
+  container.innerHTML = '';
+  STAGES.forEach(st => {
+    const prereqMet = st.prereq.every(p => completed.has(p));
+    const div = document.createElement('div');
+    div.className = 'stage-card';
+    div.innerHTML = `
+      <div class="stage-head">
+        <div class="stage-num ${completed.has(st.id) ? 'done' : ''}">${completed.has(st.id) ? '✓' : st.num}</div>
+        <div class="stage-name">${st.name}</div>
+      </div>
+      <div class="stage-desc">${st.desc}</div>
+      <div class="stage-eq" id="eq_${st.id}"></div>
+      <div class="stage-actions">
+        <button class="small primary" data-run="${st.id}" ${prereqMet ? '' : 'disabled'}>Run this stage</button>
+        ${st.prereq.length && !prereqMet ? `<span class="stage-prereq">requires: ${st.prereq.map(p => STAGES.find(s=>s.id===p).name).join(', ')}</span>` : ''}
+      </div>
+      <div class="stage-result" id="result_${st.id}"></div>
+    `;
+    container.appendChild(div);
+  });
+  STAGES.forEach(st => {
+    try { katex.render(st.eq, $('eq_' + st.id), { throwOnError: false }); } catch (e) {}
+  });
+  container.querySelectorAll('[data-run]').forEach(btn => {
+    btn.addEventListener('click', () => runStage(btn.dataset.run, 'manual'));
+  });
+}
+
+function fmtVal(v) {
+  if (typeof v === 'number') {
+    const s = String(round2(v));
+    return v < 0 ? `<span class="neg">${s}</span>` : s;
+  }
+  return String(v);
+}
+
+function runStage(id, source) {
+  const st = STAGES.find(s => s.id === id);
+  const resultEl = $('result_' + id);
+  try {
+    const result = st.fn(state);
+    completed.add(id);
+    resultEl.classList.add('show');
+    resultEl.textContent = JSON.stringify(result, null, 2);
+    logToolCall(id, source, {}, result, null);
+    renderStages();
+    renderStateInspector();
+    return { ok: true, result };
+  } catch (e) {
+    resultEl.classList.add('show');
+    resultEl.textContent = 'Error: ' + e.message;
+    logToolCall(id, source, {}, null, e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+function renderStateInspector() {
+  const el = $('stateInspector');
+  if (!state || completed.size === 0) { el.innerHTML = '<div class="panel-note">Nothing computed yet — run a stage above.</div>'; return; }
+  const rows = [];
+  const pushVec = (label, arr) => { if (arr) rows.push([label, arr.map(fmtVal).join(', ')]); };
+  pushVec('A_agg (per period)', state.A_agg ? state.A_agg.map(r => '[' + r.map(round2).join(',') + ']') : null);
+  pushVec('F_agg', state.F_agg);
+  pushVec('Total_agg', state.Total_agg);
+  pushVec('Total (detail)', state.Total);
+  pushVec('NettedDemand', state.NettedDemand);
+  pushVec('GrossReq', state.GrossReq);
+  pushVec('PlannedOrder', state.PlannedOrder);
+  pushVec('Load', state.Load);
+  pushVec('Utilization', state.Utilization);
+  pushVec('SafetyStock', state.SafetyStock);
+  if (state.Alerts) rows.push(['Alerts', state.Alerts.length ? state.Alerts.map(a => `${a.code} (idx ${a.index}, ${a.value})`).join('; ') : 'none']);
+  if (state.Owners) rows.push(['Owners', state.Owners.length ? state.Owners.map(o => `${o.code} → ${o.owner}`).join('; ') : 'none']);
+  el.innerHTML = `<table class="state-table"><thead><tr><th>Variable</th><th>Value</th></tr></thead><tbody>${
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+let logSeq = 0;
+function logToolCall(name, source, args, result, error) {
+  logSeq++;
+  const log = $('toolLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <div class="log-head">
+      <span class="log-src ${source === 'agent' ? 'agent' : ''}">${source === 'agent' ? 'agent' : 'manual'}</span>
+      <strong>#${logSeq} ${name}</strong>
+    </div>
+    <div class="log-body ${error ? 'log-err' : ''}">${error ? 'Error: ' + error : JSON.stringify(result)}</div>
+  `;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+$('applyInputsBtn').addEventListener('click', resetState);
+
+let themeState = 'light';
+$('themeToggle').addEventListener('click', () => {
+  themeState = themeState === 'light' ? 'dark' : themeState === 'dark' ? 'system' : 'light';
+  if (themeState === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themeState);
+  $('themeToggle').textContent = 'Theme: ' + themeState;
+});
+
+/* ============================== AI orchestrator (WebLLM tool-calling) ============================== */
+let webllm = null, chatEngine = null;
+let messages = [];
+
+const TOOL_SCHEMAS = STAGES.map(st => ({
+  type: 'function',
+  function: {
+    name: st.id,
+    description: `Stage ${st.num} (${st.name}): ${st.desc} Equation: ${st.eq}. ${st.prereq.length ? 'Requires ' + st.prereq.join(', ') + ' to have run first.' : 'No prerequisites.'}`,
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+  },
+}));
+
+function systemPrompt() {
+  return `You are an orchestrator for an 11-stage supply-chain "World Model" state-space pipeline.
+You NEVER compute numbers yourself — you only decide which tool to call next. Each tool takes no
+arguments; it reads the current state and advances one stage. Call tools strictly in dependency
+order (stage N generally needs stage N-1, except stage 9 Inventory only needs stage 6 Dependent
+Demand, and stage 10 Monitor needs both stage 8 Capacity Pooling and stage 9 Inventory).
+
+Stage order: ${STAGES.map(s => `${s.num}=${s.id}`).join(', ')}.
+
+When the user asks to run the whole model, call the stages in order, one tool call at a time,
+briefly noting what each stage's result means before moving to the next. When the user asks for
+one specific stage, call just that one (and any prerequisite stages it needs that haven't run
+yet). If you cannot use the tools API for some reason, respond with a single line of JSON only:
+{"tool": "<tool_name>"} to call a tool, or {"final": "<message>"} when you are done — nothing else
+on that line.`;
+}
+
+function appendTranscript(role, content) {
+  const el = $('chatTranscript');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="role">${role}</div><div>${escapeHtml(content)}</div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+(async () => {
+  if (!navigator.gpu) { $('llmStatus').textContent = 'WebGPU is not available in this browser — try a recent Chrome/Edge on desktop.'; return; }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error('no adapter');
+    $('llmStatus').textContent = 'WebGPU available. Loading the WebLLM library…';
+    webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    populateModelList();
+  } catch (e) {
+    console.error(e);
+    $('llmStatus').textContent = 'WebGPU/WebLLM unavailable: ' + e.message;
+  }
+})();
+
+function paramsInBillions(modelId) {
+  let m = modelId.match(/(\d+(?:\.\d+)?)\s*B\b/i); if (m) return parseFloat(m[1]);
+  m = modelId.match(/(\d+(?:\.\d+)?)\s*M\b/i); if (m) return parseFloat(m[1]) / 1000;
+  return null;
+}
+const MIN_ORCH_PARAMS_B = 0.9; // tool-orchestration needs more instruction-following than plain chat
+
+function populateModelList() {
+  const all = webllm.prebuiltAppConfig.model_list;
+  const models = all
+    .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
+    .filter(m => { const p = paramsInBillions(m.model_id); return p === null || p >= MIN_ORCH_PARAMS_B; })
+    .sort((a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9));
+  const sel = $('chatModelSelect');
+  sel.innerHTML = '';
+  models.slice(0, 6).forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = m.model_id;
+    opt.textContent = m.model_id + (m.vram_required_MB ? ` (~${Math.round(m.vram_required_MB)} MB)` : '');
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (models.length) {
+    $('llmStatus').textContent = 'Ready. Pick a model and press Send (the model loads on first use).';
+    $('sendBtn').disabled = false;
+  } else {
+    $('llmStatus').textContent = 'No suitable orchestration model found in the WebLLM catalog.';
+  }
+}
+
+async function ensureEngine() {
+  const modelId = $('chatModelSelect').value;
+  if (chatEngine && chatEngine.__modelId === modelId) return chatEngine;
+  $('llmStatus').textContent = 'Loading ' + modelId + '…';
+  chatEngine = await webllm.CreateMLCEngine(modelId, {
+    initProgressCallback: (p) => { $('llmStatus').textContent = (p.text || 'Loading…'); },
+  });
+  chatEngine.__modelId = modelId;
+  $('llmStatus').textContent = 'Model ready.';
+  return chatEngine;
+}
+
+function executeToolByName(name) {
+  const st = STAGES.find(s => s.id === name);
+  if (!st) return { ok: false, error: `Unknown tool "${name}".` };
+  return runStage(name, 'agent');
+}
+
+// parses a fallback-format line like {"tool":"run_aggregate"} or {"final":"..."} out of plain text,
+// for models that don't support native tool-calling constrained decoding.
+function parseFallbackAction(text) {
+  const m = text.match(/\{[^{}]*"(?:tool|final)"[^{}]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch (e) { return null; }
+}
+
+async function runAgentTurn(userText) {
+  if (messages.length === 0) messages.push({ role: 'system', content: systemPrompt() });
+  messages.push({ role: 'user', content: userText });
+  appendTranscript('user', userText);
+
+  const engine = await ensureEngine();
+  const MAX_STEPS = 14;
+  for (let step = 0; step < MAX_STEPS; step++) {
+    let reply;
+    try {
+      reply = await engine.chat.completions.create({
+        messages,
+        tools: TOOL_SCHEMAS,
+        tool_choice: 'auto',
+        temperature: 0,
+        max_tokens: 400,
+      });
+    } catch (e) {
+      appendTranscript('assistant', 'Error calling the model: ' + e.message);
+      return;
+    }
+    const msg = reply.choices[0].message;
+
+    if (msg.tool_calls && msg.tool_calls.length) {
+      messages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
+      if (msg.content) appendTranscript('assistant', msg.content);
+      for (const tc of msg.tool_calls) {
+        const name = tc.function.name;
+        appendTranscript('tool', `→ calling ${name}`);
+        const res = executeToolByName(name);
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(res) });
+        appendTranscript('tool', `← ${name}: ${res.ok ? 'ok' : 'error: ' + res.error}`);
+      }
+      continue; // let the model see the tool results and decide the next step
+    }
+
+    const content = msg.content || '';
+    const fallback = parseFallbackAction(content);
+    if (fallback && fallback.tool) {
+      appendTranscript('assistant', content);
+      appendTranscript('tool', `→ calling ${fallback.tool} (fallback format)`);
+      const res = executeToolByName(fallback.tool);
+      messages.push({ role: 'assistant', content });
+      messages.push({ role: 'user', content: `[Tool result for ${fallback.tool}]: ${JSON.stringify(res)}` });
+      appendTranscript('tool', `← ${fallback.tool}: ${res.ok ? 'ok' : 'error: ' + res.error}`);
+      continue;
+    }
+
+    // no tool call — treat as the final answer
+    messages.push({ role: 'assistant', content });
+    appendTranscript('assistant', content || '(no response)');
+    return;
+  }
+  appendTranscript('assistant', '(stopped after reaching the step limit — ask me to continue if needed)');
+}
+
+$('sendBtn').addEventListener('click', async () => {
+  const text = $('chatInput').value.trim();
+  if (!text) return;
+  $('chatInput').value = '';
+  $('sendBtn').disabled = true;
+  try { await runAgentTurn(text); } finally { $('sendBtn').disabled = false; }
+});
+$('qbAll').addEventListener('click', () => { $('chatInput').value = 'Run the whole model, stage by stage, briefly explaining each result.'; $('sendBtn').click(); });
+$('qbReset').addEventListener('click', () => { messages = []; $('chatTranscript').innerHTML = ''; });
+
+/* test hook (used by the automated smoke test; harmless in normal use) */
+window.__wm = { STAGES, runStage, resetState, executeToolByName, get state() { return state; }, get completed() { return completed; } };
+
+resetState();
+</script>
+</body>
+</html>
