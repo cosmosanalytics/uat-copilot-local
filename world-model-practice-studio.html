@@ -728,10 +728,20 @@ function parseFallbackAction(text) {
   try { return JSON.parse(m[0]); } catch (e) { return null; }
 }
 
-async function runAgentTurn(userText) {
-  if (messages.length === 0) messages.push({ role: 'system', content: systemPrompt() });
+// Some WebLLM tool-calling parsers (notably Hermes-2-Pro's, per its ChatCompletionRequest.tools
+// error) reject ANY custom system message when `tools` is passed — only Hermes-3's parser allows
+// one. Rather than special-case model ids (fragile — WebLLM could add more such models later),
+// detect the rejection at call time and retry once with the system prompt folded into the first
+// user turn instead of sent as a system message.
+let systemPromptUnsupported = false;
+
+async function runAgentTurn(userText, opts = {}) {
+  if (messages.length === 0) {
+    if (!systemPromptUnsupported) messages.push({ role: 'system', content: systemPrompt() });
+    else messages.push({ role: 'user', content: systemPrompt() + '\n\n---\n\nNow, the actual request:' });
+  }
   messages.push({ role: 'user', content: userText });
-  appendTranscript('user', userText);
+  if (!opts.silentUserTurn) appendTranscript('user', userText);
 
   const engine = await ensureEngine();
   const MAX_STEPS = 14;
@@ -746,6 +756,13 @@ async function runAgentTurn(userText) {
         max_tokens: 400,
       });
     } catch (e) {
+      if (/cannot specify customized system prompt/i.test(e.message) && messages[0].role === 'system') {
+        // retry this whole turn with the system prompt folded into a user message instead
+        // (silentUserTurn: the user's line was already appended to the transcript above)
+        systemPromptUnsupported = true;
+        messages = [];
+        return runAgentTurn(userText, { silentUserTurn: true });
+      }
       if (/not supported for ChatCompletionRequest\.tools/i.test(e.message)) {
         appendTranscript('assistant',
           `This model doesn't support native tool calling (${e.message}). ` +
