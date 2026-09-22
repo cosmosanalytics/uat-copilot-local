@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Knowledge Correlation Explorer</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --panel:          #ffffff;
+
+    --cat-1: #2a78d6; /* blue */
+    --cat-2: #eb6834; /* orange */
+    --cat-3: #1baf7a; /* aqua */
+    --cat-4: #eda100; /* yellow */
+    --cat-5: #e87ba4; /* magenta */
+    --cat-6: #008300; /* green */
+    --cat-7: #4a3aa7; /* violet */
+    --cat-8: #e34948; /* red */
+
+    --div-pos: #2a78d6;   /* blue pole */
+    --div-neg: #e34948;   /* red pole */
+    --div-mid: #f0efec;   /* neutral gray midpoint */
+
+    --good: #0ca30c;
+    --serious: #ec835a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --panel:          #232322;
+
+      --cat-1: #3987e5;
+      --cat-2: #d95926;
+      --cat-3: #199e70;
+      --cat-4: #c98500;
+      --cat-5: #d55181;
+      --cat-6: #008300;
+      --cat-7: #9085e9;
+      --cat-8: #e66767;
+
+      --div-pos: #3987e5;
+      --div-neg: #e66767;
+      --div-mid: #383835;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --panel:          #232322;
+
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+    --cat-6: #008300;
+    --cat-7: #9085e9;
+    --cat-8: #e66767;
+
+    --div-pos: #3987e5;
+    --div-neg: #e66767;
+    --div-mid: #383835;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding: 20px 16px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  h1 { font-size: 1.35rem; margin: 0; }
+  .sub { color: var(--text-secondary); font-size: 0.92rem; margin: 4px 0 20px; max-width: 720px; }
+
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--panel); color: var(--text-secondary);
+    border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; cursor: pointer;
+  }
+
+  .panel {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--text-primary); }
+
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    background: var(--panel); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font-family: inherit; font-size: 0.88rem; line-height: 1.4;
+  }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .row label { font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; }
+  select, button {
+    font-family: inherit; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border);
+    padding: 7px 12px; background: var(--panel); color: var(--text-primary); cursor: pointer;
+  }
+  button.primary { background: var(--cat-1); color: #fff; border-color: transparent; font-weight: 600; }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:hover:not(:disabled) { filter: brightness(0.97); }
+  input[type=range] { width: 160px; accent-color: var(--cat-1); }
+
+  .status { font-size: 0.82rem; color: var(--text-secondary); margin-top: 10px; min-height: 1.2em; }
+  .progress-bar { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; margin-top: 6px; display: none; }
+  .progress-bar > div { height: 100%; width: 0%; background: var(--cat-1); transition: width 0.2s; }
+
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+  .tab-btn {
+    border: none; background: none; padding: 8px 14px; font-size: 0.85rem; color: var(--text-secondary);
+    border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer;
+  }
+  .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--cat-1); font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 10px 0 4px; font-size: 0.78rem; color: var(--text-secondary); }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  .canvas-wrap { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); }
+  canvas { display: block; }
+
+  .colorbar { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.75rem; color: var(--text-muted); }
+  .colorbar .bar { width: 160px; height: 10px; border-radius: 5px; background: linear-gradient(to right, var(--div-neg), var(--div-mid), var(--div-pos)); }
+
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 50; display: none;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 0.78rem; color: var(--text-primary); max-width: 300px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18); line-height: 1.35;
+  }
+  #tooltip .val { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  table.claims-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.claims-table th, table.claims-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  table.claims-table th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .cluster-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+
+  .hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; }
+  .empty-msg { color: var(--text-muted); font-size: 0.88rem; padding: 30px 0; text-align: center; }
+
+  footer { color: var(--text-muted); font-size: 0.75rem; margin-top: 30px; text-align: center; }
+  a { color: var(--cat-1); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Knowledge Correlation Explorer</h1>
+    <button class="theme-toggle" id="themeToggle">Toggle theme</button>
+  </header>
+  <p class="sub">
+    Paste text, extract its atomic factual claims with a small local LLM, embed each claim,
+    and see which claims cluster together by semantic similarity &mdash; entirely in your
+    browser via WebGPU. Nothing leaves this tab.
+  </p>
+
+  <div class="panel">
+    <h2>1. Input text</h2>
+    <textarea id="inputText" placeholder="Paste a paragraph or document here&hellip;"></textarea>
+    <div class="row">
+      <button id="sampleBtn">Load sample text</button>
+      <span class="hint" id="webgpuHint"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Models</h2>
+    <div class="row">
+      <label>Extraction model (chat)
+        <select id="chatModelSelect"><option>loading model list&hellip;</option></select>
+      </label>
+      <label>Embedding model
+        <select id="embedModelSelect"><option>loading model list&hellip;</option></select>
+      </label>
+      <label>&nbsp;
+        <button class="primary" id="analyzeBtn" disabled>Analyze</button>
+      </label>
+    </div>
+    <div class="progress-bar" id="progressBar"><div id="progressFill"></div></div>
+    <div class="status" id="statusLine">Checking WebGPU support&hellip;</div>
+  </div>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <h2>3. Knowledge correlation</h2>
+    <div class="row" style="margin-top:0;">
+      <label>Clusters (k)
+        <input type="range" id="kSlider" min="2" max="10" value="4" />
+      </label>
+      <span class="hint" id="kLabel">k = 4</span>
+      <label style="margin-left:auto;">Graph similarity threshold
+        <input type="range" id="threshSlider" min="0" max="100" value="35" />
+      </label>
+      <span class="hint" id="threshLabel">&ge; 0.35</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="heatmap">Heatmap</button>
+      <button class="tab-btn" data-tab="graph">Graph</button>
+      <button class="tab-btn" data-tab="table">Table</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-heatmap">
+      <div class="canvas-wrap"><canvas id="heatmapCanvas"></canvas></div>
+      <div class="colorbar"><span>&minus;1</span><div class="bar"></div><span>+1</span><span style="margin-left:8px;">cosine similarity</span></div>
+      <div class="legend" id="heatmapLegend"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-graph">
+      <div class="canvas-wrap"><canvas id="graphCanvas"></canvas></div>
+      <div class="legend" id="graphLegend"></div>
+      <div class="hint">Edges shown only above the similarity threshold above; node color = cluster.</div>
+    </div>
+
+    <div class="tab-panel" id="tab-table">
+      <table class="claims-table" id="claimsTable">
+        <thead><tr><th>Cluster</th><th>Claim</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="placeholderPanel">
+    <p class="empty-msg">Results will appear here after you analyze some text.</p>
+  </div>
+
+  <footer>Runs fully client-side with WebLLM + WebGPU. No text or model output is sent anywhere.</footer>
+</div>
+
+<div id="tooltip"></div>
+
+<script type="module">
+let webllm = null;
+
+const CAT_COLORS = ["--cat-1","--cat-2","--cat-3","--cat-4","--cat-5","--cat-6","--cat-7","--cat-8"];
+function catColor(i) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(CAT_COLORS[i % CAT_COLORS.length]).trim();
+  return v;
+}
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+const SAMPLE_TEXT = `Acme Robotics was founded in 2015 by S. Lee in Austin. The company's flagship
+product, the WidgetLine 200, uses a Stator Core Unit supplied by Ironforge Manufacturing.
+Ironforge has been Acme's supplier since 2016 and has a strong on-time delivery record.
+Some internal notes suggest Acme was actually founded in 2012, before S. Lee joined as CEO.
+Acme's headquarters moved to Austin in 2018 after starting out in Dallas.
+The WidgetLine 200 passed all UL safety certifications in 2021.
+Ironforge Manufacturing is headquartered in Ohio and also supplies parts to two of Acme's
+competitors. Acme reported its first profitable year in 2019, driven largely by WidgetLine 200
+sales to industrial automation customers.`;
+
+// ---------- DOM ----------
+const $ = (id) => document.getElementById(id);
+const inputText = $('inputText');
+const sampleBtn = $('sampleBtn');
+const chatModelSelect = $('chatModelSelect');
+const embedModelSelect = $('embedModelSelect');
+const analyzeBtn = $('analyzeBtn');
+const statusLine = $('statusLine');
+const progressBar = $('progressBar');
+const progressFill = $('progressFill');
+const webgpuHint = $('webgpuHint');
+const resultsPanel = $('resultsPanel');
+const placeholderPanel = $('placeholderPanel');
+const kSlider = $('kSlider');
+const kLabel = $('kLabel');
+const threshSlider = $('threshSlider');
+const threshLabel = $('threshLabel');
+const tooltip = $('tooltip');
+const themeToggle = $('themeToggle');
+
+sampleBtn.addEventListener('click', () => { inputText.value = SAMPLE_TEXT; });
+
+// theme toggle (defaults to light; cycles light -> dark -> system)
+let themeState = 'light';
+themeToggle.textContent = 'Theme: light';
+themeToggle.addEventListener('click', () => {
+  themeState = themeState === 'light' ? 'dark' : themeState === 'dark' ? 'system' : 'light';
+  if (themeState === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themeState);
+  themeToggle.textContent = 'Theme: ' + themeState;
+  if (state.claims.length) renderAll();
+});
+
+// ---------- WebGPU check (synchronous-ish, does not depend on any network fetch) ----------
+let webgpuOk = false;
+(async () => {
+  if (!navigator.gpu) {
+    webgpuHint.textContent = 'WebGPU is not available in this browser — try a recent Chrome/Edge on desktop.';
+    statusLine.textContent = 'WebGPU unavailable. This tool cannot run here.';
+    return;
+  }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error('no adapter');
+    webgpuOk = true;
+    webgpuHint.textContent = 'WebGPU available.';
+    statusLine.textContent = 'Loading the WebLLM library…';
+    await loadWebLLM();
+  } catch (e) {
+    webgpuHint.textContent = 'WebGPU adapter request failed: ' + e.message;
+    statusLine.textContent = 'WebGPU unavailable. This tool cannot run here.';
+  }
+})();
+
+// The WebLLM library itself is fetched from a CDN at runtime (it's a large package not
+// worth vendoring). This is done as a dynamic import, separately from the WebGPU check
+// above, so a network hiccup here reports a clear error instead of leaving the page stuck.
+async function loadWebLLM() {
+  try {
+    webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    populateModelLists();
+  } catch (e) {
+    console.error(e);
+    statusLine.textContent = 'Could not load the WebLLM library from the CDN — check your internet connection and reload.';
+  }
+}
+
+function populateModelLists() {
+  const all = webllm.prebuiltAppConfig.model_list;
+  const chatModels = all
+    .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
+    .sort((a,b) => (a.vram_required_MB||9e9) - (b.vram_required_MB||9e9));
+  const embedModels = all
+    .filter(m => /embed/i.test(m.model_id))
+    .sort((a,b) => (a.vram_required_MB||9e9) - (b.vram_required_MB||9e9));
+
+  fillSelect(chatModelSelect, chatModels, 6);
+  fillSelect(embedModelSelect, embedModels, 6);
+
+  if (chatModels.length && embedModels.length) {
+    analyzeBtn.disabled = false;
+    statusLine.textContent = 'Ready. Pick models (defaults are the smallest/fastest) and click Analyze.';
+  } else {
+    statusLine.textContent = 'Could not find suitable models in the WebLLM catalog.';
+  }
+}
+function fillSelect(sel, models, max) {
+  sel.innerHTML = '';
+  models.slice(0, max).forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = m.model_id;
+    opt.textContent = m.model_id + (m.vram_required_MB ? ` (~${Math.round(m.vram_required_MB)} MB)` : '');
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// ---------- state ----------
+const state = { claims: [], sim: null, order: [], clusterOf: [], k: 4 };
+
+function setProgress(frac, text) {
+  progressBar.style.display = 'block';
+  progressFill.style.width = Math.round(frac * 100) + '%';
+  statusLine.textContent = text;
+}
+
+analyzeBtn.addEventListener('click', runAnalysis);
+kSlider.addEventListener('input', () => {
+  kLabel.textContent = 'k = ' + kSlider.value;
+  if (state.sim) { recluster(); renderAll(); }
+});
+threshSlider.addEventListener('input', () => {
+  const t = (threshSlider.value/100).toFixed(2);
+  threshLabel.textContent = '≥ ' + t;
+  if (state.sim) drawGraph();
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'graph') drawGraph();
+    if (btn.dataset.tab === 'heatmap') drawHeatmap();
+  });
+});
+
+// ---------- main pipeline ----------
+async function runAnalysis() {
+  const text = inputText.value.trim();
+  if (!text) { statusLine.textContent = 'Paste some text first, or load the sample.'; return; }
+  analyzeBtn.disabled = true;
+  try {
+    setProgress(0, 'Loading extraction model…');
+    const chatEngine = await webllm.CreateMLCEngine(chatModelSelect.value, {
+      initProgressCallback: (p) => setProgress(p.progress * 0.4, p.text || 'Loading extraction model…'),
+    });
+
+    setProgress(0.4, 'Extracting knowledge claims…');
+    const claims = await extractClaims(chatEngine, text);
+    if (!claims.length) throw new Error('No claims could be extracted from this text.');
+    state.claims = claims;
+
+    setProgress(0.55, 'Loading embedding model…');
+    const embedEngine = await webllm.CreateMLCEngine(embedModelSelect.value, {
+      initProgressCallback: (p) => setProgress(0.55 + p.progress * 0.25, p.text || 'Loading embedding model…'),
+    });
+
+    setProgress(0.82, 'Embedding claims…');
+    const vectors = await embedClaims(embedEngine, embedModelSelect.value, claims);
+
+    setProgress(0.94, 'Clustering…');
+    state.sim = cosineMatrix(vectors);
+    buildDendrogramOrder(state.sim);
+    recluster();
+
+    setProgress(1, `Done — ${claims.length} claims extracted.`);
+    progressBar.style.display = 'none';
+    placeholderPanel.style.display = 'none';
+    resultsPanel.style.display = 'block';
+    renderAll();
+  } catch (err) {
+    console.error(err);
+    statusLine.textContent = 'Error: ' + err.message;
+    progressBar.style.display = 'none';
+  } finally {
+    analyzeBtn.disabled = false;
+  }
+}
+
+async function extractClaims(engine, text) {
+  const prompt = `Extract every distinct atomic factual claim from the text below. A claim is a
+single self-contained statement (subject + relation + object), e.g. "Acme was founded in 2015".
+Split compound sentences into separate claims. Do not add facts that aren't in the text.
+
+Return ONLY a JSON array of strings, nothing else, no markdown fences.
+
+Text:
+"""${text}"""`;
+
+  const reply = await engine.chat.completions.create({
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0,
+    max_tokens: 900,
+  });
+  const raw = reply.choices[0].message.content;
+  return parseClaims(raw);
+}
+
+function parseClaims(raw) {
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const arrMatch = s.match(/\[[\s\S]*\]/);
+  if (arrMatch) s = arrMatch[0];
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) {
+      return parsed.map(x => String(x).trim()).filter(Boolean);
+    }
+  } catch (e) { /* fall through */ }
+  // fallback: split into lines, strip bullets/numbers/quotes
+  return raw.split('\n')
+    .map(l => l.replace(/^[\s"\-\*\d\.\)]+/, '').replace(/["',]+$/, '').trim())
+    .filter(l => l.length > 8);
+}
+
+async function embedClaims(engine, modelId, claims) {
+  const res = await engine.embeddings.create({ model: modelId, input: claims });
+  return res.data.map(d => d.embedding);
+}
+
+function cosineMatrix(vectors) {
+  const n = vectors.length;
+  const norm = vectors.map(v => Math.sqrt(v.reduce((s,x) => s + x*x, 0)) || 1);
+  const M = Array.from({length:n}, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = i; j < n; j++) {
+      let dot = 0;
+      for (let d = 0; d < vectors[i].length; d++) dot += vectors[i][d] * vectors[j][d];
+      const c = dot / (norm[i] * norm[j]);
+      M[i][j] = c; M[j][i] = c;
+    }
+  }
+  return M;
+}
+
+// ---------- agglomerative clustering (average linkage) ----------
+function buildDendrogramOrder(sim) {
+  const n = sim.length;
+  let clusters = Array.from({length:n}, (_,i) => ({ members: [i], order: [i] }));
+  const dist = (a,b) => {
+    let s = 0, c = 0;
+    for (const i of a.members) for (const j of b.members) { s += 1 - sim[i][j]; c++; }
+    return s / c;
+  };
+  state.mergeHistory = []; // sequence of {members: [...]} snapshots by cluster count, for recluster()
+  state.mergeHistory.push(clusters.map(c => c.members.slice()));
+
+  while (clusters.length > 1) {
+    let bi = 0, bj = 1, bd = Infinity;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i+1; j < clusters.length; j++) {
+        const d = dist(clusters[i], clusters[j]);
+        if (d < bd) { bd = d; bi = i; bj = j; }
+      }
+    }
+    const a = clusters[bi], b = clusters[bj];
+    const merged = { members: a.members.concat(b.members), order: a.order.concat(b.order) };
+    clusters = clusters.filter((_,idx) => idx !== bi && idx !== bj);
+    clusters.push(merged);
+    state.mergeHistory.push(clusters.map(c => c.members.slice()));
+  }
+  state.order = clusters[0].order; // final leaf order from the last remaining cluster
+}
+
+function recluster() {
+  const k = parseInt(kSlider.value, 10);
+  state.k = k;
+  const n = state.claims.length;
+  // mergeHistory[i] has (n - i) clusters; find the snapshot with exactly k clusters
+  let snapshot = state.mergeHistory[0];
+  for (const snap of state.mergeHistory) {
+    if (snap.length === k) { snapshot = snap; break; }
+    if (snap.length < k) break; // passed k, keep previous best
+    snapshot = snap;
+  }
+  const clusterOf = new Array(n).fill(0);
+  snapshot.forEach((members, ci) => members.forEach(idx => clusterOf[idx] = ci));
+  // relabel cluster ids by first appearance in leaf order for stable, readable coloring
+  const seen = new Map(); let next = 0;
+  const remap = new Array(n);
+  for (const idx of state.order) {
+    const c = clusterOf[idx];
+    if (!seen.has(c)) seen.set(c, next++);
+    remap[idx] = seen.get(c);
+  }
+  state.clusterOf = remap;
+}
+
+// ---------- rendering ----------
+function renderAll() {
+  drawHeatmap();
+  drawGraph();
+  renderTable();
+  renderLegends();
+}
+
+function renderLegends() {
+  const nClusters = new Set(state.clusterOf).size;
+  const legendHtml = Array.from({length: nClusters}, (_,i) =>
+    `<span class="item"><span class="swatch" style="background:${catColor(i)}"></span>Cluster ${i+1}</span>`
+  ).join('');
+  $('heatmapLegend').innerHTML = legendHtml;
+  $('graphLegend').innerHTML = legendHtml;
+}
+
+function truncate(s, n) { return s.length > n ? s.slice(0, n-1) + '…' : s; }
+
+function drawHeatmap() {
+  const canvas = $('heatmapCanvas');
+  if (!canvas.offsetParent && !document.getElementById('tab-heatmap').classList.contains('active')) return;
+  const n = state.claims.length;
+  const order = state.order;
+  const labelW = 220, cell = Math.max(16, Math.min(34, Math.floor(560 / n)));
+  const size = cell * n;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = (labelW + size + 20) * dpr;
+  canvas.height = (labelW + size + 20) * dpr;
+  canvas.style.width = (labelW + size + 20) + 'px';
+  canvas.style.height = (labelW + size + 20) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = cssVar('--surface-1');
+  ctx.fillRect(0,0,canvas.width/dpr,canvas.height/dpr);
+
+  const posColor = hexToRgb(cssVar('--div-pos'));
+  const negColor = hexToRgb(cssVar('--div-neg'));
+  const midColor = hexToRgb(cssVar('--div-mid'));
+  function cellColor(v) {
+    const t = Math.max(-1, Math.min(1, v));
+    const [c1,c2] = t >= 0 ? [midColor, posColor] : [midColor, negColor];
+    const f = Math.abs(t);
+    return `rgb(${lerp(c1[0],c2[0],f)},${lerp(c1[1],c2[1],f)},${lerp(c1[2],c2[2],f)})`;
+  }
+
+  const ox = labelW, oy = 10;
+  // cluster boundary detection along order
+  const boundaries = [];
+  for (let i = 1; i < n; i++) if (state.clusterOf[order[i]] !== state.clusterOf[order[i-1]]) boundaries.push(i);
+
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const vi = order[r], vj = order[c];
+      const v = state.sim[vi][vj];
+      ctx.fillStyle = cellColor(v);
+      ctx.fillRect(ox + c*cell, oy + r*cell, cell-1, cell-1);
+    }
+  }
+  // cluster color strips
+  for (let r = 0; r < n; r++) {
+    ctx.fillStyle = catColor(state.clusterOf[order[r]]);
+    ctx.fillRect(ox - 8, oy + r*cell, 5, cell-1);
+    ctx.fillRect(ox + r*cell, oy - 8, cell-1, 5);
+  }
+  // boundary lines
+  ctx.strokeStyle = cssVar('--text-primary');
+  ctx.lineWidth = 1.5;
+  boundaries.forEach(b => {
+    ctx.beginPath(); ctx.moveTo(ox, oy + b*cell); ctx.lineTo(ox + size, oy + b*cell); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox + b*cell, oy); ctx.lineTo(ox + b*cell, oy + size); ctx.stroke();
+  });
+  // row labels
+  ctx.fillStyle = cssVar('--text-secondary');
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  for (let r = 0; r < n; r++) {
+    ctx.fillText(truncate(state.claims[order[r]], 30), 0, oy + r*cell + cell/2);
+  }
+
+  canvas._hitTest = (mx, my) => {
+    const c = Math.floor((mx - ox) / cell), r = Math.floor((my - oy) / cell);
+    if (r < 0 || r >= n || c < 0 || c >= n) return null;
+    const vi = order[r], vj = order[c];
+    return { i: vi, j: vj, v: state.sim[vi][vj] };
+  };
+}
+function lerp(a,b,f) { return Math.round(a + (b-a)*f); }
+function hexToRgb(hex) {
+  hex = hex.replace('#','');
+  return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+}
+
+$('heatmapCanvas').addEventListener('mousemove', (e) => {
+  const canvas = e.target; const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const mx = (e.clientX - rect.left), my = (e.clientY - rect.top);
+  const hit = canvas._hitTest ? canvas._hitTest(mx, my) : null;
+  if (!hit) { tooltip.style.display = 'none'; return; }
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top = (e.clientY + 14) + 'px';
+  tooltip.innerHTML = `<div>${truncate(state.claims[hit.i], 90)}</div>
+    <div style="margin:3px 0;">${hit.i===hit.j ? '' : '&harr; ' + truncate(state.claims[hit.j], 90)}</div>
+    <div class="val">similarity: ${hit.v.toFixed(3)}</div>`;
+});
+$('heatmapCanvas').addEventListener('mouseleave', () => tooltip.style.display = 'none');
+
+// ---------- graph view ----------
+let graphNodes = null;
+function drawGraph() {
+  const canvas = $('graphCanvas');
+  const n = state.claims.length;
+  const W = 720, H = 460;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const thresh = parseInt(threshSlider.value,10)/100;
+
+  if (!graphNodes || graphNodes.length !== n) {
+    graphNodes = Array.from({length:n}, () => ({
+      x: W/2 + (Math.random()-0.5)*200, y: H/2 + (Math.random()-0.5)*200, vx:0, vy:0,
+    }));
+    simulate(graphNodes, state.sim, thresh, W, H, 260);
+  } else {
+    simulate(graphNodes, state.sim, thresh, W, H, 30);
+  }
+
+  ctx.fillStyle = cssVar('--surface-1');
+  ctx.fillRect(0,0,W,H);
+
+  // edges
+  for (let i = 0; i < n; i++) {
+    for (let j = i+1; j < n; j++) {
+      const v = state.sim[i][j];
+      if (v < thresh) continue;
+      ctx.strokeStyle = cssVar('--text-muted');
+      ctx.globalAlpha = Math.max(0.08, (v - thresh) / (1 - thresh));
+      ctx.lineWidth = 1 + 2*v;
+      ctx.beginPath(); ctx.moveTo(graphNodes[i].x, graphNodes[i].y); ctx.lineTo(graphNodes[j].x, graphNodes[j].y); ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  // nodes
+  graphNodes.forEach((node, i) => {
+    ctx.beginPath(); ctx.arc(node.x, node.y, 9, 0, Math.PI*2);
+    ctx.fillStyle = catColor(state.clusterOf[i]);
+    ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = cssVar('--surface-1'); ctx.stroke();
+  });
+
+  canvas._hitTest = (mx,my) => {
+    for (let i = 0; i < n; i++) {
+      const dx = mx - graphNodes[i].x, dy = my - graphNodes[i].y;
+      if (dx*dx + dy*dy < 12*12) return i;
+    }
+    return null;
+  };
+}
+function simulate(nodes, sim, thresh, W, H, iters) {
+  const n = nodes.length;
+  for (let it = 0; it < iters; it++) {
+    for (let i = 0; i < n; i++) {
+      let fx = 0, fy = 0;
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d2 = dx*dx + dy*dy + 0.01; const d = Math.sqrt(d2);
+        // repulsion
+        fx += dx / d2 * 900; fy += dy / d2 * 900;
+        // attraction proportional to similarity (spring), stronger above threshold
+        const v = sim[i][j];
+        const target = 60 + (1 - Math.max(v,0)) * 140;
+        const k = v > thresh ? 0.02 : 0.002;
+        fx -= (dx/d) * (d - target) * k;
+        fy -= (dy/d) * (d - target) * k;
+      }
+      // centering
+      fx += (W/2 - nodes[i].x) * 0.002;
+      fy += (H/2 - nodes[i].y) * 0.002;
+      nodes[i].vx = (nodes[i].vx + fx) * 0.6;
+      nodes[i].vy = (nodes[i].vy + fy) * 0.6;
+    }
+    for (let i = 0; i < n; i++) {
+      nodes[i].x += nodes[i].vx * 0.02;
+      nodes[i].y += nodes[i].vy * 0.02;
+      nodes[i].x = Math.max(14, Math.min(W-14, nodes[i].x));
+      nodes[i].y = Math.max(14, Math.min(H-14, nodes[i].y));
+    }
+  }
+}
+$('graphCanvas').addEventListener('mousemove', (e) => {
+  const canvas = e.target; const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const hit = canvas._hitTest ? canvas._hitTest(mx,my) : null;
+  if (hit === null) { tooltip.style.display = 'none'; return; }
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top = (e.clientY + 14) + 'px';
+  tooltip.innerHTML = `<div>${truncate(state.claims[hit], 110)}</div><div class="val">cluster ${state.clusterOf[hit]+1}</div>`;
+});
+$('graphCanvas').addEventListener('mouseleave', () => tooltip.style.display = 'none');
+
+function renderTable() {
+  const tbody = document.querySelector('#claimsTable tbody');
+  tbody.innerHTML = '';
+  const order = state.order.slice();
+  order.forEach(idx => {
+    const tr = document.createElement('tr');
+    const c = state.clusterOf[idx];
+    tr.innerHTML = `<td><span class="cluster-dot" style="background:${catColor(c)}"></span>Cluster ${c+1}</td>
+      <td>${escapeHtml(state.claims[idx])}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>
