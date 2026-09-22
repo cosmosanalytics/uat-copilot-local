@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Financial World Model — Menu Edition</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --page: #f9f9f7; --panel: #ffffff;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+    --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d; --panel: #232322;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { padding: 20px 16px 70px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  .sub { color: var(--text-secondary); font-size: 0.9rem; max-width: 760px; margin: 6px 0 18px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--panel); color: var(--text-secondary); border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; cursor: pointer; }
+  .panel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 0.95rem; margin: 0 0 4px; }
+  .panel .panel-note { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 12px; }
+  label { font-size: 0.76rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
+  input[type=text], input[type=number] { font-family: inherit; font-size: 0.83rem; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; background: var(--panel); color: var(--text-primary); width: 100%; }
+  select, button { font-family: inherit; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border); padding: 7px 12px; background: var(--panel); color: var(--text-primary); cursor: pointer; }
+  select { width: 100%; }
+  button.primary { background: var(--cat-1); color: #fff; border-color: transparent; font-weight: 600; }
+  button.small { padding: 4px 9px; font-size: 0.78rem; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:hover:not(:disabled) { filter: brightness(0.97); }
+  .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+  .grid-inputs.wide { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .field-group { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .field-group > .fg-title { font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+
+  .beat-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-wrap: wrap; }
+  .beat-tab-btn { border: none; background: none; padding: 8px 12px; font-size: 0.82rem; color: var(--text-secondary); border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer; }
+  .beat-tab-btn .beat-num { color: var(--text-muted); font-size: 0.7rem; margin-right: 4px; }
+  .beat-tab-btn.active { color: var(--text-primary); border-bottom-color: var(--cat-1); font-weight: 600; }
+  .beat-desc { color: var(--text-secondary); font-size: 0.82rem; margin: 0 0 12px; }
+  .stage-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--panel); }
+  .stage-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .stage-num { width: 22px; height: 22px; border-radius: 50%; background: var(--cat-1); color: #fff; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .stage-num.done { background: var(--good); }
+  .stage-name { font-weight: 600; font-size: 0.92rem; }
+  .stage-desc { color: var(--text-secondary); font-size: 0.8rem; margin: 6px 0; }
+  .stage-formula { margin: 8px 0; font-size: 0.82rem; font-family: ui-monospace, "SF Mono", monospace; color: var(--text-secondary); background: var(--page); border-radius: 6px; padding: 6px 9px; display: inline-block; }
+  .stage-actions { margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .stage-prereq { color: var(--text-muted); font-size: 0.74rem; }
+  .stage-result { margin-top: 10px; background: var(--page); border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; font-family: ui-monospace, "SF Mono", monospace; white-space: pre-wrap; word-break: break-word; display: none; }
+  .stage-result.show { display: block; }
+  .stage-result.err { color: var(--crit); }
+  .flag { display: inline-block; background: var(--warn); color: #3a2a00; border-radius: 5px; padding: 1px 6px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
+  .flag.crit { background: var(--crit); color: #fff; }
+  .flag.good { background: var(--good); color: #fff; }
+
+  table.state-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.state-table th, table.state-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; vertical-align: top; }
+  table.state-table th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; }
+  .neg { color: var(--crit); font-weight: 600; }
+
+  #toolLog { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+  .log-entry { padding: 8px 10px; border-bottom: 1px solid var(--grid); font-size: 0.78rem; }
+  .log-entry .log-head { display: flex; gap: 8px; align-items: center; font-family: ui-monospace, monospace; }
+  .log-src { font-size: 0.68rem; padding: 1px 6px; border-radius: 5px; background: var(--cat-1); color: #fff; }
+  .log-src.agent { background: var(--cat-7); }
+  .log-body { margin-top: 4px; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
+  .log-err { color: var(--crit); }
+
+  .chat-transcript { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); padding: 10px; margin-bottom: 10px; }
+  .msg { margin-bottom: 10px; font-size: 0.85rem; line-height: 1.4; }
+  .msg .role { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+  .msg.user .role { color: var(--cat-1); }
+  .msg.assistant .role { color: var(--cat-7); }
+  .msg.tool .role { color: var(--cat-3); }
+  textarea.chat-input { width: 100%; min-height: 60px; resize: vertical; font-family: inherit; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--panel); color: var(--text-primary); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .status { font-size: 0.8rem; color: var(--text-secondary); margin-top: 8px; }
+  .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  footer { color: var(--text-muted); font-size: 0.75rem; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Financial World Model — Menu Edition</h1>
+    <button class="theme-toggle" id="themeToggle">Theme: light</button>
+  </header>
+  <p class="sub">
+    9 tool calls — one per stage of a single applicant's standard life insurance / annuity journey
+    (Application → Health Questionnaire → Records Check → Medical Exam → Underwriter Review →
+    Rating &amp; Premium Pricing → Policy Issuance → Premium Servicing / Accumulation → then either
+    Claims Processing or Annuitization, depending on the product family). Each tool is a pure,
+    deterministic function modeling the real math and gating rules of that stage (a debit-based
+    risk-classification engine, age/risk-adjusted premium pricing, contestability-period claim
+    investigation, surrender-charge schedules). This edition has no model in the loop at all —
+    instead of an LLM deciding which tool to call, you pick the action yourself from a plain menu
+    below. Run stages manually to study the logic, or use the menu to run the whole case in one
+    click. The stage sequence and product lines are modeled loosely on a typical life insurance and
+    annuity carrier's core business (see footer), simplified into a single illustrative pipeline —
+    not a representation of any specific insurer's actual underwriting manual, rate tables, or
+    contract terms.
+  </p>
+
+  <div class="panel">
+    <h2>Applicant &amp; policy case</h2>
+    <div class="panel-note">Every path through this pipeline is the same underwriting-to-outcome chain, grouped here into four beats. Edit a field, click "Apply inputs &amp; reset state" (it always resets the full chain, since a change anywhere invalidates everything downstream), then run stages manually to study the logic, or use the AI Orchestrator below to run the chain via tool calls.</div>
+    <div class="beat-tabs" id="beatTabs"></div>
+    <div class="beat-desc" id="beatDesc"></div>
+
+    <div id="inputsContainer">
+      <div class="field-group" data-beat="0">
+        <div class="fg-title">Applicant</div>
+        <div class="grid-inputs wide">
+          <label>Name <input type="text" id="in_name" value="Avery Chen"></label>
+          <label>Age <input type="number" id="in_age" value="42"></label>
+          <label>Annual income ($) <input type="number" id="in_income" value="120000"></label>
+          <label>Height (in) <input type="number" id="in_height" value="68"></label>
+          <label>Weight (lbs) <input type="number" id="in_weight" value="170"></label>
+        </div>
+        <div class="grid-inputs" style="margin-top:8px;">
+          <label>Tobacco use? <select id="in_tobacco"><option value="false" selected>no</option><option value="true">yes</option></select></label>
+          <label>Hazardous hobby? <select id="in_hobby"><option value="false" selected>no</option><option value="true">yes</option></select></label>
+          <label>Systolic BP <input type="number" id="in_bp" value="118"></label>
+          <label>Total cholesterol <input type="number" id="in_chol" value="180"></label>
+          <label>HbA1c (%) <input type="number" id="in_hba1c" value="5.2" step="0.1"></label>
+        </div>
+        <div class="grid-inputs wide" style="margin-top:8px;">
+          <label>Disclosed medical conditions (comma-separated, blank = none)
+            <input type="text" id="in_conditions" value="">
+          </label>
+          <label>Undisclosed items found in MIB / records check (comma-separated, blank = none — simulates a database hit the applicant didn't disclose)
+            <input type="text" id="in_mibFlags" value="">
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="1">
+        <div class="fg-title">Product &amp; application</div>
+        <div class="grid-inputs wide">
+          <label>Product family
+            <select id="in_productFamily">
+              <option value="life" selected>life insurance</option>
+              <option value="annuity">annuity</option>
+            </select>
+          </label>
+          <label>Product name <input type="text" id="in_productName" value="Term Life 20"></label>
+          <label>Application date <input type="text" id="in_appDate" value="2020-01-10"></label>
+        </div>
+        <div class="grid-inputs" style="margin-top:8px;">
+          <label>Face amount ($, life only) <input type="number" id="in_faceAmount" value="500000"></label>
+          <label>Base rate per $1,000 (life only) <input type="number" id="in_baseRate" value="1.8" step="0.05"></label>
+          <label>Annual contribution ($, annuity only) <input type="number" id="in_contribution" value="10000"></label>
+        </div>
+        <div class="panel-note" style="margin-top:8px;">
+          A medical exam is triggered automatically if the life face amount is ≥ $500,000 or any
+          medical condition is disclosed (a simplified version of real exam-requirement rules).
+          Annuities skip medical underwriting risk-pricing in practice, but this pipeline still
+          runs them through the same review stages for illustration — the risk tier just won't
+          affect an annuity's premium math the way it does for life.
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="2">
+        <div class="fg-title">Accumulation</div>
+        <div class="grid-inputs">
+          <label>Years in force so far <input type="number" id="in_yearsInForce" value="5"></label>
+          <label>Annual crediting rate (0–1) <input type="number" id="in_creditingRate" value="0.03" step="0.005"></label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="3">
+        <div class="fg-title">Outcome — Claims (life) or Annuitization (annuity)</div>
+        <div class="grid-inputs wide">
+          <label>Claim date (life only) <input type="text" id="in_claimDate" value="2026-06-01"></label>
+          <label>Cause of death (life only) <input type="text" id="in_causeOfDeath" value="natural causes"></label>
+          <label>Payout choice (annuity only)
+            <select id="in_payoutChoice">
+              <option value="lump_sum" selected>lump sum</option>
+              <option value="period_certain">period certain</option>
+              <option value="lifetime">lifetime</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-inputs" style="margin-top:8px;">
+          <label>Payout years (period certain) <input type="number" id="in_payoutYears" value="10"></label>
+          <label>Life expectancy years (lifetime) <input type="number" id="in_lifeExpectancy" value="20"></label>
+        </div>
+        <div class="panel-note" style="margin-top:8px;">
+          Claims within the 2-year contestability window are denied if an undisclosed item was
+          found during Records Check (material misrepresentation) — a simplified version of real
+          contestability-clause investigations. Annuity surrender charges follow a declining
+          10-year schedule (9% in year 1 down to 0% by year 10+).
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="applyInputsBtn">Apply inputs &amp; reset state</button>
+      <span class="status" id="inputsStatus"></span>
+    </div>
+
+    <div id="stagesContainer"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Case state</h2>
+    <div class="panel-note">Live values as each stage completes. Declines, denials, and negative or blocked outcomes are flagged — worth tracing back to see which upstream input caused them.</div>
+    <div id="stateInspector"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Tool call log</h2>
+    <div class="panel-note">Every execution — manual or agent-driven — with its result, so you can audit exactly what ran.</div>
+    <div id="toolLog"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Menu orchestrator</h2>
+    <div class="panel-note">
+      Pick an action from the menu and click Execute — this calls the exact same stage functions
+      shown above, directly, with no model deciding anything. It's the same job an LLM tool-calling
+      orchestrator would do (choosing which tool to call next), just done by you from a plain menu
+      instead of by typing a request to a model. The menu's stage-9 option automatically matches
+      whichever product family is currently selected above — the other branch (Claims Processing vs.
+      Annuitization) isn't offered.
+    </div>
+    <div class="row" style="margin-top:0;">
+      <label style="min-width:320px; flex: 1;">Action
+        <select id="menuSelect"></select>
+      </label>
+      <button class="primary" id="menuRunBtn">Execute</button>
+    </div>
+    <div class="status" id="menuStatus"></div>
+  </div>
+
+  <footer>
+    Runs entirely as static client-side JavaScript — no server calls, no model, nothing leaves your
+    browser. Stage sequence adapted from published life-insurance-underwriting and claims-process
+    literature (Ethos's underwriting and claims-process guides, Britannica's overview of
+    underwriting risk classification, and Annuity.org's explanation of the accumulation /
+    surrender-charge / annuitization lifecycle), and product-line framing drawn from how life
+    insurance and annuity carriers typically describe their business segments. Simplified into a
+    single illustrative 9-stage pipeline for demonstration — not a representation of any specific
+    insurer's actual underwriting manual, rate tables, or contract terms, and not financial or
+    insurance advice.
+  </footer>
+</div>
+
+<script type="module">
+/* ============================== Financial Process core ============================== */
+function round2(x) { return Math.round(x * 100) / 100; }
+
+function addYears(dateStr, years) {
+  const d = new Date(dateStr);
+  d.setFullYear(d.getFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+const RISK_TIERS = [
+  { name: 'Preferred Plus', maxDebits: 0, multiplier: 0.75 },
+  { name: 'Preferred', maxDebits: 2, multiplier: 0.9 },
+  { name: 'Standard Plus', maxDebits: 4, multiplier: 1.0 },
+  { name: 'Standard', maxDebits: 7, multiplier: 1.25 },
+  { name: 'Table Rating (substandard)', maxDebits: Infinity, multiplier: 1.75 },
+];
+const EXAM_REQUIRED_THRESHOLD = 500000;
+const SURRENDER_SCHEDULE = [0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01, 0];
+
+function toolApplication(state) {
+  const { applicant, product } = state.inputs;
+  const flags = [];
+  if (applicant.tobaccoUse) flags.push('tobacco use disclosed');
+  if (applicant.hazardousHobby) flags.push('hazardous hobby disclosed');
+  if (product.faceAmount > applicant.annualIncome * 20) flags.push('face amount exceeds 20x income (financial justification review)');
+  state.application = { applicant, product, flags, submittedAt: state.inputs.applicationDate };
+  return { application: state.application };
+}
+
+function toolHealthQuestionnaire(state) {
+  if (!state.application) throw new Error('Run Application first (application is missing).');
+  const { applicant } = state.inputs;
+  const conditions = applicant.medicalConditions || [];
+  state.healthQuestionnaire = { conditions, bmi: round2(applicant.weightLbs / (applicant.heightIn * applicant.heightIn) * 703), tobaccoUse: applicant.tobaccoUse };
+  return { healthQuestionnaire: state.healthQuestionnaire };
+}
+
+function toolRecordsCheck(state) {
+  if (!state.healthQuestionnaire) throw new Error('Run Health Questionnaire first (healthQuestionnaire is missing).');
+  const { mibFlags } = state.inputs;
+  const discrepancy = mibFlags.length > 0;
+  state.recordsCheck = { mibFlags, discrepancy, source: 'MIB / Attending Physician Statement (simulated)' };
+  return { recordsCheck: state.recordsCheck };
+}
+
+function toolMedicalExam(state) {
+  if (!state.recordsCheck) throw new Error('Run Records Check first (recordsCheck is missing).');
+  const { product, applicant } = state.inputs;
+  const required = product.faceAmount >= EXAM_REQUIRED_THRESHOLD || state.healthQuestionnaire.conditions.length > 0;
+  let vitals = null;
+  if (required) vitals = { systolicBP: applicant.systolicBP, cholesterolTotal: applicant.cholesterolTotal, hba1c: applicant.hba1c };
+  state.medicalExam = { required, vitals };
+  return { medicalExam: state.medicalExam };
+}
+
+function toolUnderwriterReview(state) {
+  if (!state.medicalExam) throw new Error('Run Medical Exam first (medicalExam is missing).');
+  let debits = 0;
+  const reasons = [];
+  if (state.healthQuestionnaire.tobaccoUse) { debits += 3; reasons.push('tobacco use (+3)'); }
+  if (state.healthQuestionnaire.bmi >= 35) { debits += 2; reasons.push('BMI >= 35 (+2)'); }
+  else if (state.healthQuestionnaire.bmi >= 30) { debits += 1; reasons.push('BMI >= 30 (+1)'); }
+  debits += state.healthQuestionnaire.conditions.length * 2;
+  if (state.healthQuestionnaire.conditions.length) reasons.push(`${state.healthQuestionnaire.conditions.length} disclosed condition(s) (+${state.healthQuestionnaire.conditions.length * 2})`);
+  if (state.recordsCheck.discrepancy) { debits += 4; reasons.push('undisclosed condition found in records check (+4)'); }
+  if (state.medicalExam.vitals) {
+    if (state.medicalExam.vitals.systolicBP >= 140) { debits += 2; reasons.push('systolic BP >= 140 (+2)'); }
+    if (state.medicalExam.vitals.hba1c >= 6.5) { debits += 3; reasons.push('HbA1c >= 6.5 / diabetic range (+3)'); }
+  }
+  const tier = RISK_TIERS.find(t => debits <= t.maxDebits);
+  const declined = debits >= 12;
+  state.underwriting = { debits, reasons, tier: declined ? null : tier.name, riskMultiplier: declined ? null : tier.multiplier, declined };
+  return { underwriting: state.underwriting };
+}
+
+function toolRatingPricing(state) {
+  if (!state.underwriting) throw new Error('Run Underwriter Review first (underwriting is missing).');
+  if (state.underwriting.declined) { state.pricing = { decision: 'declined', annualPremium: null }; return { pricing: state.pricing }; }
+  const { product, applicant } = state.inputs;
+  const ageAdj = 1 + Math.max(0, applicant.age - 30) * 0.02;
+  const annualPremium = round2((product.faceAmount / 1000) * product.baseRatePer1000 * state.underwriting.riskMultiplier * ageAdj);
+  state.pricing = { decision: 'approved', tier: state.underwriting.tier, annualPremium, ageAdj: round2(ageAdj) };
+  return { pricing: state.pricing };
+}
+
+function toolPolicyIssuance(state) {
+  if (!state.pricing) throw new Error('Run Rating & Premium Pricing first (pricing is missing).');
+  if (state.pricing.decision !== 'approved') throw new Error('Cannot issue policy: application was declined at underwriting.');
+  state.policy = {
+    policyNumber: 'POL-' + Math.floor(1e6 + (state.inputs.policySeed || 1) * 54321 % 9e5),
+    product: state.inputs.product.name, faceAmount: state.inputs.product.faceAmount,
+    annualPremium: state.pricing.annualPremium, issuedAt: state.inputs.applicationDate,
+    status: 'in_force', cashValue: 0, contestabilityPeriodEnds: addYears(state.inputs.applicationDate, 2),
+  };
+  return { policy: state.policy };
+}
+
+function toolPremiumServicing(state) {
+  if (!state.policy) throw new Error('Run Policy Issuance first (policy is missing).');
+  const { yearsInForce, annualCreditingRate, annualContribution, productFamily } = state.inputs;
+  const isAnnuity = productFamily === 'annuity';
+  const inflow = isAnnuity ? (annualContribution || 0) : state.policy.annualPremium * 0.85;
+  let cashValue = 0;
+  for (let y = 0; y < yearsInForce; y++) cashValue = round2((cashValue + inflow) * (1 + annualCreditingRate));
+  state.policy.cashValue = cashValue;
+  state.policy.yearsInForce = yearsInForce;
+  const totalPaidIn = isAnnuity ? round2((annualContribution || 0) * yearsInForce) : round2(state.policy.annualPremium * yearsInForce);
+  state.servicing = { premiumsPaid: yearsInForce, totalPaidIn, cashValue };
+  return { servicing: state.servicing };
+}
+
+function toolClaimsProcessing(state) {
+  if (!state.servicing) throw new Error('Run Premium Servicing first (servicing is missing).');
+  if (state.inputs.productFamily !== 'life') throw new Error('Claims Processing applies to life insurance products — this case is an annuity; run Annuitization instead.');
+  const { claimDate, causeOfDeath } = state.inputs;
+  const withinContestability = new Date(claimDate) < new Date(state.policy.contestabilityPeriodEnds);
+  const misrepresentation = state.recordsCheck.discrepancy;
+  const decision = (withinContestability && misrepresentation) ? 'denied' : 'approved';
+  state.claim = {
+    claimDate, causeOfDeath, withinContestability, decision,
+    denialReason: decision === 'denied' ? 'Material misrepresentation on application discovered during contestability period investigation.' : null,
+    payout: decision === 'approved' ? state.policy.faceAmount : 0,
+  };
+  return { claim: state.claim };
+}
+
+function toolAnnuitization(state) {
+  if (!state.servicing) throw new Error('Run Premium Servicing first (servicing is missing).');
+  if (state.inputs.productFamily !== 'annuity') throw new Error('Annuitization applies to annuity products — this case is life insurance; run Claims Processing instead.');
+  const { payoutChoice, payoutYears } = state.inputs;
+  const yearsInForce = state.policy.yearsInForce;
+  const surrenderPct = SURRENDER_SCHEDULE[Math.min(yearsInForce, SURRENDER_SCHEDULE.length - 1)];
+  const surrenderCharge = payoutChoice === 'lump_sum' ? round2(state.policy.cashValue * surrenderPct) : 0;
+  const netLumpSum = round2(state.policy.cashValue - surrenderCharge);
+  let annualPayout = null;
+  if (payoutChoice !== 'lump_sum') {
+    const years = payoutChoice === 'lifetime' ? (state.inputs.lifeExpectancyYears || 20) : payoutYears;
+    annualPayout = round2(state.policy.cashValue / years);
+  }
+  state.annuitization = { payoutChoice, surrenderPct, surrenderCharge, netLumpSum, annualPayout };
+  return { annuitization: state.annuitization };
+}
+
+/* ============================== stage metadata ============================== */
+const STAGES = [
+  { id: 'run_application', num: 1, name: 'Application', formula: 'Application = {Applicant, Product}', desc: 'Applicant submits personal, financial, and health details; obvious red flags are noted for review.', fn: toolApplication, prereq: [], beat: 0 },
+  { id: 'run_health_questionnaire', num: 2, name: 'Health Questionnaire', formula: 'BMI = 703 · Weight / Height²', desc: 'Captures medical history, medications, and lifestyle information (tobacco use, disclosed conditions).', fn: toolHealthQuestionnaire, prereq: ['run_application'], beat: 0 },
+  { id: 'run_records_check', num: 3, name: 'Records Check (MIB / APS)', formula: 'Discrepancy = |MIBFlags| > 0', desc: 'Third-party database check against the Medical Information Bureau / Attending Physician Statement to catch undisclosed conditions.', fn: toolRecordsCheck, prereq: ['run_health_questionnaire'], beat: 0 },
+  { id: 'run_medical_exam', num: 4, name: 'Medical Exam', formula: 'Required = FaceAmount ≥ $500k OR Conditions > 0', desc: 'Conditionally required paramedical exam — blood pressure, cholesterol, HbA1c — for higher face amounts or disclosed conditions.', fn: toolMedicalExam, prereq: ['run_records_check'], beat: 0 },
+  { id: 'run_underwriter_review', num: 5, name: 'Underwriter Review', formula: 'Tier = RiskTable(Σ Debits)', desc: 'A debit-based risk classification engine assigns a rating tier (Preferred Plus → Table Rating) or an outright decline.', fn: toolUnderwriterReview, prereq: ['run_medical_exam'], beat: 1 },
+  { id: 'run_rating_pricing', num: 6, name: 'Rating &amp; Premium Pricing', formula: 'Premium = (Face/1000) · BaseRate · RiskMult · AgeAdj', desc: 'Translates the risk tier into a final annual premium — or confirms the decline from Underwriter Review.', fn: toolRatingPricing, prereq: ['run_underwriter_review'], beat: 1 },
+  { id: 'run_policy_issuance', num: 7, name: 'Policy Issuance', formula: 'Policy = {PolicyNumber, Premium, ContestabilityEnd}', desc: 'Issues the in-force policy — blocked if the application was declined at underwriting.', fn: toolPolicyIssuance, prereq: ['run_rating_pricing'], beat: 1 },
+  { id: 'run_premium_servicing', num: 8, name: 'Premium Servicing / Accumulation', formula: 'CashValue_t = (CashValue_{t-1} + Inflow) · (1 + CreditingRate)', desc: 'Years of premium (life) or contributions (annuity) compound into cash value — the accumulation phase.', fn: toolPremiumServicing, prereq: ['run_policy_issuance'], beat: 2 },
+  { id: 'run_claims_processing', num: 9, name: 'Claims Processing (life)', formula: 'Denied if WithinContestability AND Misrepresentation', desc: 'Death-benefit claim review — investigates for material misrepresentation if the claim falls within the 2-year contestability period. Life insurance only.', fn: toolClaimsProcessing, prereq: ['run_premium_servicing'], beat: 3 },
+  { id: 'run_annuitization', num: 9, name: 'Annuitization (annuity)', formula: 'SurrenderCharge = CashValue · Schedule(YearsInForce)', desc: 'Converts accumulated cash value into a lump sum (net of any surrender charge) or a periodic/lifetime payout stream. Annuity only.', fn: toolAnnuitization, prereq: ['run_premium_servicing'], beat: 3 },
+];
+
+const BEATS = [
+  { name: 'Application Intake', desc: 'Capture applicant details, health history, and third-party records verification.' },
+  { name: 'Underwriting & Issuance', desc: 'Classify risk, price the premium, and issue the policy — or decline the application.' },
+  { name: 'Accumulation', desc: 'Premiums or contributions compound into cash value over the years the policy is in force.' },
+  { name: 'Outcome', desc: 'Resolve to a claim payout (life) or an annuitized income stream (annuity), depending on the product family selected above.' },
+];
+let activeBeat = 0;
+
+/* ============================== app state ============================== */
+const $ = (id) => document.getElementById(id);
+let state = null;
+let completed = new Set();
+let lastResultText = {};
+
+function csvList(str) { return str.split(',').map(s => s.trim()).filter(Boolean); }
+
+function defaultInputs() {
+  const productFamily = $('in_productFamily').value;
+  return {
+    applicant: {
+      name: $('in_name').value, age: parseFloat($('in_age').value), annualIncome: parseFloat($('in_income').value),
+      heightIn: parseFloat($('in_height').value), weightLbs: parseFloat($('in_weight').value),
+      tobaccoUse: $('in_tobacco').value === 'true', hazardousHobby: $('in_hobby').value === 'true',
+      medicalConditions: csvList($('in_conditions').value),
+      systolicBP: parseFloat($('in_bp').value), cholesterolTotal: parseFloat($('in_chol').value), hba1c: parseFloat($('in_hba1c').value),
+    },
+    product: { name: $('in_productName').value, faceAmount: parseFloat($('in_faceAmount').value), baseRatePer1000: parseFloat($('in_baseRate').value) },
+    productFamily,
+    applicationDate: $('in_appDate').value,
+    mibFlags: csvList($('in_mibFlags').value),
+    policySeed: 1,
+    yearsInForce: parseFloat($('in_yearsInForce').value),
+    annualCreditingRate: parseFloat($('in_creditingRate').value),
+    annualContribution: parseFloat($('in_contribution').value),
+    claimDate: $('in_claimDate').value,
+    causeOfDeath: $('in_causeOfDeath').value,
+    payoutChoice: $('in_payoutChoice').value,
+    payoutYears: parseFloat($('in_payoutYears').value),
+    lifeExpectancyYears: parseFloat($('in_lifeExpectancy').value),
+  };
+}
+
+function resetState() {
+  state = { inputs: defaultInputs() };
+  completed = new Set();
+  lastResultText = {};
+  renderStages();
+  renderStateInspector();
+  if (typeof populateMenu === 'function') populateMenu();
+}
+
+/* ============================== rendering ============================== */
+function visibleStages(beat) {
+  // The two stage-9 branches (Claims vs Annuitization) share num=9 and beat=3; only the branch
+  // matching the current product family is shown.
+  return STAGES.filter(s => {
+    if (s.beat !== beat) return false;
+    if (s.id === 'run_claims_processing') return state.inputs.productFamily === 'life';
+    if (s.id === 'run_annuitization') return state.inputs.productFamily === 'annuity';
+    return true;
+  });
+}
+
+function renderBeatTabs() {
+  const tabsEl = $('beatTabs');
+  tabsEl.innerHTML = BEATS.map((b, i) => {
+    const stagesInBeat = visibleStages(i);
+    const doneCount = stagesInBeat.filter(s => completed.has(s.id)).length;
+    return `<button class="beat-tab-btn ${i === activeBeat ? 'active' : ''}" data-beat="${i}">
+      <span class="beat-num">${doneCount}/${stagesInBeat.length}</span>${b.name}
+    </button>`;
+  }).join('');
+  tabsEl.querySelectorAll('[data-beat]').forEach(btn => {
+    btn.addEventListener('click', () => { activeBeat = parseInt(btn.dataset.beat, 10); renderStages(); });
+  });
+  $('beatDesc').textContent = BEATS[activeBeat].desc;
+
+  document.querySelectorAll('#inputsContainer .field-group[data-beat]').forEach(fg => {
+    fg.style.display = parseInt(fg.dataset.beat, 10) === activeBeat ? '' : 'none';
+  });
+}
+
+function renderStages() {
+  renderBeatTabs();
+  const container = $('stagesContainer');
+  container.innerHTML = '';
+  const visible = visibleStages(activeBeat);
+  visible.forEach(st => {
+    const prereqMet = st.prereq.every(p => completed.has(p));
+    const div = document.createElement('div');
+    div.className = 'stage-card';
+    div.innerHTML = `
+      <div class="stage-head">
+        <div class="stage-num ${completed.has(st.id) ? 'done' : ''}">${completed.has(st.id) ? '✓' : st.num}</div>
+        <div class="stage-name">${st.name}</div>
+      </div>
+      <div class="stage-desc">${st.desc}</div>
+      <div class="stage-formula">${st.formula}</div>
+      <div class="stage-actions">
+        <button class="small primary" data-run="${st.id}" ${prereqMet ? '' : 'disabled'}>Run this stage</button>
+        ${st.prereq.length && !prereqMet ? `<span class="stage-prereq">requires: ${st.prereq.map(p => STAGES.find(s=>s.id===p).name.replace(/&amp;/g,'&')).join(', ')}</span>` : ''}
+      </div>
+      <div class="stage-result" id="result_${st.id}"></div>
+    `;
+    container.appendChild(div);
+    const stored = lastResultText[st.id];
+    if (stored) {
+      const resEl = div.querySelector('.stage-result');
+      resEl.classList.add('show');
+      if (stored.isError) resEl.classList.add('err');
+      resEl.textContent = stored.text;
+    }
+  });
+  container.querySelectorAll('[data-run]').forEach(btn => {
+    btn.addEventListener('click', () => runStage(btn.dataset.run, 'manual'));
+  });
+}
+
+function fmtVal(v) {
+  if (typeof v === 'number') {
+    const s = String(round2(v));
+    return v < 0 ? `<span class="neg">${s}</span>` : s;
+  }
+  if (typeof v === 'boolean') return v ? '<span class="flag good">yes</span>' : '<span class="flag crit">no</span>';
+  if (Array.isArray(v)) return v.length ? v.map(fmtVal).join(', ') : '(none)';
+  if (v === null || v === undefined) return '—';
+  return String(v);
+}
+
+function runStage(id, source) {
+  const st = STAGES.find(s => s.id === id);
+  try {
+    const result = st.fn(state);
+    completed.add(id);
+    lastResultText[id] = { text: JSON.stringify(result, null, 2), isError: false };
+    logToolCall(id, source, result, null);
+    renderStages();
+    renderStateInspector();
+    return { ok: true, result };
+  } catch (e) {
+    lastResultText[id] = { text: 'Error: ' + e.message, isError: true };
+    logToolCall(id, source, null, e.message);
+    renderStages();
+    return { ok: false, error: e.message };
+  }
+}
+
+function renderStateInspector() {
+  const el = $('stateInspector');
+  if (!state || completed.size === 0) { el.innerHTML = '<div class="panel-note">Nothing computed yet — run a stage above.</div>'; return; }
+  const rows = [];
+  const push = (label, val) => { if (val !== undefined) rows.push([label, val]); };
+  if (state.healthQuestionnaire) push('Health Questionnaire', `BMI ${fmtVal(state.healthQuestionnaire.bmi)}, conditions: ${fmtVal(state.healthQuestionnaire.conditions)}`);
+  if (state.recordsCheck) push('Records Check', `discrepancy: ${fmtVal(state.recordsCheck.discrepancy)}${state.recordsCheck.mibFlags.length ? ' — ' + state.recordsCheck.mibFlags.join(', ') : ''}`);
+  if (state.medicalExam) push('Medical Exam', state.medicalExam.required ? `required — BP ${state.medicalExam.vitals.systolicBP}, chol ${state.medicalExam.vitals.cholesterolTotal}, HbA1c ${state.medicalExam.vitals.hba1c}` : 'not required');
+  if (state.underwriting) push('Underwriter Review', state.underwriting.declined ? `<b>declined</b> (${state.underwriting.debits} debits)` : `<b>${state.underwriting.tier}</b> (${state.underwriting.debits} debits)`);
+  if (state.pricing) push('Rating &amp; Pricing', state.pricing.decision === 'approved' ? `annual premium $${fmtVal(state.pricing.annualPremium)}` : '<b>declined</b>');
+  if (state.policy) push('Policy', `${state.policy.policyNumber} — ${state.policy.status} — contestability ends ${state.policy.contestabilityPeriodEnds}`);
+  if (state.servicing) push('Premium Servicing', `${state.servicing.premiumsPaid} yr(s) in force, $${fmtVal(state.servicing.totalPaidIn)} paid in → cash value $${fmtVal(state.servicing.cashValue)}`);
+  if (state.claim) push('Claim', `${state.claim.decision === 'approved' ? '<b>approved</b>' : '<b>denied</b>'} — payout $${fmtVal(state.claim.payout)}${state.claim.denialReason ? ' — ' + state.claim.denialReason : ''}`);
+  if (state.annuitization) push('Annuitization', `${state.annuitization.payoutChoice} — surrender charge $${fmtVal(state.annuitization.surrenderCharge)}, net lump sum $${fmtVal(state.annuitization.netLumpSum)}${state.annuitization.annualPayout !== null ? `, annual payout $${fmtVal(state.annuitization.annualPayout)}` : ''}`);
+  el.innerHTML = `<table class="state-table"><thead><tr><th>Variable</th><th>Value</th></tr></thead><tbody>${
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+let logSeq = 0;
+function logToolCall(name, source, result, error) {
+  logSeq++;
+  const log = $('toolLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <div class="log-head">
+      <span class="log-src ${source === 'agent' ? 'agent' : ''}">${source === 'agent' ? 'agent' : 'manual'}</span>
+      <strong>#${logSeq} ${name}</strong>
+    </div>
+    <div class="log-body ${error ? 'log-err' : ''}">${error ? 'Error: ' + error : JSON.stringify(result)}</div>
+  `;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+$('applyInputsBtn').addEventListener('click', resetState);
+$('in_productFamily').addEventListener('change', () => { renderBeatTabs(); populateMenu(); });
+
+let themeState = 'light';
+$('themeToggle').addEventListener('click', () => {
+  themeState = themeState === 'light' ? 'dark' : themeState === 'dark' ? 'system' : 'light';
+  if (themeState === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themeState);
+  $('themeToggle').textContent = 'Theme: ' + themeState;
+});
+
+/* ============================== Menu orchestrator (no model — plain selection) ============================== */
+function menuStages() {
+  // Only offer the branch tool matching the current product family, mirroring what
+  // toolSchemasForCurrentFamily() did for the LLM version — the other stage-9 branch
+  // (Claims Processing vs. Annuitization) is not offered on the menu.
+  return STAGES.filter(st => {
+    if (st.id === 'run_claims_processing') return state.inputs.productFamily === 'life';
+    if (st.id === 'run_annuitization') return state.inputs.productFamily === 'annuity';
+    return true;
+  });
+}
+
+function executeToolByName(name) {
+  const st = STAGES.find(s => s.id === name);
+  if (!st) return { ok: false, error: `Unknown tool "${name}".` };
+  return runStage(name, 'menu');
+}
+
+function runWholeCase() {
+  for (const st of menuStages()) {
+    const res = runStage(st.id, 'menu');
+    if (!res.ok) { $('menuStatus').textContent = `Stopped at stage ${st.num} (${st.name.replace(/&amp;/g, '&')}): ${res.error}`; return; }
+  }
+  $('menuStatus').textContent = `Whole case run complete — all ${menuStages().length} stages executed.`;
+}
+
+function populateMenu() {
+  const sel = $('menuSelect');
+  sel.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '__all__';
+  allOpt.textContent = `Run the whole case (all ${menuStages().length} stages, in order)`;
+  sel.appendChild(allOpt);
+  menuStages().forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st.id;
+    opt.textContent = `Run stage ${st.num}: ${st.name.replace(/&amp;/g, '&')}`;
+    sel.appendChild(opt);
+  });
+}
+
+$('menuRunBtn').addEventListener('click', () => {
+  const val = $('menuSelect').value;
+  if (val === '__all__') { runWholeCase(); return; }
+  const res = executeToolByName(val);
+  const st = STAGES.find(s => s.id === val);
+  $('menuStatus').textContent = res.ok
+    ? `Stage ${st.num} (${st.name.replace(/&amp;/g, '&')}) executed successfully.`
+    : `Stage ${st.num} (${st.name.replace(/&amp;/g, '&')}) failed: ${res.error}`;
+});
+
+/* test hook (used by the automated smoke test; harmless in normal use) */
+window.__fin = { STAGES, runStage, resetState, executeToolByName, runWholeCase, populateMenu, get state() { return state; }, get completed() { return completed; } };
+
+resetState();
+</script>
+</body>
+</html>
