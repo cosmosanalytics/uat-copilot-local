@@ -702,14 +702,12 @@ function populateModelList() {
   }
 }
 
-async function ensureEngine(opts = {}) {
+async function ensureEngine() {
   const modelId = $('chatModelSelect').value;
-  if (!opts.forceReload && chatEngine && chatEngine.__modelId === modelId) return chatEngine;
+  if (chatEngine && chatEngine.__modelId === modelId) return chatEngine;
   if (chatEngine) {
-    // an errored/aborted generation can leave the engine's internal WASM grammar-matcher (used
-    // for constrained JSON tool-call decoding) in a disposed-but-still-referenced state, which
-    // throws "Cannot pass deleted object as a pointer of type GrammarMatcher" on the next call.
-    // Tear the old engine down rather than reusing it once that's happened.
+    // switching models: tear down the old engine's WASM/WebGPU state before creating a new one
+    // against the same device, rather than leaving two engines alive at once.
     try { if (typeof chatEngine.unload === 'function') await chatEngine.unload(); } catch (e) { /* best-effort */ }
     chatEngine = null;
   }
@@ -736,20 +734,23 @@ function parseFallbackAction(text) {
   try { return JSON.parse(m[0]); } catch (e) { return null; }
 }
 
-// Some WebLLM tool-calling parsers (notably Hermes-2-Pro's, per its ChatCompletionRequest.tools
-// error) reject ANY custom system message when `tools` is passed — only Hermes-3's parser allows
-// one. Rather than special-case model ids (fragile — WebLLM could add more such models later),
-// detect the rejection at call time and retry once with the system prompt folded into the first
-// user turn instead of sent as a system message.
-let systemPromptUnsupported = false;
+// WebLLM's tool-calling support (function-calling models only — see FUNCTION_CALLING_MODELS)
+// hardcodes its OWN system prompt whenever `tools` is set, and throws CustomSystemPromptError if
+// the request also includes a `role: 'system'` message — this applies to every model in that
+// list (Hermes-2-Pro AND Hermes-3 alike; confirmed from the WebLLM source, not just Hermes-2-Pro
+// as the error text implies). So we never send a system message at all when tools are in play —
+// the orchestration instructions are folded into the first user turn instead.
+function buildInitialMessages(userText) {
+  return [
+    { role: 'user', content: systemPrompt() + '\n\n---\n\nNow, the actual request:' },
+    { role: 'user', content: userText },
+  ];
+}
 
-async function runAgentTurn(userText, opts = {}) {
-  if (messages.length === 0) {
-    if (!systemPromptUnsupported) messages.push({ role: 'system', content: systemPrompt() });
-    else messages.push({ role: 'user', content: systemPrompt() + '\n\n---\n\nNow, the actual request:' });
-  }
-  messages.push({ role: 'user', content: userText });
-  if (!opts.silentUserTurn) appendTranscript('user', userText);
+async function runAgentTurn(userText) {
+  if (messages.length === 0) messages.push(...buildInitialMessages(userText));
+  else { messages.push({ role: 'user', content: userText }); }
+  appendTranscript('user', userText);
 
   const engine = await ensureEngine();
   const MAX_STEPS = 14;
@@ -764,23 +765,6 @@ async function runAgentTurn(userText, opts = {}) {
         max_tokens: 400,
       });
     } catch (e) {
-      if (/cannot specify customized system prompt/i.test(e.message) && messages[0].role === 'system') {
-        // retry this whole turn with the system prompt folded into a user message instead, on a
-        // freshly (re)loaded engine — the aborted call above can leave the WASM grammar-matcher
-        // in a disposed state that breaks any later call on the same engine instance.
-        // (silentUserTurn: the user's line was already appended to the transcript above)
-        systemPromptUnsupported = true;
-        messages = [];
-        await ensureEngine({ forceReload: true });
-        return runAgentTurn(userText, { silentUserTurn: true });
-      }
-      if (/deleted object as a pointer of type GrammarMatcher/i.test(e.message) && !opts.retriedAfterGrammarError) {
-        // same disposed-grammar-matcher issue, hit directly rather than via the system-prompt
-        // path — reload the engine and retry this exact turn once (messages/history untouched).
-        messages.pop(); // drop the just-pushed user turn so the retry doesn't push it twice
-        await ensureEngine({ forceReload: true });
-        return runAgentTurn(userText, { silentUserTurn: true, retriedAfterGrammarError: true });
-      }
       if (/not supported for ChatCompletionRequest\.tools/i.test(e.message)) {
         appendTranscript('assistant',
           `This model doesn't support native tool calling (${e.message}). ` +
