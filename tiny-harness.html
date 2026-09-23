@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiny Harness: a minimal scaffold with projects, chat, cowork &amp; code</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F5EF; --panel:#FFFFFF; --sidebar:#F0EDE4; --ink:#211F1B; --muted:#75705F; --line:#E3DECF;
+  --accent:#D97757; --accent-ink:#FFF7F1; --good:#3E7A5A; --warn:#B8752F; --bad:#B4483B;
+  --skill:#6E5A9E; --tool:#2E7A87; --think:#B8752F; --check:#3E7A5A;
+  --display:"Source Serif 4",Georgia,serif; --body:"Inter","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#191814;--panel:#221F1A;--sidebar:#1D1B16;--ink:#EFEBE0;--muted:#A39C87;--line:#39352A;
+   --accent:#E28A64;--accent-ink:#241A14;}
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--body)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px}
+.app{display:grid;grid-template-columns:250px 1fr;height:100vh}
+@media (max-width:760px){.app{grid-template-columns:1fr}.sidebar{position:fixed;inset:0 30% 0 0;z-index:20;transform:translateX(-105%);transition:transform .25s}.sidebar.open{transform:none}.scrim{position:fixed;inset:0;background:#0006;z-index:19;display:none}.scrim.show{display:block}}
+
+/* ---- Sidebar: projects ---- */
+.sidebar{background:var(--sidebar);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.brand{display:flex;align-items:center;gap:8px;padding:14px 14px 10px;font-family:var(--display);font-weight:700;font-size:1.15rem}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.newproj{margin:0 12px 8px;border:1.5px dashed var(--line);background:transparent;border-radius:9px;padding:8px;font-weight:600;cursor:pointer;color:var(--muted)}
+.newproj:hover{border-color:var(--accent);color:var(--accent)}
+.projlist{overflow-y:auto;flex:1;padding:0 8px}
+.projitem{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px}
+.projitem:hover{background:var(--panel)}
+.projitem.active{background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
+.projitem .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:.88rem}
+.projitem .del{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 5px}
+.projitem:hover .del{opacity:1}
+.side-foot{padding:10px 14px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line)}
+
+/* ---- Main ---- */
+.main{display:flex;flex-direction:column;min-width:0;height:100vh}
+.topbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.menubtn{display:none;border:none;background:none;font-size:1.2rem;cursor:pointer}
+@media (max-width:760px){.menubtn{display:block}}
+select,.btn{border:1.4px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;font-weight:600;font-size:.85rem}
+.btn{cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;flex-basis:100%;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.status{font-size:.78rem;color:var(--muted);flex-basis:100%}
+.nogpu{margin:12px 16px;border:2px solid var(--bad);border-radius:10px;padding:10px 12px;display:none}
+
+.modes{display:flex;gap:4px;padding:8px 16px 0;background:var(--panel)}
+.modebtn{border:none;background:none;padding:8px 14px;font-weight:700;font-size:.86rem;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent}
+.modebtn.active{color:var(--ink);border-color:var(--accent)}
+
+.stack{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:9px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:.8rem}
+.stackgrp{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stackgrp b{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;border:1.3px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;user-select:none}
+.pill input{accent-color:var(--c,var(--accent))}
+.pill.on{border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--panel))}
+
+.body{flex:1;overflow-y:auto;padding:16px}
+.panelnote{max-width:640px;margin:0 auto 12px;color:var(--muted);font-size:.85rem;text-align:center}
+.empty{text-align:center;color:var(--muted);padding:60px 10px}
+
+/* chat */
+.thread{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.msg.user{align-self:flex-end;background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:14px 14px 4px 14px;max-width:80%;white-space:pre-wrap}
+.msg.bot .content{white-space:pre-wrap;border-left:3px solid var(--accent);padding-left:11px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 0 11px}
+.tag{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff}
+.tag.skill{background:var(--skill)}.tag.tool{background:var(--tool)}.tag.think{background:var(--think)}.tag.check{background:var(--check)}
+details.trace{margin:6px 0 0 11px}
+details.trace summary{cursor:pointer;font-size:.78rem;color:var(--muted);font-weight:700}
+.stage{border-left:3px solid var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 7%,transparent);border-radius:0 7px 7px 0;padding:5px 9px;margin:5px 0 0;font-size:.82rem;white-space:pre-wrap}
+.stage h4{margin:0 0 2px;font:800 .74rem/1.2 var(--body);color:var(--c,var(--accent))}
+
+.composer{max-width:720px;margin:12px auto 0;display:flex;gap:8px;align-items:end}
+textarea.inputbox{flex:1;min-height:52px;max-height:180px;resize:vertical;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
+
+/* cowork */
+.tasklist{max-width:720px;margin:0 auto 14px;display:flex;flex-direction:column;gap:6px}
+.task{display:flex;gap:9px;align-items:flex-start;border:1.4px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--panel)}
+.task .st{width:1.3em;flex:none;text-align:center}
+.task .body2{flex:1}
+.task .t{font-weight:700;font-size:.87rem}
+.task .r{font-size:.82rem;color:var(--muted);margin-top:2px;white-space:pre-wrap}
+.task.pending{opacity:.55}
+.task.running .st{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.final{max-width:720px;margin:0 auto;border-left:4px solid var(--good);padding:10px 14px;background:var(--panel);border-radius:0 10px 10px 0}
+
+/* code */
+.codewrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+pre.code{background:#1E1B16;color:#F1EEE4;padding:12px 14px;border-radius:10px;overflow-x:auto;font:12.5px/1.5 "SF Mono",Consolas,monospace;white-space:pre}
+.outbox{border-radius:10px;border:1.4px solid var(--line);padding:10px 13px;background:var(--panel)}
+.outbox.err{border-color:var(--bad)}
+.outbox h4{margin:0 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.outbox pre{white-space:pre-wrap;font:12.5px/1.45 "SF Mono",Consolas,monospace;margin:0}
+
+/* skills / tools config panel */
+.cfgpanel{max-width:720px;margin:0 auto 14px;display:none;flex-direction:column;gap:8px}
+.cfgpanel.show{display:flex}
+.cfgrow{display:flex;gap:10px;align-items:flex-start;border:1.4px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--panel)}
+.cfgrow b{font-size:.86rem}
+.cfgrow small{color:var(--muted);display:block;margin-top:1px}
+.cfgtoggle{margin-top:1px}
+.gear{border:none;background:none;cursor:pointer;color:var(--muted);font-size:.95rem;padding:4px 8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="dot"></span> Tiny Harness</div>
+    <button class="newproj" id="newProj" type="button">+ New project</button>
+    <div class="projlist" id="projList"></div>
+    <div class="side-foot">Everything runs on your GPU, in this tab. Projects persist in this browser only.</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="menubtn" id="menuBtn" type="button">☰</button>
+      <select id="model" aria-label="Model size">
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">0.5B, fastest</option>
+        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>1.5B, balanced</option>
+        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">3B, smartest</option>
+      </select>
+      <button class="btn primary" id="load" type="button">Load model</button>
+      <div class="bar" id="bar"><i></i></div>
+      <span class="status" id="status">Needs Chrome/Edge desktop or Safari 26+ with WebGPU.</span>
+    </div>
+    <div class="nogpu" id="nogpu"><strong>WebGPU isn't available here.</strong> Open this file in a recent Chrome, Edge, or Safari 26+ with hardware acceleration on.</div>
+
+    <div class="modes" id="modes">
+      <button class="modebtn active" data-mode="chat" type="button">💬 Chat</button>
+      <button class="modebtn" data-mode="cowork" type="button">🧵 Cowork</button>
+      <button class="modebtn" data-mode="code" type="button">🖥️ Code</button>
+      <button class="gear" id="gearBtn" title="Skills &amp; tools setup" type="button">⚙ Skills / MCP</button>
+    </div>
+
+    <div class="stack" id="stack">
+      <div class="stackgrp"><b>Prompting</b>
+        <label class="pill" style="--c:var(--skill)" id="pillSkills"><input type="checkbox" id="tSkills" checked> Skills</label>
+        <label class="pill" style="--c:var(--think)" id="pillThink"><input type="checkbox" id="tThink"> Deliberate</label>
+        <label class="pill" style="--c:var(--check)" id="pillCheck"><input type="checkbox" id="tCheck"> Monitor</label>
+      </div>
+      <div class="stackgrp"><b>MCP</b>
+        <label class="pill" style="--c:var(--tool)" id="pillTools"><input type="checkbox" id="tTools" checked> Tools</label>
+      </div>
+    </div>
+
+    <div class="body" id="body">
+      <div class="cfgpanel" id="cfgPanel">
+        <p class="panelnote" style="margin-bottom:0">These are the "manual" (skills) and the "hands" (MCP tools) from your conversation, made real. Toggle which ones the harness may use.</p>
+        <div id="skillCfg"></div>
+        <div id="toolCfg"></div>
+      </div>
+      <div id="viewChat"></div>
+      <div id="viewCowork" style="display:none"></div>
+      <div id="viewCode" style="display:none"></div>
+    </div>
+
+    <div class="composer" id="composerChat">
+      <textarea class="inputbox" id="inputChat" rows="2" placeholder="Message this project's assistant…"></textarea>
+      <button class="btn primary" id="sendChat" disabled>Send</button>
+    </div>
+    <div class="composer" id="composerCowork" style="display:none">
+      <textarea class="inputbox" id="inputCowork" rows="2" placeholder="Describe a goal. It will plan subtasks and work through them on its own…"></textarea>
+      <button class="btn primary" id="sendCowork" disabled>Run</button>
+    </div>
+    <div class="composer" id="composerCode" style="display:none">
+      <textarea class="inputbox" id="inputCode" rows="2" placeholder="Describe a small JS task, e.g. 'sort this list and print it'…"></textarea>
+      <button class="btn primary" id="sendCode" disabled>Write &amp; run</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+
+/* ================= Projects (localStorage) ================= */
+const STORE_KEY = "tinyharness_projects_v1";
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch{ return {}; } }
+function saveStore(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }catch{} }
+let store = loadStore();
+if(!store.projects) store = {projects:[], activeId:null};
+function newProject(name){
+  const p = {id:"p"+Date.now(), name: name||"New project", instructions:"", files:[], chat:[], cowork:[], code:[]};
+  store.projects.push(p); store.activeId = p.id; saveStore(); return p;
+}
+if(!store.projects.length) newProject("Getting started");
+if(!store.activeId) store.activeId = store.projects[0].id;
+const activeProject = () => store.projects.find(p=>p.id===store.activeId);
+
+function renderProjects(){
+  const list = $("projList"); list.innerHTML = "";
+  store.projects.forEach(p=>{
+    const el = document.createElement("div");
+    el.className = "projitem" + (p.id===store.activeId ? " active" : "");
+    el.innerHTML = `<span class="name">${esc(p.name)}</span><button class="del" title="Delete project">✕</button>`;
+    el.querySelector(".name").onclick = ()=>{ store.activeId = p.id; saveStore(); renderAll(); closeSidebar(); };
+    el.querySelector(".del").onclick = (e)=>{
+      e.stopPropagation();
+      if(store.projects.length===1){ alert("Keep at least one project."); return; }
+      if(!confirm(`Delete project "${p.name}"? This removes its chat, cowork, and code history.`)) return;
+      store.projects = store.projects.filter(x=>x.id!==p.id);
+      if(store.activeId===p.id) store.activeId = store.projects[0].id;
+      saveStore(); renderAll();
+    };
+    list.appendChild(el);
+  });
+}
+$("newProj").onclick = ()=>{
+  const name = prompt("Project name?", "New project");
+  if(name===null) return;
+  newProject(name || "New project");
+  renderAll();
+};
+
+/* Mobile sidebar toggle */
+function closeSidebar(){ $("sidebar").classList.remove("open"); $("scrim").classList.remove("show"); }
+$("menuBtn").onclick = ()=>{ $("sidebar").classList.add("open"); $("scrim").classList.add("show"); };
+$("scrim").onclick = closeSidebar;
+
+/* ================= Skills & Tools (the "manual" and the "hands") ================= */
+const SKILLS = [
+  {id:"explain", name:"Explainer", on:true, triggers:["explain","what is","how does","why does","teach me"],
+   instructions:"Explain clearly for a beginner. Use one short analogy. Avoid jargon unless you define it."},
+  {id:"code", name:"Coder", on:true, triggers:["code","function","bug","script","implement","algorithm"],
+   instructions:"Write clean, correct, minimal code with brief inline comments. Prefer clarity over cleverness."},
+  {id:"write", name:"Writer", on:true, triggers:["draft","write an email","essay","letter","message","post"],
+   instructions:"Write in a clear, professional tone. Keep sentences short. No filler openings."},
+  {id:"plan", name:"Planner", on:true, triggers:["plan","steps","schedule","organize","roadmap"],
+   instructions:"Produce a numbered, concrete plan with realistic steps. Avoid vague advice."},
+];
+function routeSkill(text){
+  const low = text.toLowerCase();
+  let best = null, bestScore = 0;
+  SKILLS.filter(s=>s.on).forEach(s=>{
+    const score = s.triggers.reduce((n,t)=> n + (low.includes(t)?1:0), 0);
+    if(score > bestScore){ bestScore = score; best = s; }
+  });
+  return best;
+}
+
+const TOOLS = [
+  {id:"time", name:"Clock", on:true, sig:"time()", desc:"Returns the current date and time.",
+   run: ()=> new Date().toString()},
+  {id:"calc", name:"Calculator", on:true, sig:"calc(expression)", desc:"Evaluates arithmetic, e.g. calc(12*7+3).",
+   run: (arg)=>{ if(!/^[\d\s+\-*/().]+$/.test(arg)) return "Error: only plain arithmetic is allowed."; try{ return String(Function(`"use strict";return (${arg})`)()); }catch(e){ return "Error: "+e.message; } }},
+  {id:"wordcount", name:"Word count", on:true, sig:"wordcount(text)", desc:"Counts words in the given text.",
+   run: (arg)=> String(arg.trim().split(/\s+/).filter(Boolean).length) + " words"},
+  {id:"files", name:"Project files", on:true, sig:"files()", desc:"Lists this project's stored files.",
+   run: ()=>{ const p = activeProject(); return p.files.length ? p.files.map(f=>f.name).join(", ") : "(no files in this project)"; }},
+];
+function toolsSystemBlock(){
+  const on = TOOLS.filter(t=>t.on);
+  if(!on.length) return "";
+  return "You have access to tools. To use one, reply with ONLY a line: TOOL: name(argument)\n" +
+    "Available tools:\n" + on.map(t=>`- ${t.sig} — ${t.desc}`).join("\n") +
+    "\nWhen you don't need a tool, or once you have what you need, reply with: ANSWER: <your final answer>";
+}
+function runTool(line){
+  const m = line.match(/TOOL:\s*(\w+)\((.*)\)\s*$/s);
+  if(!m) return null;
+  const tool = TOOLS.find(t=>t.on && (t.id.toLowerCase()===m[1].toLowerCase() || t.name.toLowerCase().replace(/\s/,"")===m[1].toLowerCase()));
+  if(!tool) return `Error: no tool named "${m[1]}" is enabled.`;
+  try{ return tool.run(m[2]); }catch(e){ return "Error: " + e.message; }
+}
+
+function renderCfgPanel(){
+  const s = $("skillCfg"), t = $("toolCfg");
+  s.innerHTML = `<div style="font-weight:800;font-size:.8rem;color:var(--skill);margin:2px 0 -2px">Skills — the reference manual</div>` +
+    SKILLS.map(sk=>`<div class="cfgrow"><input class="cfgtoggle" type="checkbox" data-skill="${sk.id}" ${sk.on?"checked":""}>
+      <div><b>${sk.name}</b><small>${esc(sk.instructions)}</small></div></div>`).join("");
+  t.innerHTML = `<div style="font-weight:800;font-size:.8rem;color:var(--tool);margin:8px 0 -2px">MCP tools — the hands</div>` +
+    TOOLS.map(tl=>`<div class="cfgrow"><input class="cfgtoggle" type="checkbox" data-tool="${tl.id}" ${tl.on?"checked":""}>
+      <div><b>${tl.sig}</b><small>${esc(tl.desc)}</small></div></div>`).join("");
+  s.querySelectorAll("[data-skill]").forEach(cb=>cb.onchange = ()=>{ SKILLS.find(x=>x.id===cb.dataset.skill).on = cb.checked; });
+  t.querySelectorAll("[data-tool]").forEach(cb=>cb.onchange = ()=>{ TOOLS.find(x=>x.id===cb.dataset.tool).on = cb.checked; });
+}
+renderCfgPanel();
+$("gearBtn").onclick = ()=>{ $("cfgPanel").classList.toggle("show"); };
+
+/* ================= Model ================= */
+let engine = null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; $("load").disabled = true; }
+$("load").onclick = async ()=>{
+  $("load").disabled = true; $("bar").style.display="block";
+  const bar = $("bar").firstElementChild;
+  const cb = r => { bar.style.width = Math.round((r.progress||0)*100)+"%"; $("status").textContent = r.text; };
+  try{
+    const id = $("model").value;
+    if(engine){ engine.setInitProgressCallback(cb); await engine.reload(id); }
+    else engine = await webllm.CreateMLCEngine(id, {initProgressCallback:cb});
+    $("status").textContent = "Ready. Everything runs on your device.";
+    ["sendChat","sendCowork","sendCode"].forEach(id=>$(id).disabled=false);
+    $("load").textContent = "Switch model";
+  }catch(e){ $("status").textContent = "Couldn't load the model: " + (e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+
+async function llm(system, user, maxTokens=300, temperature=0.3, card=null){
+  const res = await engine.chat.completions.create({
+    stream:true, temperature, max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]
+  });
+  let out = "";
+  for await (const chunk of res){ const d = chunk.choices?.[0]?.delta?.content; if(d){ out += d; if(card) card.textContent = out; } }
+  return out.trim();
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function addStage(container, colorVar, title){
+  const div = document.createElement("div"); div.className="stage"; div.style.setProperty("--c",`var(${colorVar})`);
+  div.innerHTML = `<h4>${esc(title)}</h4><div></div>`; container.appendChild(div); return div.lastChild;
+}
+
+/* ================= Core pipeline: skills → tools → deliberate → monitor ================= */
+async function pipeline(basePersona, question, trace, history){
+  const project = activeProject();
+  const tags = [];
+  let system = basePersona + (project.instructions ? `\n\nProject instructions:\n${project.instructions}` : "");
+
+  if($("tSkills").checked){
+    const skill = routeSkill(question);
+    if(skill){ system += `\n\nStyle guide (${skill.name}): ${skill.instructions}`; tags.push({cls:"skill", label:"Skill: "+skill.name}); }
+  }
+
+  let draft;
+  if($("tTools").checked && TOOLS.some(t=>t.on)){
+    const toolSys = system + "\n\n" + toolsSystemBlock();
+    let calls = 0;
+    let convo = [{role:"user", content: question}];
+    while(calls < 4){
+      const st = addStage(trace, "--tool", calls===0?"Tool loop":"Tool loop, continued");
+      const res = await engine.chat.completions.create({
+        stream:true, temperature:0.2, max_tokens:120,
+        messages:[{role:"system",content:toolSys}, ...history, ...convo]
+      });
+      let out = ""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d){ out+=d; st.textContent=out; } }
+      out = out.trim();
+      if(/^TOOL:/i.test(out)){
+        const result = runTool(out);
+        st.textContent = out + `\n→ ${result}`;
+        convo.push({role:"assistant", content: out});
+        convo.push({role:"user", content: `TOOL RESULT: ${result}`});
+        tags.push({cls:"tool", label:"Tool used"});
+        calls++;
+        continue;
+      }
+      draft = out.replace(/^ANSWER:\s*/i, "");
+      break;
+    }
+    if(draft === undefined) draft = "I couldn't resolve this within the tool-call limit.";
+  } else {
+    const st = addStage(trace, "--accent", "Draft answer");
+    draft = await llm(system, historyText(history) + question, 260, 0.3, st);
+  }
+
+  if($("tThink").checked){
+    const st1 = addStage(trace, "--think", "Deliberate: reason step by step");
+    const notes = await llm(system, `Question: ${question}\nDraft answer: ${draft}\n\nThink step by step about whether this draft is complete and correct. End with 'Tentative answer: ...'.`, 260, 0.3, st1);
+    const st2 = addStage(trace, "--accent", "Answer, revised after deliberation");
+    draft = await llm(system, `Using these notes, give the final answer clearly and concisely, without mentioning the notes.\nNotes: ${notes}`, 220, 0.3, st2);
+    tags.push({cls:"think", label:"Deliberated"});
+  }
+
+  if($("tCheck").checked){
+    for(let round=0; round<2; round++){
+      const st = addStage(trace, "--check", round===0?"Monitor: check the answer":"Monitor: check again");
+      const verdict = await llm(system, `Check this answer for mistakes. Reply 'OK' or 'REVISE: reason'.\nQuestion: ${question}\nAnswer: ${draft}`, 100, 0.2, st);
+      if(/^OK/i.test(verdict)) break;
+      const st2 = addStage(trace, "--accent", "Revised answer");
+      draft = await llm(system, `Fix the answer using this critique. Question: ${question}\nPrevious answer: ${draft}\nCritique: ${verdict}`, 220, 0.3, st2);
+    }
+    tags.push({cls:"check", label:"Monitored"});
+  }
+
+  return {answer: draft, tags};
+}
+function historyText(history){
+  if(!history.length) return "";
+  return history.map(h=>`${h.role==="user"?"User":"Assistant"}: ${h.content}`).join("\n") + "\n\n";
+}
+
+/* ================= Mode switching ================= */
+let mode = "chat";
+document.querySelectorAll(".modebtn").forEach(b=>b.onclick = ()=>{
+  document.querySelectorAll(".modebtn").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); mode = b.dataset.mode;
+  ["Chat","Cowork","Code"].forEach(m=>{
+    $("view"+m).style.display = (m.toLowerCase()===mode) ? "block" : "none";
+    $("composer"+m).style.display = (m.toLowerCase()===mode) ? "flex" : "none";
+  });
+});
+
+function renderAll(){
+  renderProjects();
+  renderChat(); renderCowork(); renderCode();
+}
+
+/* ================= Chat ================= */
+function renderChat(){
+  const p = activeProject();
+  const el = $("viewChat");
+  if(!p.chat.length){ el.innerHTML = `<div class="empty">No messages yet in "${esc(p.name)}". Ask something below.</div>`; return; }
+  el.innerHTML = `<div class="thread" id="chatThread"></div>`;
+  const thread = $("chatThread");
+  p.chat.forEach(m=>{
+    const d = document.createElement("div");
+    if(m.role==="user"){ d.className="msg user"; d.textContent = m.content; }
+    else{
+      d.className="msg bot";
+      d.innerHTML = `<div class="content">${esc(m.content)}</div>` +
+        (m.tags?.length ? `<div class="tags">${m.tags.map(t=>`<span class="tag ${t.cls}">${esc(t.label)}</span>`).join("")}</div>` : "");
+    }
+    thread.appendChild(d);
+  });
+}
+$("sendChat").onclick = async ()=>{
+  const box = $("inputChat"); const text = box.value.trim();
+  if(!text || !engine) return;
+  box.value = ""; const p = activeProject();
+  p.chat.push({role:"user", content:text}); saveStore(); renderChat();
+  $("sendChat").disabled = true;
+  const thread = $("chatThread");
+  const holder = document.createElement("div"); holder.className="msg bot";
+  holder.innerHTML = `<details class="trace" open><summary>How it thought</summary></details><div class="content">…</div>`;
+  thread.appendChild(holder);
+  const trace = holder.querySelector(".trace");
+  try{
+    const history = p.chat.slice(-7,-1).map(m=>({role:m.role,content:m.content}));
+    const {answer, tags} = await pipeline("You are a helpful, direct assistant inside a small project workspace.", text, trace, history);
+    holder.querySelector(".content").textContent = answer;
+    if(tags.length){ const tg = document.createElement("div"); tg.className="tags"; tg.innerHTML = tags.map(t=>`<span class="tag ${t.cls}">${esc(t.label)}</span>`).join(""); holder.appendChild(tg); }
+    p.chat.push({role:"assistant", content:answer, tags}); saveStore();
+  }catch(e){ holder.querySelector(".content").textContent = "Error: " + (e.message||e); }
+  finally{ $("sendChat").disabled = false; box.focus(); }
+};
+$("inputChat").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("sendChat").click(); } });
+
+/* ================= Cowork: plan → subtasks → synthesize ================= */
+function renderCowork(){
+  const p = activeProject();
+  const el = $("viewCowork");
+  if(!p.cowork.length){ el.innerHTML = `<div class="empty">No Cowork runs yet in "${esc(p.name)}". Give it a goal below — it plans, then works through subtasks on its own.</div>`; return; }
+  el.innerHTML = "";
+  p.cowork.forEach(run=>{
+    const wrap = document.createElement("div"); wrap.style.marginBottom="22px";
+    wrap.innerHTML = `<p style="max-width:720px;margin:0 auto 8px;font-weight:700">${esc(run.goal)}</p>
+      <div class="tasklist">${run.tasks.map(t=>`<div class="task ${t.status}"><span class="st">${t.status==="done"?"✓":t.status==="running"?"◐":"○"}</span><div class="body2"><div class="t">${esc(t.title)}</div><div class="r">${esc(t.result||"")}</div></div></div>`).join("")}</div>
+      ${run.final ? `<div class="final">${esc(run.final)}</div>` : ""}`;
+    el.appendChild(wrap);
+  });
+}
+$("sendCowork").onclick = async ()=>{
+  const box = $("inputCowork"); const goal = box.value.trim();
+  if(!goal || !engine) return;
+  box.value = ""; const p = activeProject();
+  const run = {goal, tasks:[], final:null};
+  p.cowork.push(run); saveStore(); renderCowork();
+  $("sendCowork").disabled = true;
+  try{
+    const planRaw = await llm("You are a planning module. Break the goal into 2-4 short, concrete subtasks, one per line, numbered.", goal, 160, 0.3);
+    const subtasks = planRaw.split("\n").map(l=>l.replace(/^\s*\d+[\.\)]\s*/,"").trim()).filter(Boolean).slice(0,4);
+    run.tasks = subtasks.map(t=>({title:t, status:"pending", result:""}));
+    saveStore(); renderCowork();
+    let notes = "";
+    for(let i=0;i<run.tasks.length;i++){
+      run.tasks[i].status = "running"; saveStore(); renderCowork();
+      const dummyTrace = document.createElement("div");
+      const {answer} = await pipeline("You are working one subtask of a larger goal. Be concise.",
+        `Overall goal: ${goal}\nSubtask: ${run.tasks[i].title}\nNotes so far:\n${notes||"(none)"}`, dummyTrace, []);
+      run.tasks[i].status = "done"; run.tasks[i].result = answer;
+      notes += `${run.tasks[i].title}: ${answer}\n`;
+      saveStore(); renderCowork();
+    }
+    run.final = await llm("Combine these subtask results into one cohesive final deliverable for the user. Be direct, no meta-commentary.", `Goal: ${goal}\n\n${notes}`, 400, 0.3);
+    saveStore(); renderCowork();
+  }catch(e){ run.final = "Error: " + (e.message||e); saveStore(); renderCowork(); }
+  finally{ $("sendCowork").disabled = false; }
+};
+
+/* ================= Code: write → run in sandbox → fix loop ================= */
+function runSandboxed(code){
+  return new Promise(resolve=>{
+    const iframe = document.createElement("iframe");
+    iframe.sandbox = "allow-scripts"; iframe.style.display = "none";
+    const id = "run"+Date.now();
+    const listener = (ev)=>{
+      if(!ev.data || ev.data.id !== id) return;
+      window.removeEventListener("message", listener);
+      clearTimeout(timer);
+      iframe.remove();
+      resolve(ev.data);
+    };
+    window.addEventListener("message", listener);
+    const timer = setTimeout(()=>{
+      window.removeEventListener("message", listener);
+      iframe.remove();
+      resolve({id, ok:false, output:"", error:"Timed out after 4s (possible infinite loop)."});
+    }, 4000);
+    iframe.srcdoc = `<script>
+      const logs = [];
+      const send = (ok, error) => { try{ parent.postMessage({id:${JSON.stringify(id)}, ok, output: logs.join("\\n"), error: error||""}, "*"); }catch(e){} };
+      console.log = (...a) => logs.push(a.map(x=>typeof x==="object"?JSON.stringify(x):String(x)).join(" "));
+      try{ ${code} ; send(true, null); } catch(e){ send(false, e.message); }
+    <\/script>`;
+    document.body.appendChild(iframe);
+  });
+}
+function extractCode(text){
+  const m = text.match(/```(?:js|javascript)?\s*([\s\S]*?)```/);
+  return (m ? m[1] : text).trim();
+}
+function renderCode(){
+  const p = activeProject();
+  const el = $("viewCode");
+  if(!p.code.length){ el.innerHTML = `<div class="empty">No Code runs yet in "${esc(p.name)}". Describe a small JS task — it writes code, runs it in a sandbox, and can fix its own errors.</div>`; return; }
+  el.innerHTML = "";
+  p.code.forEach(run=>{
+    const wrap = document.createElement("div"); wrap.className="codewrap"; wrap.style.marginBottom="22px";
+    wrap.innerHTML = `<p style="font-weight:700">${esc(run.task)}</p>
+      <pre class="code">${esc(run.code)}</pre>
+      <div class="outbox ${run.ok?'':'err'}"><h4>${run.ok?"Output":"Error"}</h4><pre>${esc(run.ok ? (run.output||"(no output)") : run.error)}</pre></div>
+      ${run.fixed ? `<p style="font-size:.8rem;color:var(--muted)">Fixed automatically after an error (Monitor enabled).</p>` : ""}`;
+    el.appendChild(wrap);
+  });
+}
+$("sendCode").onclick = async ()=>{
+  const box = $("inputCode"); const task = box.value.trim();
+  if(!task || !engine) return;
+  box.value = ""; const p = activeProject();
+  $("sendCode").disabled = true;
+  try{
+    let code = extractCode(await llm(
+      "Write a single self-contained JavaScript snippet that accomplishes the task. Use console.log for all output. No DOM, no network, no imports, no async unless needed. Wrap the code in a ```js fence.",
+      task, 300, 0.2));
+    let res = await runSandboxed(code);
+    let fixed = false;
+    if(!res.ok && $("tCheck").checked){
+      for(let i=0;i<2 && !res.ok;i++){
+        code = extractCode(await llm(
+          "The following JavaScript threw an error. Fix it. Reply with only the corrected code in a ```js fence.",
+          `Code:\n${code}\n\nError: ${res.error}`, 300, 0.2));
+        res = await runSandboxed(code);
+        fixed = true;
+      }
+    }
+    p.code.push({task, code, ok:res.ok, output:res.output, error:res.error, fixed});
+    saveStore(); renderCode();
+  }catch(e){
+    p.code.push({task, code:"(generation failed)", ok:false, output:"", error:e.message||String(e)});
+    saveStore(); renderCode();
+  }finally{ $("sendCode").disabled = false; }
+};
+
+renderAll();
+</script>
+</body>
+</html>
