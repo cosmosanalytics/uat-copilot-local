@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Healthcare Process Studio</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --page: #f9f9f7; --panel: #ffffff;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+    --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d; --panel: #232322;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { padding: 20px 16px 70px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  .sub { color: var(--text-secondary); font-size: 0.9rem; max-width: 760px; margin: 6px 0 18px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--panel); color: var(--text-secondary); border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; cursor: pointer; }
+  .panel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 0.95rem; margin: 0 0 4px; }
+  .panel .panel-note { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 12px; }
+  label { font-size: 0.76rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
+  input[type=text], input[type=number] { font-family: inherit; font-size: 0.83rem; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; background: var(--panel); color: var(--text-primary); width: 100%; }
+  select, button { font-family: inherit; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border); padding: 7px 12px; background: var(--panel); color: var(--text-primary); cursor: pointer; }
+  select { width: 100%; }
+  button.primary { background: var(--cat-1); color: #fff; border-color: transparent; font-weight: 600; }
+  button.small { padding: 4px 9px; font-size: 0.78rem; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:hover:not(:disabled) { filter: brightness(0.97); }
+  .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+  .grid-inputs.wide { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .field-group { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .field-group > .fg-title { font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+
+  .beat-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-wrap: wrap; }
+  .beat-tab-btn { border: none; background: none; padding: 8px 12px; font-size: 0.82rem; color: var(--text-secondary); border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer; }
+  .beat-tab-btn .beat-num { color: var(--text-muted); font-size: 0.7rem; margin-right: 4px; }
+  .beat-tab-btn.active { color: var(--text-primary); border-bottom-color: var(--cat-1); font-weight: 600; }
+  .beat-desc { color: var(--text-secondary); font-size: 0.82rem; margin: 0 0 12px; }
+  .stage-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--panel); }
+  .stage-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .stage-num { width: 22px; height: 22px; border-radius: 50%; background: var(--cat-1); color: #fff; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .stage-num.done { background: var(--good); }
+  .stage-name { font-weight: 600; font-size: 0.92rem; }
+  .stage-desc { color: var(--text-secondary); font-size: 0.8rem; margin: 6px 0; }
+  .stage-formula { margin: 8px 0; font-size: 0.82rem; font-family: ui-monospace, "SF Mono", monospace; color: var(--text-secondary); background: var(--page); border-radius: 6px; padding: 6px 9px; display: inline-block; }
+  .stage-actions { margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .stage-prereq { color: var(--text-muted); font-size: 0.74rem; }
+  .stage-result { margin-top: 10px; background: var(--page); border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; font-family: ui-monospace, "SF Mono", monospace; white-space: pre-wrap; word-break: break-word; display: none; }
+  .stage-result.show { display: block; }
+  .stage-result.err { color: var(--crit); }
+  .flag { display: inline-block; background: var(--warn); color: #3a2a00; border-radius: 5px; padding: 1px 6px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
+  .flag.crit { background: var(--crit); color: #fff; }
+  .flag.good { background: var(--good); color: #fff; }
+
+  table.state-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.state-table th, table.state-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; vertical-align: top; }
+  table.state-table th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; }
+  .neg { color: var(--crit); font-weight: 600; }
+
+  #toolLog { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+  .log-entry { padding: 8px 10px; border-bottom: 1px solid var(--grid); font-size: 0.78rem; }
+  .log-entry .log-head { display: flex; gap: 8px; align-items: center; font-family: ui-monospace, monospace; }
+  .log-src { font-size: 0.68rem; padding: 1px 6px; border-radius: 5px; background: var(--cat-1); color: #fff; }
+  .log-src.agent { background: var(--cat-7); }
+  .log-body { margin-top: 4px; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
+  .log-err { color: var(--crit); }
+
+  .chat-transcript { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--page); padding: 10px; margin-bottom: 10px; }
+  .msg { margin-bottom: 10px; font-size: 0.85rem; line-height: 1.4; }
+  .msg .role { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+  .msg.user .role { color: var(--cat-1); }
+  .msg.assistant .role { color: var(--cat-7); }
+  .msg.tool .role { color: var(--cat-3); }
+  textarea.chat-input { width: 100%; min-height: 60px; resize: vertical; font-family: inherit; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--panel); color: var(--text-primary); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .status { font-size: 0.8rem; color: var(--text-secondary); margin-top: 8px; }
+  .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  footer { color: var(--text-muted); font-size: 0.75rem; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Healthcare Process Studio</h1>
+    <button class="theme-toggle" id="themeToggle">Theme: light</button>
+  </header>
+  <p class="sub">
+    11 tool calls — one per stage of a single patient's standard US insurance-based care journey
+    (Registration → Utilization Trend Forecast → Eligibility → Prior Authorization → Clinical
+    Encounter → Medical Coding → Claim Submission → Adjudication → Payment Posting → Denial
+    Management &amp; Appeals → Patient Billing). Each tool is a pure, deterministic function
+    modeling the real math and gating rules of that stage (deductible/coinsurance/copay math,
+    CPT/ICD-10 coding, a least-squares utilization-trend forecast, prior-auth clinical criteria,
+    denial/appeal outcomes). The decision of which stage to run is always just a pick from a short,
+    fixed menu — so instead of a large tool-calling-specialized model, you can either pick the
+    action yourself from a plain menu, or route a free-text request to it with a small (&lt;2B
+    parameter) local instruct model reading plain text — no native tool-calling API, no large
+    model. Run stages manually to study the logic either way. Stage order and definitions are
+    adapted from published revenue-cycle-management and utilization-management literature (see
+    footer for sources) and simplified for illustration — this is not medical, billing, or legal
+    guidance.
+  </p>
+
+  <div class="panel">
+    <h2>Patient case</h2>
+    <div class="panel-note">Every path through this pipeline is the same 11-stage chain, grouped here into four beats. Edit a field, click "Apply inputs &amp; reset state" (it always resets the full chain, since a change anywhere invalidates everything downstream), then run stages manually to study the logic, or use Option 1 (Menu) or Option 2 (LLM) below to run the chain.</div>
+    <div class="beat-tabs" id="beatTabs"></div>
+    <div class="beat-desc" id="beatDesc"></div>
+
+    <div id="inputsContainer">
+      <div class="field-group" data-beat="0">
+        <div class="fg-title">Patient &amp; insurance</div>
+        <div class="grid-inputs wide">
+          <label>Patient name <input type="text" id="in_name" value="Jordan Rivera"></label>
+          <label>Member ID <input type="text" id="in_memberId" value="M-88213"></label>
+          <label>Visit date <input type="text" id="in_visitDate" value="2026-09-15"></label>
+          <label>Payer <input type="text" id="in_payer" value="Aetna PPO"></label>
+          <label>Coverage status
+            <select id="in_covStatus"><option value="active" selected>active</option><option value="inactive">inactive</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="0">
+        <div class="fg-title">Utilization history</div>
+        <div class="grid-inputs wide">
+          <label>Monthly spend, oldest → newest, comma-separated ($) — feeds the Utilization Trend Forecast
+            <input type="text" id="in_utilizationHistory" value="120,145,160,175,190,205">
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="0">
+        <div class="fg-title">Benefit design (annual, year-to-date)</div>
+        <div class="grid-inputs">
+          <label>Deductible ($) <input type="number" id="in_deductible" value="1500"></label>
+          <label>Deductible met ($) <input type="number" id="in_deductibleMet" value="400"></label>
+          <label>Coinsurance (plan's patient share, 0–1) <input type="number" id="in_coinsurance" value="0.2" step="0.05"></label>
+          <label>Office-visit copay ($) <input type="number" id="in_copay" value="30"></label>
+          <label>Out-of-pocket max ($) <input type="number" id="in_oopMax" value="6000"></label>
+          <label>Out-of-pocket met ($) <input type="number" id="in_oopMet" value="400"></label>
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="1">
+        <div class="fg-title">Planned service &amp; prior authorization</div>
+        <div class="grid-inputs wide">
+          <label>Service name <input type="text" id="in_svcName" value="MRI Brain w/o Contrast"></label>
+          <label>Service category
+            <select id="in_svcCategory">
+              <option value="office_visit_established">office_visit_established (no preauth)</option>
+              <option value="imaging_advanced" selected>imaging_advanced (preauth required)</option>
+              <option value="surgery">surgery (preauth required)</option>
+              <option value="inpatient_admission">inpatient_admission (preauth required)</option>
+            </select>
+          </label>
+          <label>Billed charge ($) <input type="number" id="in_charge" value="2400"></label>
+          <label>Primary diagnosis
+            <select id="in_diagnosis">
+              <option value="Migraine, unspecified" selected>Migraine, unspecified (G43.909)</option>
+              <option value="Type 2 diabetes mellitus">Type 2 diabetes mellitus (E11.9)</option>
+              <option value="Essential hypertension">Essential hypertension (I10)</option>
+              <option value="Acute cholecystitis">Acute cholecystitis (K81.0)</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-inputs" style="margin-top:8px;">
+          <label>Clinical criteria met for preauth?
+            <select id="in_criteriaMet"><option value="true" selected>yes</option><option value="false">no</option></select>
+          </label>
+        </div>
+        <div class="panel-note" style="margin-top:8px;">
+          Preauth is only required for imaging_advanced / surgery / inpatient_admission (a simplified
+          prospective-utilization-review rule). office_visit_established never requires it.
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="2">
+        <div class="fg-title">Claim adjudication</div>
+        <div class="grid-inputs">
+          <label>Payer allowed amount, as a fraction of billed (0–1) <input type="number" id="in_allowedRatio" value="0.55" step="0.05"></label>
+        </div>
+        <div class="panel-note" style="margin-top:8px;">
+          The contracted "allowed amount" is what the payer recognizes as payable at all; the
+          difference from the billed charge is a contractual write-off the provider absorbs — not
+          paid by the patient. Set this to 0 to force a denial and exercise the appeals path.
+        </div>
+      </div>
+
+      <div class="field-group" data-beat="3">
+        <div class="fg-title">Denial management — appeal</div>
+        <div class="grid-inputs">
+          <label>Appeal documentation strength (0–1) <input type="number" id="in_appealStrength" value="0.8" step="0.05"></label>
+        </div>
+        <div class="panel-note" style="margin-top:8px;">
+          Only used if Adjudication results in a denial. Strength ≥ 0.6 overturns the denial on
+          appeal (simplified); below that, the denial is upheld and the claim closes as a
+          provider write-off with no plan or patient payment.
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="applyInputsBtn">Apply inputs &amp; reset state</button>
+      <span class="status" id="inputsStatus"></span>
+    </div>
+
+    <div id="stagesContainer"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Case state</h2>
+    <div class="panel-note">Live values as each stage completes. Denials, write-offs, and negative or blocked outcomes are flagged — worth tracing back to see which upstream input caused them.</div>
+    <div id="stateInspector"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Tool call log</h2>
+    <div class="panel-note">Every execution — manual or agent-driven — with its result, so you can audit exactly what ran.</div>
+    <div id="toolLog"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Run the case</h2>
+    <div class="beat-tabs" id="orchTabs">
+      <button class="beat-tab-btn active" data-orch-tab="menu">Option 1: Menu</button>
+      <button class="beat-tab-btn" data-orch-tab="llm">Option 2: LLM</button>
+    </div>
+
+    <div id="orchTab_menu">
+      <div class="panel-note">
+        Pick an action from the menu and click Execute — this calls the exact same stage functions
+        shown above, directly, with no model deciding anything. It's the same job an LLM
+        tool-calling orchestrator would do (choosing which tool to call next), just done by you
+        from a plain menu instead of by typing a request to a model.
+      </div>
+      <div class="row" style="margin-top:0;">
+        <label style="min-width:320px; flex: 1;">Action
+          <select id="menuSelect"></select>
+        </label>
+        <button class="primary" id="menuRunBtn">Execute</button>
+      </div>
+      <div class="status" id="menuStatus"></div>
+    </div>
+
+    <div id="orchTab_llm" style="display:none;">
+      <div class="panel-note">
+        Type what you want in plain English. A small local instruct model (no native tool-calling
+        API — just plain text in, plain text out) reads your request plus the list of valid menu
+        actions, and replies with which one to run. That reply is matched against the same fixed
+        menu shown above and executed the same way — the model never computes any number itself,
+        it only decides which of the fixed actions you meant. Runs fully client-side via WebGPU.
+      </div>
+      <div class="row" style="margin-top:0;">
+        <label style="min-width:260px;">Router model
+          <select id="liteModelSelect"><option>loading model list…</option></select>
+        </label>
+        <button class="small" id="liteLoadBtn" disabled>Load model</button>
+      </div>
+      <div class="status" id="liteStatus">Checking WebGPU support…</div>
+      <div class="chat-transcript" id="liteTranscript"></div>
+      <textarea class="chat-input" id="liteInput" placeholder='e.g. "run stage 4" or "run the whole case" or "check eligibility"'></textarea>
+      <div class="row">
+        <button class="primary" id="liteSendBtn" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Runs entirely client-side — the deterministic stages are plain JavaScript; Option 2's LLM
+    router runs a small model locally via WebGPU. Nothing leaves your browser either way. Stage
+    sequence adapted from published revenue-cycle-management and
+    utilization-management process descriptions (TruBridge's 12 Steps of RCM, AMS Solutions' 8
+    Stages of the Medical Claims Lifecycle, and the Wikipedia summary of Utilization Management's
+    prospective / concurrent / retrospective review phases), simplified into a single illustrative
+    11-stage pipeline. Not a representation of any specific payer's actual rules.
+  </footer>
+</div>
+
+<script type="module">
+/* ============================== Healthcare Process core ============================== */
+function round2(x) { return Math.round(x * 100) / 100; }
+
+// least-squares linear regression over {x,y} points — used by the Utilization Trend Forecast stage
+function linreg(points) {
+  const n = points.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: points[0].y };
+  const xMean = points.reduce((s, p) => s + p.x, 0) / n;
+  const yMean = points.reduce((s, p) => s + p.y, 0) / n;
+  let num = 0, den = 0;
+  for (const p of points) { num += (p.x - xMean) * (p.y - yMean); den += (p.x - xMean) ** 2; }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = yMean - slope * xMean;
+  return { slope, intercept };
+}
+
+const PREAUTH_REQUIRED_CATEGORIES = new Set(['imaging_advanced', 'surgery', 'inpatient_admission']);
+const CPT_TABLE = {
+  office_visit_established: '99213',
+  imaging_advanced: '70551',
+  surgery: '47562',
+  inpatient_admission: '99223',
+};
+const ICD10_TABLE = {
+  'Type 2 diabetes mellitus': 'E11.9',
+  'Essential hypertension': 'I10',
+  'Migraine, unspecified': 'G43.909',
+  'Acute cholecystitis': 'K81.0',
+};
+
+function toolRegistration(state) {
+  const { patient, insurance } = state.inputs;
+  state.patientRecord = { ...patient, insurance, registeredAt: state.inputs.visitDate };
+  return { patientRecord: state.patientRecord };
+}
+
+function toolEligibility(state) {
+  if (!state.patientRecord) throw new Error('Run Registration first (patientRecord is missing).');
+  const { insurance } = state.inputs;
+  const active = insurance.status === 'active';
+  const eligibility = {
+    active, payer: insurance.payer, deductible: insurance.deductible, deductibleMet: insurance.deductibleMet,
+    coinsurance: insurance.coinsurance, copay: insurance.copay,
+    outOfPocketMax: insurance.outOfPocketMax, oopMet: insurance.oopMet,
+  };
+  if (!active) eligibility.reason = 'Coverage inactive as of visit date.';
+  state.eligibility = eligibility;
+  return { eligibility };
+}
+
+// ---- Utilization Trend Forecast (least-squares extrapolation over recent monthly utilization) ----
+function toolUtilizationForecast(state) {
+  if (!state.patientRecord) throw new Error('Run Registration first (patientRecord is missing).');
+  const readings = state.inputs.utilizationHistory || [];
+  const points = readings.map((v, i) => ({ x: i * 30, y: v })); // monthly spacing, oldest first
+  const { slope, intercept } = linreg(points);
+  const monthlySlope = round2(slope * 30);
+  const lastX = points.length ? points[points.length - 1].x : 0;
+  const horizonDays = 30;
+  const forecastedValue = round2(intercept + slope * (lastX + horizonDays));
+  const residuals = points.map(p => p.y - (intercept + slope * p.x));
+  const stdDev = points.length >= 2
+    ? round2(Math.sqrt(residuals.reduce((s, e) => s + e * e, 0) / points.length))
+    : 0;
+  const direction = monthlySlope > 5 ? 'worsening' : monthlySlope < -5 ? 'improving' : 'stable';
+  state.utilizationForecast = { readingCount: points.length, monthlySlope, forecastedValue, stdDev, direction };
+  return { utilizationForecast: state.utilizationForecast };
+}
+
+function toolPriorAuth(state) {
+  if (!state.eligibility) throw new Error('Run Eligibility first (eligibility is missing).');
+  if (!state.utilizationForecast) throw new Error('Run Utilization Trend Forecast first (utilizationForecast is missing).');
+  if (!state.eligibility.active) throw new Error('Cannot request prior auth: coverage is not active.');
+  const { plannedService, clinicalCriteriaMet } = state.inputs;
+  const required = PREAUTH_REQUIRED_CATEGORIES.has(plannedService.category);
+  const forecastSupportsNecessity = state.utilizationForecast.direction === 'worsening';
+  const status = !required ? 'not_required' : ((clinicalCriteriaMet || forecastSupportsNecessity) ? 'approved' : 'denied');
+  state.priorAuth = { required, status, service: plannedService.name, category: plannedService.category, forecastSupportsNecessity };
+  return { priorAuth: state.priorAuth };
+}
+
+function toolEncounter(state) {
+  if (!state.priorAuth) throw new Error('Run Prior Authorization first (priorAuth is missing).');
+  if (state.priorAuth.required && state.priorAuth.status === 'denied') {
+    throw new Error('Cannot proceed to encounter: prior authorization was denied for this service.');
+  }
+  const { plannedService, diagnoses } = state.inputs;
+  state.encounter = { service: plannedService.name, category: plannedService.category, diagnoses, chargeAmount: plannedService.chargeAmount, documented: true };
+  return { encounter: state.encounter };
+}
+
+function toolCoding(state) {
+  if (!state.encounter) throw new Error('Run Encounter first (encounter is missing).');
+  const cpt = CPT_TABLE[state.encounter.category] || '99499';
+  const icd10 = state.encounter.diagnoses.map(dx => ICD10_TABLE[dx] || 'R69');
+  state.coding = { cpt, icd10, chargeAmount: state.encounter.chargeAmount };
+  return { coding: state.coding };
+}
+
+function toolClaimSubmission(state) {
+  if (!state.coding) throw new Error('Run Coding first (coding is missing).');
+  state.claim = {
+    claimId: 'CLM-' + Math.floor(1e6 + (state.inputs.claimSeed || 1) * 12345 % 9e5),
+    cpt: state.coding.cpt, icd10: state.coding.icd10, billedAmount: state.coding.chargeAmount,
+    payer: state.eligibility.payer, status: 'submitted',
+  };
+  return { claim: state.claim };
+}
+
+function toolAdjudication(state) {
+  if (!state.claim) throw new Error('Run Claim Submission first (claim is missing).');
+  const { allowedAmountRatio } = state.inputs;
+  const billed = state.claim.billedAmount;
+  const allowed = round2(billed * allowedAmountRatio);
+  const { deductible, deductibleMet, coinsurance, copay, outOfPocketMax, oopMet } = state.eligibility;
+
+  const remainingDeductible = Math.max(0, deductible - deductibleMet);
+  const deductibleApplied = Math.min(remainingDeductible, allowed);
+  const afterDeductible = allowed - deductibleApplied;
+
+  let patientCoinsurance = round2(afterDeductible * coinsurance);
+  let planPays = round2(afterDeductible - patientCoinsurance);
+
+  let patientCopay = 0;
+  if (state.encounter.category === 'office_visit_established' && copay > 0) {
+    patientCopay = Math.min(copay, afterDeductible);
+    patientCoinsurance = 0;
+    planPays = round2(afterDeductible - patientCopay);
+  }
+
+  let patientResponsibility = round2(deductibleApplied + patientCoinsurance + patientCopay);
+
+  const remainingOOP = Math.max(0, outOfPocketMax - oopMet);
+  if (patientResponsibility > remainingOOP) {
+    const capped = remainingOOP;
+    planPays = round2(planPays + (patientResponsibility - capped));
+    patientResponsibility = round2(capped);
+  }
+
+  const contractualAdjustment = round2(billed - allowed);
+  const decision = allowed > 0 ? 'approved' : 'denied';
+
+  state.adjudication = {
+    decision, billed, allowed, contractualAdjustment,
+    deductibleApplied: round2(deductibleApplied), patientCoinsurance: round2(patientCoinsurance),
+    patientCopay: round2(patientCopay), patientResponsibility, planPays: round2(planPays),
+    denialCode: decision === 'denied' ? 'CO-50 (not medically necessary per payer policy)' : null,
+  };
+  state.claim.status = decision;
+  return { adjudication: state.adjudication };
+}
+
+function toolPaymentPosting(state) {
+  if (!state.adjudication) throw new Error('Run Adjudication first (adjudication is missing).');
+  if (state.adjudication.decision !== 'approved') {
+    throw new Error('Cannot post payment: claim was not approved (see Denial Management).');
+  }
+  state.posted = { planPaymentPosted: state.adjudication.planPays, patientBalance: state.adjudication.patientResponsibility, postedAt: state.inputs.visitDate };
+  return { posted: state.posted };
+}
+
+function toolDenialManagement(state) {
+  if (!state.adjudication) throw new Error('Run Adjudication first (adjudication is missing).');
+  if (state.adjudication.decision !== 'denied') {
+    state.denial = { needed: false };
+    return { denial: state.denial };
+  }
+  const { appealStrength } = state.inputs;
+  const appealSuccess = appealStrength >= 0.6;
+  state.denial = { needed: true, denialCode: state.adjudication.denialCode, appealFiled: true, appealOutcome: appealSuccess ? 'overturned' : 'upheld' };
+  if (appealSuccess) {
+    state.adjudication.decision = 'approved';
+    state.claim.status = 'approved_on_appeal';
+  } else {
+    state.posted = { planPaymentPosted: 0, patientBalance: 0, postedAt: state.inputs.visitDate, writeOff: state.adjudication.billed };
+    state.claim.status = 'denied_final';
+  }
+  return { denial: state.denial };
+}
+
+function toolPatientBilling(state) {
+  if (!state.posted) throw new Error('Run Payment Posting first (posted is missing), or resolve the denial via Denial Management.');
+  state.patientBill = { amountDue: state.posted.patientBalance, statementSentAt: state.inputs.visitDate, status: state.posted.patientBalance > 0 ? 'sent' : 'no_balance_due' };
+  return { patientBill: state.patientBill };
+}
+
+/* ============================== stage metadata ============================== */
+const STAGES = [
+  { id: 'run_registration', num: 1, name: 'Registration', formula: 'PatientRecord = {Patient, Insurance}', desc: 'Captures patient demographic and insurance information at intake.', fn: toolRegistration, prereq: [], beat: 0 },
+  { id: 'run_utilization_forecast', num: 2, name: 'Utilization Trend Forecast', formula: 'Forecast_{t+1} = OLS(UtilizationHistory) extrapolated 30 days', desc: 'Forecasts the near-term utilization/cost trend from the patient\'s recent claims history via least-squares extrapolation. A worsening trend can independently support medical necessity at Prior Authorization, mirroring real predictive-risk-informed utilization review.', fn: toolUtilizationForecast, prereq: ['run_registration'], beat: 0 },
+  { id: 'run_eligibility', num: 3, name: 'Eligibility &amp; Benefits Verification', formula: 'Eligibility = Verify(Insurance, VisitDate)', desc: 'Confirms active coverage and pulls the benefit design (deductible, coinsurance, copay, OOP max).', fn: toolEligibility, prereq: ['run_registration'], beat: 0 },
+  { id: 'run_prior_auth', num: 4, name: 'Prior Authorization', formula: 'PriorAuth = f(ServiceCategory, ClinicalCriteria, UtilizationTrend)', desc: 'Prospective utilization review — gates high-cost service categories on documented medical necessity (or a worsening forecasted utilization trend) before care is delivered.', fn: toolPriorAuth, prereq: ['run_eligibility', 'run_utilization_forecast'], beat: 1 },
+  { id: 'run_encounter', num: 5, name: 'Clinical Encounter', formula: 'Encounter = Document(Service, Diagnoses)', desc: 'Care is delivered and documented — blocked if a required prior auth was denied.', fn: toolEncounter, prereq: ['run_prior_auth'], beat: 1 },
+  { id: 'run_coding', num: 6, name: 'Medical Coding', formula: 'Coding = Lookup(CPT, ICD-10)', desc: 'Translates the documented service and diagnoses into billable CPT and ICD-10 codes.', fn: toolCoding, prereq: ['run_encounter'], beat: 1 },
+  { id: 'run_claim_submission', num: 7, name: 'Claim Submission', formula: 'Claim = {Codes, BilledAmount, Payer}', desc: 'Packages the coded encounter into a claim and transmits it to the payer.', fn: toolClaimSubmission, prereq: ['run_coding'], beat: 2 },
+  { id: 'run_adjudication', num: 8, name: 'Claim Adjudication', formula: 'PatientOwed = Deductible + Coinsurance + Copay, capped by OOPMax', desc: 'The payer applies the contracted allowed amount, then splits it into deductible, coinsurance/copay, and plan payment — or denies the claim outright.', fn: toolAdjudication, prereq: ['run_claim_submission'], beat: 2 },
+  { id: 'run_payment_posting', num: 9, name: 'Payment Posting', formula: 'Posted = {PlanPaid, PatientBalance}', desc: 'Records the plan payment and remaining patient balance — only runs on an approved claim.', fn: toolPaymentPosting, prereq: ['run_adjudication'], beat: 3 },
+  { id: 'run_denial_management', num: 10, name: 'Denial Management &amp; Appeals', formula: 'AppealOutcome = Overturned if Strength ≥ 0.6, else Upheld', desc: 'Retrospective review — a denied claim is appealed with supporting documentation; overturned reopens payment, upheld closes as a provider write-off.', fn: toolDenialManagement, prereq: ['run_adjudication'], beat: 3 },
+  { id: 'run_patient_billing', num: 11, name: 'Patient Billing &amp; Collections', formula: 'Statement = {AmountDue}', desc: 'Bills the patient for any remaining balance after insurance and appeals are resolved.', fn: toolPatientBilling, prereq: ['run_payment_posting', 'run_denial_management'], beat: 3 },
+];
+
+const BEATS = [
+  { name: 'Intake', desc: 'Register the patient and verify active insurance coverage and benefit design.' },
+  { name: 'Care Authorization & Delivery', desc: 'Clear prospective utilization review, deliver the care, and code it correctly.' },
+  { name: 'Claim Submission & Adjudication', desc: "Submit the claim and let the payer split cost between plan and patient." },
+  { name: 'Resolution', desc: 'Post payment, resolve any denial through appeal, and bill the patient the final balance.' },
+];
+let activeBeat = 0;
+
+/* ============================== app state ============================== */
+const $ = (id) => document.getElementById(id);
+let state = null;
+let completed = new Set();
+let lastResultText = {};
+
+function defaultInputs() {
+  return {
+    patient: { name: $('in_name').value, memberId: $('in_memberId').value },
+    insurance: {
+      payer: $('in_payer').value, status: $('in_covStatus').value,
+      deductible: parseFloat($('in_deductible').value), deductibleMet: parseFloat($('in_deductibleMet').value),
+      coinsurance: parseFloat($('in_coinsurance').value), copay: parseFloat($('in_copay').value),
+      outOfPocketMax: parseFloat($('in_oopMax').value), oopMet: parseFloat($('in_oopMet').value),
+    },
+    visitDate: $('in_visitDate').value,
+    plannedService: { name: $('in_svcName').value, category: $('in_svcCategory').value, chargeAmount: parseFloat($('in_charge').value) },
+    diagnoses: [$('in_diagnosis').value],
+    clinicalCriteriaMet: $('in_criteriaMet').value === 'true',
+    allowedAmountRatio: parseFloat($('in_allowedRatio').value),
+    appealStrength: parseFloat($('in_appealStrength').value),
+    claimSeed: 1,
+    utilizationHistory: $('in_utilizationHistory').value.split(',').map(s => parseFloat(s.trim())).filter(v => !isNaN(v)),
+  };
+}
+
+function resetState() {
+  state = { inputs: defaultInputs() };
+  completed = new Set();
+  lastResultText = {};
+  renderStages();
+  renderStateInspector();
+}
+
+/* ============================== rendering ============================== */
+function renderBeatTabs() {
+  const tabsEl = $('beatTabs');
+  tabsEl.innerHTML = BEATS.map((b, i) => {
+    const stagesInBeat = STAGES.filter(s => s.beat === i);
+    const doneCount = stagesInBeat.filter(s => completed.has(s.id)).length;
+    return `<button class="beat-tab-btn ${i === activeBeat ? 'active' : ''}" data-beat="${i}">
+      <span class="beat-num">${doneCount}/${stagesInBeat.length}</span>${b.name}
+    </button>`;
+  }).join('');
+  tabsEl.querySelectorAll('[data-beat]').forEach(btn => {
+    btn.addEventListener('click', () => { activeBeat = parseInt(btn.dataset.beat, 10); renderStages(); });
+  });
+  $('beatDesc').textContent = BEATS[activeBeat].desc;
+
+  document.querySelectorAll('#inputsContainer .field-group[data-beat]').forEach(fg => {
+    fg.style.display = parseInt(fg.dataset.beat, 10) === activeBeat ? '' : 'none';
+  });
+}
+
+function renderStages() {
+  renderBeatTabs();
+  const container = $('stagesContainer');
+  container.innerHTML = '';
+  const visible = STAGES.filter(s => s.beat === activeBeat);
+  visible.forEach(st => {
+    const prereqMet = st.prereq.every(p => completed.has(p));
+    const div = document.createElement('div');
+    div.className = 'stage-card';
+    div.innerHTML = `
+      <div class="stage-head">
+        <div class="stage-num ${completed.has(st.id) ? 'done' : ''}">${completed.has(st.id) ? '✓' : st.num}</div>
+        <div class="stage-name">${st.name}</div>
+      </div>
+      <div class="stage-desc">${st.desc}</div>
+      <div class="stage-formula">${st.formula}</div>
+      <div class="stage-actions">
+        <button class="small primary" data-run="${st.id}" ${prereqMet ? '' : 'disabled'}>Run this stage</button>
+        ${st.prereq.length && !prereqMet ? `<span class="stage-prereq">requires: ${st.prereq.map(p => STAGES.find(s=>s.id===p).name).join(', ')}</span>` : ''}
+      </div>
+      <div class="stage-result" id="result_${st.id}"></div>
+    `;
+    container.appendChild(div);
+    const stored = lastResultText[st.id];
+    if (stored) {
+      const resEl = div.querySelector('.stage-result');
+      resEl.classList.add('show');
+      if (stored.isError) resEl.classList.add('err');
+      resEl.textContent = stored.text;
+    }
+  });
+  container.querySelectorAll('[data-run]').forEach(btn => {
+    btn.addEventListener('click', () => runStage(btn.dataset.run, 'manual'));
+  });
+}
+
+function fmtVal(v) {
+  if (typeof v === 'number') {
+    const s = String(round2(v));
+    return v < 0 ? `<span class="neg">${s}</span>` : s;
+  }
+  if (typeof v === 'boolean') return v ? '<span class="flag good">yes</span>' : '<span class="flag crit">no</span>';
+  if (Array.isArray(v)) return v.map(fmtVal).join(', ');
+  return String(v);
+}
+
+function runStage(id, source) {
+  const st = STAGES.find(s => s.id === id);
+  try {
+    const result = st.fn(state);
+    completed.add(id);
+    lastResultText[id] = { text: JSON.stringify(result, null, 2), isError: false };
+    logToolCall(id, source, result, null);
+    renderStages();
+    renderStateInspector();
+    return { ok: true, result };
+  } catch (e) {
+    lastResultText[id] = { text: 'Error: ' + e.message, isError: true };
+    logToolCall(id, source, null, e.message);
+    renderStages();
+    return { ok: false, error: e.message };
+  }
+}
+
+function renderStateInspector() {
+  const el = $('stateInspector');
+  if (!state || completed.size === 0) { el.innerHTML = '<div class="panel-note">Nothing computed yet — run a stage above.</div>'; return; }
+  const rows = [];
+  const push = (label, val) => { if (val !== undefined) rows.push([label, val]); };
+  if (state.utilizationForecast) push('Utilization Forecast', `${state.utilizationForecast.readingCount} reading(s), trend: <b>${state.utilizationForecast.direction}</b> (forecasted $${fmtVal(state.utilizationForecast.forecastedValue)} next month)`);
+  if (state.eligibility) push('Eligibility', `active: ${fmtVal(state.eligibility.active)}${state.eligibility.reason ? ' — ' + state.eligibility.reason : ''}`);
+  if (state.priorAuth) push('Prior Auth', `${state.priorAuth.required ? 'required' : 'not required'} → <b>${state.priorAuth.status}</b>${state.priorAuth.required && state.priorAuth.forecastSupportsNecessity ? ' (supported by worsening utilization trend)' : ''}`);
+  if (state.encounter) push('Encounter', `${state.encounter.service} (${state.encounter.diagnoses.join(', ')})`);
+  if (state.coding) push('Coding', `CPT ${state.coding.cpt} / ICD-10 ${state.coding.icd10.join(', ')}`);
+  if (state.claim) push('Claim', `${state.claim.claimId} — billed $${state.claim.billedAmount} — status: <b>${state.claim.status}</b>`);
+  if (state.adjudication) {
+    const a = state.adjudication;
+    push('Adjudication', `allowed $${fmtVal(a.allowed)} (write-off $${fmtVal(a.contractualAdjustment)}) → plan pays $${fmtVal(a.planPays)}, patient owes $${fmtVal(a.patientResponsibility)}${a.denialCode ? ' — ' + a.denialCode : ''}`);
+  }
+  if (state.posted) push('Payment Posted', `plan $${fmtVal(state.posted.planPaymentPosted)}, patient balance $${fmtVal(state.posted.patientBalance)}${state.posted.writeOff ? ` (write-off $${fmtVal(state.posted.writeOff)})` : ''}`);
+  if (state.denial) push('Denial Mgmt', state.denial.needed ? `appeal filed → <b>${state.denial.appealOutcome}</b>` : 'not needed (claim was approved)');
+  if (state.patientBill) push('Patient Bill', `$${fmtVal(state.patientBill.amountDue)} due — ${state.patientBill.status}`);
+  el.innerHTML = `<table class="state-table"><thead><tr><th>Variable</th><th>Value</th></tr></thead><tbody>${
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+let logSeq = 0;
+function logToolCall(name, source, result, error) {
+  logSeq++;
+  const log = $('toolLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <div class="log-head">
+      <span class="log-src ${source === 'agent' ? 'agent' : ''}">${source === 'agent' ? 'agent' : 'manual'}</span>
+      <strong>#${logSeq} ${name}</strong>
+    </div>
+    <div class="log-body ${error ? 'log-err' : ''}">${error ? 'Error: ' + error : JSON.stringify(result)}</div>
+  `;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+$('applyInputsBtn').addEventListener('click', resetState);
+
+let themeState = 'light';
+$('themeToggle').addEventListener('click', () => {
+  themeState = themeState === 'light' ? 'dark' : themeState === 'dark' ? 'system' : 'light';
+  if (themeState === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', themeState);
+  $('themeToggle').textContent = 'Theme: ' + themeState;
+});
+
+/* ============================== Menu orchestrator (no model — plain selection) ============================== */
+function executeToolByName(name) {
+  const st = STAGES.find(s => s.id === name);
+  if (!st) return { ok: false, error: `Unknown tool "${name}".` };
+  return runStage(name, 'menu');
+}
+
+function runWholeCase() {
+  for (const st of STAGES) {
+    const res = runStage(st.id, 'menu');
+    if (!res.ok) { $('menuStatus').textContent = `Stopped at stage ${st.num} (${st.name.replace(/&amp;/g, '&')}): ${res.error}`; return; }
+  }
+  $('menuStatus').textContent = `Whole case run complete — all ${STAGES.length} stages executed.`;
+}
+
+function populateMenu() {
+  const sel = $('menuSelect');
+  sel.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '__all__';
+  allOpt.textContent = `Run the whole case (all ${STAGES.length} stages, in order)`;
+  sel.appendChild(allOpt);
+  STAGES.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st.id;
+    opt.textContent = `Run stage ${st.num}: ${st.name.replace(/&amp;/g, '&')}`;
+    sel.appendChild(opt);
+  });
+}
+
+$('menuRunBtn').addEventListener('click', () => {
+  const val = $('menuSelect').value;
+  if (val === '__all__') { runWholeCase(); return; }
+  const res = executeToolByName(val);
+  const st = STAGES.find(s => s.id === val);
+  $('menuStatus').textContent = res.ok
+    ? `Stage ${st.num} (${st.name.replace(/&amp;/g, '&')}) executed successfully.`
+    : `Stage ${st.num} (${st.name.replace(/&amp;/g, '&')}) failed: ${res.error}`;
+});
+
+populateMenu();
+
+/* ============================== orchestrator tabs (Option 1: Menu / Option 2: LLM) ============================== */
+document.querySelectorAll('#orchTabs [data-orch-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#orchTabs [data-orch-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.orchTab;
+    $('orchTab_menu').style.display = tab === 'menu' ? '' : 'none';
+    $('orchTab_llm').style.display = tab === 'llm' ? '' : 'none';
+  });
+});
+
+/* ============================== Lite LLM router (small model, plain text — no tool-calling API) ============================== */
+let webllm = null, liteEngine = null;
+
+// Any small instruct model works here — there's no tools/function-calling API involved, so none
+// of the Hermes-only tool-calling allowlist restrictions apply. We just filter for small models
+// so it loads fast and runs on modest hardware.
+const LITE_VRAM_CEILING_MB = 1200;
+
+function buildLitePrompt(userText) {
+  const optionLines = STAGES.map(st => `${st.id} — Stage ${st.num}: ${st.name.replace(/&amp;/g, '&')}`).join('\n');
+  return `You are a router for a healthcare revenue-cycle tool. There is a FIXED menu of actions —
+you never invent a new one, and you never compute any numbers yourself. Given the user's request,
+reply with ONLY the single best-matching action id from this list, and nothing else — no
+punctuation, no explanation:
+
+__all__ — Run the whole case (all ${STAGES.length} stages, in order)
+${optionLines}
+
+User request: "${userText}"
+
+Reply with exactly one id from the list above, nothing else:`;
+}
+
+function parseLiteAction(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  for (const id of ['__all__', ...STAGES.map(s => s.id)]) {
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('(?:\\b|^)' + escaped + '(?:\\b|$)', 'i');
+    if (re.test(text)) return id;
+  }
+  if (/\ball\b|\bwhole\b|\bentire\b|\beverything\b/.test(t) && !/stage\s*\d/.test(t)) return '__all__';
+  const numMatch = t.match(/stage\s*(\d+)/) || t.match(/\b(\d{1,2})\b/);
+  if (numMatch) {
+    const n = parseInt(numMatch[1], 10);
+    const st = STAGES.find(s => s.num === n);
+    if (st) return st.id;
+  }
+  const byNameDesc = [...STAGES].sort((a, b) => b.name.length - a.name.length);
+  for (const st of byNameDesc) {
+    if (t.includes(st.name.replace(/&amp;/g, '&').toLowerCase())) return st.id;
+  }
+  // a few domain synonyms the exact stage names wouldn't otherwise catch
+  if (/eligib|coverage|benefit/.test(t)) return 'run_eligibility';
+  if (/preauth|prior auth|authoriz/.test(t)) return 'run_prior_auth';
+  if (/encounter|visit|deliver.*care/.test(t)) return 'run_encounter';
+  if (/code|coding|cpt|icd/.test(t)) return 'run_coding';
+  if (/submit|submission/.test(t)) return 'run_claim_submission';
+  if (/adjudicat/.test(t)) return 'run_adjudication';
+  if (/post.*payment|payment.*post/.test(t)) return 'run_payment_posting';
+  if (/denial|appeal/.test(t)) return 'run_denial_management';
+  if (/bill|collection/.test(t)) return 'run_patient_billing';
+  if (/forecast|trend|utilization/.test(t)) return 'run_utilization_forecast';
+  if (/regist/.test(t)) return 'run_registration';
+  return null;
+}
+
+function appendLiteTranscript(role, content) {
+  const el = $('liteTranscript');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="role">${role}</div><div>${escapeHtml(content)}</div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+(async () => {
+  if (!navigator.gpu) { $('liteStatus').textContent = 'WebGPU is not available in this browser — try a recent Chrome/Edge on desktop.'; return; }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error('no adapter');
+    $('liteStatus').textContent = 'WebGPU available. Loading the WebLLM library…';
+    webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    populateLiteModelList();
+  } catch (e) {
+    console.error(e);
+    $('liteStatus').textContent = 'WebGPU/WebLLM unavailable: ' + e.message;
+  }
+})();
+
+function populateLiteModelList() {
+  const all = webllm.prebuiltAppConfig.model_list;
+  let models = all
+    .filter(m => /instruct|-it-|\bit\b/i.test(m.model_id) && !/embed/i.test(m.model_id) && (m.vram_required_MB || 9e9) <= LITE_VRAM_CEILING_MB)
+    .sort((a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9));
+  let usingFallback = false;
+  if (models.length === 0) {
+    usingFallback = true;
+    models = all
+      .filter(m => /instruct/i.test(m.model_id) && !/embed/i.test(m.model_id))
+      .sort((a, b) => (a.vram_required_MB || 9e9) - (b.vram_required_MB || 9e9));
+  }
+  const sel = $('liteModelSelect');
+  sel.innerHTML = '';
+  models.slice(0, 6).forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = m.model_id;
+    opt.textContent = m.model_id + (m.vram_required_MB ? ` (~${Math.round(m.vram_required_MB)} MB)` : '');
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (models.length) {
+    $('liteStatus').textContent = usingFallback
+      ? 'No model under the size ceiling was found in the catalog — listing the smallest instruct models available instead. Press "Load model" once, then Send.'
+      : 'Pick a small router model and press "Load model" once — after that, Send reuses it instantly.';
+    $('liteLoadBtn').disabled = false;
+    $('liteSendBtn').disabled = false;
+  } else {
+    $('liteStatus').textContent = 'No suitable router model found in the WebLLM catalog.';
+  }
+}
+
+async function ensureLiteEngine() {
+  const modelId = $('liteModelSelect').value;
+  if (liteEngine && liteEngine.__modelId === modelId) return liteEngine;
+  if (liteEngine) {
+    try { if (typeof liteEngine.unload === 'function') await liteEngine.unload(); } catch (e) { /* best-effort */ }
+    liteEngine = null;
+  }
+  $('liteStatus').textContent = 'Loading ' + modelId + '…';
+  liteEngine = await webllm.CreateMLCEngine(modelId, {
+    initProgressCallback: (p) => { $('liteStatus').textContent = (p.text || 'Loading…'); },
+  });
+  liteEngine.__modelId = modelId;
+  $('liteStatus').textContent = 'Model ready — Send now reuses it instantly, no reload.';
+  return liteEngine;
+}
+
+async function runLiteTurn(userText) {
+  appendLiteTranscript('user', userText);
+  let engine;
+  try {
+    engine = await ensureLiteEngine();
+  } catch (e) {
+    appendLiteTranscript('assistant', 'Error loading the model: ' + e.message);
+    return;
+  }
+  let reply;
+  try {
+    reply = await engine.chat.completions.create({
+      messages: [{ role: 'user', content: buildLitePrompt(userText) }],
+      temperature: 0,
+      max_tokens: 20,
+    });
+  } catch (e) {
+    appendLiteTranscript('assistant', 'Error calling the model: ' + e.message);
+    return;
+  }
+  const raw = (reply.choices[0].message.content || '').trim();
+  appendLiteTranscript('assistant', raw || '(empty reply)');
+
+  const action = parseLiteAction(raw) || parseLiteAction(userText);
+  if (!action) {
+    appendLiteTranscript('tool', `Could not confidently match a menu action from "${raw}" — try rephrasing (e.g. "run stage 4" or "run the whole case").`);
+    return;
+  }
+  const label = action === '__all__' ? 'Run the whole case' : STAGES.find(s => s.id === action).name.replace(/&amp;/g, '&');
+  appendLiteTranscript('tool', `→ matched action: ${label}`);
+  if (action === '__all__') { runWholeCase(); appendLiteTranscript('tool', $('menuStatus').textContent); return; }
+  const res = executeToolByName(action);
+  appendLiteTranscript('tool', res.ok ? `✓ Stage ${STAGES.find(s => s.id === action).num} (${label}) executed successfully.` : `✗ Stage ${STAGES.find(s => s.id === action).num} (${label}) failed: ${res.error}`);
+}
+
+$('liteSendBtn').addEventListener('click', async () => {
+  const text = $('liteInput').value.trim();
+  if (!text) return;
+  $('liteInput').value = '';
+  $('liteSendBtn').disabled = true;
+  $('liteLoadBtn').disabled = true;
+  try { await runLiteTurn(text); } finally { $('liteSendBtn').disabled = false; $('liteLoadBtn').disabled = false; }
+});
+
+$('liteLoadBtn').addEventListener('click', async () => {
+  $('liteLoadBtn').disabled = true;
+  $('liteSendBtn').disabled = true;
+  try { await ensureLiteEngine(); } catch (e) { $('liteStatus').textContent = 'Error loading the model: ' + e.message; }
+  finally { $('liteLoadBtn').disabled = false; $('liteSendBtn').disabled = false; }
+});
+
+$('liteModelSelect').addEventListener('change', () => {
+  if (liteEngine && liteEngine.__modelId !== $('liteModelSelect').value) {
+    $('liteStatus').textContent = 'Model selection changed — press "Load model" again (or just Send; it will load automatically).';
+  }
+});
+
+/* test hook (used by the automated smoke test; harmless in normal use) */
+window.__hc = { STAGES, runStage, resetState, executeToolByName, runWholeCase, parseLiteAction, buildLitePrompt, get state() { return state; }, get completed() { return completed; } };
+
+resetState();
+</script>
+</body>
+</html>
