@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Knowledge Field: sentences as a semantic force graph</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧲</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+:root{
+  --bg:#F5F6F8; --panel:#FFFFFF; --ink:#1D2330; --muted:#636B7A; --line:#D9DDE3; --faint:#EEF0F3;
+  --display:"Schibsted Grotesk","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#12151B; --panel:#1A1E26; --ink:#E6E9EF; --muted:#9AA3B2; --line:#2D333F; --faint:#222834; }
+}
+:root[data-theme="dark"]{ --bg:#12151B; --panel:#1A1E26; --ink:#E6E9EF; --muted:#9AA3B2; --line:#2D333F; --faint:#222834; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #8E6CC4;outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:14px 28px;justify-content:space-between;align-items:end;margin-bottom:18px}
+h1{font:800 clamp(1.9rem,4.5vw,3.1rem)/1 var(--display);letter-spacing:-.025em;margin:0}
+.tag{color:var(--muted);margin:.45rem 0 0;max-width:52ch}
+h2{font:800 1.05rem/1.2 var(--display);margin:0 0 8px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,.btn{border:1.5px solid var(--ink);background:var(--panel);border-radius:9px;padding:7px 12px}
+.btn{cursor:pointer;font-weight:700}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.ghost{border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.status{font-size:.88rem;color:var(--muted);margin:6px 0 0;min-height:1.3em}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px;display:none;flex-basis:100%}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .2s}
+textarea{width:100%;min-height:150px;resize:vertical;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);line-height:1.45}
+.input-grid{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;margin-bottom:16px}
+@media (max-width:760px){.input-grid{grid-template-columns:1fr}}
+.side{display:flex;flex-direction:column;gap:8px;min-width:200px}
+.hint{font-size:.85rem;color:var(--muted);margin:0}
+
+/* Threshold control, the hero control */
+.threshold{display:grid;grid-template-columns:auto 1fr auto;gap:6px 18px;align-items:center;margin-bottom:16px}
+.threshold .val{font:800 clamp(2rem,5vw,2.8rem)/1 var(--display);font-variant-numeric:tabular-nums;min-width:4.2ch;text-align:right}
+.threshold label{font-weight:700}
+.threshold .sub{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.88rem;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--ink);height:28px}
+@media (max-width:600px){.threshold{grid-template-columns:1fr auto}.threshold label{grid-column:1/-1}}
+
+.views{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.views{grid-template-columns:1fr}}
+#graph{width:100%;height:540px;display:block;border-radius:10px;background:var(--faint);touch-action:none}
+@media (max-width:600px){#graph{height:420px}}
+.edge{stroke-linecap:round}
+.node circle{stroke:var(--panel);stroke-width:2;cursor:grab}
+.node text{font:700 10px var(--body);fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.node.dim,.edge.dim{opacity:.12}
+.node.sel circle{stroke:var(--ink);stroke-width:3}
+.matrix-box{position:relative}
+#matrix{width:100%;height:auto;display:block;image-rendering:pixelated;border-radius:6px;cursor:crosshair}
+.legend{margin-top:10px}
+.legend .grad{height:12px;border-radius:6px;background:linear-gradient(90deg,#053061,#2166ac,#4393c3,#92c5de,#d1e5f0,#f7f7f7,#fddbc7,#f4a582,#d6604d,#b2182b,#67001f)}
+.legend .ticks{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.check{display:flex;gap:6px;align-items:center;font-size:.9rem;cursor:pointer}
+.tip{position:fixed;pointer-events:none;z-index:10;max-width:320px;background:var(--ink);color:var(--bg);font-size:.85rem;line-height:1.35;padding:8px 10px;border-radius:8px;display:none}
+.tip b{font-variant-numeric:tabular-nums}
+.details{margin-top:16px}
+.details ol{margin:6px 0 0;padding-left:0;list-style:none}
+.details li{display:grid;grid-template-columns:3.6em 2.2em 1fr;gap:8px;padding:5px 0;border-top:1px solid var(--line);cursor:pointer}
+.score{font-weight:700;font-variant-numeric:tabular-nums}
+.sw{width:1.4em;height:1.4em;border-radius:4px}
+.sel-sentence{font-size:1.05rem;border-left:4px solid var(--ink);padding-left:10px;margin:4px 0 10px}
+.nogpu{border:2px solid #b2182b;border-radius:10px;padding:10px 12px;margin-bottom:14px;display:none}
+.empty{color:var(--muted);text-align:center;padding:60px 10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Knowledge Field</h1>
+      <p class="tag">Each sentence becomes a point. Sentences that mean similar things pull together. Raise the threshold to keep only the strongest connections.</p>
+    </div>
+    <div>
+      <div class="row">
+        <select id="model" aria-label="Embedding model">
+          <option value="snowflake-arctic-embed-m-q0f32-MLC-b4" selected>Arctic Embed M, accurate (~0.5 GB)</option>
+          <option value="snowflake-arctic-embed-s-q0f32-MLC-b4">Arctic Embed S, faster (~0.3 GB)</option>
+        </select>
+        <select id="refModel" aria-label="Reference model for LLM judgment">
+          <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Reference: 0.5B, fastest, least trusted</option>
+          <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Reference: 1.5B, balanced</option>
+          <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Reference: 3B, most capable available here</option>
+        </select>
+        <button class="btn primary" id="load">Load models (~1.4 GB)</button>
+        <div class="bar" id="bar"><i></i></div>
+      </div>
+      <p class="hint" style="margin:4px 0 0">The reference model is only used if you choose "Ask the reference model" below. It's a standard we trust more, not ground truth.</p>
+      <p class="status" id="status" aria-live="polite">Runs on your GPU with WebGPU. Models download once, then are cached.</p>
+    </div>
+  </header>
+
+  <div class="nogpu" id="nogpu"><strong>WebGPU isn't available in this browser.</strong> Open this file in a recent Chrome or Edge on desktop, or Safari 26+, with hardware acceleration on.</div>
+
+  <section class="panel input-grid" aria-label="Text input">
+    <div>
+      <h2>Your text</h2>
+      <textarea id="text" placeholder="Paste a few paragraphs. Each sentence becomes a node (up to 80)."></textarea>
+    </div>
+    <div class="side">
+      <h2>Samples</h2>
+      <button class="btn ghost" id="s1" type="button">Four unrelated topics</button>
+      <button class="btn ghost" id="s2" type="button">Mind and machine</button>
+      <button class="btn primary" id="build" disabled>Build the field</button>
+      <p class="hint" id="count">0 sentences</p>
+    </div>
+  </section>
+
+  <section class="panel threshold" aria-label="Similarity threshold">
+    <label for="thr">Similarity threshold</label>
+    <input type="range" id="thr" min="-1" max="1" step="0.01" value="0.6" disabled>
+    <span class="val" id="thrVal">0.60</span>
+    <div class="sub">
+      <span id="edgeInfo">Build the field to see connections.</span>
+      <label class="check"><input type="radio" name="src" id="srcEmbed" checked> Embeddings (cosine, fast)</label>
+      <label class="check"><input type="radio" name="src" id="srcLLM"> Ask the reference model (one call per pair, slower)</label>
+      <label class="check"><input type="checkbox" id="center"> Mean-center vectors (spreads scores so negatives appear)</label>
+      <label class="check"><input type="checkbox" id="group" checked> Group matrix by cluster</label>
+    </div>
+    <p class="hint" id="srcHint" style="grid-column:1/-1;margin:2px 0 0">Embeddings compare word statistics. The reference model is asked to directly judge meaning, including negation and contradiction. Treat it as the most trusted standard on hand, not as ground truth: a bigger reference model can still be wrong, and different reference models can disagree with each other.</p>
+  </section>
+
+  <div class="views">
+    <section class="panel" aria-label="Force graph">
+      <h2>Force field</h2>
+      <svg id="graph" role="img" aria-label="Force-directed graph of sentences"></svg>
+      <p class="hint" style="margin-top:6px">Drag to move nodes. Tap a node to see its nearest sentences. Colors mark clusters of connected sentences.</p>
+    </section>
+    <section class="panel matrix-box" aria-label="Similarity matrix">
+      <h2>Similarity matrix</h2>
+      <canvas id="matrix" width="10" height="10" aria-label="Similarity matrix heatmap"></canvas>
+      <div class="legend">
+        <div class="grad"></div>
+        <div class="ticks"><span>−1 cold</span><span>−0.5</span><span>0</span><span>0.5</span><span>1 hot</span></div>
+      </div>
+      <p class="hint" style="margin-top:6px">Cells show cosine similarity between sentence pairs. Hover for details; tap to select a sentence.</p>
+    </section>
+  </div>
+
+  <section class="panel details" id="details" aria-live="polite">
+    <h2>Selected sentence</h2>
+    <p class="hint">Tap a node or matrix row to see what it's closest to.</p>
+  </section>
+</div>
+<div class="tip" id="tip"></div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+
+/* ---------- Samples ---------- */
+const SAMPLES = {
+  s1: `Model predictive control solves an optimization problem at every time step. The controller predicts the future behavior of the plant over a finite horizon. Only the first control move is applied before the problem is solved again. Robust control keeps a system stable even when the model is uncertain.
+To make a good risotto, toast the rice in butter before adding any liquid. Add warm stock one ladle at a time and stir often. Finish the dish with parmesan and a knob of cold butter. A pinch of saffron turns it into risotto alla milanese.
+Jupiter is the largest planet in our solar system. Its Great Red Spot is a storm larger than Earth. Saturn's rings are made mostly of ice particles. Light from the Sun takes about eight minutes to reach Earth.
+Working memory can hold only a handful of items at once. Attention decides which information reaches conscious thought. Sleep helps the brain consolidate new memories. People often trust their first intuition even when it is wrong.`,
+  s2: `Large language models predict the next word from the words that came before. The brain also seems to predict upcoming words while listening to speech. Prediction errors help both brains and machines learn. Humans learn language from far fewer words than a language model sees.
+A digital twin is a virtual model of a physical system that updates with live data. A calibration curve maps raw sensor readings to true values. Every model is a simplification that is useful for a purpose. Engineers validate a model by comparing its predictions to measurements.
+Metacognition is the ability to judge what you know and what you don't. A well-calibrated person is right about as often as they are confident. Language models sometimes answer confidently when they should say they don't know. Checking the consistency of several answers can reveal a guess.
+Supply chain planning balances demand forecasts against capacity. Inventory buffers protect against uncertain demand. A planner reviews exceptions when the forecast changes sharply.`
+};
+$("s1").onclick = ()=>{ $("text").value = SAMPLES.s1; updateCount(); };
+$("s2").onclick = ()=>{ $("text").value = SAMPLES.s2; updateCount(); };
+
+/* ---------- Sentence splitting ---------- */
+const MAX = 80;
+function splitSentences(text){
+  let parts;
+  if(window.Intl && Intl.Segmenter){
+    const seg = new Intl.Segmenter(undefined,{granularity:"sentence"});
+    parts = [...seg.segment(text)].map(s=>s.segment);
+  } else parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>2);
+}
+function updateCount(){
+  const n = splitSentences($("text").value).length;
+  $("count").textContent = n>MAX ? `${n} sentences (first ${MAX} will be used)` : `${n} sentence${n===1?"":"s"}`;
+}
+$("text").addEventListener("input", updateCount);
+
+/* ---------- Model ---------- */
+let engine = null, loadedRefId = null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; $("load").disabled = true; }
+$("load").onclick = async ()=>{
+  $("load").disabled = true; $("bar").style.display="block";
+  const bar = $("bar").firstElementChild;
+  const cb = r => { bar.style.width = Math.round((r.progress||0)*100)+"%"; $("status").textContent = r.text; };
+  try{
+    const refId = $("refModel").value;
+    const ids = [$("model").value, refId];
+    if(engine){ engine.setInitProgressCallback(cb); await engine.reload(ids); }
+    else engine = await webllm.CreateMLCEngine(ids, {initProgressCallback:cb});
+    loadedRefId = refId;
+    $("status").textContent = "Models ready. Pick a sample or paste text, then build the field.";
+    $("build").disabled = false; $("load").textContent = "Switch model";
+  }catch(e){ $("status").textContent = "Couldn't load the models: " + (e.message||e); }
+  finally{ $("load").disabled = false; $("bar").style.display="none"; }
+};
+
+/* ---------- Data ---------- */
+let sentences = [], rawVecs = [], S = [], clusters = [], threshold = 0.6, selected = -1;
+
+function normalize(v){ const n = Math.hypot(...v) || 1; return v.map(x=>x/n); }
+function computeSim(){
+  let vecs = rawVecs.map(v=>v.slice());
+  if($("center").checked && vecs.length>1){
+    const d = vecs[0].length, mean = new Array(d).fill(0);
+    vecs.forEach(v=>v.forEach((x,i)=>mean[i]+=x/vecs.length));
+    vecs = vecs.map(v=>v.map((x,i)=>x-mean[i]));
+  }
+  vecs = vecs.map(normalize);
+  const n = vecs.length;
+  S = Array.from({length:n},()=>new Float32Array(n));
+  for(let i=0;i<n;i++) for(let j=i;j<n;j++){
+    let s = 0; const a = vecs[i], b = vecs[j];
+    for(let k=0;k<a.length;k++) s += a[k]*b[k];
+    s = Math.max(-1, Math.min(1, s));
+    S[i][j] = S[j][i] = (i===j) ? 1 : s;
+  }
+}
+
+const MAX_LLM = 14; // O(n^2) calls; keep this small enough to stay fast
+async function computeSimLLM(){
+  const n = sentences.length;
+  S = Array.from({length:n},()=>new Float32Array(n));
+  for(let i=0;i<n;i++) S[i][i] = 1;
+  const total = n*(n-1)/2;
+  let done = 0;
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      done++;
+      $("status").textContent = `Asking the LLM: pair ${done} of ${total}…`;
+      const res = await engine.chat.completions.create({
+        model: loadedRefId, temperature: 0, max_tokens: 8,
+        messages: [
+          {role:"system", content:"Rate the semantic similarity in MEANING between two sentences, from -1 to 1. Use 1 for the same meaning, 0 for unrelated topics, and negative values when the sentences state opposite or contradictory things (closer to -1 the more directly they contradict). Reply with only a number, such as 0.42 or -0.7."},
+          {role:"user", content:`Sentence A: ${sentences[i]}\nSentence B: ${sentences[j]}`}
+        ]
+      });
+      const text = res.choices?.[0]?.message?.content || "0";
+      let v = parseFloat((text.match(/-?\d*\.?\d+/) || ["0"])[0]);
+      if(isNaN(v)) v = 0;
+      S[i][j] = S[j][i] = Math.max(-1, Math.min(1, v));
+    }
+  }
+}
+
+$("build").onclick = async ()=>{
+  const all = splitSentences($("text").value);
+  if(all.length < 2){ $("status").textContent = "Add at least two sentences to build a field."; return; }
+  const useLLM = $("srcLLM").checked;
+  sentences = all.slice(0, useLLM ? MAX_LLM : MAX);
+  if(useLLM && all.length > MAX_LLM) $("status").textContent = `Using the first ${MAX_LLM} sentences: LLM judgment needs one model call per pair, so it stays capped low.`;
+  $("build").disabled = true; $("center").disabled = useLLM;
+  try{
+    rawVecs = [];
+    const B = 4;
+    for(let i=0;i<sentences.length;i+=B){
+      $("status").textContent = `Embedding sentences ${i+1} to ${Math.min(i+B, sentences.length)} of ${sentences.length}…`;
+      const res = await engine.embeddings.create({model: $("model").value, input: sentences.slice(i,i+B)});
+      res.data.slice().sort((a,b)=>(a.index??0)-(b.index??0)).forEach(d=>rawVecs.push(Array.from(d.embedding)));
+    }
+    if(useLLM) await computeSimLLM(); else computeSim();
+    autoThreshold();
+    selected = -1;
+    initGraph();
+    refresh();
+    $("thr").disabled = false;
+    $("status").textContent = useLLM
+      ? `Built a field of ${sentences.length} sentences using the reference model's judgment of meaning.`
+      : `Built a field of ${sentences.length} sentences using embeddings.`;
+  }catch(e){ $("status").textContent = "Build failed: " + (e.message||e); }
+  finally{ $("build").disabled = false; }
+};
+
+/* Pick a starting threshold that shows about 1.5 edges per node */
+function autoThreshold(){
+  const vals = [];
+  for(let i=0;i<S.length;i++) for(let j=i+1;j<S.length;j++) vals.push(S[i][j]);
+  vals.sort((a,b)=>b-a);
+  const k = Math.min(vals.length-1, Math.round(S.length*1.5));
+  threshold = Math.round(vals[Math.max(0,k)]*100)/100;
+  $("thr").value = threshold;
+}
+
+function edges(){
+  const out = [];
+  for(let i=0;i<S.length;i++) for(let j=i+1;j<S.length;j++)
+    if(S[i][j] > threshold) out.push({source:i, target:j, s:S[i][j]});
+  return out;
+}
+
+/* Connected components give clusters */
+function findClusters(E){
+  const n = S.length, parent = [...Array(n).keys()];
+  const f = x => parent[x]===x ? x : (parent[x]=f(parent[x]));
+  E.forEach(e=>{ parent[f(e.source.index ?? e.source)] = f(e.target.index ?? e.target); });
+  const roots = new Map(), sizes = new Map();
+  for(let i=0;i<n;i++){ const r=f(i); sizes.set(r,(sizes.get(r)||0)+1); }
+  const order = [...sizes.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  order.forEach((r,i)=>roots.set(r,i));
+  return Array.from({length:n},(_,i)=>({id:roots.get(f(i)), size:sizes.get(f(i))}));
+}
+
+/* ---------- Colors ---------- */
+const heat = s => d3.interpolateRdBu((1 - s) / 2);        // 1 = red (hot), -1 = blue (cold)
+const PALETTE = ["#2A9D8F","#8E6CC4","#C9A227","#6A994E","#B5838D","#D08C60","#5C677D","#3E8E7E","#A06CD5","#9C6644"];
+const nodeColor = i => clusters[i].size === 1 ? "#9AA3B2" : PALETTE[clusters[i].id % PALETTE.length];
+
+/* ---------- Force graph ---------- */
+const svg = d3.select("#graph");
+let sim, gEdges, gNodes, nodes = [], zoomLayer;
+function initGraph(){
+  svg.selectAll("*").remove();
+  const {width, height} = $("graph").getBoundingClientRect();
+  zoomLayer = svg.append("g");
+  gEdges = zoomLayer.append("g");
+  gNodes = zoomLayer.append("g");
+  svg.call(d3.zoom().scaleExtent([.3,4]).on("zoom", e=>zoomLayer.attr("transform", e.transform)));
+  nodes = sentences.map((t,i)=>({index:i, text:t, x:width/2+Math.cos(i)*80, y:height/2+Math.sin(i)*80}));
+  sim = d3.forceSimulation(nodes)
+    .force("charge", d3.forceManyBody().strength(-110))
+    .force("center", d3.forceCenter(width/2, height/2))
+    .force("x", d3.forceX(width/2).strength(.04))
+    .force("y", d3.forceY(height/2).strength(.05))
+    .force("collide", d3.forceCollide(16))
+    .on("tick", ticked);
+}
+function ticked(){
+  gEdges.selectAll("line").attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+  gNodes.selectAll("g").attr("transform",d=>`translate(${d.x},${d.y})`);
+}
+function updateGraph(E){
+  const lo = threshold;
+  const w = d => 1 + 5 * Math.max(0,(d.s - lo)) / Math.max(.05, 1 - lo);
+  gEdges.selectAll("line").data(E, d=>`${d.source.index ?? d.source}-${d.target.index ?? d.target}`)
+    .join("line").attr("class","edge")
+    .attr("stroke", d=>heat(d.s)).attr("stroke-width", w).attr("stroke-opacity",.85);
+  const deg = new Array(nodes.length).fill(0);
+  E.forEach(e=>{ deg[e.source.index ?? e.source]++; deg[e.target.index ?? e.target]++; });
+  const g = gNodes.selectAll("g").data(nodes, d=>d.index).join(enter=>{
+    const g = enter.append("g").attr("class","node");
+    g.append("circle");
+    g.append("text").text(d=>d.index+1);
+    g.call(d3.drag()
+      .on("start",(e,d)=>{ if(!e.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag",(e,d)=>{ d.fx=e.x; d.fy=e.y; })
+      .on("end",(e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+    g.on("click",(e,d)=>select(d.index))
+     .on("mousemove",(e,d)=>showTip(e, `<b>S${d.index+1}</b>: ${esc(d.text)}`))
+     .on("mouseleave",hideTip);
+    return g;
+  });
+  g.select("circle").attr("r", d=>9 + Math.min(8, deg[d.index]*1.2)).attr("fill", d=>nodeColor(d.index));
+  sim.force("link", d3.forceLink(E).id(d=>d.index)
+      .distance(d=>30 + (1 - d.s) * 160)
+      .strength(d=>.15 + .6 * Math.max(0,d.s)));
+  sim.alpha(.6).restart();
+  applySelectionStyle(E);
+}
+
+/* ---------- Matrix ---------- */
+const canvas = $("matrix");
+let order = [], cell = 1;
+function drawMatrix(){
+  const n = S.length;
+  order = [...Array(n).keys()];
+  if($("group").checked) order.sort((a,b)=> clusters[a].id - clusters[b].id || a - b);
+  const css = canvas.getBoundingClientRect().width || 400;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.height = Math.round(css*dpr);
+  canvas.style.height = css + "px";
+  const ctx = canvas.getContext("2d");
+  cell = canvas.width / n;
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    ctx.fillStyle = heat(S[order[r]][order[c]]);
+    ctx.fillRect(Math.floor(c*cell), Math.floor(r*cell), Math.ceil(cell), Math.ceil(cell));
+  }
+  // cluster blocks
+  if($("group").checked){
+    ctx.strokeStyle = getComputedStyle(document.body).color; ctx.lineWidth = Math.max(1, dpr*1.2);
+    let start = 0;
+    for(let i=1;i<=n;i++){
+      if(i===n || clusters[order[i]].id !== clusters[order[start]].id){
+        if(i-start>1) ctx.strokeRect(start*cell, start*cell, (i-start)*cell, (i-start)*cell);
+        start = i;
+      }
+    }
+  }
+  if(selected >= 0){
+    const p = order.indexOf(selected);
+    ctx.strokeStyle = getComputedStyle(document.body).color; ctx.lineWidth = Math.max(2, dpr*2);
+    ctx.strokeRect(0, p*cell, canvas.width, cell);
+    ctx.strokeRect(p*cell, 0, cell, canvas.height);
+  }
+}
+function cellAt(e){
+  const r = canvas.getBoundingClientRect();
+  const n = S.length;
+  const c = Math.floor((e.clientX - r.left) / r.width * n), row = Math.floor((e.clientY - r.top) / r.height * n);
+  if(c<0||row<0||c>=n||row>=n) return null;
+  return [order[row], order[c]];
+}
+canvas.addEventListener("mousemove", e=>{
+  if(!S.length) return;
+  const p = cellAt(e); if(!p) return hideTip();
+  const [i,j] = p;
+  showTip(e, `<b>S${i+1} × S${j+1}: ${S[i][j].toFixed(3)}</b><br>${esc(trunc(sentences[i]))}<br>${esc(trunc(sentences[j]))}`);
+});
+canvas.addEventListener("mouseleave", hideTip);
+canvas.addEventListener("click", e=>{ const p = cellAt(e); if(p) select(p[0]); });
+
+/* ---------- Selection and details ---------- */
+let currentEdges = [];
+function select(i){ selected = (selected === i) ? -1 : i; applySelectionStyle(currentEdges); drawMatrix(); renderDetails(); }
+function applySelectionStyle(E){
+  if(!gNodes) return;
+  const nb = new Set([selected]);
+  E.forEach(e=>{ const a=e.source.index ?? e.source, b=e.target.index ?? e.target;
+    if(a===selected) nb.add(b); if(b===selected) nb.add(a); });
+  gNodes.selectAll("g").classed("dim", d=>selected>=0 && !nb.has(d.index)).classed("sel", d=>d.index===selected);
+  gEdges.selectAll("line").classed("dim", d=>selected>=0 && (d.source.index!==selected && d.target.index!==selected));
+}
+function renderDetails(){
+  const box = $("details");
+  if(selected < 0){ box.innerHTML = `<h2>Selected sentence</h2><p class="hint">Tap a node or matrix row to see what it's closest to.</p>`; return; }
+  const ranked = S[selected].map((s,j)=>[j,s]).filter(([j])=>j!==selected).sort((a,b)=>b[1]-a[1]);
+  const top = ranked.slice(0,5), bottom = ranked.slice(-2).reverse();
+  const li = ([j,s]) => `<li data-j="${j}"><span class="score">${s.toFixed(2)}</span><span class="sw" style="background:${heat(s)}"></span><span><b>S${j+1}</b> ${esc(sentences[j])}${s>threshold?"":" <span class='hint'>(below threshold)</span>"}</span></li>`;
+  box.innerHTML = `<h2>S${selected+1}</h2><p class="sel-sentence">${esc(sentences[selected])}</p>
+    <h2>Most similar</h2><ol>${top.map(li).join("")}</ol>
+    <h2 style="margin-top:12px">Least similar</h2><ol>${bottom.map(li).join("")}</ol>`;
+  box.querySelectorAll("li").forEach(el=>el.onclick=()=>select(+el.dataset.j));
+}
+
+/* ---------- Refresh on threshold change ---------- */
+function refresh(){
+  $("thrVal").textContent = threshold.toFixed(2);
+  currentEdges = edges();
+  clusters = findClusters(currentEdges);
+  const nClusters = new Set(clusters.filter(c=>c.size>1).map(c=>c.id)).size;
+  const isolated = clusters.filter(c=>c.size===1).length;
+  $("edgeInfo").textContent = `${currentEdges.length} connection${currentEdges.length===1?"":"s"} shown, ${nClusters} cluster${nClusters===1?"":"s"}, ${isolated} isolated sentence${isolated===1?"":"s"}`;
+  updateGraph(currentEdges);
+  drawMatrix();
+  renderDetails();
+}
+$("thr").addEventListener("input", e=>{ threshold = +e.target.value; refresh(); });
+$("center").addEventListener("change", ()=>{ if(!rawVecs.length || $("srcLLM").checked) return; computeSim(); autoThreshold(); refresh(); });
+document.getElementsByName("src").forEach(r=>r.addEventListener("change", ()=>{ $("center").disabled = $("srcLLM").checked; }));
+$("group").addEventListener("change", ()=>{ if(S.length) drawMatrix(); });
+new ResizeObserver(()=>{ if(S.length) drawMatrix(); }).observe(canvas.parentElement);
+
+/* ---------- Tooltip ---------- */
+const tip = $("tip");
+function showTip(e, html){
+  tip.innerHTML = html; tip.style.display = "block";
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8);
+  const y = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip(){ tip.style.display = "none"; }
+const esc = s => s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const trunc = s => s.length > 90 ? s.slice(0,87)+"…" : s;
+
+svg.append("text").attr("x","50%").attr("y","50%").attr("text-anchor","middle").attr("fill","currentColor").attr("opacity",.5)
+   .text("Load the model and build the field to see the graph.");
+$("s1").click();
+</script>
+</body>
+</html>
