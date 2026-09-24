@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insight Bridge: finding discoveries between two fields</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌉</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+:root{
+  --bg:#F5F3EC; --panel:#FFFFFF; --ink:#211F1A; --muted:#726C5C; --line:#DDD7C6; --faint:#EDE9DB;
+  --A:#2E86AB; --B:#D08A12; --insight:#8E44AD; --good:#3E7A5A; --bad:#B4483B;
+  --display:"Fraunces",Georgia,serif; --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#17160F;--panel:#201E15;--ink:#EEEAD9;--muted:#A69C82;--line:#39351F;--faint:#221F16;
+   --A:#5FA9CC;--B:#E7A93E;--insight:#C084E0;}
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--insight);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px 26px;justify-content:space-between;align-items:end;margin-bottom:16px}
+h1{font:800 clamp(1.9rem,4.4vw,2.9rem)/1.02 var(--display);letter-spacing:-.01em;margin:0}
+.tag{color:var(--muted);margin:.4rem 0 0;max-width:56ch}
+h2{font:700 1rem/1.2 var(--display);margin:0 0 8px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,.btn{border:1.4px solid var(--ink);background:var(--panel);border-radius:9px;padding:7px 11px;font-weight:600;font-size:.85rem}
+.btn{cursor:pointer}
+.btn.primary{background:var(--insight);border-color:var(--insight);color:#fff}
+.btn.ghost{border-color:var(--line);font-weight:400}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.status{font-size:.85rem;color:var(--muted);margin:5px 0 0;min-height:1.3em}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:5px;display:none;flex-basis:100%}
+.bar i{display:block;height:100%;width:0;background:var(--insight);transition:width .2s}
+.nogpu{border:2px solid var(--bad);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:none}
+
+.domains{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media (max-width:760px){.domains{grid-template-columns:1fr}}
+.domA h2{color:var(--A)}.domB h2{color:var(--B)}
+textarea.domtext{width:100%;min-height:120px;resize:vertical;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);line-height:1.45;font-size:.88rem}
+.samples{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+
+.buildrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+
+.band{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:8px 12px;align-items:center;margin-bottom:14px}
+.band label{font-size:.82rem;font-weight:700;color:var(--muted)}
+.band input[type=range]{width:100%;accent-color:var(--insight);height:26px}
+.band .v{font-variant-numeric:tabular-nums;font-weight:700;min-width:3.4ch;text-align:center}
+.bandnote{grid-column:1/-1;font-size:.83rem;color:var(--muted);margin-top:-2px}
+
+.views{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);gap:16px;align-items:start;margin-bottom:18px}
+@media (max-width:920px){.views{grid-template-columns:1fr}}
+#graph{width:100%;height:480px;display:block;border-radius:10px;background:var(--faint)}
+.node circle{stroke:var(--panel);stroke-width:2;cursor:pointer}
+.node text{font:700 9.5px var(--body);fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.edge.within{stroke-opacity:.35}
+.edge.bridge{stroke:var(--insight);stroke-dasharray:4 4;stroke-opacity:.55}
+.edge.explored{stroke:var(--insight);stroke-dasharray:none;stroke-opacity:.9}
+.legend{display:flex;flex-direction:column;gap:5px;font-size:.82rem;margin-top:8px}
+.legend .row2{display:flex;gap:7px;align-items:center}
+.dot{width:11px;height:11px;border-radius:50%;flex:none}
+.ln{width:16px;height:2px;flex:none}
+
+.candlist{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto}
+.cand{border:1.4px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel)}
+.cand .sc{font-size:.72rem;font-weight:700;color:var(--insight)}
+.cand .txt{font-size:.83rem;margin:3px 0}
+.cand .txt b{color:var(--A)}
+.cand .txt2 b{color:var(--B)}
+.cand button{margin-top:5px;width:100%}
+.cand.done{opacity:.55}
+
+/* insight cards */
+.insights{display:flex;flex-direction:column;gap:14px}
+.icard{border:1.5px solid var(--insight);border-radius:12px;padding:12px 16px;background:var(--panel)}
+.icard .src{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.icard .src b{color:var(--A)}.icard .src b.b{color:var(--B)}
+.icard .hyp{font-size:1.02rem;line-height:1.5;border-left:4px solid var(--insight);padding-left:12px}
+.gauges{display:flex;gap:16px;margin-top:8px}
+.gauge{flex:1}
+.gauge .lbl{font-size:.72rem;color:var(--muted);display:flex;justify-content:space-between}
+.gauge .bg{height:7px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:2px}
+.gauge .fg{height:100%;background:var(--insight)}
+details.trace{margin-top:8px}
+details.trace summary{cursor:pointer;font-size:.8rem;color:var(--muted);font-weight:700}
+.stage{border-left:3px solid var(--c,var(--insight));background:color-mix(in srgb,var(--c,var(--insight)) 7%,transparent);border-radius:0 7px 7px 0;padding:5px 9px;margin:5px 0 0;font-size:.83rem;white-space:pre-wrap}
+.stage h4{margin:0 0 2px;font:800 .74rem/1.2 var(--body);color:var(--c,var(--insight))}
+.empty{color:var(--muted);text-align:center;padding:24px 10px}
+
+.principles{margin-top:22px;font-size:.83rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;line-height:1.55}
+.principles b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Insight Bridge</h1>
+      <p class="tag">Paste two fields that don't normally talk to each other. This looks for ideas that are related but not obvious, then asks the model to propose a real connection between them.</p>
+    </div>
+    <div>
+      <div class="row">
+        <select id="embedModel" aria-label="Embedding model">
+          <option value="snowflake-arctic-embed-s-q0f32-MLC-b4" selected>Embed: Arctic S (~0.3 GB)</option>
+          <option value="snowflake-arctic-embed-m-q0f32-MLC-b4">Embed: Arctic M (~0.5 GB)</option>
+        </select>
+        <select id="chatModel" aria-label="Reasoning model">
+          <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Reason: 1.5B</option>
+          <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Reason: 3B, better ideas</option>
+        </select>
+        <button class="btn primary" id="load">Load models</button>
+        <div class="bar" id="bar"><i></i></div>
+      </div>
+      <p class="status" id="status">Runs on your GPU with WebGPU. Downloads once, then cached.</p>
+    </div>
+  </header>
+  <div class="nogpu" id="nogpu"><strong>WebGPU isn't available here.</strong> Open this file in a recent Chrome, Edge, or Safari 26+ with hardware acceleration on.</div>
+
+  <div class="domains">
+    <div class="panel domA">
+      <h2>Domain A</h2>
+      <textarea class="domtext" id="textA" placeholder="Paste a few paragraphs about field A…"></textarea>
+      <div class="samples"><button class="btn ghost" id="sA1" type="button">Ant colonies</button><button class="btn ghost" id="sA2" type="button">Sleep &amp; the brain</button></div>
+    </div>
+    <div class="panel domB">
+      <h2>Domain B</h2>
+      <textarea class="domtext" id="textB" placeholder="Paste a few paragraphs about field B…"></textarea>
+      <div class="samples"><button class="btn ghost" id="sB1" type="button">Internet routing</button><button class="btn ghost" id="sB2" type="button">Garbage collection</button></div>
+    </div>
+  </div>
+
+  <div class="buildrow">
+    <button class="btn primary" id="build" disabled>Build the bridge map</button>
+    <span class="status" id="buildStatus"></span>
+  </div>
+
+  <div class="panel band">
+    <label for="minS">Remoteness ≥</label>
+    <input type="range" id="minS" min="0" max="1" step="0.02" value="0.22" disabled>
+    <span class="v" id="minV">0.22</span>
+    <label for="maxS">and ≤</label>
+    <input type="range" id="maxS" min="0" max="1" step="0.02" value="0.5" disabled>
+    <span class="v" id="maxV">0.50</span>
+    <p class="bandnote">Too similar (near 1) and the two sentences just restate each other. Too distant (near 0) and there's no real link. The sweet spot in between is where genuine analogies tend to live.</p>
+  </div>
+
+  <div class="views">
+    <section class="panel" aria-label="Bridge map">
+      <h2>Bridge map</h2>
+      <svg id="graph" role="img" aria-label="Force graph of both domains with candidate bridges"></svg>
+      <div class="legend">
+        <div class="row2"><span class="dot" style="background:var(--A)"></span>Domain A sentence <span class="dot" style="background:var(--B);margin-left:14px"></span>Domain B sentence</div>
+        <div class="row2"><span class="ln" style="background:var(--insight);opacity:.55;border-top:2px dashed var(--insight);background:none"></span>Candidate bridge (in the remoteness band)<span class="ln" style="background:var(--insight);margin-left:14px"></span>Explored, hypothesis generated</div>
+      </div>
+    </section>
+    <section class="panel" aria-label="Candidate bridges">
+      <h2>Candidate bridges</h2>
+      <div class="candlist" id="candList"><div class="empty">Build the map to see candidates.</div></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-label="Discovered insights">
+    <h2>Discovered insights</h2>
+    <div class="insights" id="insights"><div class="empty">Explore a candidate bridge above to generate your first hypothesis.</div></div>
+  </section>
+
+  <p class="principles">
+    <b>Remoteness band</b> = Mednick's associative-distance theory of creativity: the best connections sit at a moderate distance, not the closest match. <b>Three drafts, one picked</b> = blind variation and selective retention (Campbell): generate several candidate ideas, then select. <b>Cross-domain bridging itself</b> = bisociation (Koestler) and literature-based discovery (Swanson's ABC model, the real technique behind the fish-oil–Raynaud's-syndrome finding).
+  </p>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Samples ---------- */
+const SAMPLES = {
+  A1: `Ants leave a chemical trail called pheromone as they walk between the nest and a food source. Other ants are more likely to follow paths with a stronger pheromone scent. Pheromone slowly evaporates over time, so unused paths fade away. Shorter paths accumulate pheromone faster because ants complete round trips more quickly. Over many trips, the colony converges on the shortest path without any single ant knowing the whole map. If an obstacle blocks the shortest path, ants quickly discover and reinforce a new detour. No central ant coordinates the search; the pattern emerges from many simple, local decisions.`,
+  A2: `During deep sleep, the brain replays and strengthens memories formed during the day. Some synaptic connections are weakened or pruned during sleep, especially ones formed from unimportant experiences. Sleep deprivation impairs the ability to consolidate new memories and clear metabolic waste from the brain. The glymphatic system flushes cerebrospinal fluid through brain tissue more actively during sleep. Without enough sleep, the brain accumulates waste proteins linked to cognitive decline. REM sleep appears to help integrate new information with existing knowledge.`,
+  B1: `Data packets travel across a network of routers between a sender and a receiver. Each router only knows about its immediate neighbors, not the entire network. Routing tables are updated based on how quickly and reliably packets reach their destination. Routes that repeatedly fail or time out are eventually removed from the table. Congested paths get slower, so traffic naturally shifts toward faster alternatives. When a link goes down, routers detect the failure and recalculate a new path. There is no central controller for the whole internet; routing emerges from distributed, local updates.`,
+  B2: `A garbage collector periodically scans memory for objects that are no longer referenced by the running program. Objects that are still needed are marked and kept; unreferenced objects are freed. If garbage collection is delayed too long, the program's memory fills up and performance degrades. Some garbage collectors run in a background cycle that briefly pauses normal execution. Long-lived, frequently used objects are often moved to a separate area so they are scanned less often. Skipping garbage collection cycles causes memory leaks that eventually crash the program.`,
+};
+$("sA1").onclick=()=>{ $("textA").value=SAMPLES.A1; }; $("sA2").onclick=()=>{ $("textA").value=SAMPLES.A2; };
+$("sB1").onclick=()=>{ $("textB").value=SAMPLES.B1; }; $("sB2").onclick=()=>{ $("textB").value=SAMPLES.B2; };
+$("sA1").click(); $("sB1").click();
+
+function splitSentences(text){
+  let parts;
+  if(window.Intl && Intl.Segmenter){ const seg=new Intl.Segmenter(undefined,{granularity:"sentence"}); parts=[...seg.segment(text)].map(s=>s.segment); }
+  else parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>2);
+}
+
+/* ---------- Model ---------- */
+let engine=null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; $("load").disabled=true; }
+$("load").onclick = async ()=>{
+  $("load").disabled=true; $("bar").style.display="block";
+  const bar=$("bar").firstElementChild;
+  const cb=r=>{ bar.style.width=Math.round((r.progress||0)*100)+"%"; $("status").textContent=r.text; };
+  try{
+    const ids=[$("embedModel").value, $("chatModel").value];
+    if(engine){ engine.setInitProgressCallback(cb); await engine.reload(ids); }
+    else engine = await webllm.CreateMLCEngine(ids, {initProgressCallback:cb});
+    $("status").textContent="Models ready. Build the bridge map below.";
+    $("build").disabled=false; $("load").textContent="Switch models";
+  }catch(e){ $("status").textContent="Couldn't load models: "+(e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+
+/* ---------- Data ---------- */
+const MAX_PER = 20;
+let sentA=[], sentB=[], vecA=[], vecB=[], cross=[], within=[];
+function normalize(v){ const n=Math.hypot(...v)||1; return v.map(x=>x/n); }
+function cos(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return Math.max(-1,Math.min(1,s)); }
+
+$("build").onclick = async ()=>{
+  sentA = splitSentences($("textA").value).slice(0,MAX_PER);
+  sentB = splitSentences($("textB").value).slice(0,MAX_PER);
+  if(sentA.length<2 || sentB.length<2){ $("buildStatus").textContent="Add at least a couple sentences to each domain."; return; }
+  $("build").disabled=true;
+  try{
+    const embedId = $("embedModel").value;
+    async function embedAll(sents, label){
+      const out=[];
+      for(let i=0;i<sents.length;i+=4){
+        $("buildStatus").textContent = `Embedding ${label} ${i+1}-${Math.min(i+4,sents.length)} of ${sents.length}…`;
+        const res = await engine.embeddings.create({model:embedId, input: sents.slice(i,i+4)});
+        res.data.slice().sort((a,b)=>(a.index??0)-(b.index??0)).forEach(d=>out.push(normalize(Array.from(d.embedding))));
+      }
+      return out;
+    }
+    vecA = await embedAll(sentA,"A"); vecB = await embedAll(sentB,"B");
+    cross=[]; for(let i=0;i<vecA.length;i++) for(let j=0;j<vecB.length;j++) cross.push({i,j,s:cos(vecA[i],vecB[j])});
+    within=[];
+    for(let i=0;i<vecA.length;i++) for(let j=i+1;j<vecA.length;j++){ const s=cos(vecA[i],vecA[j]); if(s>0.5) within.push({side:"A",i,j,s}); }
+    for(let i=0;i<vecB.length;i++) for(let j=i+1;j<vecB.length;j++){ const s=cos(vecB[i],vecB[j]); if(s>0.5) within.push({side:"B",i,j,s}); }
+    $("minS").disabled=false; $("maxS").disabled=false;
+    initGraph(); refresh();
+    $("buildStatus").textContent = `Mapped ${sentA.length} + ${sentB.length} sentences, ${cross.length} cross-domain pairs scored.`;
+  }catch(e){ $("buildStatus").textContent="Build failed: "+(e.message||e); }
+  finally{ $("build").disabled=false; }
+};
+
+/* ---------- Band slider ---------- */
+let minB=0.22, maxB=0.5;
+function syncBand(){
+  minB=+$("minS").value; maxB=+$("maxS").value;
+  if(minB>maxB){ maxB=minB; $("maxS").value=maxB; }
+  $("minV").textContent=minB.toFixed(2); $("maxV").textContent=maxB.toFixed(2);
+}
+$("minS").addEventListener("input", ()=>{ syncBand(); refresh(); });
+$("maxS").addEventListener("input", ()=>{ syncBand(); refresh(); });
+syncBand();
+
+const explored = new Set(); // "i-j" keys already turned into an insight
+
+function candidateBridges(){
+  const inBand = cross.filter(c=>c.s>=minB && c.s<=maxB).sort((a,b)=>b.s-a.s);
+  const seenA = new Set(), out=[];
+  for(const c of inBand){ if(seenA.has(c.i)) continue; seenA.add(c.i); out.push(c); if(out.length>=10) break; }
+  return out;
+}
+
+/* ---------- Graph ---------- */
+const svg = d3.select("#graph");
+let sim, gEdges, gNodes, nodes=[];
+function initGraph(){
+  svg.selectAll("*").remove();
+  const {width,height} = $("graph").getBoundingClientRect();
+  gEdges = svg.append("g"); gNodes = svg.append("g");
+  svg.call(d3.zoom().scaleExtent([.3,4]).on("zoom", e=>{ gEdges.attr("transform",e.transform); gNodes.attr("transform",e.transform); }));
+  nodes = [
+    ...sentA.map((t,i)=>({id:"A"+i, side:"A", i, text:t, x:width*0.32+Math.cos(i)*60, y:height/2+Math.sin(i)*60})),
+    ...sentB.map((t,j)=>({id:"B"+j, side:"B", i:j, text:t, x:width*0.68+Math.cos(j)*60, y:height/2+Math.sin(j)*60})),
+  ];
+  sim = d3.forceSimulation(nodes)
+    .force("charge", d3.forceManyBody().strength(-90))
+    .force("x", d3.forceX(d=>d.side==="A" ? width*0.3 : width*0.7).strength(.12))
+    .force("y", d3.forceY(height/2).strength(.06))
+    .force("collide", d3.forceCollide(14))
+    .on("tick", ()=>{
+      gEdges.selectAll("line").attr("x1",d=>d.s1.x).attr("y1",d=>d.s1.y).attr("x2",d=>d.s2.x).attr("y2",d=>d.s2.y);
+      gNodes.selectAll("g").attr("transform",d=>`translate(${d.x},${d.y})`);
+    });
+  const g = gNodes.selectAll("g").data(nodes).join("g").attr("class","node");
+  g.append("circle").attr("r",10).attr("fill",d=>d.side==="A"?"var(--A)":"var(--B)");
+  g.append("text").text(d=>d.side+(d.i+1));
+  g.append("title").text(d=>d.text);
+  g.call(d3.drag()
+    .on("start",(e,d)=>{ if(!e.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on("drag",(e,d)=>{ d.fx=e.x; d.fy=e.y; })
+    .on("end",(e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+}
+function edgeData(){
+  const byId = id=>nodes.find(n=>n.id===id);
+  const w = within.map(e=>({s1:byId(e.side+e.i), s2:byId(e.side+e.j), s:e.s, cls:"within"}));
+  const cand = candidateBridges().map(c=>({s1:byId("A"+c.i), s2:byId("B"+c.j), s:c.s, cls: explored.has(c.i+"-"+c.j) ? "explored" : "bridge"}));
+  return [...w, ...cand];
+}
+function drawGraph(){
+  const data = edgeData();
+  gEdges.selectAll("line").data(data).join("line")
+    .attr("class",d=>"edge "+d.cls)
+    .attr("stroke", d=>d.cls==="within" ? "var(--line)" : "var(--insight)")
+    .attr("stroke-width", d=>d.cls==="explored" ? 3 : d.cls==="bridge" ? 1.6 : 1.2);
+  sim.alpha(.4).restart();
+}
+
+/* ---------- Candidate list ---------- */
+function renderCandidates(){
+  const list = $("candList");
+  const cands = candidateBridges();
+  if(!cands.length){ list.innerHTML = `<div class="empty">No pairs in this band. Widen the range.</div>`; return; }
+  list.innerHTML = "";
+  cands.forEach(c=>{
+    const key = c.i+"-"+c.j;
+    const done = explored.has(key);
+    const el = document.createElement("div"); el.className = "cand"+(done?" done":"");
+    el.innerHTML = `<div class="sc">similarity ${c.s.toFixed(2)}</div>
+      <div class="txt"><b>A${c.i+1}.</b> ${esc(sentA[c.i])}</div>
+      <div class="txt txt2"><b>B${c.j+1}.</b> ${esc(sentB[c.j])}</div>
+      <button class="btn primary" ${done?"disabled":""}>${done?"Explored":"✨ Explore this bridge"}</button>`;
+    el.querySelector("button").onclick = ()=> exploreBridge(c);
+    list.appendChild(el);
+  });
+}
+function refresh(){ if(!sentA.length) return; drawGraph(); renderCandidates(); }
+
+/* ---------- LLM helpers ---------- */
+async function llm(system, user, maxTokens=200, temperature=0.3, card=null){
+  const res = await engine.chat.completions.create({
+    model: $("chatModel").value, stream:true, temperature, max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]
+  });
+  let out=""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d){ out+=d; if(card) card.textContent=out; } }
+  return out.trim();
+}
+function addStage(container, title){
+  const div=document.createElement("div"); div.className="stage";
+  div.innerHTML = `<h4>${esc(title)}</h4><div></div>`; container.appendChild(div); return div.lastChild;
+}
+
+/* ---------- Explore a bridge: diverge (3 drafts) -> converge (pick + rate) ---------- */
+async function exploreBridge(c){
+  const key = c.i+"-"+c.j;
+  const list = $("insights"); $("empty-insights")?.remove();
+  if(list.querySelector(".empty")) list.innerHTML = "";
+  const card = document.createElement("div"); card.className="icard";
+  card.innerHTML = `<div class="src"><b>A${c.i+1}</b> ${esc(sentA[c.i])} &nbsp;↔&nbsp; <b class="b">B${c.j+1}</b> ${esc(sentB[c.j])}</div>
+    <details class="trace" open><summary>How it thought</summary></details><div class="hyp">…</div>`;
+  list.prepend(card);
+  const trace = card.querySelector(".trace");
+  const sys = "You practice bisociation: connecting two remote ideas from different fields into one new, concrete insight. Be specific and falsifiable, not vague or poetic. 2-3 sentences.";
+  try{
+    const drafts = [];
+    for(let i=0;i<3;i++){
+      const st = addStage(trace, `Divergent draft ${i+1} of 3`);
+      const d = await llm(sys, `Sentence from Domain A: ${sentA[c.i]}\nSentence from Domain B: ${sentB[c.j]}\n\nPropose one specific hypothesis or design idea connecting them.`, 110, 1.0, st);
+      drafts.push(d);
+    }
+    const st2 = addStage(trace, "Convergent selection (pick the best)");
+    const critique = await llm(
+      "You are a skeptical reviewer. You will see 3 candidate hypotheses connecting two ideas. Pick the single best one for being concrete and plausible, not just novel-sounding. Reply in exactly this format:\nWINNER: <1, 2, or 3>\nNOVELTY: <0-10>\nPLAUSIBILITY: <0-10>\nWHY: <one short sentence>",
+      drafts.map((d,i)=>`Draft ${i+1}: ${d}`).join("\n\n"), 120, 0.2, st2);
+    const winnerNum = parseInt((critique.match(/WINNER:\s*(\d)/i)||[])[1]) || 1;
+    const novelty = Math.min(10, parseInt((critique.match(/NOVELTY:\s*(\d+)/i)||[])[1]) || 5);
+    const plaus = Math.min(10, parseInt((critique.match(/PLAUSIBILITY:\s*(\d+)/i)||[])[1]) || 5);
+    const why = (critique.match(/WHY:\s*(.+)/i)||[])[1] || "";
+    const winner = drafts[winnerNum-1] || drafts[0];
+
+    card.querySelector(".hyp").textContent = winner + (why ? `  ${why}` : "");
+    const gauges = document.createElement("div"); gauges.className="gauges";
+    gauges.innerHTML = `<div class="gauge"><div class="lbl"><span>Novelty</span><span>${novelty}/10</span></div><div class="bg"><div class="fg" style="width:${novelty*10}%"></div></div></div>
+      <div class="gauge"><div class="lbl"><span>Plausibility</span><span>${plaus}/10</span></div><div class="bg"><div class="fg" style="width:${plaus*10}%"></div></div></div>`;
+    card.appendChild(gauges);
+    const alt = document.createElement("details"); alt.style.marginTop="6px";
+    alt.innerHTML = `<summary style="cursor:pointer;font-size:.8rem;color:var(--muted)">Other drafts considered</summary>` +
+      drafts.map((d,i)=> i+1===winnerNum ? "" : `<div class="stage" style="--c:var(--muted)"><div>${esc(d)}</div></div>`).join("");
+    card.appendChild(alt);
+
+    explored.add(key); refresh();
+  }catch(e){ card.querySelector(".hyp").textContent = "Error: "+(e.message||e); }
+}
+</script>
+</body>
+</html>
