@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fieldglass: a drag-and-drop analytics dashboard with an AI copilot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+:root{
+  --bg:#F3F1EA; --panel:#FFFFFF; --canvas:#EAE7DC; --ink:#1D2330; --muted:#6B6558; --line:#DCD6C4;
+  --dim:#2E86AB; --meas:#0E9A6E; --accent:#B8327A;
+  --p1:#2E86AB;--p2:#0E9A6E;--p3:#D08A12;--p4:#B8327A;--p5:#7B5EA7;--p6:#B4483B;
+  --body:"Inter","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#16150F;--panel:#201E17;--canvas:#1C1A13;--ink:#EEEAD9;--muted:#A69C82;--line:#39351F;}
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--body)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px}
+.app{display:grid;grid-template-columns:290px 1fr;height:100vh}
+@media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{position:fixed;inset:0 22% 0 0;z-index:30;transform:translateX(-105%);transition:transform .25s;box-shadow:4px 0 24px #0004}.sidebar.open{transform:none}.scrim{position:fixed;inset:0;background:#0006;z-index:29;display:none}.scrim.show{display:block}}
+
+.sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;padding:12px}
+.brand{font-weight:800;font-size:1.1rem;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+h3.sec{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:13px 0 6px;font-weight:800}
+.ds{font-size:.78rem;color:var(--muted);line-height:1.4;background:var(--bg);border-radius:8px;padding:7px 9px}
+.chipgrid{display:flex;flex-wrap:wrap;gap:6px}
+.fieldchip,.vizchip{display:flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:8px;padding:6px 10px;cursor:grab;background:color-mix(in srgb,var(--c) 9%,var(--panel));font-weight:700;font-size:.8rem}
+.fieldchip .ic,.vizchip .ic{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.fieldchip.flash{animation:flash .6s ease}
+@keyframes flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 45%,transparent)}}
+textarea.spec{width:100%;min-height:80px;resize:vertical;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--bg);font-size:.85rem}
+.btn{border:1.5px solid var(--ink);background:var(--panel);border-radius:9px;padding:7px 11px;font-weight:700;cursor:pointer;font-size:.85rem;width:100%;margin-top:6px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{font-weight:500;border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+select{border:1.4px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 8px;width:100%;font-size:.83rem}
+.status{font-size:.78rem;color:var(--muted);margin-top:5px;min-height:1.2em}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:5px;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.nogpu{border:2px solid #B4483B;border-radius:9px;padding:8px 10px;margin-bottom:8px;font-size:.8rem;display:none}
+
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.menubtn{display:none;border:none;background:none;font-size:1.2rem;cursor:pointer}
+@media (max-width:860px){.menubtn{display:block}}
+.hint{color:var(--muted);font-size:.82rem;flex:1}
+.topbtn{border:1.5px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 11px;font-weight:600;font-size:.82rem;cursor:pointer}
+
+.dashwrap{flex:1;overflow-y:auto;padding:16px;background:var(--canvas)}
+.dashboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-items:start}
+.dashboard.dragover{outline:2.5px dashed var(--accent);outline-offset:-6px;border-radius:12px}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 10px;border:2px dashed var(--line);border-radius:12px}
+
+.card{background:var(--panel);border:1.5px solid var(--line);border-radius:13px;overflow:hidden;opacity:1;transform:scale(1);transition:opacity .3s,transform .3s}
+.card.entering{opacity:0;transform:scale(.85)}
+.card .hd{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.card .hd input.title{border:none;background:none;font-weight:800;font-size:.9rem;flex:1;min-width:0;padding:2px 3px;border-radius:5px}
+.card .hd input.title:focus{background:var(--bg)}
+.card .hd select.typesel{width:auto;font-size:.75rem;padding:3px 5px}
+.card .hd .del{border:none;background:none;color:var(--muted);cursor:pointer;font-size:.9rem}
+.card .body{padding:8px 10px;min-height:170px;display:flex;align-items:center;justify-content:center}
+.card .body svg{width:100%;height:180px}
+.card .kpi{text-align:center}
+.card .kpi .num{font-size:2.1rem;font-weight:800}
+.card .kpi .lbl{color:var(--muted);font-size:.8rem;margin-top:2px}
+.card table{width:100%;border-collapse:collapse;font-size:.82rem}
+.card table th{text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;padding:4px 6px;border-bottom:1.5px solid var(--line)}
+.card table td{padding:5px 6px;border-bottom:1px solid var(--line)}
+.card table tr:last-child td{border-bottom:none}
+.shelf{border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+.wellrow{display:flex;align-items:center;gap:8px}
+.wellrow .wl{font-size:.7rem;font-weight:800;color:var(--muted);width:40px;flex:none;text-transform:uppercase}
+.well{flex:1;min-height:28px;border:1.6px dashed var(--line);border-radius:7px;display:flex;align-items:center;padding:2px 6px;font-size:.78rem;color:var(--muted)}
+.well.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.well .pill{display:flex;align-items:center;gap:5px;border:1.4px solid var(--c);background:color-mix(in srgb,var(--c) 12%,var(--panel));border-radius:6px;padding:2px 7px;font-weight:700;color:var(--ink);font-size:.78rem}
+.well .pill button{border:none;background:none;color:var(--muted);cursor:pointer;font-size:.8rem;margin-left:2px}
+.aggsel{width:auto;font-size:.72rem;padding:2px 5px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:.72rem;margin-top:4px;justify-content:center}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.sw{width:9px;height:9px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="dot"></span>Fieldglass</div>
+
+    <h3 class="sec">Model</h3>
+    <select id="model" aria-label="Model">
+      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>1.5B, balanced</option>
+      <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">3B, smarter copilot</option>
+    </select>
+    <button class="btn primary" id="load">Load model</button>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="nogpu" id="nogpu"><strong>WebGPU isn't available here.</strong> Use a recent Chrome, Edge, or Safari 26+ on desktop.</div>
+    <p class="status" id="status">Runs on your GPU. Downloads once, then cached.</p>
+
+    <h3 class="sec">Dataset</h3>
+    <div class="ds">Synthetic sales data: 4 regions × 3 products × 6 months = 72 rows, with Revenue, Units, and Profit.</div>
+
+    <h3 class="sec">AI copilot</h3>
+    <textarea class="spec" id="spec" placeholder="Describe the dashboard in plain English…"></textarea>
+    <button class="btn ghost" id="loadExample" type="button">Load example spec</button>
+    <button class="btn primary" id="buildAI" disabled>✨ Build with AI</button>
+    <p class="status" id="aiStatus"></p>
+
+    <h3 class="sec">Dimensions — drag onto a well</h3>
+    <div class="chipgrid" id="dimChips"></div>
+    <h3 class="sec">Measures — drag onto a well</h3>
+    <div class="chipgrid" id="measChips"></div>
+
+    <h3 class="sec">Charts — drag onto the dashboard</h3>
+    <div class="chipgrid" id="vizChips"></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="menubtn" id="menuBtn" type="button">☰</button>
+      <span class="hint">Drag a chart onto the dashboard, then drag fields onto its wells — or let the copilot build the whole thing.</span>
+      <button class="topbtn" id="clearBtn" type="button">Clear dashboard</button>
+    </div>
+    <div class="dashwrap">
+      <div class="dashboard" id="dashboard">
+        <div class="empty" id="emptyMsg">Drag a chart type here from the sidebar, or use the AI copilot.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Synthetic dataset ---------- */
+function mulberry32(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const rand = mulberry32(42);
+const REGIONS = [["North",1.0],["South",0.85],["East",1.15],["West",1.35]];
+const PRODUCTS = [["Widget A",20,0.15,140],["Widget B",45,0.30,90],["Widget C",80,0.45,50]];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun"];
+const rows = [];
+REGIONS.forEach(([region,rmult])=>{
+  PRODUCTS.forEach(([product,price,margin,baseUnits])=>{
+    MONTHS.forEach((month,mi)=>{
+      const growth = 1 + mi*0.045;
+      const noise = 0.9 + rand()*0.2;
+      const units = Math.round(baseUnits*rmult*growth*noise);
+      const revenue = Math.round(units*price);
+      const profit = Math.round(revenue*margin);
+      rows.push({Region:region, Product:product, Month:month, Revenue:revenue, Units:units, Profit:profit});
+    });
+  });
+});
+const DIMENSIONS = ["Region","Product","Month"];
+const MEASURES = ["Revenue","Units","Profit"];
+const FIELD_COLOR = {Region:"var(--p1)",Product:"var(--p3)",Month:"var(--p5)",Revenue:"var(--p2)",Units:"var(--p4)",Profit:"var(--p6)"};
+const PALETTE = ["#2E86AB","#0E9A6E","#D08A12","#B8327A","#7B5EA7","#B4483B"];
+const CHART_TYPES = {
+  bar:{icon:"▤",label:"Bar",wells:["x","y","color"]},
+  line:{icon:"⟋",label:"Line",wells:["x","y","color"]},
+  pie:{icon:"◔",label:"Pie",wells:["x","y"]},
+  table:{icon:"▦",label:"Table",wells:["x","y"]},
+  kpi:{icon:"①",label:"KPI",wells:["y"]},
+};
+function fmt(v, field){
+  const n = Math.round(v);
+  if(field==="Revenue"||field==="Profit") return "$"+n.toLocaleString();
+  return n.toLocaleString();
+}
+
+/* ---------- Palettes ---------- */
+function makeChip(container, name, colorVar, dragPayload, extraClass){
+  const el = document.createElement("div");
+  el.className = (extraClass||"fieldchip"); el.style.setProperty("--c",colorVar); el.draggable=true;
+  el.dataset.field = name;
+  el.innerHTML = `<span class="ic"></span>${name}`;
+  el.addEventListener("dragstart", e=> e.dataTransfer.setData("text/plain", dragPayload));
+  container.appendChild(el);
+}
+DIMENSIONS.forEach(f=> makeChip($("dimChips"), f, FIELD_COLOR[f], "field:"+f));
+MEASURES.forEach(f=> makeChip($("measChips"), f, FIELD_COLOR[f], "field:"+f));
+Object.entries(CHART_TYPES).forEach(([type,def])=>{
+  const el = document.createElement("div");
+  el.className="vizchip"; el.style.setProperty("--c","var(--accent)"); el.draggable=true;
+  el.innerHTML = `<span class="ic"></span>${def.icon} ${def.label}`;
+  el.addEventListener("dragstart", e=> e.dataTransfer.setData("text/plain","viz:"+type));
+  $("vizChips").appendChild(el);
+});
+function flashField(name){
+  document.querySelectorAll(`.fieldchip[data-field="${CSS.escape(name)}"]`).forEach(el=>{
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  });
+}
+
+/* ---------- Card state ---------- */
+let cards = [], nextId = 1;
+function addCard(type, fields={}, opts={}){
+  const c = {id:"c"+(nextId++), type, x:fields.x||null, y:fields.y||null, color:fields.color||null,
+             agg:fields.agg||"sum", title: opts.title || (CHART_TYPES[type].label+" chart"), entering:true};
+  cards.push(c);
+  renderDashboard();
+  setTimeout(()=>{ c.entering=false; renderDashboard(); }, 30);
+  return c;
+}
+function removeCard(id){ cards = cards.filter(c=>c.id!==id); renderDashboard(); }
+
+/* ---------- Dashboard drop (create card from viz chip) ---------- */
+const dashboard = $("dashboard");
+dashboard.addEventListener("dragover", e=>{ e.preventDefault(); dashboard.classList.add("dragover"); });
+dashboard.addEventListener("dragleave", ()=> dashboard.classList.remove("dragover"));
+dashboard.addEventListener("drop", e=>{
+  e.preventDefault(); dashboard.classList.remove("dragover");
+  const data = e.dataTransfer.getData("text/plain");
+  if(data && data.startsWith("viz:")) addCard(data.slice(4));
+});
+
+/* ---------- Aggregation ---------- */
+function aggValue(subset, yField, agg){
+  if(!subset.length) return 0;
+  const vals = subset.map(r=>r[yField]);
+  if(agg==="count") return subset.length;
+  if(agg==="avg") return vals.reduce((a,b)=>a+b,0)/vals.length;
+  if(agg==="max") return Math.max(...vals);
+  if(agg==="min") return Math.min(...vals);
+  return vals.reduce((a,b)=>a+b,0);
+}
+function sortX(xVals, xField, matrix){
+  if(xField==="Month") return xVals.map((x,i)=>({x,i})).sort((a,b)=>MONTHS.indexOf(a.x)-MONTHS.indexOf(b.x)).map(o=>o.i);
+  const totals = xVals.map((_,i)=> matrix[i].reduce((a,b)=>a+b,0));
+  return xVals.map((_,i)=>i).sort((a,b)=>totals[b]-totals[a]);
+}
+function aggregate(xField, yField, colorField, agg){
+  const xVals = [...new Set(rows.map(r=>r[xField]))];
+  const colorVals = colorField ? [...new Set(rows.map(r=>r[colorField]))].slice(0,6) : [null];
+  let matrix = xVals.map(x => colorVals.map(c => aggValue(rows.filter(r=> r[xField]===x && (c===null || r[colorField]===c)), yField, agg)));
+  const order = sortX(xVals, xField, matrix);
+  return { xVals: order.map(i=>xVals[i]), colorVals, matrix: order.map(i=>matrix[i]) };
+}
+
+/* ---------- Chart drawing ---------- */
+function drawBar(svgEl, agg, yField){
+  const svg = d3.select(svgEl); svg.selectAll("*").remove();
+  const W=300,H=170,M={t:8,r:8,b:26,l:44};
+  const {xVals,colorVals,matrix} = agg;
+  const flat = matrix.flat();
+  const x0 = d3.scaleBand().domain(xVals).range([M.l,W-M.r]).padding(.25);
+  const x1 = d3.scaleBand().domain(colorVals.map((_,i)=>i)).range([0,x0.bandwidth()]).padding(.08);
+  const y = d3.scaleLinear().domain([0, Math.max(1,d3.max(flat))]).nice().range([H-M.b,M.t]);
+  const g = svg.append("g");
+  g.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x0).tickSizeOuter(0))
+    .selectAll("text").style("font-size","9px").style("fill","var(--muted)");
+  g.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s")))
+    .selectAll("text").style("font-size","9px").style("fill","var(--muted)");
+  g.selectAll(".dom,.tick line").style("stroke","var(--line)");
+  xVals.forEach((xv,xi)=>{
+    colorVals.forEach((cv,ci)=>{
+      g.append("rect")
+        .attr("x", x0(xv)+x1(ci)).attr("y", y(matrix[xi][ci]))
+        .attr("width", x1.bandwidth()).attr("height", H-M.b-y(matrix[xi][ci]))
+        .attr("fill", PALETTE[ci%PALETTE.length]).attr("rx",2);
+    });
+  });
+  return colorVals.length>1 || colorVals[0]!==null;
+}
+function drawLine(svgEl, agg){
+  const svg = d3.select(svgEl); svg.selectAll("*").remove();
+  const W=300,H=170,M={t:8,r:8,b:26,l:44};
+  const {xVals,colorVals,matrix} = agg;
+  const flat = matrix.flat();
+  const x = d3.scalePoint().domain(xVals).range([M.l,W-M.r]).padding(.5);
+  const y = d3.scaleLinear().domain([0, Math.max(1,d3.max(flat))]).nice().range([H-M.b,M.t]);
+  const g = svg.append("g");
+  g.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).tickSizeOuter(0))
+    .selectAll("text").style("font-size","9px").style("fill","var(--muted)");
+  g.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d3.format("~s")))
+    .selectAll("text").style("font-size","9px").style("fill","var(--muted)");
+  g.selectAll(".dom,.tick line").style("stroke","var(--line)");
+  colorVals.forEach((cv,ci)=>{
+    const pts = xVals.map((xv,xi)=>[x(xv), y(matrix[xi][ci])]);
+    const line = d3.line()(pts);
+    g.append("path").attr("d",line).attr("fill","none").attr("stroke",PALETTE[ci%PALETTE.length]).attr("stroke-width",2.2);
+    pts.forEach(p=> g.append("circle").attr("cx",p[0]).attr("cy",p[1]).attr("r",3).attr("fill",PALETTE[ci%PALETTE.length]));
+  });
+  return colorVals.length>1 || colorVals[0]!==null;
+}
+function drawPie(svgEl, agg){
+  const svg = d3.select(svgEl); svg.selectAll("*").remove();
+  const W=300,H=170,R=Math.min(W,H)/2-14;
+  const vals = agg.xVals.map((x,i)=> agg.matrix[i][0]);
+  const total = vals.reduce((a,b)=>a+b,0) || 1;
+  const pie = d3.pie()(vals);
+  const arc = d3.arc().innerRadius(0).outerRadius(R);
+  const g = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+  pie.forEach((slice,i)=>{
+    g.append("path").attr("d",arc(slice)).attr("fill",PALETTE[i%PALETTE.length]).attr("stroke","var(--panel)").attr("stroke-width",1.5);
+    const pct = Math.round(vals[i]/total*100);
+    if(pct>=6){
+      const c = arc.centroid(slice);
+      g.append("text").attr("x",c[0]).attr("y",c[1]).attr("text-anchor","middle").style("font-size","9px").style("fill","#fff").style("font-weight","700").text(pct+"%");
+    }
+  });
+}
+function renderLegend(container, colorVals, colorField){
+  if(!(colorVals.length>1 || colorVals[0]!==null)) return;
+  const leg = document.createElement("div"); leg.className="legend";
+  colorVals.forEach((cv,i)=> leg.innerHTML += `<span><span class="sw" style="background:${PALETTE[i%PALETTE.length]}"></span>${esc(cv ?? "")}</span>`);
+  container.appendChild(leg);
+}
+
+/* ---------- Card rendering ---------- */
+function renderDashboard(){
+  dashboard.innerHTML = "";
+  if(!cards.length){ dashboard.appendChild(document.getElementById("emptyMsg") || makeEmptyMsg()); return; }
+  cards.forEach(c=> dashboard.appendChild(buildCardEl(c)));
+}
+function makeEmptyMsg(){ const d=document.createElement("div"); d.id="emptyMsg"; d.className="empty"; d.textContent="Drag a chart type here from the sidebar, or use the AI copilot."; return d; }
+
+function buildCardEl(c){
+  const def = CHART_TYPES[c.type];
+  const card = document.createElement("div");
+  card.className = "card"+(c.entering?" entering":"");
+  const typeOptions = Object.entries(CHART_TYPES).map(([t,d])=>`<option value="${t}" ${t===c.type?"selected":""}>${d.icon} ${d.label}</option>`).join("");
+  card.innerHTML = `<div class="hd">
+      <select class="typesel">${typeOptions}</select>
+      <input class="title" value="${esc(c.title)}">
+      <button class="del" title="Delete">✕</button>
+    </div>
+    <div class="body"></div>
+    <div class="shelf"></div>`;
+  card.querySelector(".typesel").onchange = e=>{ c.type = e.target.value; const nd=CHART_TYPES[c.type].wells; if(!nd.includes("color")) c.color=null; if(!nd.includes("x")) c.x=null; renderDashboard(); };
+  card.querySelector(".title").oninput = e=>{ c.title = e.target.value; };
+  card.querySelector(".del").onclick = ()=> removeCard(c.id);
+
+  const body = card.querySelector(".body");
+  renderChartBody(body, c);
+
+  const shelf = card.querySelector(".shelf");
+  def.wells.forEach(w=>{
+    const row = document.createElement("div"); row.className="wellrow";
+    const wl = document.createElement("div"); wl.className="wl"; wl.textContent=w;
+    const well = document.createElement("div"); well.className="well";
+    const fname = c[w];
+    if(fname){
+      well.innerHTML = `<span class="pill" style="--c:${FIELD_COLOR[fname]}">${fname}<button title="Remove">✕</button></span>`;
+      well.querySelector("button").onclick = ()=>{ c[w]=null; renderDashboard(); };
+    } else {
+      well.textContent = w==="y" ? "Drop a measure…" : "Drop a dimension…";
+    }
+    well.addEventListener("dragover", e=>{ e.preventDefault(); e.stopPropagation(); well.classList.add("over"); });
+    well.addEventListener("dragleave", ()=> well.classList.remove("over"));
+    well.addEventListener("drop", e=>{
+      e.preventDefault(); e.stopPropagation(); well.classList.remove("over");
+      const data = e.dataTransfer.getData("text/plain");
+      if(!data.startsWith("field:")) return;
+      const fname2 = data.slice(6);
+      const isMeasure = MEASURES.includes(fname2);
+      if(w==="y" && !isMeasure) return;
+      if(w!=="y" && isMeasure) return;
+      c[w] = fname2; renderDashboard();
+    });
+    row.appendChild(wl); row.appendChild(well);
+    if(w==="y" && def.wells.includes("y")){
+      const sel = document.createElement("select"); sel.className="aggsel";
+      ["sum","avg","count","max","min"].forEach(a=>{ const o=document.createElement("option"); o.value=a; o.textContent=a; if(a===c.agg) o.selected=true; sel.appendChild(o); });
+      sel.onchange = e=>{ c.agg=e.target.value; renderDashboard(); };
+      row.appendChild(sel);
+    }
+    shelf.appendChild(row);
+  });
+  return card;
+}
+
+function renderChartBody(body, c){
+  body.innerHTML = "";
+  const def = CHART_TYPES[c.type];
+  const needsX = def.wells.includes("x");
+  if((needsX && !c.x) || !c.y){ body.innerHTML = `<span style="color:var(--muted);font-size:.85rem">Fill in the wells below…</span>`; return; }
+  if(c.type==="kpi"){
+    const val = aggValue(rows, c.y, c.agg);
+    const div = document.createElement("div"); div.className="kpi";
+    div.innerHTML = `<div class="num">${fmt(val,c.y)}</div><div class="lbl">${c.agg.toUpperCase()} of ${c.y}</div>`;
+    body.appendChild(div); return;
+  }
+  if(c.type==="table"){
+    const agg = aggregate(c.x, c.y, null, c.agg);
+    const order = agg.xVals.map((x,i)=>i).sort((a,b)=> agg.matrix[b][0]-agg.matrix[a][0]);
+    const wrap = document.createElement("div"); wrap.style.width="100%"; wrap.style.maxHeight="200px"; wrap.style.overflowY="auto";
+    wrap.innerHTML = `<table><thead><tr><th>${c.x}</th><th>${c.agg.toUpperCase()} ${c.y}</th></tr></thead><tbody>
+      ${order.map(i=>`<tr><td>${esc(agg.xVals[i])}</td><td>${fmt(agg.matrix[i][0], c.y)}</td></tr>`).join("")}
+    </tbody></table>`;
+    body.appendChild(wrap); return;
+  }
+  const svgWrap = document.createElement("div"); svgWrap.style.width="100%";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 300 170");
+  svgWrap.appendChild(svg); body.appendChild(svgWrap);
+  if(c.type==="bar"){ const agg=aggregate(c.x,c.y,c.color,c.agg); drawBar(svg,agg,c.y); renderLegend(svgWrap, agg.colorVals, c.color); }
+  else if(c.type==="line"){ const agg=aggregate(c.x,c.y,c.color,c.agg); drawLine(svg,agg); renderLegend(svgWrap, agg.colorVals, c.color); }
+  else if(c.type==="pie"){ const agg=aggregate(c.x,c.y,null,c.agg); drawPie(svg,agg);
+    const leg=document.createElement("div"); leg.className="legend";
+    agg.xVals.forEach((xv,i)=> leg.innerHTML+=`<span><span class="sw" style="background:${PALETTE[i%PALETTE.length]}"></span>${esc(xv)}</span>`);
+    svgWrap.appendChild(leg);
+  }
+}
+
+/* ---------- Clear / example ---------- */
+$("clearBtn").onclick = ()=>{ if(confirm("Clear the whole dashboard?")){ cards=[]; renderDashboard(); } };
+$("loadExample").onclick = ()=>{
+  $("spec").value = "Show total revenue as a big KPI number. Show a bar chart of total revenue by region. Show a line chart of revenue by month, broken down by region. Show a table of total profit by product, sorted highest first.";
+};
+$("loadExample").click();
+
+/* ---------- Mobile sidebar ---------- */
+$("menuBtn").onclick = ()=>{ $("sidebar").classList.add("open"); $("scrim").classList.add("show"); };
+$("scrim").onclick = ()=>{ $("sidebar").classList.remove("open"); $("scrim").classList.remove("show"); };
+
+/* ---------- Model ---------- */
+let engine=null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; $("load").disabled=true; }
+$("load").onclick = async ()=>{
+  $("load").disabled=true; $("bar").style.display="block";
+  const bar=$("bar").firstElementChild;
+  const cb=r=>{ bar.style.width=Math.round((r.progress||0)*100)+"%"; $("status").textContent=r.text; };
+  try{
+    const id=$("model").value;
+    if(engine){ engine.setInitProgressCallback(cb); await engine.reload(id); }
+    else engine = await webllm.CreateMLCEngine(id, {initProgressCallback:cb});
+    $("status").textContent="Ready.";
+    $("buildAI").disabled=false;
+    $("load").textContent="Switch model";
+  }catch(e){ $("status").textContent="Couldn't load: "+(e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+async function llm(system,user,maxTokens=500,temperature=0.2){
+  const res = await engine.chat.completions.create({stream:true,temperature,max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]});
+  let out=""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d) out+=d; }
+  return out.trim();
+}
+
+/* ---------- AI Copilot: spec -> dashboard ---------- */
+const COPILOT_SYS = `You design analytics dashboards as JSON. Available dimensions: ${DIMENSIONS.join(", ")}. Available measures: ${MEASURES.join(", ")}. Use EXACTLY these names, nothing else.
+Chart types: kpi (needs only "y"), bar (needs "x" and "y", optional "color"), line (needs "x" and "y", optional "color"), pie (needs "x" and "y"), table (needs "x" and "y").
+"agg" is one of: sum, avg, count, max, min (default sum).
+"color" (bar/line only) must be a dimension different from "x".
+Reply with ONLY strict JSON, no prose, no markdown fences, in exactly this shape:
+[{"type":"kpi","title":"...","y":"Revenue","agg":"sum"}, {"type":"bar","title":"...","x":"Region","y":"Revenue","agg":"sum"}]
+Keep it to 3-6 charts.`;
+
+$("buildAI").onclick = async ()=>{
+  const spec = $("spec").value.trim();
+  if(!spec || !engine) return;
+  $("buildAI").disabled = true; $("aiStatus").textContent = "Designing the dashboard…";
+  try{
+    const raw = await llm(COPILOT_SYS, spec, 600, 0.2);
+    const jsonText = raw.slice(raw.indexOf("["), raw.lastIndexOf("]")+1);
+    const plan = JSON.parse(jsonText);
+    if(!Array.isArray(plan) || !plan.length) throw new Error("Model didn't return usable charts.");
+    cards = [];
+    renderDashboard();
+    for(let i=0;i<plan.length;i++){
+      const p = plan[i];
+      if(!CHART_TYPES[p.type]) continue;
+      $("aiStatus").textContent = `Building chart ${i+1} of ${plan.length}: ${p.title||p.type}…`;
+      await new Promise(r=>setTimeout(r,200));
+      [p.x,p.y,p.color].forEach(f=>{ if(f) flashField(f); });
+      addCard(p.type, {x:p.x, y:p.y, color:p.color, agg:p.agg||"sum"}, {title:p.title});
+      await new Promise(r=>setTimeout(r,220));
+    }
+    $("aiStatus").textContent = `Built ${cards.length} chart${cards.length===1?"":"s"}. Drag fields to adjust, or add more.`;
+  }catch(e){ $("aiStatus").textContent = "Couldn't build the dashboard: " + (e.message||e); }
+  finally{ $("buildAI").disabled = false; }
+};
+
+renderDashboard();
+</script>
+</body>
+</html>
