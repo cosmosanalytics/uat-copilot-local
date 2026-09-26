@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantic Knowledge Graph — build a graph of meaning from any text</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕸️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.26.0/dist/graphology.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F3F1EA; --panel:#FFFFFF; --panel2:#F7F5EE; --ink:#1D2330; --muted:#6B6558; --line:#DCD6C4;
+  --accent:#1F6F5C;
+  --p1:#2E86AB;--p2:#0E9A6E;--p3:#D08A12;--p4:#B8327A;--p5:#7B5EA7;--p6:#4FB7B3;
+  --body:"Inter","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#151815;--panel:#1D211D;--panel2:#232722;--ink:#EDEAE0;--muted:#9C9683;--line:#33372F;}
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--body)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px}
+.wrap{max-width:1220px;margin:0 auto;padding:18px 16px 44px}
+header{margin-bottom:14px}
+h1{font:800 clamp(1.6rem,3.6vw,2.3rem)/1.1 var(--body);letter-spacing:-.01em;margin:0}
+.tag{color:var(--muted);margin:.5rem 0 0;max-width:80ch;font-size:.92rem;line-height:1.55}
+.tag b{color:var(--ink)}
+.stackline{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.pill2{font-size:.72rem;font-weight:800;padding:3px 11px;border-radius:999px;border:1.4px solid var(--accent);color:var(--accent)}
+h2{font:800 .92rem/1.2 var(--body);margin:0 0 8px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,.btn{border:1.4px solid var(--line);background:var(--panel2);border-radius:9px;padding:7px 11px;font-weight:600;font-size:.85rem;color:var(--ink)}
+.btn{cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-color:var(--line);font-weight:400}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.status{font-size:.83rem;color:var(--muted);margin:5px 0 0;min-height:1.2em}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:5px;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.nogpu{border:2px solid #B4483B;border-radius:10px;padding:10px 12px;margin-bottom:14px;display:none}
+
+.top{display:grid;grid-template-columns:1fr auto;gap:14px;margin-bottom:14px}
+@media (max-width:820px){.top{grid-template-columns:1fr}}
+textarea.src{width:100%;min-height:150px;resize:vertical;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--panel2);color:var(--ink);font-size:.85rem;line-height:1.42}
+.side{display:flex;flex-direction:column;gap:8px;min-width:190px}
+
+.thr{display:flex;align-items:center;gap:10px;margin:10px 0 0}
+.thr input[type=range]{flex:1;accent-color:var(--accent);height:26px}
+.thr b{font-variant-numeric:tabular-nums;min-width:3ch}
+
+.mainviews{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);gap:16px;align-items:start}
+@media (max-width:920px){.mainviews{grid-template-columns:1fr}}
+#graph{width:100%;height:460px;display:block;border-radius:10px;background:var(--panel2)}
+.node{cursor:pointer}
+.node text{font:700 9px var(--body);fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.node.dim{opacity:.2}
+.edge{stroke-opacity:.45}
+.edge.dim{opacity:.05}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem;margin-top:8px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:50%}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.statcard{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel2)}
+.statcard .n{font-size:1.3rem;font-weight:800}
+.statcard .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+
+.detail{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.detail .sentence{font-size:.92rem;line-height:1.45;margin-bottom:8px}
+.detail .metrics{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.mchip{font-size:.74rem;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+.neighlist{font-size:.82rem;line-height:1.6}
+.neighlist b{color:var(--muted);font-weight:700;text-transform:uppercase;font-size:.7rem;letter-spacing:.03em;display:block;margin-bottom:3px}
+.neighrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:3px 0}
+.neighitem{cursor:pointer;color:var(--accent);text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s;flex:1;min-width:150px}
+.neighitem:hover{text-decoration-color:var(--accent)}
+.score{font-size:.72rem;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.whybtn{font-size:.7rem;padding:2px 8px;border-radius:999px;border:1.2px solid var(--line);background:var(--panel);cursor:pointer;color:var(--muted);font-weight:600}
+.whybtn:hover{border-color:var(--accent);color:var(--accent)}
+.whybtn:disabled{opacity:.5;cursor:wait}
+.whyexplain{flex-basis:100%;font-size:.78rem;color:var(--accent);font-style:italic;padding-left:2px}
+.whyexplain:empty{display:none}
+.whyexplain.whyflag{color:#B5790A}
+.empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🕸️ Semantic Knowledge Graph</h1>
+    <p class="tag">Turn any text into a graph of meaning. Sentences become nodes, semantic similarity becomes edges, and <b>graphology</b> with <b>Louvain community detection</b> finds the natural clusters, the same algorithm used for community detection in large-scale network analysis. Embeddings come from a small model running locally in your browser.</p>
+    <div class="stackline">
+      <span class="pill2">graphology graph engine</span>
+      <span class="pill2">Louvain community detection</span>
+      <span class="pill2">degree centrality</span>
+      <span class="pill2">local embeddings (WebLLM)</span>
+    </div>
+  </header>
+
+  <div class="panel row" style="margin-bottom:14px">
+    <select id="embedModel">
+      <option value="snowflake-arctic-embed-s-q0f32-MLC-b4" selected>Embed: Arctic S</option>
+      <option value="snowflake-arctic-embed-m-q0f32-MLC-b4">Embed: Arctic M</option>
+    </select>
+    <select id="chatModel">
+      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Explain: 1.5B</option>
+      <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Explain: 3B</option>
+    </select>
+    <button class="btn primary" id="load">Load models</button>
+    <div class="bar" id="bar"><i></i></div>
+    <span class="status" id="status">Runs on your GPU with WebGPU. Downloads once, then cached.</span>
+  </div>
+  <div class="nogpu" id="nogpu"><strong>WebGPU isn't available here.</strong> Use a recent Chrome, Edge, or Safari 26+ on desktop.</div>
+
+  <div class="top">
+    <div class="panel">
+      <h2>Source text</h2>
+      <textarea class="src" id="text"></textarea>
+    </div>
+    <div class="side panel">
+      <h2>Build</h2>
+      <button class="btn ghost" id="loadSimple" type="button">Load simple sample (animals)</button>
+      <button class="btn ghost" id="loadExample" type="button">Load insurance sample</button>
+      <button class="btn primary" id="build" disabled type="button">Build the graph</button>
+      <p class="status" id="buildStatus"></p>
+    </div>
+  </div>
+
+  <div class="mainviews">
+    <section class="panel" aria-label="Knowledge graph">
+      <h2>Semantic knowledge graph</h2>
+      <svg id="graph" role="img"></svg>
+      <div class="thr"><span class="status" style="margin:0">Edge threshold</span><input type="range" id="thr" min="0.25" max="0.85" step="0.02" value="0.5"><b id="thrVal">0.50</b></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="panel" aria-label="Graph statistics and node detail">
+      <h2>Graph statistics</h2>
+      <div class="stats" id="stats">
+        <div class="statcard"><div class="n" id="statNodes">—</div><div class="l">Nodes</div></div>
+        <div class="statcard"><div class="n" id="statEdges">—</div><div class="l">Edges</div></div>
+        <div class="statcard"><div class="n" id="statComm">—</div><div class="l">Communities (Louvain)</div></div>
+        <div class="statcard"><div class="n" id="statDeg">—</div><div class="l">Avg. degree</div></div>
+      </div>
+      <div id="detailWrap"><div class="empty">Build the graph, then click a node to inspect it.</div></div>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+import louvain from "https://esm.run/graphology-communities-louvain@2.0.2";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const PALETTE = ["#2E86AB","#0E9A6E","#D08A12","#B8327A","#7B5EA7","#4FB7B3","#C0562D","#5C6BC0"];
+
+/* ---------- Insurance domain sample ---------- */
+const SAMPLE = [
+  "Underwriters evaluate an applicant's risk profile before issuing a policy.",
+  "Actuarial models estimate the probability and severity of future claims.",
+  "Risk-based pricing adjusts premiums according to an individual's likelihood of loss.",
+  "Catastrophe models simulate the financial impact of hurricanes, earthquakes, and floods.",
+  "Reinsurance allows an insurer to transfer part of its risk to another company.",
+  "A claims adjuster investigates the circumstances and cost of a reported loss.",
+  "Fraud detection systems flag claims with statistically unusual patterns.",
+  "Subrogation lets an insurer recover costs from the party actually at fault.",
+  "A public adjuster represents the policyholder's interests during a claim dispute.",
+  "Claims severity refers to the average dollar cost of a settled claim.",
+  "State insurance regulators require insurers to maintain minimum capital reserves.",
+  "Solvency II sets capital adequacy standards for insurers operating in the EU.",
+  "Insurers must file rate changes with regulators before applying them to new policies.",
+  "Anti-money-laundering rules require insurers to verify the source of large premium payments.",
+  "Market conduct exams review whether an insurer treats policyholders fairly.",
+  "Independent agents sell policies from multiple insurance carriers.",
+  "Direct-to-consumer channels let customers buy policies online without an agent.",
+  "Customer segmentation groups policyholders by behavior to tailor products and pricing.",
+  "Renewal retention measures the share of policyholders who renew their coverage each year.",
+  "A managing general agent underwrites and binds policies on behalf of an insurer.",
+].join(" ");
+const SIMPLE_SAMPLE = [
+  "A dog is a loyal pet that many families keep at home.",
+  "Cats are independent pets that often sleep most of the day.",
+  "A pet hamster lives in a small cage and runs on a wheel at night.",
+  "A cow grazes in a field and provides milk on a farm.",
+  "Farmers raise pigs for meat in large barns.",
+  "Chickens on a farm lay eggs every morning.",
+  "A lion hunts other animals on the open grassland.",
+  "Wolves travel in packs through forests to find prey.",
+  "An elephant uses its trunk to gather food and water in the wild.",
+  "A shark swims through the ocean searching for fish to eat.",
+  "Dolphins are intelligent sea animals that live in groups.",
+  "A whale is the largest animal living in the ocean.",
+].join(" ");
+$("loadSimple").onclick = ()=>{ $("text").value = SIMPLE_SAMPLE; };
+
+$("loadExample").onclick = ()=>{ $("text").value = SAMPLE; };
+$("loadExample").click();
+
+function splitSentences(text){
+  let parts;
+  if(window.Intl && Intl.Segmenter){ const seg=new Intl.Segmenter(undefined,{granularity:"sentence"}); parts=[...seg.segment(text)].map(s=>s.segment); }
+  else parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>2);
+}
+
+/* ---------- Model ---------- */
+let engine=null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; $("load").disabled=true; }
+$("load").onclick = async ()=>{
+  $("load").disabled=true; $("bar").style.display="block";
+  const bar=$("bar").firstElementChild;
+  const cb=r=>{ bar.style.width=Math.round((r.progress||0)*100)+"%"; $("status").textContent=r.text; };
+  try{
+    engine = await webllm.CreateMLCEngine([$("embedModel").value, $("chatModel").value], {initProgressCallback:cb});
+    $("status").textContent="Ready.";
+    $("build").disabled=false;
+    $("load").textContent="Switch models";
+  }catch(e){ $("status").textContent="Couldn't load: "+(e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+async function llm(system,user,maxTokens=60,temperature=0.3){
+  const res = await engine.chat.completions.create({model:$("chatModel").value, stream:true,temperature,max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]});
+  let out=""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d) out+=d; }
+  return out.trim();
+}
+
+/* ---------- Embedding + graph construction ---------- */
+const MAX=40;
+let sentences=[], vecs=[], S=[];
+let graph = null;              // graphology.Graph instance
+let communities = {};          // node id -> community int, from real Louvain
+
+function normalize(v){ const n=Math.hypot(...v)||1; return v.map(x=>x/n); }
+function cos(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return Math.max(-1,Math.min(1,s)); }
+
+$("build").onclick = async ()=>{
+  const all = splitSentences($("text").value).slice(0,MAX);
+  if(all.length<4){ $("buildStatus").textContent="Add at least four sentences."; return; }
+  sentences = all;
+  $("build").disabled=true;
+  try{
+    vecs=[];
+    const embedId=$("embedModel").value;
+    for(let i=0;i<sentences.length;i+=4){
+      $("buildStatus").textContent = `Embedding ${i+1}-${Math.min(i+4,sentences.length)} of ${sentences.length}…`;
+      const res = await engine.embeddings.create({model:embedId, input: sentences.slice(i,i+4)});
+      res.data.slice().sort((a,b)=>(a.index??0)-(b.index??0)).forEach(d=>vecs.push(normalize(Array.from(d.embedding))));
+    }
+    const n=vecs.length; S=Array.from({length:n},()=>new Float32Array(n));
+    for(let i=0;i<n;i++) for(let j=i;j<n;j++){ const s=(i===j)?1:cos(vecs[i],vecs[j]); S[i][j]=S[j][i]=s; }
+    rebuildGraphologyGraph();
+    initSvg(); drawGraph();
+    $("buildStatus").textContent = `Graph built: ${sentences.length} nodes.`;
+  }catch(e){ $("buildStatus").textContent="Build failed: "+(e.message||e); }
+  finally{ $("build").disabled=false; }
+};
+
+/* Rebuild the REAL graphology graph + run REAL Louvain, from the current threshold */
+function rebuildGraphologyGraph(){
+  const threshold = +$("thr").value;
+  graph = new graphology.UndirectedGraph();
+  sentences.forEach((t,i)=> graph.addNode(i, {label:t}));
+  for(let i=0;i<S.length;i++)
+    for(let j=i+1;j<S.length;j++)
+      if(S[i][j] > threshold) graph.addEdge(i, j, {weight: S[i][j]});
+
+  communities = graph.order > 0 && graph.size > 0
+    ? louvain(graph, {getEdgeWeight:"weight"})
+    : Object.fromEntries(sentences.map((_,i)=>[i,0]));
+
+  // real degree centrality, straight from the graph, no separate library needed
+  updateStats();
+}
+
+function updateStats(){
+  const nComm = new Set(Object.values(communities)).size;
+  const avgDeg = graph.order ? (2*graph.size/graph.order).toFixed(1) : "0";
+  $("statNodes").textContent = graph.order;
+  $("statEdges").textContent = graph.size;
+  $("statComm").textContent = nComm;
+  $("statDeg").textContent = avgDeg;
+  const legendComms = [...new Set(Object.values(communities))].sort((a,b)=>a-b);
+  $("legend").innerHTML = legendComms.map(c=>`<span><span class="sw" style="background:${PALETTE[c%PALETTE.length]}"></span>Community ${c}</span>`).join("");
+}
+
+/* ---------- D3 rendering (colors/sizes driven by graph algorithm output) ---------- */
+const svg = d3.select("#graph");
+let sim, nodes=[], gE, gN;
+function initSvg(){
+  svg.selectAll("*").remove();
+  const {width,height}=$("graph").getBoundingClientRect();
+  gE=svg.append("g"); gN=svg.append("g");
+  svg.call(d3.zoom().scaleExtent([.4,3]).on("zoom",e=>{ gE.attr("transform",e.transform); gN.attr("transform",e.transform); }));
+  nodes = sentences.map((t,i)=>({index:i, text:t, x:width/2+Math.cos(i)*100, y:height/2+Math.sin(i)*100}));
+  sim = d3.forceSimulation(nodes)
+    .force("charge", d3.forceManyBody().strength(-140))
+    .force("center", d3.forceCenter(width/2,height/2))
+    .force("collide", d3.forceCollide(d=>16+2*graph.degree(d.index)))
+    .on("tick", ()=>{
+      gE.selectAll("line").attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+      gN.selectAll("g").attr("transform",d=>`translate(${d.x},${d.y})`);
+    });
+  const g = gN.selectAll("g").data(nodes).join("g").attr("class","node").attr("id",d=>"n"+d.index);
+  g.append("circle");
+  g.append("text").text(d=>d.index+1);
+  g.append("title").text(d=>d.text);
+  g.on("click",(e,d)=>selectNode(d.index));
+  g.call(d3.drag()
+    .on("start",(e,d)=>{ if(!e.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on("drag",(e,d)=>{ d.fx=e.x; d.fy=e.y; })
+    .on("end",(e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+}
+function drawGraph(){
+  const edges = graph.edges().map(e=>{
+    const [a,b] = graph.extremities(e);
+    return {source:nodes[a], target:nodes[b], v:graph.getEdgeAttribute(e,"weight")};
+  });
+  gE.selectAll("line").data(edges).join("line").attr("class","edge")
+    .attr("stroke","#9AA3B0").attr("stroke-width",d=>1+2.5*d.v);
+  gN.selectAll("g").select("circle")
+    .attr("r", d=>9+2.4*graph.degree(d.index))
+    .attr("fill", d=>PALETTE[(communities[d.index]||0)%PALETTE.length]);
+  sim.force("link", d3.forceLink(edges).distance(d=>40+(1-d.v)*150).strength(.2));
+  sim.alpha(.6).restart();
+}
+$("thr").addEventListener("input", e=>{
+  $("thrVal").textContent=(+e.target.value).toFixed(2);
+  if(graph){ rebuildGraphologyGraph(); drawGraph(); if(selectedId!=null) selectNode(selectedId); }
+});
+
+/* ---------- Node detail: graph queries (degree, neighbors, community) ---------- */
+let selectedId = null;
+function selectNode(id){
+  selectedId = id;
+  gN.selectAll("g").classed("dim", d=>{
+    if(d.index===id) return false;
+    return !graph.areNeighbors(id, d.index);
+  });
+  gE.selectAll("line").classed("dim", d=> d.source.index!==id && d.target.index!==id);
+
+  const deg = graph.degree(id);
+  const comm = communities[id];
+  const neighbors = graph.neighbors(id).map(Number)
+    .map(n=>({n, w: graph.getEdgeAttribute(graph.edge(id,n),"weight")}))
+    .sort((a,b)=> b.w-a.w);
+  $("detailWrap").innerHTML = `
+    <div class="detail">
+      <div class="sentence">S${id+1}. ${esc(sentences[id])}</div>
+      <div class="metrics">
+        <span class="mchip" style="border-color:${PALETTE[comm%PALETTE.length]};color:${PALETTE[comm%PALETTE.length]}">Community ${comm}</span>
+        <span class="mchip">Degree ${deg}</span>
+      </div>
+      <div class="neighlist"><b>Connected sentences</b>
+        ${neighbors.length ? neighbors.map(x=>`
+          <div class="neighrow" data-n="${x.n}">
+            <span class="neighitem" data-n="${x.n}">S${x.n+1}. ${esc(sentences[x.n].slice(0,60))}${sentences[x.n].length>60?"…":""}</span>
+            <span class="score">${x.w.toFixed(2)}</span>
+            <button class="whybtn" data-a="${id}" data-b="${x.n}">Why?</button>
+            <div class="whyexplain" id="why-${x.n}"></div>
+          </div>`).join("") : "<i>No edges at this threshold.</i>"}
+      </div>
+    </div>`;
+  $("detailWrap").querySelectorAll(".neighitem").forEach(el=> el.onclick = ()=> selectNode(+el.dataset.n));
+  $("detailWrap").querySelectorAll(".whybtn").forEach(el=> el.onclick = ()=> explainSimilarity(el));
+}
+
+/* ---------- Explain why two sentences scored as similar ---------- */
+async function explainSimilarity(btn){
+  const a = +btn.dataset.a, b = +btn.dataset.b;
+  const box = document.getElementById("why-"+b);
+  if(!engine || !$("chatModel")){ box.textContent = "Load the models first."; return; }
+  btn.disabled = true; box.className = "whyexplain"; box.textContent = "Thinking…";
+  try{
+    const draft = await llm(
+      "Name the specific, concrete thing these two statements share, in at most 12 words. Do not use vague words like 'classification', 'characteristics', 'themes', or 'behavior' on their own, name the actual shared category, action, or trait (for example: 'both are ocean predators', 'both are pets kept indoors', 'both are farm animals raised for food'). If the two statements don't actually share anything specific beyond both mentioning animals, say plainly that the connection is weak or surface-level rather than inventing one.",
+      `A: ${sentences[a]}\nB: ${sentences[b]}`, 65, 0.2);
+
+    box.textContent = "Checking…";
+    const verdict = await llm(
+      "You will see two statements and a claim about what they share. Reply with exactly one word: ACCURATE if the claim is explicitly true of BOTH statements on their own terms, or INACCURATE if it attributes something from only one statement to both, or states something neither actually says.",
+      `Statement A: ${sentences[a]}\nStatement B: ${sentences[b]}\nClaim: ${draft}`, 6, 0.1);
+
+    if(/INACCURATE/i.test(verdict)){
+      box.classList.add("whyflag");
+      box.textContent = "⚠ Couldn't verify a precise shared claim for this pair, the connection may be based on overall wording rather than one specific shared fact.";
+    } else {
+      box.textContent = "→ " + (draft || "(no explanation generated)");
+    }
+  }catch(e){ box.textContent = "Couldn't explain: " + (e.message||e); }
+  finally{ btn.disabled = false; }
+}
+</script>
+</body>
+</html>
