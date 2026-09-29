@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Cognitive Connectome — Brain Network Visualizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    /* Default: Light Mode (Clean, High-Contrast Academic / Lab Theme) */
+    :root {
+      --bg: #f1f5f9;
+      --canvas-bg: radial-gradient(circle at 50% 50%, #ffffff 0%, #e2e8f0 100%);
+      --panel: #ffffff;
+      --panel-secondary: #f8fafc;
+      --panel-border: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-blue: #0284c7;
+      --accent-cyan: #0891b2;
+      --accent-purple: #7c3aed;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Dark Mode Theme */
+    body.dark-theme {
+      --bg: #090d16;
+      --canvas-bg: radial-gradient(circle at center, #0f172a 0%, #050811 100%);
+      --panel: #111827;
+      --panel-secondary: #0d1322;
+      --panel-border: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-blue: #38bdf8;
+      --accent-cyan: #06b6d4;
+      --accent-purple: #a855f7;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    header {
+      padding: 10px 20px;
+      background: var(--panel);
+      border-bottom: 1.5px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+    .brand .subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      border-left: 1.5px solid var(--panel-border);
+      padding-left: 10px;
+      font-weight: 500;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--panel-secondary);
+      border: 1.4px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+    body.dark-theme .btn:hover { background: #334155; border-color: #475569; }
+
+    .btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.35);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      border: none;
+      color: white;
+    }
+    .btn.primary:hover {
+      background: linear-gradient(135deg, #0369a1, #4f46e5);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Main Workspace */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      height: calc(100vh - 54px);
+      overflow: hidden;
+    }
+
+    /* Sidebars */
+    .sidebar {
+      background: var(--panel);
+      border-right: 1.5px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 5;
+    }
+    .sidebar.right {
+      border-right: none;
+      border-left: 1.5px solid var(--panel-border);
+    }
+
+    .card-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Prompts / Stimuli */
+    textarea.prompt-box {
+      width: 100%;
+      height: 72px;
+      background: var(--panel-secondary);
+      border: 1.4px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 10px;
+      font-size: 0.84rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    textarea.prompt-box:focus {
+      outline: 2px solid var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .preset-chip {
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: var(--panel-secondary);
+      padding: 4px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: 1px solid var(--panel-border);
+      transition: all 0.15s;
+    }
+    .preset-chip:hover {
+      color: var(--accent-blue);
+      border-color: var(--accent-blue);
+      background: #e0f2fe;
+    }
+    body.dark-theme .preset-chip:hover {
+      background: #1e293b;
+    }
+
+    /* Brain Regions / Cortical Layers */
+    .region-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      border-left: 4px solid #64748b;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .region-row:hover {
+      background: #e2e8f0;
+      transform: translateX(2px);
+    }
+    body.dark-theme .region-row:hover { background: #172138; }
+
+    .region-row.sensory   { border-left-color: var(--accent-blue); }
+    .region-row.syntax    { border-left-color: var(--accent-cyan); }
+    .region-row.semantic  { border-left-color: var(--accent-purple); }
+    .region-row.reasoning { border-left-color: var(--accent-amber); }
+    .region-row.executive { border-left-color: var(--accent-rose); }
+    .region-info { display: flex; flex-direction: column; }
+    .region-name { font-weight: 700; color: var(--text-main); }
+    .region-layers { font-size: 0.72rem; color: var(--text-muted); }
+    .region-activity {
+      font-size: 0.76rem;
+      font-weight: 800;
+      font-family: monospace;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+    body.dark-theme .region-activity {
+      background: #1e293b;
+    }
+
+    /* Central Graph Area */
+    .viewport {
+      position: relative;
+      background: var(--canvas-bg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #brain-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Overlay Controls */
+    .view-switcher {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1.5px solid var(--panel-border);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+      z-index: 5;
+      box-shadow: var(--shadow-md);
+    }
+    body.dark-theme .view-switcher {
+      background: rgba(17, 24, 39, 0.85);
+    }
+
+    .playback-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.97);
+      border: 2px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      border-radius: 14px;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+      z-index: 5;
+      min-width: 560px;
+    }
+    body.dark-theme .playback-bar {
+      background: rgba(17, 24, 39, 0.9);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .playback-token {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--accent-blue);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.01em;
+    }
+
+    /* Right Sidebar Inspector */
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .node-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #e0f2fe;
+      color: #0369a1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      border: 1.5px solid var(--panel-border);
+    }
+    body.dark-theme .node-avatar {
+      background: #1e293b;
+      color: #38bdf8;
+    }
+
+    .node-title-group h3 { font-size: 1rem; font-weight: 800; color: var(--text-main); }
+    .node-title-group p { font-size: 0.76rem; color: var(--text-muted); }
+
+    .stat-metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.83rem;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .stat-metric .val { font-weight: 700; font-family: monospace; color: var(--accent-blue); }
+
+    .monosemantic-pill {
+      display: inline-block;
+      background: #f3e8ff;
+      border: 1.2px solid #d8b4fe;
+      color: #6b21a8;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    body.dark-theme .monosemantic-pill {
+      background: rgba(168, 85, 247, 0.15);
+      border-color: rgba(168, 85, 247, 0.4);
+      color: #d8b4fe;
+    }
+
+    /* Lesion / Ablation Switch */
+    .lesion-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel-secondary);
+      border: 1.4px solid var(--panel-border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .lesion-label { font-size: 0.82rem; font-weight: 700; color: var(--text-main); }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1; transition: .3s; border-radius: 20px;
+    }
+    body.dark-theme .slider { background-color: #334155; }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--accent-rose); }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    /* Legend */
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header>
+    <div class="brand">
+      <span style="font-size: 1.4rem;">🧠</span>
+      <div>
+        <h1>LLM Cognitive Connectome</h1>
+        <div class="subtitle">Mechanistic Interpretability &amp; Functional Brain Network Mapping</div>
+      </div>
+    </div>
+    <div class="top-controls">
+      <button class="btn" id="btn-theme-toggle">☀️ Light Mode</button>
+      <button class="btn" id="btn-reset">Reset View</button>
+    </div>
+  </header>
+
+  <!-- Main Three-Panel View -->
+  <div class="workspace">
+    
+    <!-- LEFT PANEL: Stimulus & Cortical Regions -->
+    <div class="sidebar">
+      <div class="card-section">
+        <div class="card-title">Prompt Stimulus (Sensory Input)</div>
+        <textarea class="prompt-box" id="prompt-input">Paris is to France as Tokyo is to Japan. If London is to UK, then Berlin is to...</textarea>
+        <div class="preset-chips">
+          <span class="preset-chip" data-profile="analogical" data-prompt="Paris is to France as Tokyo is to Japan. If London is to UK, then Berlin is to...">🌍 Analogical Reasoning</span>
+          <span class="preset-chip" data-profile="induction"  data-prompt="def calculate_fibonacci(n): # Check base condition if n <= 1: return n">💻 Induction Code Circuit</span>
+          <span class="preset-chip" data-profile="epistemic"  data-prompt="Claim: The Earth is flat. Verify epistemic grounding and confidence.">🛡️ Epistemic Guardrail</span>
+        </div>
+      </div>
+
+      <div class="card-section">
+        <div class="card-title">
+          <span>Cortical Modules (32 Layers)</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">128 Attention Units</span>
+        </div>
+
+        <div class="region-row sensory" data-region="sensory">
+          <div class="region-info">
+            <span class="region-name">Sensory / Token Encoding</span>
+            <span class="region-layers">Layers 0 – 5 &bull; Positional &amp; Lexical</span>
+          </div>
+          <span class="region-activity" id="act-sensory">84%</span>
+        </div>
+
+        <div class="region-row syntax" data-region="syntax">
+          <div class="region-info">
+            <span class="region-name">Syntactic &amp; Induction Heads</span>
+            <span class="region-layers">Layers 6 – 12 &bull; Working Memory / Copy</span>
+          </div>
+          <span class="region-activity" id="act-syntax">62%</span>
+        </div>
+
+        <div class="region-row semantic" data-region="semantic">
+          <div class="region-info">
+            <span class="region-name">Association / Semantic Cortex</span>
+            <span class="region-layers">Layers 13 – 20 &bull; Relational World Knowledge</span>
+          </div>
+          <span class="region-activity" id="act-semantic">93%</span>
+        </div>
+
+        <div class="region-row reasoning" data-region="reasoning">
+          <div class="region-info">
+            <span class="region-name">Epistemic &amp; Reasoning Core</span>
+            <span class="region-layers">Layers 21 – 26 &bull; Truth &amp; Verification Gating</span>
+          </div>
+          <span class="region-activity" id="act-reasoning">78%</span>
+        </div>
+
+        <div class="region-row executive" data-region="executive">
+          <div class="region-info">
+            <span class="region-name">Prefrontal / Motor Decoding</span>
+            <span class="region-layers">Layers 27 – 31 &bull; Next-Token Probability</span>
+          </div>
+          <span class="region-activity" id="act-executive">88%</span>
+        </div>
+      </div>
+
+      <div class="card-section">
+        <div class="card-title">Functional Legend</div>
+        <div class="legend-row"><div class="legend-dot" style="background: var(--accent-blue);"></div> Sensory / Input (Occipital / Temporal)</div>
+        <div class="legend-row"><div class="legend-dot" style="background: var(--accent-cyan);"></div> Induction Circuit (Parietal Cortex)</div>
+        <div class="legend-row"><div class="legend-dot" style="background: var(--accent-purple);"></div> Semantic Association (Temporal Lobe)</div>
+        <div class="legend-row"><div class="legend-dot" style="background: var(--accent-amber);"></div> Epistemic Verification (Metacognitive)</div>
+        <div class="legend-row"><div class="legend-dot" style="background: var(--accent-rose);"></div> Motor / Next-Token (Prefrontal Cortex)</div>
+      </div>
+    </div>
+
+    <!-- CENTER VIEWPORT: The Dynamic Brain Canvas -->
+    <div class="viewport">
+      <!-- Layout Mode Selector -->
+      <div class="view-switcher">
+        <button class="btn active" id="mode-anatomical">🧠 Sagittal Brain Anatomy</button>
+        <button class="btn" id="mode-connectome">🕸️ Force Connectome</button>
+        <button class="btn" id="mode-cortical">🏛️ Layer Column Stack</button>
+      </div>
+
+      <!-- Main Canvas -->
+      <canvas id="brain-canvas"></canvas>
+
+
+    </div>
+
+    <!-- RIGHT PANEL: Lesion Controls only -->
+    <div class="sidebar right" style="width:220px; min-width:180px;">
+      <div class="card-section">
+        <div class="card-title">Lesion Experiments</div>
+        <p style="font-size:0.74rem;color:var(--text-muted);line-height:1.4;margin-bottom:10px;">
+          Ablate circuits to observe epistemic collapse.
+        </p>
+
+        <div class="lesion-toggle">
+          <div>
+            <div class="lesion-label">Lesion Induction Heads</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Kills working memory copy-paste</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-lesion-induction">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="lesion-toggle">
+          <div>
+            <div class="lesion-label">Lesion Epistemic Gating</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">Induces rapid hallucination drift</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-lesion-safety">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- Theme Controller ---
+    let isDark = false;
+    const themeBtn = document.getElementById("btn-theme-toggle");
+
+    themeBtn.addEventListener("click", () => {
+      isDark = !isDark;
+      if (isDark) {
+        document.body.classList.add("dark-theme");
+        themeBtn.textContent = "🌙 Dark Mode";
+      } else {
+        document.body.classList.remove("dark-theme");
+        themeBtn.textContent = "☀️ Light Mode";
+      }
+    });
+
+    // --- Data Model: 128 Representative Attention Heads across 32 Layers ---
+    const NUM_LAYERS = 32;
+    const HEADS_PER_LAYER = 4;
+
+    const REGIONS = [
+      { id: "sensory", name: "Sensory / Token", layers: [0, 5], color: "#0284c7", lobe: "Occipital / Sensory" },
+      { id: "syntax", name: "Syntactic Induction", layers: [6, 12], color: "#0891b2", lobe: "Parietal Cortex" },
+      { id: "semantic", name: "Semantic Association", layers: [13, 20], color: "#7c3aed", lobe: "Temporal Lobe" },
+      { id: "reasoning", name: "Epistemic Safety", layers: [21, 26], color: "#d97706", lobe: "Insular / Metacognitive" },
+      { id: "executive", name: "Prefrontal Motor", layers: [27, 31], color: "#e11d48", lobe: "Prefrontal Cortex" }
+    ];
+
+    function getRegionForLayer(layer) {
+      for (const r of REGIONS) {
+        if (layer >= r.layers[0] && layer <= r.layers[1]) return r;
+      }
+      return REGIONS[2];
+    }
+
+    const SPECIALIZATIONS = [
+      "Induction Sub-circuit", "Grammar Parenthesis Anchor", "Spatial Relation Feature",
+      "Analogical Relation Bridge", "Entity Factual Memory", "Epistemic Confidence Evaluator",
+      "Sycophancy Suppression", "Next-Token Probability Projector", "Punctuation Parser"
+    ];
+
+    const nodes = [];
+    for (let l = 0; l < NUM_LAYERS; l++) {
+      const region = getRegionForLayer(l);
+      for (let h = 0; h < HEADS_PER_LAYER; h++) {
+        const id = `L${l}.H${h}`;
+        const spec = SPECIALIZATIONS[(l * 3 + h) % SPECIALIZATIONS.length];
+        nodes.push({
+          id: id,
+          layer: l,
+          head: h,
+          region: region.id,
+          color: region.color,
+          name: `Head ${id}`,
+          specialty: spec,
+          sae: `Feature #${10000 + l * 1234 + h * 567}`,
+          concept: l < 6 ? `Token-Position [L${l}]` : l > 26 ? `Next-Token Logit Driver` : `Relational Schema [Layer ${l}]`,
+          activation: 0.2 + Math.random() * 0.65,
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          ablated: false
+        });
+      }
+    }
+
+    // Build Synaptic Edges
+    const links = [];
+    nodes.forEach(src => {
+      nodes.forEach(tgt => {
+        const layerDiff = tgt.layer - src.layer;
+        if (layerDiff > 0 && layerDiff <= 3) {
+          if (Math.random() < (layerDiff === 1 ? 0.35 : 0.12)) {
+            links.push({
+              source: src.id,
+              target: tgt.id,
+              weight: 0.2 + Math.random() * 0.8
+            });
+          }
+        }
+      });
+    });
+
+    const nodeMap = new Map();
+    nodes.forEach(n => nodeMap.set(n.id, n));
+    links.forEach(l => {
+      l.srcNode = nodeMap.get(l.source);
+      l.tgtNode = nodeMap.get(l.target);
+    });
+
+    // Anatomical Sagittal Human Brain Coordinates
+    function calculateAnatomicalCoordinates(width, height) {
+      const cx = width * 0.48;
+      const cy = height * 0.50;
+      const rx = Math.min(width, height) * 0.42;
+      const ry = Math.min(width, height) * 0.34;
+
+      nodes.forEach(n => {
+        const t = n.layer / (NUM_LAYERS - 1);
+        const angle = Math.PI * (0.85 - t * 0.95);
+        const radiusNoise = (n.head - 1.5) * 22;
+        const depthNoise = Math.sin(t * Math.PI) * 40;
+
+        n.targetX = cx + (rx + radiusNoise) * Math.cos(angle) * 0.9;
+        n.targetY = cy - (ry + radiusNoise) * Math.sin(angle) * 0.9 + depthNoise;
+      });
+    }
+
+    function calculateCorticalColumnCoordinates(width, height) {
+      const marginX = width * 0.10;
+      const stepX = (width * 0.80) / (NUM_LAYERS - 1);
+      const startY = height * 0.32;
+      const stepY = (height * 0.36) / (HEADS_PER_LAYER - 1);
+
+      nodes.forEach(n => {
+        n.targetX = marginX + n.layer * stepX;
+        n.targetY = startY + n.head * stepY + Math.sin(n.layer * 0.4) * 15;
+      });
+    }
+
+    // Canvas & Render Loop
+    const canvas = document.getElementById("brain-canvas");
+    const ctx = canvas.getContext("2d");
+    let currentMode = "anatomical";
+    let selectedNode = nodes[18 * 4 + 1];
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      if (currentMode === "anatomical") {
+        calculateAnatomicalCoordinates(rect.width, rect.height);
+      } else if (currentMode === "cortical") {
+        calculateCorticalColumnCoordinates(rect.width, rect.height);
+      }
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    const initialWidth = window.innerWidth - 660;
+    const initialHeight = window.innerHeight - 54;
+    calculateAnatomicalCoordinates(initialWidth, initialHeight);
+    nodes.forEach(n => { n.x = n.targetX; n.y = n.targetY; });
+
+    // Force Connectome Simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(45).strength(0.25))
+      .force("charge", d3.forceManyBody().strength(-90))
+      .force("center", d3.forceCenter(initialWidth / 2, initialHeight / 2))
+      .force("collision", d3.forceCollide().radius(14))
+      .stop();
+
+    // --- True Wavefront & Moving Synaptic Pulse Engine ---
+    let waveSpeed = 0.18;
+    let activeWaves = [];   // [{progress, spawnedUpTo}]  — concurrent independent waves
+    let activeParticles = [];
+    let speedMode = 1;
+
+    // --- Simulation Mode Profiles (Different for each Prompt Type) ---
+    const PROFILES = {
+      analogical: {
+        label: "Analogical Reasoning",
+        regionBoost: { sensory: 0.5, syntax: 0.8, semantic: 1.0, reasoning: 0.4, executive: 0.7 },
+        waveSpeedOverride: 0.18,
+        particleColor: null, // use region color
+        tokenStream: [" Paris", " →", " France", " ::", " Tokyo", " →", " Japan", " ::", " Berlin", " →", " Germany"],
+        tokenLabel: (t, conf) => `Token: "${t}" [Analogy Confidence: ${conf}%]`,
+        hudColor: "#7c3aed"
+      },
+      induction: {
+        label: "Induction Code Circuit",
+        regionBoost: { sensory: 0.9, syntax: 1.0, semantic: 0.5, reasoning: 0.3, executive: 0.6 },
+        waveSpeedOverride: 0.30, // fast — induction heads are early layers
+        particleColor: "#0891b2",
+        tokenStream: ["def", " fib", "(n", "):", " if", " n≤1", ":", " return", " n", " return", " fib(n-1)", "+fib(n-2)"],
+        tokenLabel: (t, conf) => `Syntax Token: "${t}" [Induction Head: ${conf}%]`,
+        hudColor: "#0891b2"
+      },
+      epistemic: {
+        label: "Epistemic Guardrail",
+        regionBoost: { sensory: 0.2, syntax: 0.3, semantic: 0.6, reasoning: 1.0, executive: 0.9 },
+        waveSpeedOverride: 0.10, // very slow — deliberate metacognition
+        particleColor: "#d97706",
+        tokenStream: ["Claim:", " flat", "?", " ⟶", " Coverage?", " ✓", " Contradict?", " ✗ FOUND!", " Hedge", " ⟶", " ABSTAIN"],
+        tokenLabel: (t, conf) => `Epistemic Gate: "${t}" [Safety Score: ${conf}%]`,
+        hudColor: "#d97706"
+      }
+    };
+
+    let activeProfile = PROFILES.analogical;
+    let currentParticleColorOverride = null;
+    let streamTokens = PROFILES.analogical.tokenStream;
+    let tokenIndex = 0;
+    let streaming = false;
+    let streamTimer = null;
+    let activeTokenText = "";
+
+    function triggerPulse(profile) {
+      if (profile) {
+        activeProfile = profile;
+        streamTokens = profile.tokenStream;
+        tokenIndex = 0;
+        waveSpeed = profile.waveSpeedOverride;
+        // Explicit profile change always starts a fresh wave
+        activeWaves = [];
+        activeParticles = [];
+      } else if (activeWaves.length > 0) {
+        // Don't interrupt a wave already in flight
+        return;
+      }
+
+      currentParticleColorOverride = activeProfile.particleColor;
+      activeWaves.push({ progress: 0 });
+      spawnLayerParticles(0);
+
+      nodes.forEach(n => {
+        if (!n.ablated) {
+          const boost = activeProfile.regionBoost[n.region] || 0.4;
+          n.activation = Math.min(1.0, 0.15 + boost * 0.7 + Math.random() * 0.15);
+        }
+      });
+      updateRegionStats();
+    }
+
+    function spawnLayerParticles(layerIdx) {
+      const srcNodes = nodes.filter(n => n.layer === layerIdx && !n.ablated);
+      srcNodes.forEach(src => {
+        const outLinks = links.filter(l => {
+          const s = l.source.id ? l.source : (l.srcNode || l.source);
+          const t = l.target.id ? l.target : (l.tgtNode || l.target);
+          return (s.id === src.id || s === src) && !t.ablated;
+        });
+
+        outLinks.forEach(l => {
+          const s = l.source.id ? l.source : (l.srcNode || l.source);
+          const t = l.target.id ? l.target : (l.tgtNode || l.target);
+          activeParticles.push({
+            src: s,
+            tgt: t,
+            t: 0,
+            speed: 0.05 + Math.random() * 0.025,
+            color: currentParticleColorOverride || s.color || "#0284c7"
+          });
+        });
+      });
+    }
+
+
+    function render() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      if (currentMode !== "connectome") {
+        nodes.forEach(n => {
+          n.x += (n.targetX - n.x) * 0.08;
+          n.y += (n.targetY - n.y) * 0.08;
+        });
+      }
+
+      // Draw Anatomical Silhouette Outline
+      if (currentMode === "anatomical") {
+        ctx.save();
+        ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.16)" : "rgba(15, 23, 42, 0.15)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([5, 5]);
+
+        const cx = rect.width * 0.48;
+        const cy = rect.height * 0.50;
+        const scale = Math.min(rect.width, rect.height) * 0.44;
+
+        ctx.beginPath();
+        ctx.moveTo(cx - scale * 0.85, cy + scale * 0.25);
+        ctx.bezierCurveTo(cx - scale * 0.90, cy - scale * 0.70, cx - scale * 0.10, cy - scale * 0.95, cx + scale * 0.35, cy - scale * 0.85);
+        ctx.bezierCurveTo(cx + scale * 0.80, cy - scale * 0.75, cx + scale * 0.92, cy - scale * 0.15, cx + scale * 0.80, cy + scale * 0.20);
+        ctx.bezierCurveTo(cx + scale * 0.60, cy + scale * 0.40, cx + scale * 0.10, cy + scale * 0.45, cx - scale * 0.25, cy + scale * 0.35);
+        ctx.bezierCurveTo(cx - scale * 0.55, cy + scale * 0.65, cx - scale * 0.85, cy + scale * 0.55, cx - scale * 0.85, cy + scale * 0.25);
+        ctx.stroke();
+
+        ctx.fillStyle = isDark ? "rgba(148, 163, 184, 0.24)" : "rgba(71, 85, 105, 0.45)";
+        ctx.font = "bold 11px system-ui";
+        ctx.fillText("OCCIPITAL (SENSORY INPUT)", cx - scale * 0.82, cy + scale * 0.10);
+        ctx.fillText("PARIETAL (SYNTAX / INDUCTION)", cx - scale * 0.30, cy - scale * 0.75);
+        ctx.fillText("PREFRONTAL (MOTOR / OUTPUT)", cx + scale * 0.36, cy - scale * 0.40);
+        ctx.fillText("TEMPORAL (SEMANTIC MEMORY)", cx - scale * 0.05, cy + scale * 0.28);
+        ctx.restore();
+      }
+
+      // Advance ALL active waves independently
+      // Single wave — plays once and stops. No auto-repeat.
+      const hadWave = activeWaves.length > 0;
+      activeWaves = activeWaves.filter(w => w.progress <= NUM_LAYERS + 1);
+      if (hadWave && activeWaves.length === 0) {
+        activeTokenText = ""; // wave done — clear the label badge
+      }
+
+      activeWaves.forEach(w => {
+        const prevIntLayer = Math.floor(w.progress);
+        w.progress += waveSpeed * speedMode;
+        const currentIntLayer = Math.floor(w.progress);
+
+        if (currentIntLayer > prevIntLayer && currentIntLayer < NUM_LAYERS) {
+          spawnLayerParticles(currentIntLayer);
+          nodes.filter(n => n.layer === currentIntLayer).forEach(n => {
+            n.flash = 1.0;
+            n.activation = Math.min(1.0, n.activation + 0.45);
+          });
+          highlightActiveRegion(currentIntLayer);
+        }
+
+        // Draw sweeping wave-front line for this wave
+        const waveNodes = nodes.filter(n => n.layer === currentIntLayer);
+        if (waveNodes.length > 1) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(waveNodes[0].x, waveNodes[0].y);
+          for (let i = 1; i < waveNodes.length; i++) {
+            ctx.lineTo(waveNodes[i].x, waveNodes[i].y);
+          }
+          const reg = getRegionForLayer(currentIntLayer);
+          const wc = activeProfile.hudColor || reg.color;
+          ctx.strokeStyle = wc;
+          ctx.lineWidth = 4;
+          ctx.shadowColor = wc;
+          ctx.shadowBlur = 18;
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+
+      // Draw Synaptic Links
+      links.forEach(l => {
+        const s = l.source.id ? l.source : (l.srcNode || l.source);
+        const t = l.target.id ? l.target : (l.tgtNode || l.target);
+        if (s.ablated || t.ablated) return;
+
+        const isConnected = selectedNode && (s === selectedNode || t === selectedNode);
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+
+        if (isConnected) {
+          ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.95)" : "rgba(2, 132, 199, 0.95)";
+          ctx.lineWidth = 2.6;
+        } else {
+          ctx.strokeStyle = isDark 
+            ? `rgba(148, 163, 184, ${0.08 + (l.weight||0.5) * 0.14})` 
+            : `rgba(100, 116, 139, ${0.14 + (l.weight||0.5) * 0.20})`;
+          ctx.lineWidth = 1.0;
+        }
+        ctx.stroke();
+      });
+
+      // Update & Draw Moving Synaptic Particles (High-Visibility Glowing Beams)
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        p.t += p.speed * speedMode;
+
+        if (p.t >= 1.0) {
+          p.tgt.flash = Math.max(p.tgt.flash || 0, 0.9);
+          p.tgt.activation = Math.min(1.0, p.tgt.activation + 0.2);
+          activeParticles.splice(i, 1);
+          continue;
+        }
+
+        // Exact interpolated coordinates
+        const curX = p.src.x + (p.tgt.x - p.src.x) * p.t;
+        const curY = p.src.y + (p.tgt.y - p.src.y) * p.t;
+
+        // Long luminous laser streak
+        const tailX = p.src.x + (p.tgt.x - p.src.x) * Math.max(0, p.t - 0.35);
+        const tailY = p.src.y + (p.tgt.y - p.src.y) * Math.max(0, p.t - 0.35);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(curX, curY);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 4.5;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+
+        // Big bright glowing orb
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(curX, curY, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Colored halo
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.arc(curX, curY, 8.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw Nodes & Shockwaves
+      nodes.forEach(n => {
+        const isSelected = n === selectedNode;
+        ctx.save();
+
+        if (n.ablated) {
+          ctx.fillStyle = isDark ? "#334155" : "#cbd5e1";
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+
+        // Flash decay
+        if (n.flash > 0) {
+          // Draw expanding shockwave ring
+          const ringRadius = 8 + (1 - n.flash) * 22;
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 2.5 * n.flash;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          n.flash -= 0.04;
+          if (n.flash < 0) n.flash = 0;
+        }
+
+        const baseRadius = 5.0 + n.activation * 4.0;
+        const radius = isSelected ? 10.5 : (n.flash > 0 ? baseRadius + n.flash * 4.0 : baseRadius);
+
+        // Core Fill
+        if (n.flash > 0.4) {
+          ctx.shadowColor = n.color;
+          ctx.shadowBlur = 24;
+          ctx.fillStyle = "#ffffff"; // intense white spark on firing
+        } else if (isDark) {
+          if (n.activation > 0.65 || isSelected) {
+            ctx.shadowColor = n.color;
+            ctx.shadowBlur = isSelected ? 22 : 12;
+          }
+          ctx.fillStyle = isSelected ? "#ffffff" : n.color;
+        } else {
+          ctx.fillStyle = isSelected ? "#ffffff" : n.color;
+          ctx.strokeStyle = isSelected ? "#0f172a" : "#ffffff";
+          ctx.lineWidth = isSelected ? 3.5 : 1.5;
+        }
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        if (!isDark || isSelected) {
+          ctx.stroke();
+        }
+
+        if (isSelected) {
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, radius + 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+
+      // Draw Top HUD Wavefront Progress Bar
+      if (activeWaves.length > 0) {
+        // Show HUD for the most advanced (leading) wave
+        const leadWave = activeWaves.reduce((a, b) => a.progress > b.progress ? a : b);
+        ctx.save();
+        const activeLayerNum = Math.min(31, Math.floor(leadWave.progress));
+        const activeRegion = getRegionForLayer(activeLayerNum);
+        const hudColor = activeProfile.hudColor || activeRegion.color;
+
+        ctx.fillStyle = isDark ? "rgba(17, 24, 39, 0.90)" : "rgba(255, 255, 255, 0.95)";
+        ctx.strokeStyle = hudColor;
+        ctx.lineWidth = 2;
+        const hudW = 420;
+        const hudH = 40;
+        const hudX = (rect.width - hudW) / 2;
+        const hudY = 14;
+
+        ctx.beginPath();
+        ctx.roundRect(hudX, hudY, hudW, hudH, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        // Profile mode badge (left)
+        ctx.fillStyle = hudColor;
+        ctx.fillRect(hudX, hudY, 8, hudH);
+        ctx.beginPath();
+        ctx.roundRect(hudX, hudY, 8, hudH, [9, 0, 0, 9]);
+        ctx.fill();
+
+        ctx.fillStyle = hudColor;
+        ctx.font = "bold 11px system-ui";
+        ctx.fillText(activeProfile.label.toUpperCase(), hudX + 18, hudY + 14);
+
+        ctx.fillStyle = isDark ? "#e2e8f0" : "#0f172a";
+        ctx.font = "600 12px system-ui";
+        ctx.fillText(`⚡ Layer ${activeLayerNum}/31  •  ${activeRegion.name}`, hudX + 18, hudY + 30);
+        ctx.restore();
+      }
+
+      requestAnimationFrame(render);
+
+      // Show profile label badge while wave is propagating
+      if (activeTokenText) {
+        ctx.save();
+        ctx.font = "bold 17px system-ui";
+        const tw = ctx.measureText(activeTokenText).width;
+        const tx = (rect.width - tw) / 2;
+        const ty = rect.height - 40;
+
+        ctx.fillStyle = isDark ? "rgba(17,24,39,0.85)" : "rgba(255,255,255,0.92)";
+        ctx.strokeStyle = activeProfile.hudColor || "#0284c7";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(tx - 18, ty - 22, tw + 36, 32, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = activeProfile.hudColor || "#0284c7";
+        ctx.fillText(activeTokenText, tx, ty);
+        ctx.restore();
+      }
+
+    }
+
+    function highlightActiveRegion(layer) {
+      const region = getRegionForLayer(layer);
+      document.querySelectorAll(".region-row").forEach(r => {
+        if (r.getAttribute("data-region") === region.id) {
+          r.style.transform = "translateX(5px)";
+          r.style.background = isDark ? "#1e293b" : "#dbeafe";
+        } else {
+          r.style.transform = "translateX(0px)";
+          r.style.background = "var(--panel-secondary)";
+        }
+      });
+    }
+
+    // View Switching
+    const btnAnatomical = document.getElementById("mode-anatomical");
+    const btnConnectome = document.getElementById("mode-connectome");
+    const btnCortical = document.getElementById("mode-cortical");
+
+    function setMode(mode) {
+      currentMode = mode;
+      [btnAnatomical, btnConnectome, btnCortical].forEach(b => b.classList.remove("active"));
+      const rect = canvas.getBoundingClientRect();
+
+      if (mode === "anatomical") {
+        btnAnatomical.classList.add("active");
+        simulation.stop();
+        calculateAnatomicalCoordinates(rect.width, rect.height);
+      } else if (mode === "connectome") {
+        btnConnectome.classList.add("active");
+        simulation.alpha(0.8).restart();
+      } else if (mode === "cortical") {
+        btnCortical.classList.add("active");
+        simulation.stop();
+        calculateCorticalColumnCoordinates(rect.width, rect.height);
+      }
+    }
+
+    btnAnatomical.addEventListener("click", () => setMode("anatomical"));
+    btnConnectome.addEventListener("click", () => setMode("connectome"));
+    btnCortical.addEventListener("click", () => setMode("cortical"));
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      setMode(currentMode);
+    });
+
+    // Mouse Interaction
+    canvas.addEventListener("click", (evt) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = evt.clientX - rect.left;
+      const mouseY = evt.clientY - rect.top;
+
+      let nearest = null;
+      let minDist = 22;
+
+      nodes.forEach(n => {
+        const d = Math.hypot(n.x - mouseX, n.y - mouseY);
+        if (d < minDist) {
+          minDist = d;
+          nearest = n;
+        }
+      });
+
+      if (nearest) {
+        selectNode(nearest);
+      }
+    });
+
+    function selectNode(node) {
+      selectedNode = node;
+      // Inspector panel removed — node highlight still works on canvas
+    }
+
+    function updateRegionStats() {
+      REGIONS.forEach(r => {
+        const regionNodes = nodes.filter(n => n.region === r.id && !n.ablated);
+        const avg = regionNodes.reduce((acc, n) => acc + n.activation, 0) / (regionNodes.length || 1);
+        const el = document.getElementById(`act-${r.id}`);
+        if (el) el.textContent = `${Math.round(avg * 100)}%`;
+      });
+    }
+
+    // Lesion Ablations
+    document.getElementById("toggle-lesion-induction").addEventListener("change", (e) => {
+      const isLesioned = e.target.checked;
+      nodes.forEach(n => {
+        if (n.region === "syntax") n.ablated = isLesioned;
+      });
+      activeTokenText = isLesioned
+        ? "⚠️ MEMORY AMNESIA — drift compounding..."
+        : "";
+      updateRegionStats();
+    });
+
+    document.getElementById("toggle-lesion-safety").addEventListener("change", (e) => {
+      const isLesioned = e.target.checked;
+      nodes.forEach(n => {
+        if (n.region === "reasoning") n.ablated = isLesioned;
+      });
+      activeTokenText = isLesioned
+        ? "⚠️ HALLUCINATION DETECTED — epistemic gate ablated"
+        : "";
+      updateRegionStats();
+    });
+
+    // Presets — clicking a chip starts that profile's simulation and auto-streams tokens
+    const chipProfiles = {
+      "analogical": PROFILES.analogical,
+      "induction":  PROFILES.induction,
+      "epistemic":  PROFILES.epistemic
+    };
+
+    document.querySelectorAll(".preset-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".preset-chip").forEach(c => {
+          c.style.borderColor = "";
+          c.style.background = "";
+          c.style.color = "";
+        });
+        chip.style.borderColor = "var(--accent-blue)";
+        chip.style.background = "#e0f2fe";
+        chip.style.color = "var(--accent-blue)";
+
+        document.getElementById("prompt-input").value = chip.getAttribute("data-prompt");
+        const profileKey = chip.getAttribute("data-profile");
+        const profile = chipProfiles[profileKey] || PROFILES.analogical;
+
+        // Fire one wave for this profile — shows label while wave runs, then clears
+        activeTokenText = profile.label;
+        triggerPulse(profile);
+      });
+    });
+
+    // Speed Mode: default slow so wave cascade is clearly visible
+    speedMode = 0.5;
+
+    // Boot
+    resizeCanvas();
+    selectNode(selectedNode);
+    updateRegionStats();
+    render();
+    setTimeout(triggerPulse, 500);
+  </script>
+</body>
+</html>
