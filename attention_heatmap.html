@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Attention Heatmap — Real Model Inference</title>
+<style>
+:root {
+  --bg:#f8fafc;--panel:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;--sub:#94a3b8;
+  --blue:#1d4ed8;--blue-lt:#eff6ff;--blue-md:#bfdbfe;
+  --purple:#7c3aed;--purple-lt:#ede9fe;--purple-md:#ddd6fe;
+  --green:#059669;--green-lt:#f0fdf4;
+  --amber:#b45309;--amber-lt:#fffbeb;
+  --rose:#e11d48;--rose-lt:#fff1f2;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+header{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#0891b2 100%);color:#fff;padding:13px 24px 11px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+header h1{font-size:1.3rem;font-weight:800;letter-spacing:-.3px;}
+header .sub{font-size:.78rem;color:#bae6fd;margin-top:2px;}
+.model-badge{display:flex;align-items:center;gap:8px;}
+.badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:3px 11px;font-size:.76rem;color:#e0f2fe;}
+.badge.live{background:rgba(5,150,105,.3);border-color:rgba(110,231,183,.5);color:#a7f3d0;}
+
+/* Status bar */
+.status-bar{padding:6px 24px;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:34px;}
+.status-bar.idle   {background:#f1f5f9;color:var(--muted);}
+.status-bar.loading{background:var(--blue-lt);color:var(--blue);}
+.status-bar.ready  {background:var(--green-lt);color:var(--green);}
+.status-bar.error  {background:var(--rose-lt);color:var(--rose);}
+.status-bar.running{background:#faf5ff;color:var(--purple);}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Progress bar */
+.progress-wrap{flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;background:var(--blue);transition:width .3s;}
+
+/* Main layout */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* Left panel */
+.left-panel{width:270px;min-width:240px;border-right:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;overflow:hidden;}
+.left-scroll{flex:1;overflow-y:auto;padding:14px;}
+.panel-section{margin-bottom:14px;}
+.panel-label{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;}
+
+textarea{width:100%;border:2px solid var(--border);border-radius:8px;padding:9px 11px;font-size:.84rem;line-height:1.5;resize:none;font-family:inherit;color:var(--text);outline:none;transition:.2s;}
+textarea:focus{border-color:var(--purple);}
+
+.btn-analyze{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px;font-size:.9rem;font-weight:700;cursor:pointer;transition:.15s;margin-top:6px;}
+.btn-analyze:hover:not(:disabled){background:#1e40af;}
+.btn-analyze:disabled{background:var(--sub);cursor:not-allowed;}
+
+/* Example chips */
+.ex-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.chip{background:var(--purple-lt);border:1px solid var(--purple-md);border-radius:14px;padding:3px 9px;font-size:.73rem;font-weight:700;color:var(--purple);cursor:pointer;transition:.15s;line-height:1.4;}
+.chip:hover{background:var(--purple-md);}
+
+/* Sliders */
+.slider-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.slider-row label{font-size:.8rem;font-weight:700;width:46px;flex-shrink:0;}
+.slider-row input[type=range]{flex:1;accent-color:var(--purple);}
+.slider-val{font-size:.8rem;font-weight:800;color:var(--purple);width:24px;text-align:right;flex-shrink:0;}
+
+/* Toggle row */
+.toggle-row{display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;cursor:pointer;margin-bottom:5px;}
+.toggle-row input{accent-color:var(--purple);}
+
+/* Center: heatmap */
+.center-panel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:hidden;}
+.heatmap-wrap{position:relative;display:inline-block;}
+canvas#main-heatmap{display:block;border-radius:8px;box-shadow:var(--shadow-md);}
+.heatmap-empty{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted);text-align:center;}
+.heatmap-empty .icon{font-size:2.4rem;}
+.heatmap-empty strong{font-size:1rem;color:var(--text);}
+.heatmap-empty p{font-size:.83rem;max-width:300px;line-height:1.5;}
+
+/* Right panel: all-heads thumbnails */
+.right-panel{width:220px;min-width:190px;border-left:1px solid var(--border);background:var(--panel);padding:12px;overflow-y:auto;}
+.right-title{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;}
+.heads-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.head-thumb{border:2px solid var(--border);border-radius:6px;cursor:pointer;transition:.15s;overflow:hidden;}
+.head-thumb:hover{border-color:var(--purple);}
+.head-thumb.active{border-color:var(--purple);box-shadow:0 0 0 2px var(--purple-md);}
+.head-thumb canvas{display:block;width:100%;height:auto;}
+.head-label{font-size:.68rem;font-weight:700;text-align:center;padding:2px 0;color:var(--muted);}
+
+/* Token tooltip */
+.tooltip{position:fixed;background:#0f172a;color:#fff;font-size:.75rem;padding:5px 9px;border-radius:5px;pointer-events:none;display:none;z-index:100;font-family:monospace;white-space:nowrap;}
+
+/* Color legend */
+.legend{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.72rem;color:var(--muted);}
+.legend-bar{width:120px;height:8px;border-radius:4px;background:linear-gradient(to right, #f0f9ff, #0284c7);}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🔥 Live Attention Heatmap</h1>
+    <div class="sub">Real transformer inference in your browser · DistilBERT via Transformers.js</div>
+  </div>
+  <div class="model-badge">
+    <div class="badge">Transformers.js</div>
+    <div class="badge live" id="live-badge">● Loading model…</div>
+  </div>
+</header>
+
+<div class="status-bar idle" id="status-bar">
+  <span id="status-text">Loading DistilBERT — this takes ~30s on first visit (66MB cached permanently after)</span>
+  <div class="progress-wrap"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="left-scroll">
+
+      <div class="panel-section">
+        <div class="panel-label">Input Sentence</div>
+        <textarea id="text-input" rows="4" placeholder="Type any sentence…">The trophy didn't fit in the suitcase because it was too big.</textarea>
+        <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()" disabled>⏳ Loading model…</button>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">Try These</div>
+        <div class="ex-chips">
+          <span class="chip" onclick="setExample(0)">Pronoun resolution</span>
+          <span class="chip" onclick="setExample(1)">Subject-verb</span>
+          <span class="chip" onclick="setExample(2)">Negation</span>
+          <span class="chip" onclick="setExample(3)">Named entity</span>
+          <span class="chip" onclick="setExample(4)">Code pattern</span>
+          <span class="chip" onclick="setExample(5)">Question</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">View Controls</div>
+        <div class="slider-row">
+          <label>Layer</label>
+          <input type="range" id="layer-slider" min="0" max="5" value="4" step="1" oninput="updateView()">
+          <span class="slider-val" id="layer-val">4</span>
+        </div>
+        <div class="slider-row">
+          <label>Head</label>
+          <input type="range" id="head-slider" min="0" max="11" value="0" step="1" oninput="updateView()">
+          <span class="slider-val" id="head-val">0</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">Display Options</div>
+        <label class="toggle-row"><input type="checkbox" id="chk-normalize" checked onchange="updateView()"> Normalize per row</label>
+        <label class="toggle-row"><input type="checkbox" id="chk-cls" onchange="updateView()"> Hide [CLS]/[SEP]</label>
+      </div>
+
+      <div class="panel-section" id="insight-box" style="display:none;">
+        <div class="panel-label">💡 What You're Seeing</div>
+        <div id="insight-text" style="font-size:.78rem;color:var(--muted);line-height:1.5;background:var(--purple-lt);border-radius:6px;padding:8px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel" id="center-panel">
+    <div class="heatmap-empty" id="empty-state">
+      <div class="icon">⏳</div>
+      <strong>Loading DistilBERT into your browser…</strong>
+      <p>The model weights (~66MB) download once from Hugging Face and are cached permanently. No server, no API key — inference runs 100% locally.</p>
+    </div>
+    <div id="heatmap-container" style="display:none;flex-direction:column;align-items:center;">
+      <canvas id="main-heatmap"></canvas>
+      <div class="legend">
+        <span>Low attention</span>
+        <div class="legend-bar"></div>
+        <span>High attention</span>
+      </div>
+      <div id="head-description" style="margin-top:8px;font-size:.78rem;color:var(--muted);text-align:center;max-width:500px;"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="right-title">All Heads · Layer <span id="layer-label">4</span></div>
+    <div class="heads-grid" id="heads-grid">
+      <div style="font-size:.75rem;color:var(--muted);grid-column:1/-1;">Run analysis to see all 12 attention heads.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script type="module">
+// ── Transformers.js (ESM) ─────────────────────────────────────────────────────
+import { AutoTokenizer, AutoModel, env } from
+  'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+env.allowLocalModels = false;
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let tokenizer, model;
+let attentionData = null;   // [num_layers][batch, heads, seq, seq]
+let tokenList    = [];
+let modelReady   = false;
+
+const EXAMPLES = [
+  "The trophy didn't fit in the suitcase because it was too big.",
+  "The cat sat on the mat and it licked its paw.",
+  "She did not expect to find the keys under the sofa.",
+  "The president of France visited Berlin last Tuesday.",
+  "def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)",
+  "Who invented the telephone and when was it first demonstrated?"
+];
+
+const HEAD_INSIGHTS = [
+  "Early layers (0–1) often focus on local syntax — adjacent tokens and punctuation.",
+  "Layers 2–3 develop broader syntactic structure — subject-verb agreement patterns.",
+  "Layers 4–5 show semantic attention — pronoun resolution and entity relationships.",
+];
+
+// Expose to global scope (called from HTML onclick)
+window.setExample  = setExample;
+window.runAnalysis = runAnalysis;
+window.updateView  = updateView;
+
+function setExample(i) {
+  document.getElementById('text-input').value = EXAMPLES[i];
+}
+
+// ── Model loading ──────────────────────────────────────────────────────────────
+setStatus('loading', 'Downloading DistilBERT weights (~66MB) — cached after first visit…', 5);
+
+try {
+  tokenizer = await AutoTokenizer.from_pretrained('Xenova/distilbert-base-uncased');
+  setStatus('loading', 'Tokenizer ready. Loading model weights…', 40);
+
+  model = await AutoModel.from_pretrained('Xenova/distilbert-base-uncased', {
+    output_attentions: true,
+  });
+
+  modelReady = true;
+  setStatus('ready', '✓ DistilBERT loaded and ready — 6 layers · 12 heads · 66M parameters', 100);
+  document.getElementById('live-badge').textContent = '● Live inference';
+  document.getElementById('btn-analyze').textContent = '▶ Run Attention Analysis';
+  document.getElementById('btn-analyze').disabled = false;
+
+  // Auto-run on the default sentence
+  document.getElementById('empty-state').innerHTML = `
+    <div class="icon">🧠</div>
+    <strong>Model ready — press "Run Attention Analysis"</strong>
+    <p>DistilBERT will tokenize your sentence and compute real attention weights for all 6 layers and 12 heads.</p>`;
+} catch (err) {
+  setStatus('error', `⚠ Failed to load model: ${err.message}. Check your internet connection.`, 0);
+  console.error(err);
+}
+
+// ── Analysis ───────────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  if (!modelReady) return;
+  const text = document.getElementById('text-input').value.trim();
+  if (!text) return;
+
+  setStatus('running', '⚡ Running inference…', 60);
+  document.getElementById('btn-analyze').disabled = true;
+  document.getElementById('btn-analyze').textContent = '⏳ Running…';
+
+  try {
+    // Tokenize
+    const inputs = tokenizer(text, { return_tensors: 'pt', truncation: true, max_length: 64 });
+
+    // Forward pass
+    const outputs = await model(inputs);
+
+    // Extract tokens
+    const ids = Array.from(inputs.input_ids.data);
+    tokenList = tokenizer.convert_ids_to_tokens(ids);
+
+    // Extract attention tensors
+    // outputs.attentions: array of Tensors, each [1, heads, seq, seq]
+    if (!outputs.attentions || outputs.attentions.length === 0) {
+      throw new Error("Model did not return attention weights. Try enabling output_attentions.");
+    }
+
+    // Convert to plain JS arrays for easy access
+    attentionData = outputs.attentions.map(layerTensor => {
+      // layerTensor shape: [1, num_heads, seq_len, seq_len]
+      const [, numHeads, seqLen] = layerTensor.dims;
+      const flat = Array.from(layerTensor.data);
+      // Reshape to [heads][seq][seq]
+      const heads = [];
+      for (let h = 0; h < numHeads; h++) {
+        const mat = [];
+        for (let i = 0; i < seqLen; i++) {
+          const row = [];
+          for (let j = 0; j < seqLen; j++) {
+            row.push(flat[h * seqLen * seqLen + i * seqLen + j]);
+          }
+          mat.push(row);
+        }
+        heads.push(mat);
+      }
+      return heads;
+    });
+
+    setStatus('ready', `✓ Done — ${tokenList.length} tokens · ${attentionData.length} layers · ${attentionData[0].length} heads`, 100);
+    document.getElementById('insight-box').style.display = '';
+    updateView();
+    renderAllHeadThumbs();
+
+  } catch (err) {
+    setStatus('error', `⚠ Error: ${err.message}`, 0);
+    console.error(err);
+  }
+
+  document.getElementById('btn-analyze').disabled = false;
+  document.getElementById('btn-analyze').textContent = '▶ Run Attention Analysis';
+}
+
+// ── View rendering ─────────────────────────────────────────────────────────────
+function updateView() {
+  if (!attentionData) return;
+
+  const layer     = parseInt(document.getElementById('layer-slider').value);
+  const head      = parseInt(document.getElementById('head-slider').value);
+  const normalize = document.getElementById('chk-normalize').checked;
+  const hideCls   = document.getElementById('chk-cls').checked;
+
+  document.getElementById('layer-val').textContent = layer;
+  document.getElementById('head-val').textContent  = head;
+  document.getElementById('layer-label').textContent = layer;
+
+  const attn = getFilteredAttention(layer, head, hideCls);
+  const toks = getFilteredTokens(hideCls);
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('heatmap-container').style.display = 'flex';
+
+  drawHeatmap('main-heatmap', attn, toks, normalize, 520);
+
+  // Insight text
+  const layerGroup = Math.floor(layer / 2);
+  document.getElementById('insight-text').textContent = HEAD_INSIGHTS[Math.min(layerGroup, HEAD_INSIGHTS.length-1)];
+  document.getElementById('head-description').textContent =
+    `Layer ${layer} · Head ${head} — Each row shows where that token attends to. Darker = stronger attention.`;
+
+  // Highlight active thumb
+  document.querySelectorAll('.head-thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === head);
+  });
+}
+
+function getFilteredAttention(layer, head, hideCls) {
+  let mat = attentionData[layer][head];
+  if (hideCls) {
+    // Remove first and last token ([CLS] and [SEP])
+    mat = mat.slice(1, -1).map(row => row.slice(1, -1));
+  }
+  return mat;
+}
+
+function getFilteredTokens(hideCls) {
+  return hideCls ? tokenList.slice(1, -1) : tokenList;
+}
+
+// ── Heatmap drawing ────────────────────────────────────────────────────────────
+function drawHeatmap(canvasId, matrix, tokens, normalize, size) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const n   = tokens.length;
+  if (n === 0) return;
+
+  const pad      = canvasId === 'main-heatmap' ? 68 : 0;
+  const cellSize = Math.floor((size - pad) / n);
+  const totalSize = cellSize * n + pad;
+
+  canvas.width  = totalSize;
+  canvas.height = totalSize;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, totalSize, totalSize);
+
+  // Draw cells
+  for (let i = 0; i < n; i++) {
+    let row = matrix[i] || [];
+    let maxVal = normalize ? Math.max(...row, 0.001) : 1;
+
+    for (let j = 0; j < n; j++) {
+      const val = (row[j] || 0) / maxVal;
+      ctx.fillStyle = attnColor(val);
+      ctx.fillRect(pad + j * cellSize, pad + i * cellSize, cellSize, cellSize);
+
+      // Grid lines for main heatmap
+      if (canvasId === 'main-heatmap' && n <= 20) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(pad + j * cellSize, pad + i * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  if (canvasId !== 'main-heatmap') return;
+
+  // Token labels — columns (top, rotated)
+  ctx.font = `bold ${Math.min(11, cellSize * 0.55)}px 'Segoe UI', monospace`;
+  ctx.fillStyle = '#334155';
+  ctx.textAlign = 'right';
+  tokens.forEach((t, j) => {
+    ctx.save();
+    ctx.translate(pad + j * cellSize + cellSize / 2, pad - 4);
+    ctx.rotate(-Math.PI / 3.5);
+    ctx.fillText(cleanToken(t), 0, 0);
+    ctx.restore();
+  });
+
+  // Token labels — rows (left)
+  ctx.textAlign = 'right';
+  tokens.forEach((t, i) => {
+    ctx.font = `bold ${Math.min(11, cellSize * 0.55)}px 'Segoe UI', monospace`;
+    ctx.fillStyle = '#334155';
+    ctx.fillText(cleanToken(t), pad - 4, pad + i * cellSize + cellSize / 2 + 4);
+  });
+
+  // Hover interactivity
+  setupHover(canvas, matrix, tokens, pad, cellSize, normalize);
+}
+
+function attnColor(v) {
+  // White → sky → deep blue
+  const r = Math.round(240 - v * 209);
+  const g = Math.round(249 - v * 171);
+  const b = Math.round(255 - v * 56);
+  return `rgb(${r},${g},${b})`;
+}
+
+function cleanToken(t) {
+  return t.replace(/^##/, '').replace('[CLS]','CLS').replace('[SEP]','SEP');
+}
+
+// ── Hover tooltip ──────────────────────────────────────────────────────────────
+function setupHover(canvas, matrix, tokens, pad, cellSize, normalize) {
+  const tip = document.getElementById('tooltip');
+  const n   = tokens.length;
+
+  canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = (e.clientX - rect.left)  * scaleX;
+    const cy = (e.clientY - rect.top)   * scaleY;
+    const j  = Math.floor((cx - pad) / cellSize);
+    const i  = Math.floor((cy - pad) / cellSize);
+    if (i >= 0 && i < n && j >= 0 && j < n) {
+      let row = matrix[i] || [];
+      let maxVal = normalize ? Math.max(...row, 0.001) : 1;
+      const raw  = row[j] || 0;
+      const norm = (raw / maxVal * 100).toFixed(1);
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top  = (e.clientY - 28) + 'px';
+      tip.textContent = `"${cleanToken(tokens[i])}" → "${cleanToken(tokens[j])}"  ${norm}%`;
+    } else {
+      tip.style.display = 'none';
+    }
+  };
+  canvas.onmouseleave = () => { tip.style.display = 'none'; };
+}
+
+// ── All-heads thumbnails ───────────────────────────────────────────────────────
+function renderAllHeadThumbs() {
+  if (!attentionData) return;
+  const layer     = parseInt(document.getElementById('layer-slider').value);
+  const hideCls   = document.getElementById('chk-cls').checked;
+  const normalize = document.getElementById('chk-normalize').checked;
+  const toks      = getFilteredTokens(hideCls);
+  const numHeads  = attentionData[0].length;
+  const grid      = document.getElementById('heads-grid');
+  grid.innerHTML  = '';
+
+  for (let h = 0; h < numHeads; h++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'head-thumb' + (h === 0 ? ' active' : '');
+    wrap.onclick = (()=>{ const hh=h; return ()=>{ document.getElementById('head-slider').value=hh; updateView(); }; })();
+
+    const c = document.createElement('canvas');
+    c.id = `thumb-${h}`;
+    wrap.appendChild(c);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'head-label';
+    lbl.textContent = `H${h}`;
+    wrap.appendChild(lbl);
+    grid.appendChild(wrap);
+
+    const attn = getFilteredAttention(layer, h, hideCls);
+    drawHeatmap(`thumb-${h}`, attn, toks, normalize, 80);
+  }
+}
+
+// ── Status helper ──────────────────────────────────────────────────────────────
+function setStatus(type, msg, pct) {
+  const bar  = document.getElementById('status-bar');
+  const text = document.getElementById('status-text');
+  const fill = document.getElementById('progress-fill');
+  bar.className  = `status-bar ${type}`;
+  text.textContent = msg;
+  if (pct !== undefined) fill.style.width = pct + '%';
+}
+</script>
+</body>
+</html>
