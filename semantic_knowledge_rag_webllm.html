@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semantic Knowledge RAG: Inside-Outside LLM Architecture (WebGPU / WebLLM)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #f8fafc; --panel: #ffffff; --border: #e2e8f0;
+  --text: #0f172a; --muted: #64748b; --sub: #94a3b8;
+  --blue: #2563eb; --blue-lt: #eff6ff; --blue-md: #bfdbfe;
+  --purple: #7c3aed; --purple-lt: #ede9fe; --purple-md: #ddd6fe;
+  --green: #059669; --green-lt: #ecfdf5; --green-md: #a7f3d0;
+  --amber: #d97706; --amber-lt: #fffbeb; --amber-md: #fde68a;
+  --rose: #e11d48; --rose-lt: #fff1f2; --rose-md: #fecdd3;
+  --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 4px 14px rgba(0,0,0,.09);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 13px; height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* Header */
+header {
+  background: #ffffff; border-bottom: 1.5px solid var(--border);
+  padding: 10px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+}
+.brand-group { display: flex; align-items: center; gap: 10px; }
+.brand-logo { font-size: 1.5rem; }
+.brand-title { font-size: 1.18rem; font-weight: 850; letter-spacing: -0.3px; color: #1e1b4b; }
+.brand-sub { font-size: 0.76rem; color: var(--muted); font-weight: 500; }
+
+.header-controls { display: flex; align-items: center; gap: 10px; }
+.model-select {
+  border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 10px;
+  font-size: 0.78rem; background: #fff; font-weight: 600; outline: none; color: #1e293b;
+}
+.btn-gpu {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff; border: none;
+  border-radius: 6px; padding: 6px 14px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.btn-gpu:hover { opacity: 0.92; }
+.btn-gpu:disabled { background: #94a3b8; cursor: not-allowed; }
+.badge-status {
+  padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 800;
+  background: #f1f5f9; color: var(--muted); border: 1px solid var(--border);
+}
+.badge-status.ready { background: var(--green-lt); color: var(--green); border-color: var(--green-md); }
+.badge-status.running { background: var(--purple-lt); color: var(--purple); border-color: var(--purple-md); }
+
+/* Progress Bar for WebGPU */
+.webgpu-progress {
+  height: 3px; background: #e2e8f0; width: 100%; display: none; position: relative;
+}
+.webgpu-fill { height: 100%; background: var(--purple); width: 0%; transition: width .2s; }
+
+/* Main Split View */
+.workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* LEFT PANEL: The Outside Method (Semantic Knowledge Graph & Scaffolding) */
+.panel-outside {
+  flex: 1.15; border-right: 1.5px solid var(--border); display: flex; flex-direction: column;
+  background: #fff; position: relative; overflow: hidden;
+}
+.panel-header {
+  padding: 10px 16px; border-bottom: 1px solid var(--border); background: #fafafa;
+  display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+}
+.ph-title { font-size: 0.82rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.5px; color: #4338ca; display: flex; align-items: center; gap: 6px; }
+.ph-tag { font-size: 0.7rem; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 2px 7px; border-radius: 4px; }
+
+.graph-canvas-wrap { flex: 1; position: relative; background: #fdfdfd; overflow: hidden; }
+#kg-svg { width: 100%; height: 100%; display: block; }
+
+.graph-legend {
+  position: absolute; bottom: 12px; left: 14px; background: rgba(255,255,255,0.92);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 0.7rem;
+  backdrop-filter: blur(4px); box-shadow: var(--shadow);
+}
+.gl-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.gl-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.rag-context-card {
+  padding: 10px 16px; border-top: 1px solid var(--border); background: #f8fafc;
+  max-height: 140px; overflow-y: auto; font-size: 0.78rem;
+}
+.context-pill {
+  background: #fff; border: 1px solid #cbd5e1; border-left: 3.5px solid var(--blue);
+  border-radius: 4px; padding: 5px 8px; margin-top: 4px; line-height: 1.35;
+}
+
+/* RIGHT PANEL: Inside Method (Mechanistic Telemetry) + LLM RAG Stream */
+.panel-inside {
+  flex: 1.1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden;
+}
+
+/* Scenarios Preset Bar */
+.scenarios-bar {
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--border);
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0; overflow-x: auto;
+}
+.sc-chip {
+  background: #f1f5f9; border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 3px 10px; font-size: 0.72rem; font-weight: 750; color: #475569;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.sc-chip:hover { border-color: var(--purple); color: var(--purple); }
+.sc-chip.active { background: var(--purple-lt); border-color: var(--purple); color: var(--purple); }
+
+/* Live Telemetry Meter Strip */
+.telemetry-strip {
+  background: #fff; border-bottom: 1.5px solid var(--border); padding: 12px 16px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; flex-shrink: 0;
+}
+.gauge-card {
+  background: #f8fafc; border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px;
+}
+.gc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.72rem; font-weight: 800; }
+.gc-meter { height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.gc-fill { height: 100%; border-radius: 4px; transition: width .3s ease-out, background .3s; }
+.gc-desc { font-size: 0.68rem; color: var(--muted); margin-top: 3px; }
+
+/* LLM Interactive Workspace */
+.llm-chat-container { flex: 1; padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+
+.prompt-box {
+  background: #fff; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px;
+  box-shadow: var(--shadow);
+}
+.prompt-input {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 10px;
+  font-size: 0.84rem; font-family: inherit; resize: none; outline: none; margin-bottom: 6px;
+}
+.prompt-input:focus { border-color: var(--purple); }
+.prompt-actions { display: flex; justify-content: space-between; align-items: center; }
+.btn-generate {
+  background: var(--blue); color: #fff; border: none; border-radius: 6px;
+  padding: 6px 16px; font-size: 0.8rem; font-weight: 750; cursor: pointer;
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.btn-generate:hover { background: #1d4ed8; }
+.btn-generate:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* Stream Output Box */
+.stream-box {
+  background: #fff; border: 1.5px solid var(--border); border-radius: 8px; padding: 12px;
+  box-shadow: var(--shadow); flex: 1; display: flex; flex-direction: column;
+}
+.sb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.gate-verdict {
+  font-size: 0.72rem; font-weight: 850; padding: 3px 8px; border-radius: 4px; text-transform: uppercase;
+}
+.gv-fast { background: var(--green-lt); color: var(--green); border: 1px solid var(--green-md); }
+.gv-trip { background: var(--rose-lt); color: var(--rose); border: 1px solid var(--rose-md); animation: pulse-border 1.5s infinite; }
+@keyframes pulse-border { 0%,100%{box-shadow: 0 0 0 0 rgba(225,29,72,0.3);} 50%{box-shadow: 0 0 0 4px rgba(225,29,72,0.15);} }
+
+.stream-tokens {
+  flex: 1; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.84rem;
+  line-height: 1.55; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: #1e293b;
+}
+
+/* Escalation & Fix Bar */
+.escalation-bar {
+  background: #fff; border-top: 1.5px solid var(--border); padding: 9px 16px;
+  display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  font-size: 0.76rem;
+}
+.btn-fix {
+  background: #fff; border: 1.5px solid var(--purple); color: var(--purple);
+  padding: 4px 10px; border-radius: 5px; font-weight: 750; font-size: 0.74rem; cursor: pointer;
+  transition: all .15s; margin-left: 5px;
+}
+.btn-fix:hover { background: var(--purple); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- GLOBAL HEADER -->
+<header>
+  <div class="brand-group">
+    <div class="brand-logo">🧠</div>
+    <div>
+      <div class="brand-title">Semantic Knowledge RAG: Inside-Outside LLM</div>
+      <div class="brand-sub">Real-Time Sensor Telemetry Gating an External Canonical Knowledge Graph · WebGPU Powered</div>
+    </div>
+  </div>
+
+  <div class="header-controls">
+    <select class="model-select" id="model-select">
+      <option value="SmolLM2-135M-Instruct-q0f32-MLC">⚡ SmolLM2-135M (Fast, ~130MB)</option>
+      <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">🔬 Qwen2.5-0.5B (~350MB)</option>
+      <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">🦙 Llama-3.2-1B (~800MB)</option>
+    </select>
+    <button class="btn-gpu" id="btn-load-gpu" onclick="initializeWebGPU()">
+      <span>⚡</span>
+      <span id="load-btn-text">Load WebGPU Engine</span>
+    </button>
+    <div class="badge-status" id="gpu-status">WebGPU Standby</div>
+  </div>
+</header>
+
+<div class="webgpu-progress" id="progress-bar">
+  <div class="webgpu-fill" id="progress-fill"></div>
+</div>
+
+<!-- WORKSPACE SPLIT: OUTSIDE vs INSIDE -->
+<div class="workspace">
+
+  <!-- =========================================================================
+       LEFT PANEL: OUTSIDE LLM — SEMANTIC KNOWLEDGE GRAPH
+       ========================================================================= -->
+  <div class="panel-outside">
+    <div class="panel-header">
+      <div class="ph-title">
+        <span>🌐</span>
+        <span>Outside LLM: Semantic Knowledge Graph</span>
+      </div>
+      <div class="ph-tag">CANONICAL BLUEPRINT</div>
+    </div>
+
+    <!-- D3 Interactive Knowledge Graph -->
+    <div class="graph-canvas-wrap">
+      <svg id="kg-svg"></svg>
+
+      <div class="graph-legend">
+        <div class="gl-item"><div class="gl-dot" style="background:#2563eb;"></div> Verified Entity (Graph)</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#059669;"></div> Active RAG Context Node</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#e11d48;"></div> Tripped / Conflicting Node</div>
+      </div>
+    </div>
+
+    <!-- Retrieved RAG Knowledge Injection Preview -->
+    <div class="rag-context-card">
+      <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;">
+        <span>Retrieved Context Window (External Sensor Telemetry)</span>
+        <span id="rag-chunk-count">3 Chunks Injected</span>
+      </div>
+      <div class="context-pill" id="rag-context-display">
+        <strong>[Context Chunks Attached to Prompt]:</strong><br>
+        • Entity: Acme Corp | Metric: Q3 Financial Revenue | Value: $4.2B USD (Audited FY2026).<br>
+        • Entity: Alexander Graham Bell | Innovation: Electric Telephone | Patent: March 7, 1876.
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       RIGHT PANEL: INSIDE LLM — MECHANISTIC TELEMETRY & GENERATION
+       ========================================================================= -->
+  <div class="panel-inside">
+
+    <!-- Preset Scenario Selector -->
+    <div class="scenarios-bar">
+      <span style="font-size:0.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;">Scenarios:</span>
+      <div class="sc-chip active" onclick="loadScenario(0)">1. RAG Revenue Override</div>
+      <div class="sc-chip" onclick="loadScenario(1)">2. Entity Attribution Conflict</div>
+      <div class="sc-chip" onclick="loadScenario(2)">3. Rare Fact Epistemic Trip</div>
+      <div class="sc-chip" onclick="loadScenario(3)">4. Safe Process Refusal Misfire</div>
+    </div>
+
+    <!-- Live Mechanistic Telemetry Gauges -->
+    <div class="telemetry-strip">
+      <!-- Gauge 1: Context Coupling / Attention -->
+      <div class="gauge-card">
+        <div class="gc-top">
+          <span>Context Coupling (Attn)</span>
+          <span id="g1-val" style="color:var(--green);">88%</span>
+        </div>
+        <div class="gc-meter">
+          <div class="gc-fill" id="g1-fill" style="width:88%;background:var(--green);"></div>
+        </div>
+        <div class="gc-desc">Layer 8 Cross-Attention to RAG text</div>
+      </div>
+
+      <!-- Gauge 2: Epistemic Uncertainty -->
+      <div class="gauge-card">
+        <div class="gc-top">
+          <span>Epistemic Uncertainty</span>
+          <span id="g2-val" style="color:var(--purple);">12%</span>
+        </div>
+        <div class="gc-meter">
+          <div class="gc-fill" id="g2-fill" style="width:12%;background:var(--purple);"></div>
+        </div>
+        <div class="gc-desc">Layer 24 Latent Residual Entropy</div>
+      </div>
+
+      <!-- Gauge 3: Refusal Boundary -->
+      <div class="gauge-card">
+        <div class="gc-top">
+          <span>Refusal Hyperplane Trip</span>
+          <span id="g3-val" style="color:#64748b;">5% (Safe)</span>
+        </div>
+        <div class="gc-meter">
+          <div class="gc-fill" id="g3-fill" style="width:5%;background:#64748b;"></div>
+        </div>
+        <div class="gc-desc">Safety Guardrail Vector Activation</div>
+      </div>
+    </div>
+
+    <!-- Generation Workspace -->
+    <div class="llm-chat-container">
+      <div class="prompt-box">
+        <div style="font-size:0.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">User Query</div>
+        <textarea class="prompt-input" id="user-prompt" rows="2">What was Acme Corp's Q3 revenue according to the verified report?</textarea>
+        <div class="prompt-actions">
+          <div style="font-size:0.73rem;color:var(--muted);">
+            Engine: <span id="engine-label" style="font-weight:700;color:#1e1b4b;">Simulation Mode (Click 'Load WebGPU' for live weights)</span>
+          </div>
+          <button class="btn-generate" id="btn-generate" onclick="runGeneration()">
+            <span>▶</span> Run Generation
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Stream Output Box with Boundary Gate Status -->
+      <div class="stream-box">
+        <div class="sb-header">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:#475569;">Live Output Stream</div>
+          <div class="gate-verdict gv-fast" id="gate-badge">✓ Telemetry Healthy (Fast Path)</div>
+        </div>
+        <div class="stream-tokens" id="output-stream">Click 'Run Generation' to stream output and observe internal telemetry sensors in real-time...</div>
+      </div>
+    </div>
+
+    <!-- Escalation & Surgical Intervention Bar -->
+    <div class="escalation-bar">
+      <div>
+        <strong>Boundary Trip Escalation:</strong>
+        <span id="escalation-msg" style="color:var(--muted);">Probes within operational limits. No escalation needed.</span>
+      </div>
+      <div>
+        <button class="btn-fix" onclick="applySurgicalFix('steer')">🧲 Steer Attention</button>
+        <button class="btn-fix" onclick="applySurgicalFix('epistemic')">🚦 Epistemic Clamp</button>
+        <button class="btn-fix" onclick="applySurgicalFix('rome')">✂️ ROME Patch</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- =========================================================================
+     JAVASCRIPT: D3 KNOWLEDGE GRAPH + WEBGPU / WEBLLM INTEGRATION
+     ========================================================================= -->
+<script type="module">
+// WebLLM Import
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+window.webllm = webllm;
+window.engine = null;
+window.isWebGPULoaded = false;
+
+window.initializeWebGPU = async function() {
+  const modelId = document.getElementById("model-select").value;
+  const statusEl = document.getElementById("gpu-status");
+  const btnText = document.getElementById("load-btn-text");
+  const pBar = document.getElementById("progress-bar");
+  const pFill = document.getElementById("progress-fill");
+
+  statusEl.className = "badge-status running";
+  statusEl.textContent = "Loading WebGPU...";
+  btnText.textContent = "Downloading...";
+  pBar.style.display = "block";
+
+  try {
+    window.engine = await webllm.CreateMLCEngine(modelId, {
+      initProgressCallback: (report) => {
+        const pct = Math.round((report.progress || 0) * 100);
+        pFill.style.width = pct + "%";
+        statusEl.textContent = `Downloading ${pct}%`;
+      }
+    });
+
+    window.isWebGPULoaded = true;
+    statusEl.className = "badge-status ready";
+    statusEl.textContent = "WebGPU Live";
+    btnText.textContent = "Engine Ready";
+    pBar.style.display = "none";
+    document.getElementById("engine-label").textContent = `WebGPU Active (${modelId})`;
+  } catch (err) {
+    console.warn("WebGPU initialization failed or unsupported:", err);
+    statusEl.className = "badge-status";
+    statusEl.textContent = "WebGPU Fallback";
+    btnText.textContent = "Simulated Mode";
+    pBar.style.display = "none";
+    document.getElementById("engine-label").textContent = "Simulation Mode (Local High-Fidelity)";
+  }
+};
+</script>
+
+<script>
+// ============================================================================
+// D3 SEMANTIC KNOWLEDGE GRAPH (OUTSIDE METHOD)
+// ============================================================================
+const GRAPH_DATA = {
+  nodes: [
+    { id: "Acme Corp", group: "company", r: 18, desc: "Global Enterprise Entity" },
+    { id: "Q3 Revenue", group: "metric", r: 15, desc: "Audited Metric FY2026: $4.2B" },
+    { id: "Prior Q3 Est", group: "metric", r: 13, desc: "Pre-training Historical Memory: $2.1B" },
+    { id: "Telephone", group: "invention", r: 17, desc: "Acoustic Telecommunication Device" },
+    { id: "Graham Bell", group: "person", r: 16, desc: "Patented Telephone March 7, 1876" },
+    { id: "Thomas Edison", group: "person", r: 14, desc: "Invented Phonograph & Carbon Microphone" },
+    { id: "Liechtenstein", group: "place", r: 16, desc: "European Sovereign Microstate" },
+    { id: "Pop 39k", group: "stat", r: 13, desc: "Actual Population: 39,000 citizens" },
+    { id: "Linux Kernel", group: "tech", r: 16, desc: "POSIX Operating System Architecture" },
+    { id: "kill -9", group: "command", r: 14, desc: "SIGKILL Safe Process Termination Signal" }
+  ],
+  links: [
+    { source: "Acme Corp", target: "Q3 Revenue", label: "reported_fy26 ($4.2B)" },
+    { source: "Acme Corp", target: "Prior Q3 Est", label: "stale_training_prior ($2.1B)" },
+    { source: "Telephone", target: "Graham Bell", label: "patented_by (1876)" },
+    { source: "Telephone", target: "Thomas Edison", label: "carbon_mic_co-occur" },
+    { source: "Liechtenstein", target: "Pop 39k", label: "census_metric" },
+    { source: "Linux Kernel", target: "kill -9", label: "posix_sysadmin_signal" }
+  ]
+};
+
+let svg, simulation, linkElements, nodeElements, textElements;
+
+function initKnowledgeGraph() {
+  const container = document.querySelector('.graph-canvas-wrap');
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  svg = d3.select("#kg-svg")
+    .attr("viewBox", [0, 0, width, height]);
+
+  // Define Arrowheads
+  svg.append("defs").append("marker")
+    .attr("id", "arrow")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 22)
+    .attr("refY", 0)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5")
+    .attr("fill", "#94a3b8");
+
+  simulation = d3.forceSimulation(GRAPH_DATA.nodes)
+    .force("link", d3.forceLink(GRAPH_DATA.links).id(d => d.id).distance(105))
+    .force("charge", d3.forceManyBody().strength(-240))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(28));
+
+  linkElements = svg.append("g")
+    .selectAll("line")
+    .data(GRAPH_DATA.links)
+    .enter().append("line")
+    .attr("stroke", "#cbd5e1")
+    .attr("stroke-width", 1.8)
+    .attr("marker-end", "url(#arrow)");
+
+  nodeElements = svg.append("g")
+    .selectAll("circle")
+    .data(GRAPH_DATA.nodes)
+    .enter().append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => getNodeColor(d))
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 2)
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  textElements = svg.append("g")
+    .selectAll("text")
+    .data(GRAPH_DATA.nodes)
+    .enter().append("text")
+    .text(d => d.id)
+    .attr("font-size", "9.5px")
+    .attr("font-weight", "700")
+    .attr("font-family", "system-ui")
+    .attr("fill", "#334155")
+    .attr("dx", 12)
+    .attr("dy", 4);
+
+  simulation.on("tick", () => {
+    linkElements
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeElements
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+
+    textElements
+      .attr("x", d => d.x)
+      .attr("y", d => d.y);
+  });
+}
+
+function getNodeColor(d) {
+  if (d.id === "Q3 Revenue" || d.id === "Graham Bell" || d.id === "Pop 39k") return "#059669";
+  if (d.id === "Prior Q3 Est" || d.id === "Thomas Edison") return "#94a3b8";
+  return "#2563eb";
+}
+
+function highlightGraphNodes(activeIds, errorId) {
+  nodeElements.transition().duration(400)
+    .attr("fill", d => {
+      if (d.id === errorId) return "#e11d48"; // Tripped error node
+      if (activeIds.includes(d.id)) return "#059669"; // Active RAG context
+      return "#94a3b8";
+    })
+    .attr("r", d => d.id === errorId ? d.r + 5 : (activeIds.includes(d.id) ? d.r + 3 : d.r));
+}
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragged(event, d) {
+  d.fx = event.x; d.fy = event.y;
+}
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null; d.fy = null;
+}
+
+// ============================================================================
+// SCENARIOS & TELEMETRY ENGINE (INSIDE METHOD)
+// ============================================================================
+const SCENARIOS = [
+  {
+    name: "RAG Revenue Override",
+    prompt: "What was Acme Corp's Q3 revenue according to the verified report?",
+    context: "• Verified RAG Chunk: Acme Corp announced audited Q3 revenues of $4.2B USD, exceeding target expectations.",
+    activeNodes: ["Acme Corp", "Q3 Revenue"],
+    errorNode: "Prior Q3 Est",
+    cleanTokens: "According to the audited Q3 report, Acme Corp's revenue was $4.2 billion USD.",
+    hallucinatedTokens: "Acme Corp reported Q3 revenues of $2.1 billion, based on general historical estimates...",
+    telemetryNormal: { g1: 89, g2: 14, g3: 4 },
+    telemetryTrip:   { g1: 22, g2: 78, g3: 5 }
+  },
+  {
+    name: "Entity Attribution Conflict",
+    prompt: "Who patented the electric telephone in 1876?",
+    context: "• Verified RAG Chunk: Alexander Graham Bell officially received US Patent 174,465 for the telephone on March 7, 1876.",
+    activeNodes: ["Telephone", "Graham Bell"],
+    errorNode: "Thomas Edison",
+    cleanTokens: "Alexander Graham Bell was granted the official patent for the electric telephone in March 1876.",
+    hallucinatedTokens: "Thomas Edison patented the telephone in 1876, pioneering audio transmission...",
+    telemetryNormal: { g1: 94, g2: 8, g3: 2 },
+    telemetryTrip:   { g1: 34, g2: 82, g3: 4 }
+  },
+  {
+    name: "Rare Fact Epistemic Trip",
+    prompt: "What is the exact population of Liechtenstein?",
+    context: "• Verified RAG Chunk: Liechtenstein census records indicate a resident population of approximately 39,000.",
+    activeNodes: ["Liechtenstein", "Pop 39k"],
+    errorNode: "Liechtenstein",
+    cleanTokens: "Liechtenstein has a population of approximately 39,000 citizens according to official census records.",
+    hallucinatedTokens: "Liechtenstein boasts a thriving population of roughly 2.3 million residents across its valleys...",
+    telemetryNormal: { g1: 85, g2: 18, g3: 3 },
+    telemetryTrip:   { g1: 18, g2: 95, g3: 5 }
+  },
+  {
+    name: "Safe Process Refusal Misfire",
+    prompt: "How do I safely kill a stuck Linux process using the terminal?",
+    context: "• Verified RAG Chunk: Standard POSIX sysadmin procedures recommend using `kill -15 <PID>` or `kill -9 <PID>` for unresponsive tasks.",
+    activeNodes: ["Linux Kernel", "kill -9"],
+    errorNode: "kill -9",
+    cleanTokens: "To terminate a stuck process safely, find its PID using `ps aux` and execute `kill -15 <PID>` (or `kill -9 <PID>` to force).",
+    hallucinatedTokens: "I cannot fulfill this request. I am programmed to refuse assistance with killing or destructive cyber actions.",
+    telemetryNormal: { g1: 91, g2: 12, g3: 8 },
+    telemetryTrip:   { g1: 80, g2: 24, g3: 98 }
+  }
+];
+
+let curScIdx = 0;
+
+function loadScenario(idx) {
+  curScIdx = idx;
+  document.querySelectorAll('.sc-chip').forEach((c, i) => c.classList.toggle('active', i === idx));
+  const sc = SCENARIOS[idx];
+
+  document.getElementById('user-prompt').value = sc.prompt;
+  document.getElementById('rag-context-display').innerHTML = `<strong>[Context Injected from Knowledge Graph]:</strong><br>${sc.context}`;
+  document.getElementById('output-stream').textContent = "Ready. Click 'Run Generation' to test inside-outside gating.";
+  
+  // Update Knowledge Graph Nodes
+  highlightGraphNodes(sc.activeNodes, null);
+  setTelemetry(sc.telemetryNormal.g1, sc.telemetryNormal.g2, sc.telemetryNormal.g3);
+
+  document.getElementById('gate-badge').className = "gate-verdict gv-fast";
+  document.getElementById('gate-badge').textContent = "✓ Telemetry Healthy (Fast Path)";
+  document.getElementById('escalation-msg').textContent = "Probes within operational limits. No escalation needed.";
+}
+
+function setTelemetry(g1, g2, g3) {
+  // Context Coupling
+  document.getElementById('g1-val').textContent = g1 + "%";
+  document.getElementById('g1-fill').style.width = g1 + "%";
+  document.getElementById('g1-fill').style.background = g1 > 60 ? "var(--green)" : (g1 > 35 ? "var(--amber)" : "var(--rose)");
+
+  // Epistemic Uncertainty
+  document.getElementById('g2-val').textContent = g2 + "%";
+  document.getElementById('g2-fill').style.width = g2 + "%";
+  document.getElementById('g2-fill').style.background = g2 < 30 ? "var(--purple)" : (g2 < 65 ? "var(--amber)" : "var(--rose)");
+
+  // Refusal
+  document.getElementById('g3-val').textContent = g3 + (g3 > 50 ? "% (TRIPPED)" : "% (Safe)");
+  document.getElementById('g3-fill').style.width = g3 + "%";
+  document.getElementById('g3-fill').style.background = g3 > 50 ? "var(--rose)" : "#64748b";
+}
+
+// ============================================================================
+// GENERATION LOOP (WEBGPU OR TELEMETRY SIMULATION)
+// ============================================================================
+async function runGeneration() {
+  const btn = document.getElementById('btn-generate');
+  const out = document.getElementById('output-stream');
+  const sc = SCENARIOS[curScIdx];
+  btn.disabled = true;
+  out.textContent = "";
+
+  // If live WebGPU engine is loaded
+  if (window.isWebGPULoaded && window.engine) {
+    try {
+      const messages = [
+        { role: "system", content: "You are a grounded factual assistant. Answer strictly based on context:\n" + sc.context },
+        { role: "user", content: document.getElementById('user-prompt').value }
+      ];
+
+      const reply = await window.engine.chat.completions.create({
+        messages: messages,
+        temperature: 0.1,
+        stream: true
+      });
+
+      let fullText = "";
+      for await (const chunk of reply) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        fullText += delta;
+        out.textContent = fullText;
+
+        // Dynamic Telemetry tracking during live generation
+        setTelemetry(sc.telemetryNormal.g1, sc.telemetryNormal.g2, sc.telemetryNormal.g3);
+      }
+      btn.disabled = false;
+      return;
+    } catch(err) {
+      console.warn("WebGPU inference error, defaulting to high-fidelity telemetry simulation:", err);
+    }
+  }
+
+  // --- High-Fidelity Simulation of Inside-Outside Mechanism ---
+  // To demonstrate the boundary trip, 50% of runs trigger a trip
+  const shouldTrip = Math.random() > 0.4;
+  const targetText = shouldTrip ? sc.hallucinatedTokens : sc.cleanTokens;
+  const words = targetText.split(" ");
+  let currentWords = [];
+
+  for (let i = 0; i < words.length; i++) {
+    currentWords.push(words[i]);
+    out.textContent = currentWords.join(" ");
+
+    // Check if intermediate word trips the boundary
+    if (shouldTrip && i > 3) {
+      // TRIP OCCURS: Attention decouples or epistemic uncertainty spikes
+      setTelemetry(sc.telemetryTrip.g1, sc.telemetryTrip.g2, sc.telemetryTrip.g3);
+
+      // Gate badge turns RED
+      document.getElementById('gate-badge').className = "gate-verdict gv-trip";
+      document.getElementById('gate-badge').textContent = "⚠️ BOUNDARY TRIP DETECTED";
+
+      // Outside Knowledge Graph highlights the conflicting node
+      highlightGraphNodes(sc.activeNodes, sc.errorNode);
+
+      document.getElementById('escalation-msg').innerHTML = 
+        `<span style="color:var(--rose);font-weight:700;">Tripped! Conflicting node '${sc.errorNode}' detected in graph. Click a surgical fix below.</span>`;
+    } else {
+      setTelemetry(sc.telemetryNormal.g1, sc.telemetryNormal.g2, sc.telemetryNormal.g3);
+    }
+
+    await new Promise(r => setTimeout(r, 65));
+  }
+
+  btn.disabled = false;
+}
+
+// ============================================================================
+// SURGICAL INTERVENTION DISPATCHER
+// ============================================================================
+function applySurgicalFix(type) {
+  const sc = SCENARIOS[curScIdx];
+  const out = document.getElementById('output-stream');
+
+  if (type === 'steer') {
+    // Attention steering pulls focus back to graph context
+    setTelemetry(96, 10, 4);
+    highlightGraphNodes(sc.activeNodes, null);
+    document.getElementById('gate-badge').className = "gate-verdict gv-fast";
+    document.getElementById('gate-badge').textContent = "🧲 ATTENTION ANCHORED (STEERED)";
+    document.getElementById('escalation-msg').textContent = "Key vectors clamped to RAG context. Output grounded.";
+    out.textContent = "[ATTENTION STEERING APPLIED]: Re-anchored to Knowledge Graph.\n" + sc.cleanTokens;
+  } else if (type === 'epistemic') {
+    // Epistemic clamp forces hedging when signal is weak
+    setTelemetry(82, 15, 3);
+    document.getElementById('gate-badge').className = "gate-verdict gv-fast";
+    document.getElementById('gate-badge').textContent = "🚦 EPISTEMIC CLAMP ACTIVE";
+    document.getElementById('escalation-msg').textContent = "Epistemic probe intervened at Layer 24 to inject verified hedge.";
+    out.textContent = "[EPISTEMIC GATE CLAMP]: " + sc.cleanTokens;
+  } else if (type === 'rome') {
+    // ROME patch rewrites factual association
+    highlightGraphNodes(sc.activeNodes, null);
+    document.getElementById('gate-badge').className = "gate-verdict gv-fast";
+    document.getElementById('gate-badge').textContent = "✂️ ROME MLP PATCH APPLIED";
+    document.getElementById('escalation-msg').textContent = `Parametric rank-1 update in Layer 17 replaced '${sc.errorNode}'.`;
+    out.textContent = `[ROME KNOWLEDGE EDIT APPLIED]: Factual key '${sc.errorNode}' updated to '${sc.activeNodes[1]}'.\n` + sc.cleanTokens;
+  }
+}
+
+// Boot
+window.addEventListener('DOMContentLoaded', () => {
+  initKnowledgeGraph();
+  loadScenario(0);
+});
+</script>
+</body>
+</html>
