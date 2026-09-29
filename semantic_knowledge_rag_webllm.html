@@ -270,6 +270,9 @@ header {
     </div>
 
     <!-- Live Mechanistic Telemetry Gauges -->
+    <div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:8px;padding:7px 11px;margin-bottom:8px;font-size:0.72rem;color:#92400E;font-weight:600;line-height:1.4;">
+      ⚠️ These gauges are scripted per scenario, not measured live. WebLLM's API only exposes chat/embedding outputs, not attention weights or residual-stream activations, so this holds even once a real model is loaded below.
+    </div>
     <div class="telemetry-strip">
       <!-- Gauge 1: Context Coupling / Attention -->
       <div class="gauge-card">
@@ -280,7 +283,7 @@ header {
         <div class="gc-meter">
           <div class="gc-fill" id="g1-fill" style="width:88%;background:var(--green);"></div>
         </div>
-        <div class="gc-desc">Layer 8 Cross-Attention to RAG text</div>
+        <div class="gc-desc">Layer 8 Cross-Attention to RAG text (illustrative)</div>
       </div>
 
       <!-- Gauge 2: Epistemic Uncertainty -->
@@ -292,7 +295,7 @@ header {
         <div class="gc-meter">
           <div class="gc-fill" id="g2-fill" style="width:12%;background:var(--purple);"></div>
         </div>
-        <div class="gc-desc">Layer 24 Latent Residual Entropy</div>
+        <div class="gc-desc">Layer 24 Latent Residual Entropy (illustrative)</div>
       </div>
 
       <!-- Gauge 3: Refusal Boundary -->
@@ -304,7 +307,7 @@ header {
         <div class="gc-meter">
           <div class="gc-fill" id="g3-fill" style="width:5%;background:#64748b;"></div>
         </div>
-        <div class="gc-desc">Safety Guardrail Vector Activation</div>
+        <div class="gc-desc">Safety Guardrail Vector Activation (illustrative)</div>
       </div>
     </div>
 
@@ -322,7 +325,7 @@ header {
             🔄 Auto Closed Loop
           </button>
           <button class="btn-mode" id="btn-mode-fastpath" onclick="setHybridMode('fastpath')">
-            ⚡ 90% Fast Path
+            ⚡ Fast Path (illustrative split)
           </button>
           <button class="btn-mode" id="btn-mode-unmonitored" onclick="setHybridMode('unmonitored')">
             🌫️ Unmonitored
@@ -362,11 +365,12 @@ header {
         <span id="escalation-msg" style="color:var(--muted);">Probes within operational limits. No escalation needed.</span>
       </div>
       <div>
-        <button class="btn-fix" onclick="applySurgicalFix('steer')">🧲 Steer Attention</button>
-        <button class="btn-fix" onclick="applySurgicalFix('epistemic')">🚦 Epistemic Clamp</button>
-        <button class="btn-fix" onclick="applySurgicalFix('rome')">✂️ ROME Patch</button>
+        <button class="btn-fix" onclick="applySurgicalFix('steer')" title="Illustrative — WebLLM's API can't clamp Key vectors directly">🧲 Steer Attention</button>
+        <button class="btn-fix" onclick="applySurgicalFix('epistemic')" title="Illustrative — WebLLM's API can't read Layer 24 activations directly">🚦 Epistemic Clamp</button>
+        <button class="btn-fix" onclick="applySurgicalFix('rome')" title="Illustrative — WebLLM's API can't patch MLP weights directly">✂️ ROME Patch</button>
       </div>
     </div>
+    <div style="font-size:0.68rem;color:#94a3b8;margin:-4px 0 8px;">These three buttons illustrate the concept; none of them can literally run through WebLLM's chat API, which has no access to weights or activations.</div>
 
   </div> <!-- End panel-inside -->
 </div> <!-- End workspace -->
@@ -408,7 +412,7 @@ window.initializeWebGPU = async function() {
     statusEl.textContent = "WebGPU Live";
     btnText.textContent = "Engine Ready";
     pBar.style.display = "none";
-    document.getElementById("engine-label").textContent = `WebGPU Active (${modelId})`;
+    document.getElementById("engine-label").textContent = `WebGPU Active (${modelId}) — replies below are real; gauges stay illustrative`;
   } catch (err) {
     console.warn("WebGPU initialization failed or unsupported:", err);
     statusEl.className = "badge-status";
@@ -659,13 +663,29 @@ function setHybridMode(mode) {
   } else if (mode === 'fastpath') {
     badge.className = "gate-verdict gv-fast";
     badge.textContent = "⚡ FAST PATH MODE (ASSUME GREEN)";
-    msg.textContent = "Mode: 90% Fast Path — direct streaming without graph escalation.";
+    msg.textContent = "Mode: Fast Path (illustrative split) — direct streaming without graph escalation.";
   } else {
     badge.className = "gate-verdict";
     badge.style.background = "#fef3c7";
     badge.style.color = "#b45309";
     badge.textContent = "🌫️ UNMONITORED BLACK-BOX BASELINE";
     msg.textContent = "Mode: Probes bypassed. Model generates unchecked like standard black-box LLMs.";
+  }
+}
+
+// ============================================================================
+// REAL GENERATION (used when WebGPU engine is actually loaded)
+// ============================================================================
+async function realGenerate(sc, outEl, prefix = "") {
+  const messages = [
+    { role: "system", content: "Answer the user's question using ONLY the verified context given. Be concise: one or two sentences." },
+    { role: "user", content: `Context:\n${sc.context}\n\nQuestion: ${sc.prompt}` }
+  ];
+  const stream = await window.engine.chat.completions.create({ messages, stream: true, temperature: 0.3 });
+  outEl.textContent = prefix;
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta?.content;
+    if (delta) outEl.textContent += delta;
   }
 }
 
@@ -696,7 +716,7 @@ async function runGeneration() {
       await new Promise(r => setTimeout(r, 65));
     }
 
-    escMsg.innerHTML = `<span style="color:#b45309;font-weight:700;">⚠️ Black-Box Flaw: Model hallucinated ungrounded fact. No internal sensor existed to catch the boundary trip.</span>`;
+    escMsg.innerHTML = `<span style="color:#b45309;font-weight:700;">⚠️ Scripted illustration of a known failure mode (a real model may not reproduce this exact wrong answer on demand). No internal sensor existed to catch the boundary trip.</span>`;
     btn.disabled = false;
     return;
   }
@@ -708,13 +728,22 @@ async function runGeneration() {
     setTelemetry(sc.telemetryNormal.g1, sc.telemetryNormal.g2, sc.telemetryNormal.g3);
     highlightGraphNodes(sc.activeNodes, null);
 
-    const words = sc.cleanTokens.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      out.textContent += words[i] + " ";
-      await new Promise(r => setTimeout(r, 55));
+    if (window.isWebGPULoaded && window.engine) {
+      try {
+        await realGenerate(sc, out);
+        escMsg.innerHTML = `<span style="color:var(--green);font-weight:700;">✓ Real reply, generated live by the loaded WebLLM engine from the verified context above. (Gauges above stay scripted &mdash; see note.)</span>`;
+      } catch (e) {
+        out.textContent = sc.cleanTokens + "\n\n(Live generation failed, showing scripted example: " + (e.message || e) + ")";
+        escMsg.textContent = "Live generation failed; showing scripted example instead.";
+      }
+    } else {
+      const words = sc.cleanTokens.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        out.textContent += words[i] + " ";
+        await new Promise(r => setTimeout(r, 55));
+      }
+      escMsg.innerHTML = `<span style="color:var(--green);font-weight:700;">Scripted example (Load WebGPU above for a real reply). Probes confirmed context coupling &gt; 85% &mdash; illustrative.</span>`;
     }
-
-    escMsg.innerHTML = `<span style="color:var(--green);font-weight:700;">✓ Fast Path Verified: Probes confirmed context coupling > 85%. Emitted directly with zero graph query latency.</span>`;
     btn.disabled = false;
     return;
   }
@@ -755,13 +784,25 @@ async function runGeneration() {
   out.textContent += `[✓ KNOWLEDGE GRAPH ANCHOR APPLIED]: Cross-attention re-steered to verified entity '${sc.activeNodes[1]}'.\n\n`;
 
   // Step E: Stream completes grounded in truth
-  const cleanWords = sc.cleanTokens.split(" ");
-  for (let i = 0; i < cleanWords.length; i++) {
-    out.textContent += cleanWords[i] + " ";
-    await new Promise(r => setTimeout(r, 45));
+  if (window.isWebGPULoaded && window.engine) {
+    try {
+      await realGenerate(sc, out, out.textContent);
+    } catch (e) {
+      const cleanWords = sc.cleanTokens.split(" ");
+      for (let i = 0; i < cleanWords.length; i++) {
+        out.textContent += cleanWords[i] + " ";
+        await new Promise(r => setTimeout(r, 45));
+      }
+    }
+  } else {
+    const cleanWords = sc.cleanTokens.split(" ");
+    for (let i = 0; i < cleanWords.length; i++) {
+      out.textContent += cleanWords[i] + " ";
+      await new Promise(r => setTimeout(r, 45));
+    }
   }
 
-  escMsg.innerHTML = `<span style="color:var(--green);font-weight:700;">✓ Closed-Loop Resolution Complete: Internal probe caught boundary trip in 1.4ms; Outside Graph resolved entity in 3ms. Total escalation latency < 5ms.</span>`;
+  escMsg.innerHTML = `<span style="color:var(--green);font-weight:700;">✓ Closed-Loop Resolution: the trip detection above is a scripted illustration (WebLLM can't expose what would be needed to measure it live). The reply above it is real when the engine is loaded, scripted otherwise.</span>`;
 
   btn.disabled = false;
 }
