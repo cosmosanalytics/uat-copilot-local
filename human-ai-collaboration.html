@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Five Paradigms of Human–AI Collaboration — a live demo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤝</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FBFAF8; --panel:#FFFFFF; --panel2:#F5F3EF; --ink:#1E1B18; --muted:#767066; --line:#E5E0D8;
+  --sans:"Plus Jakarta Sans",sans-serif; --mono:"IBM Plex Mono",monospace;
+  --human:#D2691E; --humanbg:#FDF1E7; --humanline:#E8B583;
+  --ai:#2E6F95; --aibg:#EAF3F8; --ailine:#8FBBD3;
+  --shared:#7B5EA7; --sharedbg:#F3EFFA; --sharedline:#C2AEDD;
+  --good:#3E8E5A; --warn:#C77C1E; --bad:#C0392B;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.55 var(--sans)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--ink);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 18px 60px}
+
+header h1{font-size:clamp(1.5rem,3.4vw,2.15rem);font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+header p{color:var(--muted);max-width:75ch;font-size:.96rem;line-height:1.55;margin-bottom:16px}
+
+.loadbar{background:var(--panel);border:1.5px solid var(--line);border-radius:13px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px}
+.loadbar select{border:1.4px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel2);font-size:.85rem}
+.btn{border:1.6px solid var(--ink);background:var(--ink);color:#fff;border-radius:9px;padding:8px 15px;font-weight:700;font-size:.85rem;cursor:pointer}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.human{background:var(--human);border-color:var(--human)}
+.btn.ai{background:var(--ai);border-color:var(--ai)}
+.bar{flex:1;min-width:120px;height:4px;background:var(--line);border-radius:2px;overflow:hidden;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .2s}
+.status{font-size:.82rem;color:var(--muted)}
+.nogpu{border:2px solid var(--bad);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:.85rem}
+
+.tabbar{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.tabbtn{border:1.6px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 14px;font-weight:700;font-size:.82rem;cursor:pointer;color:var(--muted)}
+.tabbtn[aria-selected="true"]{border-color:var(--ink);color:var(--ink);background:var(--panel2)}
+
+.pane{background:var(--panel);border:1.6px solid var(--line);border-radius:16px;padding:22px 26px}
+.pane h2{font-size:1.3rem;font-weight:800;margin-bottom:6px}
+.pane .desc{color:var(--muted);font-size:.92rem;line-height:1.55;margin-bottom:18px;max-width:72ch}
+.pane .desc b{color:var(--ink)}
+
+.field{margin-bottom:13px}
+.field label{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:6px}
+.who{font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:999px}
+.who.human{background:var(--humanbg);color:var(--human);border:1.4px solid var(--humanline)}
+.who.ai{background:var(--aibg);color:var(--ai);border:1.4px solid var(--ailine)}
+.who.shared{background:var(--sharedbg);color:var(--shared);border:1.4px solid var(--sharedline)}
+textarea,.tinput{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;background:var(--panel2);font-size:.94rem;font-family:var(--sans)}
+textarea{resize:vertical;min-height:46px}
+textarea.human-edit{background:var(--humanbg);border-color:var(--humanline)}
+textarea.ai-draft{background:var(--aibg);border-color:var(--ailine)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.result{margin-top:16px;border-top:1.5px solid var(--line);padding-top:16px}
+.empty{color:var(--muted);font-size:.88rem;padding:14px 0}
+
+.diffline{font-family:var(--mono);font-size:.82rem;padding:2px 0}
+.diffline.added{background:var(--humanbg);color:var(--human)}
+.diffline.removed{background:#FDECEA;color:var(--bad);text-decoration:line-through}
+
+.confbadge{display:inline-block;font-family:var(--mono);font-weight:700;padding:4px 12px;border-radius:8px;font-size:.9rem}
+.samplelist{display:flex;flex-direction:column;gap:5px;margin:10px 0}
+.sampleitem{background:var(--panel2);border-radius:7px;padding:6px 10px;font-size:.83rem;font-family:var(--mono)}
+.decisioncard{border-radius:11px;padding:14px 18px;margin-top:12px;border:1.6px solid}
+.decisioncard.auto{background:var(--aibg);border-color:var(--ailine)}
+.decisioncard.escalate{background:var(--humanbg);border-color:var(--humanline)}
+
+.critiquebox{background:var(--aibg);border:1.6px solid var(--ailine);border-radius:11px;padding:14px 18px;margin-top:10px;font-size:.9rem;line-height:1.55}
+
+.subtask{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:9px;padding:9px 13px;margin-bottom:7px}
+.subtask .txt{flex:1;font-size:.88rem}
+.assignbtns{display:flex;gap:5px}
+.assignbtn{border:1.5px solid var(--line);background:#fff;border-radius:7px;padding:4px 9px;font-size:.7rem;font-weight:700;cursor:pointer}
+.assignbtn.on.human{background:var(--human);border-color:var(--human);color:#fff}
+.assignbtn.on.ai{background:var(--ai);border-color:var(--ai);color:#fff}
+.assignbtn.on.shared{background:var(--shared);border-color:var(--shared);color:#fff}
+
+.footnote{font-size:.78rem;color:var(--muted);margin-top:16px;padding-top:12px;border-top:1px solid var(--line);line-height:1.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🤝 Five Paradigms of Human–AI Collaboration</h1>
+    <p>Not five features, five different answers to "who's in charge of this step?" Each tab runs a real exchange with a small model in your browser and shows exactly where the human's judgment enters the loop.</p>
+  </header>
+
+  <div class="loadbar">
+    <select id="chatModel">
+      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen 1.5B (fast)</option>
+      <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 3B (better)</option>
+    </select>
+    <button class="btn" id="load">Load model</button>
+    <div class="bar" id="bar"><i></i></div>
+    <span class="status" id="status">Runs on your GPU with WebGPU. Downloads once, then cached.</span>
+  </div>
+  <div class="nogpu" id="nogpu" style="display:none"><strong>WebGPU isn't available here.</strong> Use a recent Chrome, Edge, or Safari 26+ on desktop.</div>
+
+  <div class="tabbar" id="tabbar"></div>
+  <div class="pane" id="pane"></div>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&lt;",">":"&gt;",'"':"&quot;","&":"&amp;"}[c]||c));
+
+/* ---------- Model loading ---------- */
+let engine=null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; }
+$("load").onclick = async ()=>{
+  $("load").disabled=true; $("bar").style.display="block";
+  const bar=$("bar").firstElementChild;
+  const cb=r=>{ bar.style.width=Math.round((r.progress||0)*100)+"%"; $("status").textContent=r.text; };
+  try{
+    engine = await webllm.CreateMLCEngine($("chatModel").value, {initProgressCallback:cb});
+    $("status").textContent="Ready. All tabs are now live.";
+    $("load").textContent="Switch model";
+    render();
+  }catch(e){ $("status").textContent="Couldn't load: "+(e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+async function llm(system,user,maxTokens=220,temperature=0.4){
+  const res = await engine.chat.completions.create({model:$("chatModel").value, stream:true, temperature, max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]});
+  let out=""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d) out+=d; }
+  return out.trim();
+}
+
+/* ---------- Tabs ---------- */
+const TABS = [
+  {id:"loop", num:1, name:"Human-in-the-Loop"},
+  {id:"onloop", num:2, name:"Human-on-the-Loop"},
+  {id:"critic", num:3, name:"AI-as-Critic"},
+  {id:"context", num:4, name:"In-Context Correction"},
+  {id:"divide", num:5, name:"Task Division"},
+];
+let activeTab = "loop";
+$("tabbar").innerHTML = TABS.map(t=>`<button class="tabbtn" id="tabbtn-${t.id}" aria-selected="${t.id===activeTab}" onclick="window.selectTab('${t.id}')">${t.num}. ${t.name}</button>`).join("");
+window.selectTab = (id)=>{ activeTab=id; TABS.forEach(t=>$("tabbtn-"+t.id).setAttribute("aria-selected", String(t.id===id))); render(); };
+
+function render(){
+  $("pane").innerHTML = PANE_HTML[activeTab]();
+  wireTab(activeTab);
+}
+
+/* ================= TAB 1: HUMAN-IN-THE-LOOP ================= */
+function PANE_LOOP(){
+  return `
+  <h2>1. Human-in-the-Loop</h2>
+  <p class="desc">The AI never has the final word. It drafts, you edit directly in the box below, and only <b>your</b> edited version counts as the real output. This is the paradigm behind most writing assistants: propose, don't decide.</p>
+  <div class="field"><label><span class="who ai">AI</span> Scenario for the AI to draft</label><textarea id="l-scenario" rows="2">Write a short reply declining a meeting invite because of a scheduling conflict, but offering an alternative time next week.</textarea></div>
+  <div class="row"><button class="btn ai" id="l-draft" disabled>Get AI draft</button></div>
+  <div class="result" id="l-result"><div class="empty">Load the model above, then get a draft.</div></div>`;
+}
+async function runLoopDraft(){
+  const btn=$("l-draft"); btn.disabled=true;
+  $("l-result").innerHTML = `<div class="empty">Drafting…</div>`;
+  try{
+    const draft = await llm("Write only the requested message. No preamble, no explanation.", $("l-scenario").value, 150, 0.5);
+    $("l-result").innerHTML = `
+      <div class="field"><label><span class="who ai">AI</span> Draft &mdash; edit it below</label>
+      <textarea class="ai-draft" id="l-draftbox" rows="4">${esc(draft)}</textarea></div>
+      <div class="row"><button class="btn human" id="l-approve">Approve my edited version</button></div>
+      <div id="l-diff"></div>`;
+    $("l-draftbox").dataset.original = draft;
+    $("l-approve").onclick = ()=>{
+      const original = $("l-draftbox").dataset.original;
+      const edited = $("l-draftbox").value;
+      $("l-diff").innerHTML = edited===original
+        ? `<div class="decisioncard auto" style="margin-top:14px"><span class="who ai">AI</span> version approved <b>unchanged</b>, you agreed with it as-is.</div>`
+        : `<div class="decisioncard escalate" style="margin-top:14px"><span class="who human">Human</span> edited before approving. The AI's draft was a starting point, not the output, your rewrite is what actually ships.</div>`;
+    };
+  }catch(e){ $("l-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 2: HUMAN-ON-THE-LOOP ================= */
+const STOP=new Set("the a an of to in is was are and or it its for on at by with as be that this his her their".split(" "));
+const toks=s=>new Set(s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/).filter(w=>w&&!STOP.has(w)));
+function jacc(a,b){ if(!a.size&&!b.size) return 1; let i=0; a.forEach(x=>{ if(b.has(x)) i++; }); return i/(a.size+b.size-i); }
+function clusterAnswers(arr){
+  const groups=[]; arr.forEach(s=>{ const t=toks(s); const g=groups.find(g=>jacc(g.t,t)>=.5); if(g) g.items.push(s); else groups.push({t,items:[s]}); });
+  return groups.sort((a,b)=>b.items.length-a.items.length);
+}
+function PANE_ONLOOP(){
+  return `
+  <h2>2. Human-on-the-Loop</h2>
+  <p class="desc">The AI runs unsupervised by default. You only get pulled in when it's actually unsure, measured by real agreement across 5 independent samples, not by the AI just saying "I'm not sure." Management by exception: your attention is the scarce resource.</p>
+  <div class="field"><label><span class="who ai">AI</span> Question to answer autonomously</label><textarea id="o-q" rows="2">What year did the first iPhone launch?</textarea></div>
+  <div class="row"><button class="btn ai" id="o-run" disabled>Run autonomously, escalate if uncertain</button></div>
+  <div class="result" id="o-result"><div class="empty">Load the model above, then run.</div></div>`;
+}
+async function runOnLoop(){
+  const btn=$("o-run"); btn.disabled=true;
+  const q = $("o-q").value;
+  const samples=[];
+  $("o-result").innerHTML = `<div class="empty">Sampling 5 independent answers…</div>`;
+  try{
+    for(let i=0;i<5;i++){
+      const a = await llm("Answer in at most 10 words. No explanation.", q, 25, 1.0);
+      samples.push(a.split("\n")[0]);
+      $("o-result").innerHTML = `<div class="samplelist">${samples.map((s,k)=>`<div class="sampleitem">${k+1}. ${esc(s)}</div>`).join("")}</div><div class="empty">Sampling ${i+1}/5…</div>`;
+    }
+    const groups = clusterAnswers(samples);
+    const agreement = Math.round(100*groups[0].items.length/samples.length);
+    if(agreement>=80){
+      $("o-result").innerHTML = `
+        <div class="samplelist">${samples.map((s,k)=>`<div class="sampleitem">${k+1}. ${esc(s)}</div>`).join("")}</div>
+        <div class="decisioncard auto"><span class="who ai">AI</span> handled autonomously. Agreement ${agreement}/100 <span style="color:var(--good)">&mdash; no human needed for this one.</span></div>`;
+    } else {
+      $("o-result").innerHTML = `
+        <div class="samplelist">${samples.map((s,k)=>`<div class="sampleitem">${k+1}. ${esc(s)}</div>`).join("")}</div>
+        <div class="decisioncard escalate"><span class="who human">Escalated to you</span>. Agreement only ${agreement}/100, the AI isn't consistent on this one, so it's surfaced instead of guessing.
+        <div class="row" style="margin-top:10px"><button class="assignbtn" onclick="alert('In a real system, this would open the case for your review.')">Review this case</button></div></div>`;
+    }
+  }catch(e){ $("o-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 3: AI-AS-CRITIC ================= */
+function PANE_CRITIC(){
+  return `
+  <h2>3. AI-as-Critic</h2>
+  <p class="desc">Reverse the usual direction: <b>you</b> create, the AI reviews. You decide what to act on, the AI never touches your text directly.</p>
+  <div class="field"><label><span class="who human">Human</span> Write something to be reviewed</label><textarea id="c-input" rows="4">Our new product is better than anyone elses and everyone should switch immediately because we are the best on the market.</textarea></div>
+  <div class="row"><button class="btn ai" id="c-run" disabled>Get AI critique</button></div>
+  <div class="result" id="c-result"><div class="empty">Load the model above, then get feedback.</div></div>`;
+}
+async function runCritic(){
+  const btn=$("c-run"); btn.disabled=true;
+  $("c-result").innerHTML = `<div class="empty">Reviewing…</div>`;
+  try{
+    const critique = await llm("You are an editor. Point out at most 3 specific issues (clarity, tone, grammar, or credibility) in the given text. Be concise, one short line per issue. Do not rewrite the text.", $("c-input").value, 180, 0.4);
+    $("c-result").innerHTML = `<div class="critiquebox"><span class="who ai">AI critique</span><br>${esc(critique).replace(/\n/g,"<br>")}</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:8px"><span class="who human">Human</span> decides which of these, if any, are worth acting on. The AI doesn't get to edit the original.</p>`;
+  }catch(e){ $("c-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 4: IN-CONTEXT CORRECTION ================= */
+function PANE_CONTEXT(){
+  return `
+  <h2>4. In-Context Correction</h2>
+  <p class="desc">Correct the AI once, and it applies that correction immediately, in this conversation. Worth being precise about what this is: the model's <b>weights never change</b>, this works because the correction sits in the context window and gets re-read every time. Close the tab and it's gone, that permanence would need real fine-tuning instead (see the AI Factory Provider/Sender distinction).</p>
+  <div class="field"><label><span class="who ai">AI</span> Question</label><textarea id="x-q" rows="1">Format today's date as MM-DD-YYYY.</textarea></div>
+  <div class="row"><button class="btn ai" id="x-ask1" disabled>Ask once</button></div>
+  <div class="result" id="x-result"><div class="empty">Load the model above, then ask.</div></div>`;
+}
+let contextHistory = [];
+async function runContextAsk(){
+  const btn=$("x-ask1"); btn.disabled=true;
+  $("x-result").innerHTML = `<div class="empty">Thinking…</div>`;
+  contextHistory = [];
+  try{
+    const a1 = await llm("Answer directly and briefly.", $("x-q").value, 60, 0.5);
+    contextHistory = [{role:"user",content:$("x-q").value},{role:"assistant",content:a1}];
+    $("x-result").innerHTML = `
+      <div class="sampleitem" style="margin-bottom:10px"><span class="who ai">AI</span> ${esc(a1)}</div>
+      <div class="field"><label><span class="who human">Human</span> Correct it</label><textarea id="x-correction" rows="1">Actually, always use DD-MM-YYYY instead, and remember that for the rest of this conversation.</textarea></div>
+      <div class="row"><button class="btn human" id="x-correct">Send correction</button></div>
+      <div id="x-after"></div>`;
+    $("x-correct").onclick = runContextCorrect;
+  }catch(e){ $("x-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+async function runContextCorrect(){
+  const btn=$("x-correct"); btn.disabled=true;
+  const correction = $("x-correction").value;
+  $("x-after").innerHTML = `<div class="empty">Applying correction and re-asking the same question…</div>`;
+  try{
+    contextHistory.push({role:"user",content:correction});
+    const res1 = await engine.chat.completions.create({model:$("chatModel").value, stream:true, temperature:0.4, max_tokens:60,
+      messages:[{role:"system",content:"Answer directly and briefly."}, ...contextHistory]});
+    let ack=""; for await (const c of res1){ const d=c.choices?.[0]?.delta?.content; if(d) ack+=d; }
+    contextHistory.push({role:"assistant",content:ack});
+    contextHistory.push({role:"user",content:$("x-q").value + " (same question again)"});
+    const res2 = await engine.chat.completions.create({model:$("chatModel").value, stream:true, temperature:0.4, max_tokens:60,
+      messages:[{role:"system",content:"Answer directly and briefly."}, ...contextHistory]});
+    let a2=""; for await (const c of res2){ const d=c.choices?.[0]?.delta?.content; if(d) a2+=d; }
+    $("x-after").innerHTML = `
+      <div class="sampleitem" style="margin-bottom:6px"><span class="who human">Human correction acknowledged</span> ${esc(ack)}</div>
+      <div class="decisioncard auto"><span class="who ai">AI, same question, re-asked</span><br>${esc(a2)}<br>
+      <span style="font-size:.8rem;color:var(--muted)">Applied instantly, this turn, because the correction is sitting in context, not because anything was retrained.</span></div>`;
+  }catch(e){ $("x-after").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 5: TASK DIVISION ================= */
+function PANE_DIVIDE(){
+  return `
+  <h2>5. Task Division</h2>
+  <p class="desc">The AI proposes how to break a goal into steps. You decide who actually does each one, human, AI, or both. Division of labor, not delegation, the plan is a suggestion until you assign it.</p>
+  <div class="field"><label><span class="who shared">Shared</span> Goal to break down</label><textarea id="d-goal" rows="2">Plan and send a birthday party invitation to 20 people for next Saturday.</textarea></div>
+  <div class="row"><button class="btn ai" id="d-run" disabled>Propose a breakdown</button></div>
+  <div class="result" id="d-result"><div class="empty">Load the model above, then propose a breakdown.</div></div>`;
+}
+async function runDivide(){
+  const btn=$("d-run"); btn.disabled=true;
+  $("d-result").innerHTML = `<div class="empty">Breaking the goal into steps…</div>`;
+  try{
+    const raw = await llm("Break the given goal into 4-6 short concrete subtasks. Reply with ONLY a numbered list, one short line per subtask, no other text.", $("d-goal").value, 180, 0.4);
+    const items = raw.split("\n").map(l=>l.replace(/^\s*\d+[\.\)]\s*/,"").trim()).filter(Boolean).slice(0,6);
+    $("d-result").innerHTML = `
+      <div id="d-subtasks">${items.map((t,i)=>`
+        <div class="subtask">
+          <span class="txt">${esc(t)}</span>
+          <div class="assignbtns" data-i="${i}">
+            <button class="assignbtn human" onclick="window.assignTask(${i},'human')">Human</button>
+            <button class="assignbtn ai" onclick="window.assignTask(${i},'ai')">AI</button>
+            <button class="assignbtn shared" onclick="window.assignTask(${i},'shared')">Both</button>
+          </div>
+        </div>`).join("")}</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:10px">The AI proposed the breakdown above. Every assignment button click is yours, not the model's.</p>`;
+  }catch(e){ $("d-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+window.assignTask = (i, who)=>{
+  const group = document.querySelector(`.assignbtns[data-i="${i}"]`);
+  group.querySelectorAll(".assignbtn").forEach(b=>b.classList.remove("on"));
+  const btn = [...group.children].find(b=>b.classList.contains(who));
+  btn.classList.add("on");
+};
+
+const PANE_HTML = { loop:PANE_LOOP, onloop:PANE_ONLOOP, critic:PANE_CRITIC, context:PANE_CONTEXT, divide:PANE_DIVIDE };
+function wireTab(id){
+  if(id==="loop"){ const b=$("l-draft"); b.disabled=!engine; b.onclick=runLoopDraft; }
+  if(id==="onloop"){ const b=$("o-run"); b.disabled=!engine; b.onclick=runOnLoop; }
+  if(id==="critic"){ const b=$("c-run"); b.disabled=!engine; b.onclick=runCritic; }
+  if(id==="context"){ const b=$("x-ask1"); b.disabled=!engine; b.onclick=runContextAsk; }
+  if(id==="divide"){ const b=$("d-run"); b.disabled=!engine; b.onclick=runDivide; }
+}
+render();
+</script>
+</body>
+</html>

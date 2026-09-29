@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Five Ways to Explain What an AI Did — a live instrument</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+:root{
+  --bg:#FAFAF8; --panel:#FFFFFF; --panel2:#F4F4F1; --ink:#1A1D1F; --muted:#6B7178; --line:#E1E0DA;
+  --mono:"IBM Plex Mono",monospace; --sans:"IBM Plex Sans",sans-serif;
+  --c1:#0E9A6E; --c1bg:#EAFBF4;
+  --c2:#059669; --c2bg:#E7F9F1;
+  --c3:#7C3AED; --c3bg:#F3EEFE;
+  --c4:#D97706; --c4bg:#FEF3E2;
+  --c5:#EA580C; --c5bg:#FEECE2;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--ink);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 18px 60px}
+
+header h1{font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+header p{color:var(--muted);max-width:74ch;font-size:.95rem;line-height:1.55;margin-bottom:16px}
+
+.loadbar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px}
+.loadbar select{border:1.4px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel2);font-size:.85rem}
+.btn{border:1.4px solid var(--ink);background:var(--ink);color:#fff;border-radius:8px;padding:7px 14px;font-weight:600;font-size:.85rem;cursor:pointer}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink)}
+.bar{flex:1;min-width:120px;height:4px;background:var(--line);border-radius:2px;overflow:hidden;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .2s}
+.status{font-size:.82rem;color:var(--muted)}
+.nogpu{border:2px solid #C0392B;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:.85rem}
+
+.tabbar{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.tabbtn{border:1.6px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;font-weight:600;font-size:.82rem;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--muted)}
+.tabbtn .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.tabbtn[aria-selected="true"]{border-color:var(--ink);color:var(--ink);background:var(--panel2)}
+
+.tag{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 9px;border-radius:999px}
+.tag.real{background:#D1FAE5;color:#047857}
+.tag.partial{background:#FEF3C7;color:#B45309}
+.tag.illus{background:#FED7AA;color:#9A3412}
+
+.pane{background:var(--panel);border:1.6px solid var(--line);border-radius:14px;padding:20px 24px}
+.pane h2{font-size:1.25rem;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.pane .desc{color:var(--muted);font-size:.9rem;line-height:1.5;margin-bottom:16px;max-width:70ch}
+.pane .desc b{color:var(--ink)}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+textarea,.tinput{width:100%;border:1.4px solid var(--line);border-radius:9px;padding:9px 12px;background:var(--panel2);font-size:.92rem;font-family:var(--sans)}
+textarea{resize:vertical;min-height:44px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.result{margin-top:16px;border-top:1.4px solid var(--line);padding-top:16px}
+.empty{color:var(--muted);font-size:.88rem;padding:14px 0}
+
+/* Tab 1: Intrinsic */
+.wordtoks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.wtok{padding:4px 9px;border-radius:7px;font-family:var(--mono);font-size:.83rem;border:1.4px solid}
+.scoretotal{font-family:var(--mono);font-size:1.6rem;font-weight:700;margin:10px 0}
+.weighttable{width:100%;font-size:.85rem;border-collapse:collapse;margin-top:8px}
+.weighttable td,.weighttable th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+.weighttable td.num{font-family:var(--mono);text-align:right}
+
+/* Tab 2: Mechanistic */
+.simbar{height:34px;border-radius:8px;background:var(--panel2);position:relative;overflow:hidden;margin:10px 0}
+.simfill{height:100%;background:var(--c2);display:flex;align-items:center;justify-content:flex-end;padding-right:10px;color:#fff;font-family:var(--mono);font-weight:700;font-size:.85rem;transition:width .5s}
+
+/* Tab 3: Gradient */
+.illusbanner{background:var(--c5bg);border:1.6px solid var(--c5);border-radius:10px;padding:10px 14px;font-size:.83rem;margin-bottom:14px;line-height:1.5}
+.satok{padding:3px 4px;border-radius:4px;font-family:var(--mono);font-size:.95rem}
+
+/* Tab 4: Sensitivity */
+.senstok{padding:4px 8px;border-radius:7px;font-family:var(--mono);font-size:.85rem;border:1.4px solid var(--line);background:var(--panel2);cursor:default}
+.sensbars{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.sensrow{display:flex;align-items:center;gap:10px;font-size:.82rem}
+.sensrow .word{width:100px;font-family:var(--mono);flex:none;text-align:right}
+.sensrow .track{flex:1;height:16px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.sensrow .fill{height:100%;background:var(--c4)}
+.sensrow .pct{width:52px;font-family:var(--mono);flex:none}
+
+/* Tab 5: Verification */
+.samplelist{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.sampleitem{background:var(--panel2);border-radius:8px;padding:7px 11px;font-size:.85rem;font-family:var(--mono)}
+.agreebadge{display:inline-block;font-family:var(--mono);font-weight:700;font-size:1.1rem;padding:6px 14px;border-radius:9px;margin-top:8px}
+
+.footnote{font-size:.78rem;color:var(--muted);margin-top:16px;padding-top:12px;border-top:1px solid var(--line);line-height:1.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔬 Five Ways to Explain What an AI Did</h1>
+    <p>A live instrument, not just a diagram. Each tab runs a real experiment against a small model in your browser, except one, which can't be run for real with this stack, and says so plainly instead of faking it.</p>
+  </header>
+
+  <div class="loadbar">
+    <select id="embedModel">
+      <option value="snowflake-arctic-embed-s-q0f32-MLC-b4" selected>Embed: Arctic S</option>
+      <option value="snowflake-arctic-embed-m-q0f32-MLC-b4">Embed: Arctic M</option>
+    </select>
+    <select id="chatModel">
+      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Chat: Qwen 1.5B</option>
+      <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Chat: Qwen 3B</option>
+    </select>
+    <button class="btn" id="load">Load models</button>
+    <div class="bar" id="bar"><i></i></div>
+    <span class="status" id="status">Needed for tabs 2, 4, 5. Tabs 1 and 3 work without loading anything.</span>
+  </div>
+  <div class="nogpu" id="nogpu" style="display:none"><strong>WebGPU isn't available here.</strong> Tabs 2, 4, 5 need a recent Chrome, Edge, or Safari 26+ on desktop. Tabs 1 and 3 will still work.</div>
+
+  <div class="tabbar" id="tabbar"></div>
+  <div class="pane" id="pane"></div>
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.85";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Model loading ---------- */
+let engine=null;
+if(!navigator.gpu){ $("nogpu").style.display="block"; }
+$("load").onclick = async ()=>{
+  $("load").disabled=true; $("bar").style.display="block";
+  const bar=$("bar").firstElementChild;
+  const cb=r=>{ bar.style.width=Math.round((r.progress||0)*100)+"%"; $("status").textContent=r.text; };
+  try{
+    engine = await webllm.CreateMLCEngine([$("embedModel").value, $("chatModel").value], {initProgressCallback:cb});
+    $("status").textContent="Ready. All tabs are now live.";
+    $("load").textContent="Switch models";
+    render();
+  }catch(e){ $("status").textContent="Couldn't load: "+(e.message||e); }
+  finally{ $("load").disabled=false; $("bar").style.display="none"; }
+};
+async function embed(text){
+  const r = await engine.embeddings.create({model:$("embedModel").value, input:[text]});
+  const v = Array.from(r.data[0].embedding);
+  const n = Math.hypot(...v)||1;
+  return v.map(x=>x/n);
+}
+function cos(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return Math.max(-1,Math.min(1,s)); }
+async function llm(system,user,maxTokens=200,temperature=0.3){
+  const res = await engine.chat.completions.create({model:$("chatModel").value, stream:true, temperature, max_tokens:maxTokens,
+    messages:[{role:"system",content:system},{role:"user",content:user}]});
+  let out=""; for await (const c of res){ const d=c.choices?.[0]?.delta?.content; if(d) out+=d; }
+  return out.trim();
+}
+
+/* ---------- Tabs ---------- */
+const TABS = [
+  {id:"intrinsic", num:1, name:"Intrinsic", color:"c1", bg:"c1bg", tag:"real", icon:"🌳"},
+  {id:"mechanistic", num:2, name:"Mechanistic", color:"c2", bg:"c2bg", tag:"partial", icon:"🔬"},
+  {id:"gradient", num:3, name:"Gradient-Based", color:"c3", bg:"c3bg", tag:"illus", icon:"🌉"},
+  {id:"sensitivity", num:4, name:"Sensitivity", color:"c4", bg:"c4bg", tag:"real", icon:"🎲"},
+  {id:"verification", num:5, name:"Verification", color:"c5", bg:"c5bg", tag:"real", icon:"✅"},
+];
+let activeTab = "intrinsic";
+
+$("tabbar").innerHTML = TABS.map(t=>`
+  <button class="tabbtn" id="tabbtn-${t.id}" aria-selected="${t.id===activeTab}" onclick="window.selectTab('${t.id}')">
+    <span class="dot" style="background:var(--${t.color})"></span>${t.num}. ${t.name}
+  </button>`).join("");
+
+window.selectTab = (id)=>{ activeTab=id; TABS.forEach(t=>$("tabbtn-"+t.id).setAttribute("aria-selected", String(t.id===id))); render(); };
+
+function tagLabel(tag){ return {real:"Real, computed live", partial:"Real, but limited", illus:"Illustrative only"}[tag]; }
+
+function render(){
+  const t = TABS.find(x=>x.id===activeTab);
+  const pane = $("pane");
+  pane.innerHTML = `<h2><span>${t.icon}</span> ${t.num}. ${t.name} <span class="tag ${t.tag}">${tagLabel(t.tag)}</span></h2>` + PANE_HTML[t.id]();
+  wireTab(t.id);
+}
+
+/* ================= TAB 1: INTRINSIC ================= */
+const LEXICON = {
+  "great":2.1,"excellent":2.4,"amazing":2.3,"love":2.0,"wonderful":2.2,"good":1.2,"nice":1.0,"happy":1.5,
+  "best":1.8,"fantastic":2.2,"perfect":2.0,"terrible":-2.3,"awful":-2.4,"bad":-1.3,"worst":-2.2,"hate":-2.1,
+  "horrible":-2.3,"poor":-1.4,"disappointing":-1.9,"sad":-1.2,"broken":-1.6,"never":-0.8,"not":-0.6,"no":-0.5
+};
+function PANE_INTRINSIC(){
+  return `
+  <p class="desc">A hand-built sentiment scorer. Every word's weight is listed below in <b>LEXICON</b> &mdash; there's nothing else happening. The score you get back <b>is</b> the sum of exactly those numbers. No model to load, because none is needed: this is the point of intrinsic explainability.</p>
+  <div class="field"><label>Type a sentence</label><textarea id="i-input" rows="2">This product is great but the delivery was terrible.</textarea></div>
+  <div class="row"><button class="btn" id="i-run" style="background:var(--c1);border-color:var(--c1)">Score it</button></div>
+  <div class="result" id="i-result"><div class="empty">Click "Score it" to see the full, exact computation.</div></div>`;
+}
+function runIntrinsic(){
+  const text = $("i-input").value;
+  const words = text.toLowerCase().match(/[a-z']+/g) || [];
+  const hits = words.filter(w=>w in LEXICON);
+  const total = hits.reduce((s,w)=>s+LEXICON[w],0);
+  const verdict = total>0.5?"Positive":total<-0.5?"Negative":"Neutral";
+  const vcolor = total>0.5?"var(--c1)":total<-0.5?"#C0392B":"var(--muted)";
+  $("i-result").innerHTML = `
+    <div class="wordtoks">${words.map(w=> w in LEXICON
+        ? `<span class="wtok" style="border-color:${LEXICON[w]>0?'#0E9A6E':'#C0392B'};background:${LEXICON[w]>0?'#EAFBF4':'#FDECEC'};color:${LEXICON[w]>0?'#047857':'#B91C1C'}">${esc(w)} ${LEXICON[w]>0?'+':''}${LEXICON[w]}</span>`
+        : `<span class="wtok" style="border-color:var(--line);color:var(--muted)">${esc(w)}</span>`).join("")}</div>
+    <div class="scoretotal" style="color:${vcolor}">Total: ${total.toFixed(1)} &rarr; ${verdict}</div>
+    <p style="font-size:.82rem;color:var(--muted)">That total is the entire explanation. There is no hidden step between "words matched" and "score produced" &mdash; the sum above is not an approximation of what happened, it's a description of it.</p>`;
+}
+
+/* ================= TAB 2: MECHANISTIC ================= */
+function PANE_MECHANISTIC(){
+  return `
+  <p class="desc">Compares two sentences using their <b>real embedding vectors</b> from the loaded model, a genuine internal representation. Limit, stated plainly: WebLLM's API returns embeddings and chat completions only, not attention weights or hidden states, so this is the deepest "inside" view available with this stack. For real attention visualization, that needs Transformers.js instead.</p>
+  <div class="field"><label>Sentence A</label><textarea id="m-a" rows="2">The cat sat on the mat.</textarea></div>
+  <div class="field"><label>Sentence B</label><textarea id="m-b" rows="2">A feline rested on the rug.</textarea></div>
+  <div class="row"><button class="btn" id="m-run" style="background:var(--c2);border-color:var(--c2)" disabled>Compare real embeddings</button></div>
+  <div class="result" id="m-result"><div class="empty">Load the models above, then compare.</div></div>`;
+}
+async function runMechanistic(){
+  const btn=$("m-run"); btn.disabled=true; $("m-result").innerHTML=`<div class="empty">Embedding both sentences…</div>`;
+  try{
+    const [va,vb] = await Promise.all([embed($("m-a").value), embed($("m-b").value)]);
+    const sim = cos(va,vb);
+    const pct = Math.round(((sim+1)/2)*100);
+    $("m-result").innerHTML = `
+      <div class="simbar"><div class="simfill" style="width:${pct}%">${sim.toFixed(3)} cosine similarity</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">Computed from two real ${va.length}-dimensional embedding vectors returned by the loaded model, this is a genuine internal representation, just not the attention/residual-stream signal true mechanistic interpretability usually means.</p>`;
+  }catch(e){ $("m-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 3: GRADIENT-BASED ================= */
+const SALIENCY_EXAMPLE = {
+  sentence: "The movie was surprisingly good despite the weak script.",
+  weights: [0.05,0.06,0.08,0.55,0.62,0.04,0.08,0.71,0.68,0.05]
+};
+function PANE_GRADIENT(){
+  const words = SALIENCY_EXAMPLE.sentence.split(" ");
+  return `
+  <div class="illusbanner">🔶 <b>This tab cannot be run for real with WebLLM.</b> Gradient-based methods (saliency maps, Grad-CAM, Integrated Gradients) need to backpropagate through the model's actual weights. WebLLM is an inference-only compiled runtime, it exposes no gradient API at all, in the browser or otherwise. What's below is a fixed, hand-set example of what a saliency map's output looks like, not a live computation.</div>
+  <p class="desc">Worth knowing before trusting one of these for real: Adebayo et al. (NeurIPS 2018, <i>"Sanity Checks for Saliency Maps"</i>) found that some popular saliency methods produce nearly the same heatmap even when the model's weights are randomized, visually confident, but not actually responding to what the model learned.</p>
+  <div style="font-family:var(--mono);font-size:1.05rem;line-height:2.2;background:var(--panel2);border-radius:10px;padding:14px 16px">
+    ${words.map((w,i)=>`<span class="satok" style="background:rgba(124,58,237,${SALIENCY_EXAMPLE.weights[i]});color:${SALIENCY_EXAMPLE.weights[i]>0.4?'#fff':'#1A1D1F'}">${esc(w)}</span>`).join(" ")}
+  </div>
+  <p style="font-size:.8rem;color:var(--muted);margin-top:8px">Darker purple = higher claimed "importance" in this fixed example. In a live tool this number would come from a gradient; here it's simply typed in.</p>`;
+}
+
+/* ================= TAB 4: SENSITIVITY ================= */
+function PANE_SENSITIVITY(){
+  return `
+  <p class="desc">Real leave-one-word-out sensitivity, computed the way SHAP/LIME work: never looks inside the model, just perturbs the input and measures how much the real embedding moves. Each bar below is a genuinely separate embedding call with that one word removed.</p>
+  <div class="field"><label>Sentence</label><textarea id="s-input" rows="2">The new policy will significantly reduce carbon emissions by 2030.</textarea></div>
+  <div class="row"><button class="btn" id="s-run" style="background:var(--c4);border-color:var(--c4)" disabled>Run real sensitivity test</button></div>
+  <div class="result" id="s-result"><div class="empty">Load the models above, then run the test. This calls the model once per word, so it takes a few seconds.</div></div>`;
+}
+async function runSensitivity(){
+  const btn=$("s-run"); btn.disabled=true;
+  const text = $("s-input").value;
+  const words = text.split(/\s+/).filter(Boolean);
+  $("s-result").innerHTML = `<div class="empty">Embedding the full sentence, then ${words.length} masked versions…</div>`;
+  try{
+    const full = await embed(text);
+    const scores = [];
+    for(let i=0;i<words.length;i++){
+      const masked = words.slice(0,i).concat(words.slice(i+1)).join(" ") || "(empty)";
+      $("s-result").innerHTML = `<div class="empty">Testing word ${i+1} of ${words.length}: removing "${esc(words[i])}"…</div>`;
+      const v = await embed(masked);
+      const dist = 1 - cos(full, v);
+      scores.push({word:words[i], dist});
+    }
+    const maxDist = Math.max(...scores.map(s=>s.dist), 0.0001);
+    $("s-result").innerHTML = `
+      <div class="sensbars">${scores.map(s=>`
+        <div class="sensrow">
+          <span class="word">${esc(s.word)}</span>
+          <span class="track"><span class="fill" style="width:${Math.round((s.dist/maxDist)*100)}%"></span></span>
+          <span class="pct">${s.dist.toFixed(3)}</span>
+        </div>`).join("")}</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:10px">Higher bar = removing that word moved the sentence's real embedding further from the original. This is genuine measured sensitivity, not a simulation.</p>`;
+  }catch(e){ $("s-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+/* ================= TAB 5: VERIFICATION ================= */
+const STOP=new Set("the a an of to in is was are and or it its for on at by with as be that this his her their".split(" "));
+const toks=s=>new Set(s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/).filter(w=>w&&!STOP.has(w)));
+function jacc(a,b){ if(!a.size&&!b.size) return 1; let i=0; a.forEach(x=>{ if(b.has(x)) i++; }); return i/(a.size+b.size-i); }
+function clusterAnswers(arr){
+  const groups=[]; arr.forEach(s=>{ const t=toks(s); const g=groups.find(g=>jacc(g.t,t)>=.5); if(g) g.items.push(s); else groups.push({t,items:[s]}); });
+  return groups.sort((a,b)=>b.items.length-a.items.length);
+}
+function PANE_VERIFICATION(){
+  return `
+  <p class="desc">Not sensitivity, and not reading anything inside the model, this checks the model against <b>itself, resampled</b>: the same question asked 5 separate times at a higher temperature. Real agreement across independent generations is a genuine signal a model can't fake by sounding confident once.</p>
+  <div class="field"><label>Context</label><textarea id="v-context" rows="2">The store is open Monday to Friday, 9am to 6pm, and closed on weekends.</textarea></div>
+  <div class="field"><label>Question</label><textarea id="v-q" rows="1">Is the store open on Saturday?</textarea></div>
+  <div class="row"><button class="btn" id="v-run" style="background:var(--c5);border-color:var(--c5)" disabled>Sample 5 times &amp; check agreement</button></div>
+  <div class="result" id="v-result"><div class="empty">Load the models above, then run the check.</div></div>`;
+}
+async function runVerification(){
+  const btn=$("v-run"); btn.disabled=true;
+  const ctx = $("v-context").value, q = $("v-q").value;
+  const samples=[];
+  $("v-result").innerHTML = `<div class="empty">Sampling…</div>`;
+  try{
+    for(let i=0;i<5;i++){
+      const a = await llm("Answer using only the given context, in at most 10 words.", `Context: ${ctx}\n\nQuestion: ${q}`, 25, 1.0);
+      samples.push(a.split("\n")[0]);
+      $("v-result").innerHTML = `<div class="samplelist">${samples.map((s,k)=>`<div class="sampleitem">${k+1}. ${esc(s)}</div>`).join("")}</div><div class="empty">Sampling ${i+1}/5…</div>`;
+    }
+    const groups = clusterAnswers(samples);
+    const agreement = Math.round(100*groups[0].items.length/samples.length);
+    const color = agreement>=80?"#047857":agreement>=50?"#B45309":"#B91C1C";
+    $("v-result").innerHTML = `
+      <div class="samplelist">${samples.map((s,k)=>`<div class="sampleitem">${k+1}. ${esc(s)}</div>`).join("")}</div>
+      <div class="agreebadge" style="background:${color}22;color:${color}">Agreement: ${agreement}/100</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:6px">${groups.length} distinct answer${groups.length>1?"s":""} across 5 real, independent generations. This is measured, not asserted.</p>`;
+  }catch(e){ $("v-result").innerHTML = `<div class="empty">Failed: ${esc(e.message||e)}</div>`; }
+  finally{ btn.disabled=false; }
+}
+
+const PANE_HTML = { intrinsic:PANE_INTRINSIC, mechanistic:PANE_MECHANISTIC, gradient:PANE_GRADIENT, sensitivity:PANE_SENSITIVITY, verification:PANE_VERIFICATION };
+
+function wireTab(id){
+  if(id==="intrinsic"){ $("i-run").onclick = runIntrinsic; }
+  if(id==="mechanistic"){ const b=$("m-run"); b.disabled=!engine; b.onclick=runMechanistic; }
+  if(id==="sensitivity"){ const b=$("s-run"); b.disabled=!engine; b.onclick=runSensitivity; }
+  if(id==="verification"){ const b=$("v-run"); b.disabled=!engine; b.onclick=runVerification; }
+}
+
+render();
+</script>
+</body>
+</html>
