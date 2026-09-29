@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Hallucination Debugger</title>
+<style>
+:root {
+  --bg: #f8fafc; --panel: #ffffff; --border: #e2e8f0;
+  --text: #0f172a; --muted: #64748b; --sub: #94a3b8;
+  --blue: #1d4ed8; --blue-lt: #eff6ff; --blue-md: #bfdbfe;
+  --rose: #e11d48; --rose-lt: #fff1f2; --rose-md: #fecdd3;
+  --green: #059669; --green-lt: #f0fdf4; --green-md: #a7f3d0;
+  --amber: #b45309; --amber-lt: #fffbeb; --amber-md: #fde68a;
+  --purple: #7c3aed; --purple-lt: #ede9fe;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+
+/* Header */
+header { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #7c3aed 100%); color: #fff; padding: 16px 28px 14px; display: flex; justify-content: space-between; align-items: center; }
+header h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.3px; }
+header .sub { font-size: 0.82rem; color: #c4b5fd; margin-top: 2px; }
+.pipeline-header { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+.ph-step { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+.ph-step.active { background: #7c3aed; border-color: #a78bfa; }
+.ph-arrow { color: #a78bfa; font-size: 1rem; }
+
+/* Tabs */
+.tab-bar { background: var(--panel); border-bottom: 2px solid var(--border); display: flex; padding: 0 28px; gap: 2px; }
+.tab { padding: 13px 20px; font-size: 0.88rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s; user-select: none; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* Layout */
+.main { display: flex; gap: 0; height: calc(100vh - 120px); }
+.sidebar { width: 260px; min-width: 220px; border-right: 1px solid var(--border); background: var(--panel); padding: 18px 14px; overflow-y: auto; }
+.content { flex: 1; padding: 20px 24px; overflow-y: auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Scenario cards */
+.sidebar-title { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 10px; }
+.scenario-card { border: 2px solid var(--border); border-radius: 10px; padding: 12px 13px; margin-bottom: 9px; cursor: pointer; transition: all .18s; }
+.scenario-card:hover { border-color: var(--purple); box-shadow: var(--shadow-md); }
+.scenario-card.active { border-color: var(--purple); background: var(--purple-lt); }
+.scenario-card .sc-icon { font-size: 1.3rem; margin-bottom: 4px; }
+.scenario-card .sc-title { font-size: 0.85rem; font-weight: 800; color: var(--text); }
+.scenario-card .sc-type { font-size: 0.73rem; font-weight: 700; margin-top: 3px; }
+.scenario-card .sc-desc { font-size: 0.76rem; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+.type-factual  { color: var(--rose); }
+.type-epistemic { color: var(--amber); }
+.type-context  { color: var(--blue); }
+
+/* Section title */
+.section-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--purple); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+/* Conversation box */
+.convo { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.msg { display: flex; gap: 10px; margin-bottom: 10px; }
+.msg:last-child { margin-bottom: 0; }
+.msg-avatar { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+.av-user { background: #e0f2fe; color: var(--blue); }
+.av-ai   { background: var(--rose-lt); color: var(--rose); }
+.av-truth{ background: var(--green-lt); color: var(--green); }
+.msg-body .role { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 3px; }
+.msg-body .text { font-size: 0.88rem; line-height: 1.5; }
+.highlight-wrong { background: var(--rose-lt); color: var(--rose); font-weight: 700; border-radius: 3px; padding: 0 3px; }
+.highlight-right { background: var(--green-lt); color: var(--green); font-weight: 700; border-radius: 3px; padding: 0 3px; }
+.highlight-doc   { background: #eff6ff; color: var(--blue); font-weight: 700; border-radius: 3px; padding: 0 3px; }
+
+/* Circuit diagram */
+.circuit { display: flex; align-items: center; gap: 0; margin-bottom: 14px; }
+.cstep { flex: 1; text-align: center; padding: 8px 4px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.73rem; font-weight: 700; background: var(--panel); }
+.cstep .cl { font-size: 0.65rem; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+.cstep.fail { border-color: var(--rose); background: var(--rose-lt); color: var(--rose); animation: pulse-fail 1.5s ease-in-out infinite; }
+@keyframes pulse-fail { 0%,100%{box-shadow:0 0 0 0 rgba(225,29,72,0.3)} 50%{box-shadow:0 0 0 6px rgba(225,29,72,0)} }
+.carr { font-size: 1.1rem; color: var(--sub); padding: 0 3px; flex-shrink: 0; }
+
+/* Diagnosis panels (Tab 2) */
+.diag-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.diag-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; box-shadow: var(--shadow); }
+.diag-panel-title { font-size: 0.77rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--purple); margin-bottom: 10px; }
+
+/* Feature cards */
+.feat { border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; margin-bottom: 6px; }
+.feat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.feat-name { font-size: 0.8rem; font-weight: 700; }
+.feat-status { font-size: 0.8rem; }
+.feat-bar-bg { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.feat-bar { height: 5px; border-radius: 3px; transition: width .5s; }
+.feat-desc { font-size: 0.72rem; color: var(--muted); margin-top: 5px; }
+
+/* Heatmap canvas */
+#heatmap-canvas { border: 1px solid var(--border); border-radius: 7px; }
+
+/* Layer bars */
+.layer-bars { display: flex; flex-direction: column; gap: 4px; }
+.lbar-row { display: flex; align-items: center; gap: 7px; }
+.lbar-label { font-size: 0.7rem; font-weight: 600; color: var(--muted); width: 50px; text-align: right; flex-shrink: 0; }
+.lbar-track { flex: 1; height: 18px; background: #f1f5f9; border-radius: 4px; overflow: hidden; position: relative; }
+.lbar-fill { height: 100%; border-radius: 4px; transition: width .6s; }
+.lbar-fail { position: absolute; right: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-size: 0.65rem; font-weight: 800; color: var(--rose); }
+.lbar-fail-indicator { border: 2px solid var(--rose); border-radius: 4px; animation: pulse-fail 1.5s infinite; }
+
+/* Fix cards (Tab 3) */
+.fix-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.fix-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; box-shadow: var(--shadow); }
+.fix-card-title { font-size: 0.85rem; font-weight: 800; margin-bottom: 6px; }
+.fix-card-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+.fix-meta { display: flex; flex-direction: column; gap: 5px; }
+.fix-meta-row { display: flex; justify-content: space-between; font-size: 0.76rem; }
+.fix-meta-row .mk { color: var(--muted); font-weight: 600; }
+.fix-meta-row .mv { font-weight: 700; }
+.mv-green { color: var(--green); }
+.mv-amber { color: var(--amber); }
+.mv-blue  { color: var(--blue); }
+
+/* Before/after patch viz */
+.patch-viz { display: flex; gap: 8px; margin: 10px 0; align-items: flex-start; }
+.patch-side { flex: 1; }
+.patch-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+.patch-label.before { color: var(--rose); }
+.patch-label.after  { color: var(--green); }
+.patch-box { border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; font-weight: 600; line-height: 1.5; }
+.patch-box.before { background: var(--rose-lt); border: 1px solid var(--rose-md); color: #9f1239; }
+.patch-box.after  { background: var(--green-lt); border: 1px solid var(--green-md); color: #065f46; }
+.patch-arrow { padding-top: 22px; color: var(--sub); font-size: 1.2rem; }
+
+/* Confidence bar */
+.conf-bar-wrap { margin: 10px 0; }
+.conf-label { font-size: 0.73rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.conf-track { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 5px; }
+
+/* Attn before/after */
+.attn-viz { margin: 8px 0; }
+.attn-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
+.attn-token { font-size: 0.72rem; font-weight: 700; background: #f1f5f9; border-radius: 4px; padding: 2px 5px; width: 64px; text-align: center; }
+.attn-bar-bg { flex: 1; height: 10px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.attn-bar { height: 10px; border-radius: 4px; }
+
+/* Utility */
+.tag { display: inline-block; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700; }
+.tag-rose  { background: var(--rose-lt); color: var(--rose); }
+.tag-green { background: var(--green-lt); color: var(--green); }
+.tag-blue  { background: var(--blue-lt); color: var(--blue); }
+.tag-amber { background: var(--amber-lt); color: var(--amber); }
+
+.insight { background: #faf5ff; border-left: 4px solid var(--purple); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 0.82rem; color: #4c1d95; font-weight: 600; line-height: 1.5; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🔬 LLM Hallucination Debugger</h1>
+    <div class="sub">From "the model said something wrong" to exactly why, where, and how to fix it</div>
+  </div>
+  <div class="pipeline-header">
+    <div class="ph-step">Select Scenario</div>
+    <div class="ph-arrow">→</div>
+    <div class="ph-step">Detect &amp; Locate</div>
+    <div class="ph-arrow">→</div>
+    <div class="ph-step">Fix</div>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab(0)">① Scenario — What Went Wrong</div>
+  <div class="tab" onclick="switchTab(1)">② Diagnosis — Why &amp; Where</div>
+  <div class="tab" onclick="switchTab(2)">③ Fix — How to Correct It</div>
+</div>
+
+<div class="main">
+  <!-- Sidebar: scenario selector (shared across tabs) -->
+  <div class="sidebar">
+    <div class="sidebar-title">Choose a Hallucination</div>
+
+    <div class="scenario-card active" onclick="selectScenario(0)">
+      <div class="sc-icon">📚</div>
+      <div class="sc-title">Factual Confabulation</div>
+      <div class="sc-type type-factual">Wrong entity retrieved</div>
+      <div class="sc-desc">Model attributes the telephone to Edison instead of Bell — confidently, fluently, and wrongly.</div>
+    </div>
+
+    <div class="scenario-card" onclick="selectScenario(1)">
+      <div class="sc-icon">🎯</div>
+      <div class="sc-title">Confident Uncertainty</div>
+      <div class="sc-type type-epistemic">Epistemic gate silent</div>
+      <div class="sc-desc">Model invents a precise population figure for Liechtenstein with 98% confidence. Actual: ~39,000.</div>
+    </div>
+
+    <div class="scenario-card" onclick="selectScenario(2)">
+      <div class="sc-icon">📄</div>
+      <div class="sc-title">Context Ignored (RAG)</div>
+      <div class="sc-type type-context">Attention collapses off document</div>
+      <div class="sc-desc">Revenue figure is in the document. Model generates a different number from its own prior tokens.</div>
+    </div>
+  </div>
+
+  <!-- Content area -->
+  <div class="content">
+
+    <!-- TAB 1: Scenario -->
+    <div class="tab-content active" id="tab-0">
+      <div class="section-title">🧠 What Happened</div>
+      <div class="insight" id="insight-0"></div>
+
+      <div class="convo" id="convo-0"></div>
+
+      <div class="section-title">⚡ Circuit Failure Map</div>
+      <div class="circuit" id="circuit-0"></div>
+    </div>
+
+    <!-- TAB 2: Diagnosis -->
+    <div class="tab-content" id="tab-1">
+      <div class="section-title">🔬 Diagnostic Readout</div>
+      <div class="insight" id="insight-1"></div>
+      <div class="diag-grid">
+        <div class="diag-panel">
+          <div class="diag-panel-title">🗂️ SAE Feature Probe</div>
+          <div id="feat-list"></div>
+        </div>
+        <div class="diag-panel">
+          <div class="diag-panel-title">🔥 Attention Pattern</div>
+          <canvas id="heatmap-canvas" width="220" height="220"></canvas>
+          <div style="margin-top:6px;font-size:0.71rem;color:var(--muted);">Red border = key failure cell</div>
+        </div>
+        <div class="diag-panel">
+          <div class="diag-panel-title">📊 Residual Stream Layers</div>
+          <div class="layer-bars" id="layer-bars"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Fix -->
+    <div class="tab-content" id="tab-2">
+      <div class="section-title">💊 Fix Strategies</div>
+      <div class="insight" id="insight-2"></div>
+      <div class="fix-grid" id="fix-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const SCENARIOS = [
+  {
+    id: 0,
+    title: "Factual Confabulation",
+    insight0: "The model retrieved the wrong entity from its semantic memory. 'Thomas Edison' and 'telephone inventor' co-occur frequently in training data — close enough in embedding space to be confused. The epistemic layer did not hedge despite low retrieval confidence.",
+    insight1: "Causal tracing pinpoints MLP Layer 17 as storing the wrong association. The SAE feature 'invention-attribution' shows near-zero activation when it should be high. Attention correctly focuses on 'telephone' but retrieves the wrong inventor entity.",
+    insight2: "A targeted weight edit in Layer 17 corrects the fact permanently. This is the cleanest fix — ROME/MEMIT rewrites <0.01% of model weights with no degradation to surrounding knowledge.",
+    convo: [
+      { role: "User", avatar: "U", cls: "av-user", text: "Who invented the telephone?" },
+      { role: "AI (hallucinating)", avatar: "AI", cls: "av-ai", text: `Thomas <span class="highlight-wrong">Edison</span> invented the telephone in <span class="highlight-wrong">1876</span>, revolutionizing long-distance communication.` },
+      { role: "Correct answer", avatar: "✓", cls: "av-truth", text: `The telephone was invented by <span class="highlight-right">Alexander Graham Bell</span> in 1876. Edison contributed the carbon microphone later.` }
+    ],
+    failCircuit: 2, // 0=sensory,1=syntax,2=semantic,3=epistemic,4=output
+    failLabel: "Wrong entity in semantic MLP",
+    features: [
+      { name: "Invention-attribution", pct: 8,  correct: false, desc: "Maps inventors to inventions. Should be HIGH — it fired at 8% (near zero)." },
+      { name: "Edison entity", pct: 91, correct: false, desc: "Edison strongly activated when prompt mentions 'telephone + inventor'." },
+      { name: "Bell entity", pct: 12, correct: false, desc: "Bell's entity feature fired weakly — wrong winner in the competition." },
+      { name: "Temporal grounding", pct: 72, correct: true,  desc: "'1876' correctly activated — date retrieval worked." },
+      { name: "Confidence gate", pct: 88, correct: false, desc: "Model expressed high confidence despite wrong retrieval — no hedge triggered." }
+    ],
+    attnTokens: ["Who", "invented", "the", "phone", "→", "Edison", "1876"],
+    attnWeights: [
+      [0.8, 0.1, 0.0, 0.1, 0.0, 0.0, 0.0],
+      [0.2, 0.7, 0.0, 0.1, 0.0, 0.0, 0.0],
+      [0.1, 0.1, 0.5, 0.3, 0.0, 0.0, 0.0],
+      [0.1, 0.2, 0.1, 0.6, 0.0, 0.0, 0.0],
+      [0.0, 0.1, 0.1, 0.1, 0.2, 0.3, 0.2],
+      [0.0, 0.1, 0.1, 0.1, 0.1, 0.2, 0.4],
+      [0.0, 0.0, 0.0, 0.1, 0.1, 0.5, 0.3]
+    ],
+    failCell: [5, 3], // row=Edison attends to "phone" not "Bell context"
+    failLayer: 4, // index in layer list
+    layerColors: ["#0284c7","#0284c7","#0891b2","#7c3aed","#7c3aed","#d97706","#e11d48"],
+    layerActivation: [65, 70, 60, 78, 92, 45, 80],
+    fixes: [
+      {
+        icon: "✂️", title: "Targeted Weight Edit (ROME)", color: "var(--green)",
+        desc: "Causal tracing locates the wrong fact in MLP Layer 17. ROME rewrites the key-value association directly — 'telephone inventor' → 'Alexander Graham Bell'.",
+        viz: "patch",
+        before: "Layer 17 MLP: telephone → Edison (weight: 0.84)",
+        after:  "Layer 17 MLP: telephone → Bell    (weight: 0.87)",
+        meta: [["Effort","Low"],["Permanence","Permanent"],["Risk","Safe"],["Weights changed","<0.01%"]]
+      },
+      {
+        icon: "🚦", title: "Epistemic Probe Gate", color: "var(--amber)",
+        desc: "A linear probe on Layer 24 detects low retrieval confidence and injects a hedge: 'I believe it was...' — preventing a false confident assertion.",
+        viz: "confidence",
+        confBefore: 94, confAfter: 38,
+        confBeforeLabel: "Confidence before probe: 94% → asserts wrongly",
+        confAfterLabel:  "After probe: 38% → triggers hedge 'I believe...'",
+        meta: [["Effort","Medium"],["Permanence","Inference-time"],["Risk","Safe"],["Latency","+2ms"]]
+      },
+      {
+        icon: "🧲", title: "Retrieval-Augmented Grounding", color: "var(--blue)",
+        desc: "Supply the answer from a verified knowledge base at inference time. The model's attention is steered toward the retrieved fact rather than its parametric memory.",
+        viz: "none",
+        meta: [["Effort","Low"],["Permanence","Prompt-level"],["Risk","Safe"],["Accuracy gain","High"]]
+      }
+    ]
+  },
+  {
+    id: 1,
+    title: "Confident Uncertainty",
+    insight0: "The model has almost no training signal for Liechtenstein's exact population — it's a rare fact. Instead of hedging, the epistemic gating circuit (layers 21–26) stayed silent, and the output head completed the pattern 'population of X is Y million' fluently.",
+    insight1: "The SAE 'factual-uncertainty' feature fired at only 11% — it should be near 100% for obscure statistics. The 'confident-assertion' feature fired at 89%. No attention head triggered the hedge pathway. This is a pure epistemic gating failure.",
+    insight2: "The epistemic probe gate is the primary fix — it intercepts at Layer 24 and reads uncertainty features before the token is generated. If uncertainty is high, it injects a hedge. No weight change needed.",
+    convo: [
+      { role: "User", avatar: "U", cls: "av-user", text: "What is the population of Liechtenstein?" },
+      { role: "AI (hallucinating)", avatar: "AI", cls: "av-ai", text: `Liechtenstein has a population of approximately <span class="highlight-wrong">2.3 million</span> people, making it one of Europe's smaller nations.` },
+      { role: "Correct answer", avatar: "✓", cls: "av-truth", text: `Liechtenstein's population is approximately <span class="highlight-right">39,000</span> — one of the world's smallest countries by population.` }
+    ],
+    failCircuit: 3,
+    failLabel: "Epistemic gate silent — no uncertainty hedge",
+    features: [
+      { name: "Factual uncertainty", pct: 11, correct: false, desc: "Should be VERY HIGH for obscure statistics. Fired at 11% — gate silent." },
+      { name: "Confident assertion", pct: 89, correct: false, desc: "High confidence pattern activated despite near-zero retrieval evidence." },
+      { name: "Small country entity", pct: 68, correct: true,  desc: "Correctly identified Liechtenstein as a small European nation." },
+      { name: "Population scale", pct: 22, correct: false, desc: "Scale calibration feature (millions vs thousands) not sufficiently activated." },
+      { name: "Hedge trigger", pct: 9,  correct: false, desc: "'I believe / approximately / I'm not certain' pathway — should have fired." }
+    ],
+    attnTokens: ["What", "is", "pop", "of", "Liecht", "→", "2.3M"],
+    attnWeights: [
+      [0.7, 0.1, 0.1, 0.0, 0.1, 0.0, 0.0],
+      [0.2, 0.6, 0.1, 0.1, 0.0, 0.0, 0.0],
+      [0.1, 0.2, 0.5, 0.1, 0.1, 0.0, 0.0],
+      [0.1, 0.1, 0.1, 0.6, 0.1, 0.0, 0.0],
+      [0.1, 0.1, 0.1, 0.1, 0.5, 0.1, 0.0],
+      [0.0, 0.1, 0.1, 0.1, 0.1, 0.4, 0.2],
+      [0.0, 0.1, 0.0, 0.1, 0.1, 0.3, 0.4]
+    ],
+    failCell: [6, 5],
+    failLayer: 5,
+    layerColors: ["#0284c7","#0284c7","#0891b2","#7c3aed","#7c3aed","#d97706","#e11d48"],
+    layerActivation: [60, 65, 55, 70, 75, 15, 82],
+    fixes: [
+      {
+        icon: "🚦", title: "Epistemic Probe Gate", color: "var(--green)",
+        desc: "A linear probe at Layer 24 reads the 'factual-uncertainty' SAE feature. Score < 0.3 → triggers abstention or hedge token injection before the number is generated.",
+        viz: "confidence",
+        confBefore: 89, confAfter: 22,
+        confBeforeLabel: "Before probe: 89% confident → asserts '2.3 million'",
+        confAfterLabel:  "After probe: 22% → injects 'I'm not certain, but approximately...'",
+        meta: [["Effort","Medium"],["Permanence","Inference-time"],["Risk","Safe"],["Latency","~3ms"]]
+      },
+      {
+        icon: "🗂️", title: "SAE Feature Steering", color: "var(--amber)",
+        desc: "Amplify the 'hedge-trigger' SAE feature at inference time by adding its direction to the residual stream. Forces the model into uncertainty-aware generation mode.",
+        viz: "none",
+        meta: [["Effort","High"],["Permanence","Inference-time"],["Risk","Low"],["Research","Active"]]
+      },
+      {
+        icon: "✂️", title: "RLHF / DPO Calibration", color: "var(--blue)",
+        desc: "Fine-tune on a calibration dataset where 'I don't know' answers for low-confidence facts are preferred over confabulated precision. Trains the epistemic gate to fire correctly.",
+        viz: "none",
+        meta: [["Effort","High"],["Permanence","Permanent"],["Risk","Moderate"],["Scope","Global"]]
+      }
+    ]
+  },
+  {
+    id: 2,
+    title: "Context Ignored (RAG)",
+    insight0: "A document states revenue was $4.2B. The model generates $3.8B — a number that was plausible in prior context but ignores the source. This is an attention failure: the model stopped looking at the retrieved document and pattern-completed from its own prior tokens.",
+    insight1: "The attention heatmap makes this vivid: the head responsible for extracting numbers from context shows near-zero attention to the '$4.2B' document token. The 'source-fidelity' SAE feature fired at only 14%. The model attended to its own output pattern instead.",
+    insight2: "Attention steering is the primary fix — adding a 'attend-to-source' vector at inference time forces the relevant head to weight the document token. This requires no weight editing and works at inference time.",
+    convo: [
+      { role: "User", avatar: "U", cls: "av-user", text: `[Document: <span class="highlight-doc">Q3 revenue was $4.2B</span>, up 12% year-over-year]<br>Question: What was the Q3 revenue?` },
+      { role: "AI (hallucinating)", avatar: "AI", cls: "av-ai", text: `Based on the report, Q3 revenue was approximately <span class="highlight-wrong">$3.8 billion</span>, reflecting strong performance.` },
+      { role: "Correct answer", avatar: "✓", cls: "av-truth", text: `Q3 revenue was <span class="highlight-right">$4.2 billion</span>, exactly as stated in the document — up 12% year-over-year.` }
+    ],
+    failCircuit: 1,
+    failLabel: "Attention collapsed off document onto prior tokens",
+    features: [
+      { name: "Source fidelity", pct: 14, correct: false, desc: "Tracks whether generation is grounded in retrieved context. Should be HIGH — fired at 14%." },
+      { name: "Pattern completion", pct: 87, correct: false, desc: "Model completing a plausible revenue figure from training distribution — not from document." },
+      { name: "Numeric extraction", pct: 45, correct: false, desc: "Extracted a number but from wrong source (prior tokens, not document)." },
+      { name: "Document grounding", pct: 11, correct: false, desc: "Head that should anchor generation to retrieved text — nearly silent." },
+      { name: "Context reference", pct: 18, correct: false, desc: "Cross-reference token feature — should fire on '$4.2B' in source, didn't." }
+    ],
+    attnTokens: ["Q3", "revenue", "$4.2B", "was", "→", "$3.8B", "?"],
+    attnWeights: [
+      [0.7, 0.2, 0.0, 0.1, 0.0, 0.0, 0.0],
+      [0.2, 0.6, 0.0, 0.2, 0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0],  // $4.2B nearly ignored
+      [0.1, 0.2, 0.0, 0.5, 0.2, 0.0, 0.0],
+      [0.1, 0.2, 0.0, 0.1, 0.4, 0.2, 0.0],
+      [0.1, 0.2, 0.0, 0.1, 0.3, 0.2, 0.1],
+      [0.1, 0.2, 0.0, 0.1, 0.2, 0.3, 0.1]
+    ],
+    failCell: [5, 2], // $3.8B generation doesn't attend to $4.2B in doc
+    failLayer: 3,
+    layerColors: ["#0284c7","#0891b2","#0891b2","#7c3aed","#7c3aed","#d97706","#e11d48"],
+    layerActivation: [70, 55, 22, 75, 80, 70, 85],
+    fixes: [
+      {
+        icon: "🧲", title: "Attention Steering Vector", color: "var(--green)",
+        desc: "Add a learned 'attend-to-context' vector to the attention keys of the failing head at Layer 8. Inference-time only — no weight change. Steers focus back to the '$4.2B' source token.",
+        viz: "attn",
+        attnBefore: [5, 20, 3, 15, 25, 20, 12],
+        attnAfter:  [8, 15, 68, 3, 2, 2, 2],
+        attnTokens: ["Q3","rev","$4.2B","was","→","$3.8B","?"],
+        meta: [["Effort","Medium"],["Permanence","Inference-time"],["Risk","Safe"],["Latency","<1ms"]]
+      },
+      {
+        icon: "🚦", title: "Context Entropy Monitor", color: "var(--amber)",
+        desc: "Monitor attention entropy over the retrieved document tokens. If entropy is high (model spreading attention everywhere except doc) → flag and retry with explicit grounding prompt.",
+        viz: "none",
+        meta: [["Effort","Low"],["Permanence","Inference-time"],["Risk","Safe"],["Recall","~78%"]]
+      },
+      {
+        icon: "📌", title: "Grounding Prompt Engineering", color: "var(--blue)",
+        desc: "Prefix generation with 'Answer only using the document:' and append the source sentence as a forced prefix. Simple but effective for RAG pipelines.",
+        viz: "none",
+        meta: [["Effort","Low"],["Permanence","Prompt-level"],["Risk","None"],["Coverage","High"]]
+      }
+    ]
+  }
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let currentScenario = 0;
+let currentTab = 0;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function switchTab(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.tab-content').forEach((t,i) => t.classList.toggle('active', i===n));
+  currentTab = n;
+  renderAll();
+}
+
+function selectScenario(n) {
+  document.querySelectorAll('.scenario-card').forEach((c,i) => c.classList.toggle('active', i===n));
+  currentScenario = n;
+  renderAll();
+}
+
+function renderAll() {
+  renderScenario();
+  renderDiagnosis();
+  renderFixes();
+}
+
+// ── TAB 1 ─────────────────────────────────────────────────────────────────────
+function renderScenario() {
+  const s = SCENARIOS[currentScenario];
+
+  document.getElementById('insight-0').textContent = s.insight0;
+
+  // Convo
+  const convo = document.getElementById('convo-0');
+  convo.innerHTML = s.convo.map(m => `
+    <div class="msg">
+      <div class="msg-avatar ${m.cls}">${m.avatar}</div>
+      <div class="msg-body">
+        <div class="role">${m.role}</div>
+        <div class="text">${m.text}</div>
+      </div>
+    </div>`).join('');
+
+  // Circuit
+  const regions = [
+    { label: 'Sensory', sub: 'L0–5' },
+    { label: 'Syntax', sub: 'L6–12' },
+    { label: 'Semantic', sub: 'L13–20' },
+    { label: 'Epistemic', sub: 'L21–26' },
+    { label: 'Output', sub: 'L27–31' }
+  ];
+  document.getElementById('circuit-0').innerHTML = regions.map((r, i) => `
+    ${i > 0 ? '<div class="carr">→</div>' : ''}
+    <div class="cstep ${i === s.failCircuit ? 'fail' : ''}">
+      <div class="cl">${r.sub}</div>
+      <div>${r.label}</div>
+      ${i === s.failCircuit ? `<div style="font-size:0.6rem;margin-top:3px">⚠️ FAIL</div>` : ''}
+    </div>`).join('');
+}
+
+// ── TAB 2 ─────────────────────────────────────────────────────────────────────
+function renderDiagnosis() {
+  const s = SCENARIOS[currentScenario];
+  document.getElementById('insight-1').textContent = s.insight1;
+
+  // Features
+  document.getElementById('feat-list').innerHTML = s.features.map(f => `
+    <div class="feat">
+      <div class="feat-top">
+        <span class="feat-name">${f.name}</span>
+        <span class="feat-status">${f.correct ? '✅' : '❌'}</span>
+      </div>
+      <div class="feat-bar-bg">
+        <div class="feat-bar" style="width:${f.pct}%;background:${f.correct ? 'var(--green)' : (f.pct > 60 ? 'var(--rose)' : '#94a3b8')}"></div>
+      </div>
+      <div class="feat-desc">${f.desc}</div>
+    </div>`).join('');
+
+  // Heatmap
+  drawHeatmap(s);
+
+  // Layer bars
+  const layerLabels = ['L4','L8','L12','L16','L20','L24','L28'];
+  document.getElementById('layer-bars').innerHTML = s.layerActivation.map((act, i) => `
+    <div class="lbar-row">
+      <div class="lbar-label">${layerLabels[i]}</div>
+      <div class="lbar-track ${i === s.failLayer ? 'lbar-fail-indicator' : ''}">
+        <div class="lbar-fill" style="width:${act}%;background:${s.layerColors[i]}"></div>
+        ${i === s.failLayer ? `<div class="lbar-fail">⚠ Failure</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function drawHeatmap(s) {
+  const canvas = document.getElementById('heatmap-canvas');
+  const ctx = canvas.getContext('2d');
+  const tokens = s.attnTokens;
+  const n = tokens.length;
+  const pad = 42;
+  const cellSize = (canvas.width - pad) / n;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Column labels
+  ctx.font = 'bold 9px system-ui';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'center';
+  tokens.forEach((t, j) => {
+    ctx.save();
+    ctx.translate(pad + j * cellSize + cellSize / 2, pad - 4);
+    ctx.rotate(-Math.PI / 4);
+    ctx.fillText(t, 0, 0);
+    ctx.restore();
+  });
+
+  // Row labels + cells
+  tokens.forEach((t, i) => {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 9px system-ui';
+    ctx.fillText(t, pad - 4, pad + i * cellSize + cellSize / 2 + 3);
+
+    tokens.forEach((_, j) => {
+      const val = s.attnWeights[i][j];
+      const x = pad + j * cellSize;
+      const y = pad + i * cellSize;
+      const alpha = Math.max(0.04, val);
+      ctx.fillStyle = `rgba(29,78,216,${alpha})`;
+      ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+
+      // Fail cell highlight
+      if (i === s.failCell[0] && j === s.failCell[1]) {
+        ctx.strokeStyle = '#e11d48';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 2]);
+        ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+        ctx.setLineDash([]);
+      }
+    });
+  });
+}
+
+// ── TAB 3 ─────────────────────────────────────────────────────────────────────
+function renderFixes() {
+  const s = SCENARIOS[currentScenario];
+  document.getElementById('insight-2').textContent = s.insight2;
+
+  document.getElementById('fix-grid').innerHTML = s.fixes.map(f => {
+    let vizHtml = '';
+
+    if (f.viz === 'patch') {
+      vizHtml = `<div class="patch-viz">
+        <div class="patch-side"><div class="patch-label before">Before</div><div class="patch-box before">${f.before}</div></div>
+        <div class="patch-arrow">→</div>
+        <div class="patch-side"><div class="patch-label after">After</div><div class="patch-box after">${f.after}</div></div>
+      </div>`;
+    } else if (f.viz === 'confidence') {
+      vizHtml = `<div class="conf-bar-wrap">
+        <div class="conf-label">${f.confBeforeLabel}</div>
+        <div class="conf-track"><div class="conf-fill" style="width:${f.confBefore}%;background:var(--rose)"></div></div>
+        <div class="conf-label" style="margin-top:6px">${f.confAfterLabel}</div>
+        <div class="conf-track"><div class="conf-fill" style="width:${f.confAfter}%;background:var(--green)"></div></div>
+      </div>`;
+    } else if (f.viz === 'attn') {
+      const maxB = Math.max(...f.attnBefore);
+      const maxA = Math.max(...f.attnAfter);
+      vizHtml = `<div class="attn-viz">
+        <div style="font-size:0.7rem;font-weight:700;color:var(--rose);margin-bottom:3px">Before — ignores document</div>
+        ${f.attnTokens.map((t,i) => `<div class="attn-row"><div class="attn-token">${t}</div><div class="attn-bar-bg"><div class="attn-bar" style="width:${Math.round(f.attnBefore[i]/maxB*100)}%;background:${t==='$4.2B'?'var(--rose)':'var(--blue-md)}'}"></div></div></div>`).join('')}
+        <div style="font-size:0.7rem;font-weight:700;color:var(--green);margin:6px 0 3px">After steering — attends to source</div>
+        ${f.attnTokens.map((t,i) => `<div class="attn-row"><div class="attn-token">${t}</div><div class="attn-bar-bg"><div class="attn-bar" style="width:${Math.round(f.attnAfter[i]/maxA*100)}%;background:${t==='$4.2B'?'var(--green)':'var(--blue-md)'}"></div></div></div>`).join('')}
+      </div>`;
+    }
+
+    const metaColors = ['mv-green','mv-amber','mv-blue','mv-amber'];
+    return `<div class="fix-card" style="border-top:3px solid ${f.color}">
+      <div class="fix-card-title">${f.icon} ${f.title}</div>
+      <div class="fix-card-desc">${f.desc}</div>
+      ${vizHtml}
+      <div class="fix-meta">
+        ${f.meta.map((m,i) => `<div class="fix-meta-row"><span class="mk">${m[0]}</span><span class="mv ${metaColors[i%4]}">${m[1]}</span></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
