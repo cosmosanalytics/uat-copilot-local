@@ -531,13 +531,16 @@ async function classify(text,prompt,id){
   if(S.mode==='real'){
     const r=await S.engine.chat.completions.create({
       messages:[{role:'system',content:SYS},{role:'user',content:PROMPTS[prompt](text)}],
-      temperature:0,max_tokens:3,logprobs:true,top_logprobs:4
+      temperature:0,max_tokens:6,logprobs:true,top_logprobs:4
     });
     const ch=r.choices[0];
-    const letter=String((ch.message&&ch.message.content)||'').trim().toUpperCase().charAt(0);
+    const raw=String((ch.message&&ch.message.content)||'').trim().toUpperCase();
+    const found=raw.match(/(?:^|[^A-Z])([ABCD])(?![A-Z])/);
+    const letter=found?found[1]:'';
     const pred=LET[letter]||null;
     if(!pred)return{pred:null,conf:0};
-    const lp=ch.logprobs&&ch.logprobs.content&&ch.logprobs.content[0];
+    const arr=(ch.logprobs&&ch.logprobs.content)||[];
+    let lp=arr.find(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter)||arr[0];
     const conf=(lp&&typeof lp.logprob==='number')?Math.exp(lp.logprob):1;
     return{pred,conf};
   }
@@ -650,7 +653,7 @@ function modelPanel(){
   let loadUi='';
   if(S.mode==='real'){
     loadUi='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(S.load.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
-    '<p class="small muted" style="margin-top:8px">The first load downloads the model (roughly 0.4 to 1 GB) and caches it in your browser. Model names can change between WebLLM releases; if one fails to load, try another.</p>';
+    '<p class="small muted" style="margin-top:8px">The first load downloads the model (roughly 0.4 to 1 GB) and caches it in your browser. Model names can change between WebLLM releases; if one fails to load, try another. Smaller models are faster but may not follow the one-letter instruction, and the 1B model is usually the most reliable.</p>';
     if(S.load.state==='loading')loadUi+='<progress id="loadbar" max="100" value="'+S.load.pct+'"></progress><p class="small muted" id="loadtext">'+esc(S.load.text)+'</p>';
     else if(S.load.state==='ready')loadUi+='<div class="status ok">Model ready on your device.</div>';
     else{
@@ -713,6 +716,9 @@ function s2(){
       '<td><button class="btn ghost sm" data-act="gate" data-val="'+r.id+'">Check gate</button></td></tr>';
     }).join('');
     body='<div class="scroll"><table style="min-width:820px"><thead><tr><th>Run</th><th>Prompt</th><th>Model</th><th>Threshold</th><th>Prep</th><th>Accuracy</th><th>Auto accuracy</th><th>To humans</th><th></th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+    const bestAcc=Math.max.apply(null,S.runsList.map(r=>r.metrics.accuracy||0));
+    body+=(bestAcc<0.85?'<div class="status warn">No run reaches the 85% model-only accuracy that the release gate needs (best so far: '+pct(bestAcc)+'). Small on-device models can fail to follow the one-letter instruction. Go back to the model step and try the 1B model, or switch to Stand-in answers to see the rest of the flow.</div>':'')+
+    '<p class="small muted" style="margin-top:10px">Next: check a run against the release gate. If it passes you can register it, then promote it to Production.</p><div class="row">'+S.runsList.map(r=>'<button class="btn ghost sm" data-act="gate" data-val="'+r.id+'">Check gate: '+r.id+'</button>').join('')+'</div>';
     if(S.sel.length===2){
       const a=S.runsList.find(r=>r.id===S.sel[0]),b=S.runsList.find(r=>r.id===S.sel[1]);
       if(a&&b){
