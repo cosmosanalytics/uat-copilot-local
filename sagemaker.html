@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SageMaker lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">SageMaker job lifecycle (real scikit-learn, simulated service)</span></div>
+  <header>
+    <h1>SageMaker lab</h1>
+    <p class="lede">Walk the SageMaker lifecycle with real training: prepare data, run a training job with a live validation log, run a hyperparameter tuning job, deploy an endpoint, send it requests, and delete it.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the training, tuning and predictions are real (scikit-learn in your browser). The service layer is imitated: job names, statuses and the endpoint are created by this page, not by AWS. Real jobs run on managed instances, write artifacts to S3 and bill while instances run.</p>
+</div>
+<script type="py" config='{"packages":["scikit-learn","numpy","sqlite3"]}'>
+import json, time, pickle, random, datetime
+import numpy as np
+from pyodide.ffi import create_proxy
+from pyscript import window
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
+
+X, y = make_classification(n_samples=1000, n_features=10, n_informative=6, n_redundant=1, flip_y=0.05, class_sep=0.9, random_state=21)
+XTR, XTE, YTR, YTE = train_test_split(X, y, test_size=0.3, random_state=1)
+XTR, XVA, YTR, YVA = train_test_split(XTR, YTR, test_size=0.25, random_state=2)
+
+JOBS = {}
+STATE = {"endpoint": None, "n": 0}
+
+def stamp():
+    return datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+def process():
+    return json.dumps({"train": len(XTR), "validation": len(XVA), "test": len(XTE), "features": X.shape[1],
+                       "positive_rate": round(float(y.mean()), 3)})
+
+def fit_job(n_estimators, lr, depth, log_every=None):
+    m = GradientBoostingClassifier(n_estimators=n_estimators, learning_rate=lr, max_depth=depth, random_state=0)
+    t0 = time.perf_counter()
+    m.fit(XTR, YTR)
+    dt = time.perf_counter() - t0
+    lines = []
+    if log_every:
+        for i, pred in enumerate(m.staged_predict(XVA), 1):
+            if i % log_every == 0 or i == n_estimators:
+                lines.append("[%d]#011validation:accuracy=%.4f" % (i, accuracy_score(YVA, pred)))
+    return m, dt, lines
+
+def train(payload_json):
+    p = json.loads(payload_json)
+    STATE["n"] += 1
+    name = "claims-gbm-%s-%02d" % (stamp(), STATE["n"])
+    n, lr, d = int(p["n_estimators"]), float(p["learning_rate"]), int(p["max_depth"])
+    m, dt, lines = fit_job(n, lr, d, log_every=max(1, n // 8))
+    val = accuracy_score(YVA, m.predict(XVA))
+    blob = pickle.dumps(m)
+    JOBS[name] = {"model": m, "val": val}
+    return json.dumps({"name": name, "status": "Completed", "hyperparameters": {"n_estimators": n, "learning_rate": lr, "max_depth": d},
+                       "log": lines, "validation_accuracy": val, "test_accuracy": float(accuracy_score(YTE, m.predict(XTE))),
+                       "billable_seconds": round(dt, 2), "artifact_bytes": len(blob),
+                       "artifact": "s3://your-bucket/claims-gbm/%s/output/model.tar.gz" % name})
+
+def tune(payload_json):
+    p = json.loads(payload_json)
+    rng = random.Random(int(p.get("seed", 5)))
+    trials = []
+    best = None
+    for i in range(int(p.get("trials", 8))):
+        n = rng.choice([20, 40, 80, 120])
+        lr = round(10 ** rng.uniform(-2, -0.4), 3)
+        d = rng.randint(1, 5)
+        m, dt, _ = fit_job(n, lr, d)
+        v = float(accuracy_score(YVA, m.predict(XVA)))
+        t = {"trial": i + 1, "n_estimators": n, "learning_rate": lr, "max_depth": d, "objective": v, "seconds": round(dt, 2)}
+        trials.append(t)
+        if best is None or v > best["objective"]:
+            best = t
+            name = "claims-gbm-tune-%s-best" % stamp()
+            JOBS[name] = {"model": m, "val": v}
+            best["job"] = name
+    best_name = best["job"]
+    return json.dumps({"trials": trials, "best": best, "best_job": best_name, "strategy": "Random search, objective: validation:accuracy (maximize)"})
+
+def deploy(job):
+    if job not in JOBS:
+        return json.dumps({"error": "Unknown training job."})
+    STATE["endpoint"] = {"name": "claims-endpoint-%s" % stamp(), "job": job, "status": "InService"}
+    return json.dumps(STATE["endpoint"])
+
+def invoke(payload_json):
+    ep = STATE["endpoint"]
+    if not ep:
+        return json.dumps({"error": "ValidationError: endpoint not found."})
+    p = json.loads(payload_json)
+    rows = np.array(p["instances"], dtype=float)
+    m = JOBS[ep["job"]]["model"]
+    t0 = time.perf_counter()
+    pred = m.predict(rows).tolist()
+    proba = m.predict_proba(rows)[:, 1].round(4).tolist()
+    return json.dumps({"predictions": pred, "probabilities": proba, "latency_ms": round((time.perf_counter() - t0) * 1000, 1)})
+
+def sample(k):
+    idx = random.Random(int(k)).sample(range(len(XTE)), 3)
+    return json.dumps({"instances": [[round(float(v), 3) for v in XTE[i]] for i in idx], "actual": [int(YTE[i]) for i in idx]})
+
+def delete_endpoint():
+    STATE["endpoint"] = None
+    return "ok"
+
+def jobs():
+    return json.dumps([{"name": k, "val": v["val"]} for k, v in JOBS.items()])
+
+API = {"py_process": process, "py_train": train, "py_tune": tune, "py_deploy": deploy, "py_invoke": invoke, "py_sample": sample, "py_delete": delete_endpoint, "py_jobs": jobs}
+for _n, _f in API.items():
+    setattr(window, _n, create_proxy(_f))
+window.py_ready = True
+</script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+  },
+  async load(){
+    this.state='loading';this.pct=0;this.text='Starting';
+    if(this.draw)this.draw();
+    try{
+      const w=await import('https://esm.run/@mlc-ai/web-llm');
+      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
+        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+      }});
+      this.state='ready';
+    }catch(err){
+      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    }
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
+};
+
+const S={step:0,proc:null,job:null,tune:null,hp:{n_estimators:'80',learning_rate:'0.1',max_depth:'3'},jobs:[],ep:null,epStart:0,invoke:null,sample:null,k:1,busy:false,msg:'',tick:0};
+const STEPS=['1. Data','2. Training job','3. Tuning job','4. Endpoint'];
+const QA=[
+ ['What problem does it solve?','SageMaker is AWS\'s managed place to build, train, tune and host your own ML models. You hand it a script or container and data, and it runs the job on managed instances and stores the artifact.'],
+ ['What would you use instead?','Bedrock when a hosted foundation model is enough, Databricks ML if your team already works there, or your own servers if you want full control.'],
+ ['What breaks without it?','You would provision, patch and scale training machines and serving infrastructure yourself. If a hosted foundation model is enough for your use case, Bedrock would cover you with far less work.']
+];
+function call(fn,a){const f=window[fn];if(!f)throw new Error('Python is not ready yet.');return JSON.parse(a===undefined?f():f(a));}
+function sel(key,vals){return '<label class="range" for="h_'+key+'">'+esc(key)+'</label><select id="h_'+key+'" data-act="hp" data-key="'+key+'">'+vals.map(v=>'<option'+(S.hp[key]===v?' selected':'')+'>'+v+'</option>').join('')+'</select>';}
+function stepData(){
+  const p=S.proc;
+  return '<h2>Data</h2><p>A processing step splits the data into training, validation and test sets. In SageMaker this would be a Processing job reading from and writing to S3.</p>'+
+  (p?'<div class="tiles"><div class="tile"><b>'+p.train+'</b><span>training rows</span></div><div class="tile"><b>'+p.validation+'</b><span>validation rows</span></div><div class="tile"><b>'+p.test+'</b><span>test rows</span></div><div class="tile"><b>'+p.features+'</b><span>features</span></div></div><p class="small muted">The positive rate is '+p.positive_rate+'. The test set stays untouched until the end.</p>':'')+
+  '<div class="row" style="margin-top:12px">'+btn('next','1','Continue to training')+'</div>';
+}
+function stepTrain(){
+  const j=S.job;
+  let out='';
+  if(j){
+    out='<h3>Training job: '+esc(j.name)+'</h3><div class="row">'+chip(j.status,'good')+'</div>'+
+    '<div class="tiles"><div class="tile"><b>'+pct(j.validation_accuracy)+'</b><span>validation accuracy</span></div><div class="tile"><b>'+pct(j.test_accuracy)+'</b><span>test accuracy</span></div><div class="tile"><b>'+j.billable_seconds+'</b><span>seconds of compute</span></div><div class="tile"><b>'+Math.round(j.artifact_bytes/1024)+' KB</b><span>model artifact</span></div></div>'+
+    '<h3>Training log</h3><pre>'+esc(j.log.join('\n'))+'</pre><p class="small muted">Artifact location (illustrative): '+esc(j.artifact)+'</p>';
+  }
+  return '<h2>Training job</h2><p>Set hyperparameters and run a real gradient boosting job. The validation log is measured as the model grows tree by tree.</p>'+
+  sel('n_estimators',['20','40','80','120','200'])+sel('learning_rate',['0.01','0.05','0.1','0.3'])+sel('max_depth',['1','2','3','5'])+
+  '<div class="row" style="margin-top:12px">'+btn('train','','Create training job','',S.busy)+btn('next','2','Continue to tuning','ghost')+'</div>'+out;
+}
+function stepTune(){
+  const t=S.tune;
+  let out='';
+  if(t){
+    out='<h3>Tuning job results</h3><p class="small muted">'+esc(t.strategy)+'</p>'+
+    table(['Trial','n_estimators','learning_rate','max_depth','validation accuracy'],t.trials.map(r=>[r.trial+(r.trial===t.best.trial?' (best)':''),r.n_estimators,r.learning_rate,r.max_depth,r.objective.toFixed(3)]),520)+
+    '<div class="status ok">Best trial: '+t.best.trial+' with validation accuracy '+t.best.objective.toFixed(3)+'. Its model is now available to deploy.</div>';
+  }
+  return '<h2>Hyperparameter tuning job</h2><p>A tuning job launches many training jobs with different settings and keeps the best one by an objective metric. Here it runs 8 random trials.</p>'+
+  '<div class="row">'+btn('tune','','Create tuning job','',S.busy)+btn('next','3','Continue to endpoint','ghost')+'</div>'+out;
+}
+function stepEndpoint(){
+  const opts=S.jobs.map(j=>'<option value="'+esc(j.name)+'">'+esc(j.name)+' ('+pct(j.val)+' validation)</option>').join('');
+  let body;
+  if(!S.jobs.length)body='<div class="status warn">No trained models yet. Create a training or tuning job first.</div>';
+  else if(!S.ep){
+    body='<label class="range" for="jobsel">Model to deploy</label><select id="jobsel" data-act="jobsel">'+opts+'</select><div style="margin-top:12px">'+btn('deploy','','Create endpoint')+'</div>';
+  }else{
+    const secs=Math.round((Date.now()-S.epStart)/1000);
+    body='<div class="row">'+chip(S.ep.status,'good')+'<span class="small">'+esc(S.ep.name)+'</span></div>'+
+    '<div class="status warn">The endpoint has been InService for <b id="eptimer">'+secs+'</b> seconds. A real endpoint bills for every second it runs, whether or not anyone calls it. Delete it when you are done.</div>'+
+    '<div class="row">'+btn('sample','','Invoke with 3 test rows')+btn('delete','','Delete endpoint','ghost')+'</div>';
+    if(S.invoke){
+      const r=S.invoke;
+      body+='<h3>Request body</h3><pre>'+esc(JSON.stringify({instances:S.sample.instances.map(a=>a.slice(0,4).concat(['...']))},null,1))+'</pre><h3>Response</h3>'+(r.error?'<div class="out err">'+esc(r.error)+'</div>':'<pre>'+esc(JSON.stringify({predictions:r.predictions,probabilities:r.probabilities},null,1))+'</pre><p class="small muted">Latency here was '+r.latency_ms+' ms. Actual labels for these rows: '+esc(JSON.stringify(S.sample.actual))+'.</p>');
+    }
+  }
+  return '<h2>Endpoint</h2><p>An endpoint hosts a model behind an HTTPS API. Here the same model answers requests in your browser.</p>'+body;
+}
+function render(){
+  if(!PYSTATE.ready)return '<div class="status warn">Starting Python and scikit-learn in your browser. The first visit downloads a few tens of MB.</div>';
+  const tabs='<div class="tabs">'+STEPS.map((s,i)=>tog('step',i,esc(s),S.step===i)).join('')+'</div>';
+  const body=[stepData,stepTrain,stepTune,stepEndpoint][S.step]();
+  return tabs+(S.msg?'<div class="status warn">'+esc(S.msg)+'</div>':'')+body+qa(QA);
+}
+const draw=app({
+  render,
+  act:{
+    step:v=>{S.step=+v;S.msg='';},
+    next:v=>{S.step=+v;S.msg='';},
+    train:async()=>{S.busy=true;S.msg='Training job running...';draw();await sleep(30);try{S.job=call('py_train',JSON.stringify(S.hp));}finally{S.busy=false;S.msg='';}S.jobs=call('py_jobs');},
+    tune:async()=>{S.busy=true;S.msg='Tuning job running (8 trials)...';draw();await sleep(30);try{S.tune=call('py_tune',JSON.stringify({trials:8,seed:5}));}finally{S.busy=false;S.msg='';}S.jobs=call('py_jobs');},
+    deploy:()=>{const sel=$('#jobsel');const r=call('py_deploy',sel?sel.value:S.jobs[0].name);if(r.error){S.msg=r.error;return;}S.ep=r;S.epStart=Date.now();S.invoke=null;},
+    sample:()=>{S.k+=1;S.sample=call('py_sample',S.k);S.invoke=call('py_invoke',JSON.stringify({instances:S.sample.instances}));},
+    delete:()=>{call('py_delete');S.ep=null;S.invoke=null;S.msg='Endpoint deleted. Billing stops.';}
+  },
+  change:{hp:t=>{S.hp[t.dataset.key]=t.value;return false;},jobsel:()=>false},
+  onError:err=>{S.busy=false;S.msg=String((err&&err.message)||err);}
+});
+setInterval(()=>{const e=$('#eptimer');if(e&&S.ep)e.textContent=Math.round((Date.now()-S.epStart)/1000);},1000);
+(async function boot(){await waitPy();S.proc=call('py_process');S.jobs=call('py_jobs');draw();})();
+draw();
+</script>
+</body>
+</html>

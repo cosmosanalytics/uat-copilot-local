@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Step Functions lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">AWS Step Functions (a real Amazon States Language interpreter)</span></div>
+  <header>
+    <h1>Step Functions lab</h1>
+    <p class="lede">Edit a state machine in Amazon States Language and run it. Task, Choice, Pass, Wait, Succeed and Fail states work, with Retry and Catch, InputPath, Parameters, ResultPath and OutputPath. Inject failures to watch retries back off and errors get caught.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the interpreter here implements a practical subset of the Amazon States Language in JavaScript, and the Lambda functions are small local stand-ins. It does not call AWS, and it skips real waiting. Map, Parallel, timeouts, intrinsic functions and most service integrations are not implemented. Real executions are recorded by the service.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+  },
+  async load(){
+    this.state='loading';this.pct=0;this.text='Starting';
+    if(this.draw)this.draw();
+    try{
+      const w=await import('https://esm.run/@mlc-ai/web-llm');
+      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
+        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+      }});
+      this.state='ready';
+    }catch(err){
+      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    }
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
+};
+
+PYSTATE.needsPy=false;
+/*ASL-START*/
+class StateError extends Error{constructor(name,msg){super(msg||name);this.errName=name;this.cause=msg||'';}}
+function clone(v){return v===undefined?undefined:JSON.parse(JSON.stringify(v));}
+function tokens(path){
+  const out=[],re=/([^.\[\]]+)|\[(\d+)\]/g;let m;const body=String(path).replace(/^\$/,'');
+  while((m=re.exec(body)))out.push(m[1]!==undefined?m[1]:Number(m[2]));
+  return out;
+}
+function getPath(obj,path){
+  if(path===undefined||path==='$')return obj;
+  let cur=obj;
+  for(const t of tokens(path)){
+    if(cur===null||cur===undefined||typeof cur!=='object')throw new StateError('States.Runtime','The JSONPath '+path+' could not be found in the input');
+    cur=cur[t];
+  }
+  if(cur===undefined)throw new StateError('States.Runtime','The JSONPath '+path+' could not be found in the input');
+  return cur;
+}
+function setPath(obj,path,val){
+  if(path===undefined||path==='$')return val;
+  const t=tokens(path),out=clone(obj)||{};
+  let cur=out;
+  for(let i=0;i<t.length-1;i++){if(typeof cur[t[i]]!=='object'||cur[t[i]]===null)cur[t[i]]={};cur=cur[t[i]];}
+  cur[t[t.length-1]]=val;
+  return out;
+}
+function buildParams(tpl,input){
+  if(Array.isArray(tpl))return tpl.map(x=>buildParams(x,input));
+  if(tpl&&typeof tpl==='object'){
+    const o={};
+    for(const k in tpl){
+      if(k.endsWith('.$'))o[k.slice(0,-2)]=getPath(input,tpl[k]);
+      else o[k]=buildParams(tpl[k],input);
+    }
+    return o;
+  }
+  return tpl;
+}
+function evalChoice(rule,input){
+  if(rule.And)return rule.And.every(r=>evalChoice(r,input));
+  if(rule.Or)return rule.Or.some(r=>evalChoice(r,input));
+  if(rule.Not)return !evalChoice(rule.Not,input);
+  let v;
+  try{v=getPath(input,rule.Variable);}catch(e){return rule.IsPresent===false;}
+  if('IsPresent' in rule)return rule.IsPresent===true;
+  const cmp={StringEquals:(a,b)=>a===b,NumericEquals:(a,b)=>a===b,BooleanEquals:(a,b)=>a===b,
+    NumericGreaterThan:(a,b)=>a>b,NumericGreaterThanEquals:(a,b)=>a>=b,NumericLessThan:(a,b)=>a<b,NumericLessThanEquals:(a,b)=>a<=b,
+    StringGreaterThan:(a,b)=>a>b,StringLessThan:(a,b)=>a<b};
+  for(const k in cmp)if(k in rule)return cmp[k](v,rule[k]);
+  return false;
+}
+function validateDef(def){
+  const p=[];
+  if(!def||typeof def!=='object'){return ['The definition must be a JSON object.'];}
+  if(!def.States||typeof def.States!=='object')p.push('Missing "States".');
+  if(!def.StartAt)p.push('Missing "StartAt".');
+  else if(def.States&&!def.States[def.StartAt])p.push('StartAt refers to a state that does not exist: '+def.StartAt+'.');
+  for(const n in (def.States||{})){
+    const s=def.States[n],T=['Task','Choice','Pass','Wait','Succeed','Fail'];
+    if(!T.includes(s.Type)){p.push('State '+n+' has unsupported or missing Type "'+s.Type+'". Supported: '+T.join(', ')+'.');continue;}
+    const nexts=[];
+    if(s.Next)nexts.push(s.Next);
+    (s.Catch||[]).forEach(c=>nexts.push(c.Next));
+    (s.Choices||[]).forEach(c=>nexts.push(c.Next));
+    if(s.Default)nexts.push(s.Default);
+    nexts.forEach(x=>{if(!def.States[x])p.push('State '+n+' points to a missing state: '+x+'.');});
+    if(['Task','Pass','Wait'].includes(s.Type)&&!s.Next&&!s.End)p.push('State '+n+' needs "Next" or "End": true.');
+    if(s.Type==='Task'&&!s.Resource)p.push('Task state '+n+' needs a "Resource".');
+  }
+  return p;
+}
+function runASL(def,input,lambdas,opt){
+  opt=opt||{};
+  const ev=[],visited=[];
+  let n=0;
+  const log=(type,state,detail)=>{ev.push({id:++n,type,state,detail});};
+  let cur=def.StartAt,data=clone(input),transitions=0;
+  log('ExecutionStarted','',JSON.stringify(data));
+  const attempts={};
+  try{
+    while(true){
+      if(++transitions>60)throw new StateError('States.Runtime','Too many transitions: the state machine may loop forever.');
+      const st=def.States[cur];
+      visited.push(cur);
+      log('StateEntered',cur,st.Type+' state, input '+JSON.stringify(data));
+      let eff=st.InputPath===null?{}:getPath(data,st.InputPath);
+      if(st.Type==='Succeed'){if(st.OutputPath!==undefined)data=getPath(data,st.OutputPath);log('ExecutionSucceeded',cur,JSON.stringify(data));return{status:'SUCCEEDED',output:data,events:ev,visited};}
+      if(st.Type==='Fail')throw new StateError(st.Error||'States.Fail',st.Cause||'');
+      if(st.Type==='Choice'){
+        let next=null;
+        for(const r of st.Choices||[]){if(evalChoice(r,eff)){next=r.Next;log('ChoiceEvaluated',cur,'Rule matched, going to '+next);break;}}
+        if(!next&&st.Default){next=st.Default;log('ChoiceEvaluated',cur,'No rule matched, taking Default: '+next);}
+        if(!next)throw new StateError('States.NoChoiceMatched','No Choice rule matched and there is no Default.');
+        cur=next;continue;
+      }
+      if(st.Type==='Wait'){
+        const secs=st.Seconds!==undefined?st.Seconds:(st.SecondsPath?getPath(eff,st.SecondsPath):0);
+        log('WaitStateEntered',cur,'Would wait '+secs+' s (skipped in this simulator)');
+      }
+      let result;
+      if(st.Type==='Pass'){
+        result=st.Result!==undefined?clone(st.Result):(st.Parameters?buildParams(st.Parameters,eff):eff);
+      }else if(st.Type==='Wait'){
+        result=eff;
+      }else{
+        const fname=String(st.Resource).split(':').pop();
+        const fn=lambdas[fname];
+        const tin=st.Parameters?buildParams(st.Parameters,eff):eff;
+        let done=false;
+        while(!done){
+          try{
+            const key=cur;attempts[key]=(attempts[key]||0);
+            attempts['call:'+key]=(attempts['call:'+key]||0)+1;
+            log('TaskScheduled',cur,'Invoke '+fname+' (call '+attempts['call:'+key]+')');
+            if(!fn)throw new StateError('Lambda.ResourceNotFoundException','Function not found: '+fname);
+            result=fn(clone(tin),{call:attempts['call:'+key],state:cur});
+            log('TaskSucceeded',cur,JSON.stringify(result));
+            done=true;
+          }catch(e){
+            const name=e.errName||'States.TaskFailed',msg=e.cause||e.message;
+            log('TaskFailed',cur,name+': '+msg);
+            let retried=false;
+            (st.Retry||[]).some((r,i)=>{
+              const match=(r.ErrorEquals||[]).some(x=>x==='States.ALL'||x===name);
+              if(!match)return false;
+              const k='retry:'+cur+':'+i;attempts[k]=(attempts[k]||0);
+              const max=r.MaxAttempts!==undefined?r.MaxAttempts:3;
+              if(attempts[k]>=max)return false;
+              const wait=(r.IntervalSeconds||1)*Math.pow(r.BackoffRate||2,attempts[k]);
+              attempts[k]++;
+              log('RetryScheduled',cur,'Retry '+attempts[k]+' of '+max+' after '+wait+' s (skipped in this simulator)');
+              retried=true;return true;
+            });
+            if(retried)continue;
+            const c=(st.Catch||[]).find(c=>(c.ErrorEquals||[]).some(x=>x==='States.ALL'||x===name));
+            if(c){
+              log('CatchTriggered',cur,'Caught '+name+', going to '+c.Next);
+              data=setPath(data,c.ResultPath===undefined?'$':c.ResultPath,{Error:name,Cause:msg});
+              cur=c.Next;done=true;result=undefined;
+              var caught=true;
+            }else throw e;
+          }
+        }
+        if(typeof caught!=='undefined'&&caught){caught=false;continue;}
+      }
+      if(st.ResultPath===null){}
+      else data=setPath(data,st.ResultPath,result);
+      if(st.OutputPath!==undefined)data=getPath(data,st.OutputPath);
+      log('StateExited',cur,'output '+JSON.stringify(data));
+      if(st.End){log('ExecutionSucceeded',cur,JSON.stringify(data));return{status:'SUCCEEDED',output:data,events:ev,visited};}
+      cur=st.Next;
+    }
+  }catch(e){
+    log('ExecutionFailed',cur,(e.errName||'Error')+': '+(e.cause||e.message));
+    return{status:'FAILED',error:e.errName||'Error',cause:e.cause||e.message,events:ev,visited};
+  }
+}
+/*ASL-END*/
+var caught=false;
+const DEFAULT_DEF={
+  Comment:'Claims triage',
+  StartAt:'ValidateInput',
+  States:{
+    ValidateInput:{Type:'Task',Resource:'ValidateInput',Next:'Classify',Catch:[{ErrorEquals:['ValidationError'],Next:'Rejected',ResultPath:'$.error'}]},
+    Classify:{Type:'Task',Resource:'Classify',ResultPath:'$.result',Retry:[{ErrorEquals:['ModelThrottled'],IntervalSeconds:1,MaxAttempts:3,BackoffRate:2}],Catch:[{ErrorEquals:['States.ALL'],Next:'HumanReview',ResultPath:'$.error'}],Next:'ConfidenceCheck'},
+    ConfidenceCheck:{Type:'Choice',Choices:[{Variable:'$.result.confidence',NumericGreaterThanEquals:0.7,Next:'SaveCase'}],Default:'HumanReview'},
+    SaveCase:{Type:'Task',Resource:'SaveCase',Parameters:{'label.$':'$.result.label',status:'auto-handled'},ResultPath:'$.case',Next:'Done'},
+    HumanReview:{Type:'Task',Resource:'NotifyReviewer',ResultPath:'$.review',Next:'Done'},
+    Rejected:{Type:'Fail',Error:'InvalidInput',Cause:'The message failed validation'},
+    Done:{Type:'Succeed'}
+  }
+};
+const SAMPLES={
+  clear:{message:'I moved to Denver last month, update the mailing address please.'},
+  ambiguous:{message:'Send me the money from my account, I also want to complain about fees.'},
+  empty:{message:'   '}
+};
+const S={def:JSON.stringify(DEFAULT_DEF,null,2),input:JSON.stringify(SAMPLES.clear,null,2),flaky:'0',hard:false,res:null,err:'',problems:[],caseN:0,showEv:true};
+function classify(text){
+  const t=text.toLowerCase();
+  const intents=[/beneficiar|listed instead/,/withdraw|take out|surrender|send me the money/,/complain|unfair|rude|fees/,/address|moved|moving|po box|mail/].filter(r=>r.test(t)).length;
+  const label=/address|moved|moving|po box/.test(t)?'Address change':(/money|withdraw|surrender/.test(t)?'Withdrawal':(/complain|fees/.test(t)?'Complaint':'Beneficiary change'));
+  return{label,confidence:intents>1?0.58:0.92};
+}
+function makeLambdas(){
+  return{
+    ValidateInput:inp=>{if(!inp||!String(inp.message||'').trim())throw new StateError('ValidationError','message is empty');return{...inp,message:String(inp.message).trim()};},
+    Classify:(inp,ctx)=>{
+      if(S.hard)throw new StateError('ModelError','The model returned an invalid response');
+      if(ctx.call<=Number(S.flaky))throw new StateError('ModelThrottled','The model is busy, try again');
+      return classify(inp.message);
+    },
+    SaveCase:inp=>({caseId:1000+(++S.caseN),status:inp.status,label:inp.label}),
+    NotifyReviewer:inp=>({notified:true,queue:'claims-review'})
+  };
+}
+const QA=[
+ ['What problem does it solve?','Step Functions coordinates steps such as Lambda calls with branching, retries, error handling and a recorded history of each execution, so the control flow is data you can read, not code scattered across functions.'],
+ ['What would you use instead?','Airflow or another scheduler for batch pipelines, or custom orchestration code. For open-ended tasks where the model picks the next step, an agent runtime such as AgentCore.'],
+ ['What breaks without it?','Retries, timeouts and failure routing get hand-coded in every function, there is no single trace of what happened, and changing the flow means redeploying code.']
+];
+function stateRows(def,visited){
+  return Object.keys(def.States).map(n=>{
+    const s=def.States[n];
+    const to=s.Type==='Choice'?((s.Choices||[]).map(c=>c.Next).concat(s.Default?['default: '+s.Default]:[])).join(', '):(s.Next||(s.End?'end':''));
+    const extra=[s.Retry?'Retry':'',s.Catch?'Catch':''].filter(Boolean).join(' + ');
+    const idx=visited?visited.indexOf(n):-1;
+    return[(idx>=0?'✓ ':'')+n,s.Type+(extra?' ('+extra+')':''),to];
+  });
+}
+function render(){
+  let res='';
+  if(S.err)res+='<div class="status bad">'+esc(S.err)+'</div>';
+  if(S.problems.length)res+='<div class="status warn"><b>Definition problems</b><br>'+S.problems.map(esc).join('<br>')+'</div>';
+  if(S.res){
+    const r=S.res;
+    res+='<h3>Execution: '+(r.status==='SUCCEEDED'?chip('SUCCEEDED','good'):chip('FAILED','bad'))+'</h3>';
+    if(r.status==='SUCCEEDED')res+='<pre>'+esc(JSON.stringify(r.output,null,2))+'</pre>';
+    else res+='<div class="out err">'+esc(r.error+': '+r.cause)+'</div>';
+    try{res+='<h3>Path taken</h3><p>'+r.visited.map(esc).join(' → ')+'</p>'+table(['State','Type','Goes to'],stateRows(JSON.parse(S.def),r.visited),420);}catch(e){}
+    res+='<div class="row" style="margin-top:12px">'+tog('ev','',S.showEv?'Hide event history':'Show event history',S.showEv)+'</div>';
+    if(S.showEv)res+='<div class="scroll" style="margin-top:8px"><table style="min-width:520px"><thead><tr><th>#</th><th>Event</th><th>State</th><th>Detail</th></tr></thead><tbody>'+
+      r.events.map(e=>'<tr><td>'+e.id+'</td><td>'+(/Failed/.test(e.type)?chip(e.type,'bad'):(/Retry|Catch/.test(e.type)?chip(e.type,'warn'):esc(e.type)))+'</td><td>'+esc(e.state)+'</td><td class="small">'+esc(e.detail)+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+  return '<h2>State machine</h2><p class="small muted">Edit the JSON, then run it. The default routes a claims message: validate, classify with retries, then branch on confidence.</p>'+
+  '<textarea class="editor" id="def" data-act="def" rows="14" spellcheck="false" autocapitalize="off" autocorrect="off">'+esc(S.def)+'</textarea>'+
+  '<div class="row" style="margin-top:8px">'+btn('resetdef','','Reset definition','ghost sm')+'</div>'+
+  '<h3>Input</h3><div class="row">'+Object.keys(SAMPLES).map(k=>btn('sample',k,k==='empty'?'Empty message':(k==='clear'?'Clear request':'Ambiguous request'),'ghost sm')).join('')+'</div>'+
+  '<textarea class="editor" id="input" data-act="input" rows="4" spellcheck="false" style="margin-top:8px;min-height:80px">'+esc(S.input)+'</textarea>'+
+  '<h3>Failure injection</h3><label class="range" for="flaky">Classify fails with ModelThrottled on its first N calls</label>'+
+  '<select id="flaky" data-act="flaky">'+['0','1','2','3','4'].map(v=>'<option'+(S.flaky===v?' selected':'')+'>'+v+'</option>').join('')+'</select>'+
+  '<p class="small muted">Retry allows 3 attempts with exponential backoff. With 4 failures, retries run out and the Catch routes to HumanReview.</p>'+
+  '<div class="row">'+tog('hard','','Classify always fails with ModelError',S.hard)+'</div>'+
+  '<div style="margin-top:14px">'+btn('run','','Start execution')+'</div>'+res+qa(QA);
+}
+const draw=app({
+  render,
+  act:{
+    run:()=>{
+      S.err='';S.res=null;S.problems=[];S.caseN=0;
+      const d=$('#def'),i=$('#input');if(d)S.def=d.value;if(i)S.input=i.value;
+      let def,inp;
+      try{def=JSON.parse(S.def);}catch(e){S.err='The definition is not valid JSON: '+e.message;return;}
+      try{inp=JSON.parse(S.input);}catch(e){S.err='The input is not valid JSON: '+e.message;return;}
+      S.problems=validateDef(def);if(S.problems.length)return;
+      S.res=runASL(def,inp,makeLambdas());
+    },
+    resetdef:()=>{S.def=JSON.stringify(DEFAULT_DEF,null,2);S.res=null;S.problems=[];},
+    sample:v=>{S.input=JSON.stringify(SAMPLES[v],null,2);},
+    hard:()=>{S.hard=!S.hard;},
+    ev:()=>{S.showEv=!S.showEv;}
+  },
+  change:{flaky:t=>{S.flaky=t.value;return false;}},
+  input:{def:t=>{S.def=t.value;},input:t=>{S.input=t.value;}},
+  onError:err=>{S.err=String((err&&err.message)||err);}
+});
+draw();
+</script>
+</body>
+</html>

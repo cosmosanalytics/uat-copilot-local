@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PySpark lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">PySpark API (runs on a pandas-backed shim)</span></div>
+  <header>
+    <h1>PySpark lab</h1>
+    <p class="lede">Write PySpark code and watch what Spark would do: transformations are recorded lazily, actions trigger jobs, and wide operations add shuffles and stages. The results are computed by pandas, because real Spark needs a Java runtime.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: this is a small PySpark-compatible shim written for this page, not Apache Spark. The API names, lazy evaluation, show() output, explain() shape and the job, stage and task counts are modelled on Spark, but the numbers are simplified. The data results come from pandas and SQLite.</p>
+</div>
+<script type="py" config='{"packages":["pandas","numpy","sqlite3"]}'>
+import json
+from pyodide.ffi import create_proxy
+from pyscript import window
+
+import ast, io, contextlib, traceback
+
+def exec_capture(code, ns):
+    """Run code like a notebook cell: capture print output and show the value of a final expression."""
+    buf = io.StringIO()
+    err = None
+    try:
+        tree = ast.parse(code)
+        body = list(tree.body)
+        tail = None
+        if body and isinstance(body[-1], ast.Expr):
+            tail = ast.Expression(body.pop().value)
+        with contextlib.redirect_stdout(buf):
+            exec(compile(ast.Module(body, type_ignores=[]), "<cell>", "exec"), ns)
+            if tail is not None:
+                val = eval(compile(tail, "<cell>", "eval"), ns)
+                if val is not None:
+                    print(repr(val))
+    except SyntaxError as e:
+        err = "SyntaxError: %s (line %s)" % (e.msg, e.lineno)
+    except Exception:
+        lines = traceback.format_exc().strip().splitlines()
+        cell = [l.strip() for l in lines if '"<cell>"' in l]
+        err = lines[-1] + ("\n(" + cell[0].replace('File "<cell>", ', 'in your code: ') + ")" if cell else "")
+    return buf.getvalue(), err
+
+import random
+
+def make_claims(n=40, seed=7):
+    r = random.Random(seed)
+    types = ["annuity", "life", "group"]
+    states = ["PA", "NC", "IN", "NJ", "OH"]
+    statuses = ["open", "closed", "review"]
+    notes = ["address change", "beneficiary update", "partial withdrawal", "billing complaint", "fee complaint", "loan request"]
+    rows = []
+    for i in range(1, n + 1):
+        note = r.choice(notes)
+        if i % 7 == 0:
+            note = "  " + note.upper() + "  "
+        rows.append({
+            "claim_id": i,
+            "policy_type": r.choice(types),
+            "state": r.choice(states),
+            "amount": round(r.uniform(200, 9000), 2),
+            "days_open": r.randint(1, 90),
+            "status": r.choice(statuses),
+            "note": note,
+        })
+    rows.append(dict(rows[2]))
+    rows.append(dict(rows[10]))
+    return rows
+
+import math, sqlite3, types, sys
+import numpy as np
+import pandas as pd
+
+JOBS = []
+COUNTERS = {"transforms": 0}
+
+
+class AnalysisException(Exception):
+    pass
+
+
+def _series(v, d):
+    if isinstance(v, pd.Series):
+        return v
+    return pd.Series([v] * len(d), index=d.index)
+
+
+class Column:
+    def __init__(self, fn, name, agg=None, asc=True):
+        self.fn, self.name, self.agg, self.asc = fn, name, agg, asc
+
+    __hash__ = object.__hash__
+
+    def alias(self, n):
+        return Column(self.fn, n, self.agg, self.asc)
+
+    name_ = alias
+
+    def desc(self):
+        return Column(self.fn, self.name, self.agg, False)
+
+    def asc_(self):
+        return Column(self.fn, self.name, self.agg, True)
+
+    def _bin(self, o, op, sym):
+        o = _lit(o)
+        a = self
+        return Column(lambda d: op(_series(a.fn(d), d), _series(o.fn(d), d)), "(%s %s %s)" % (a.name, sym, o.name))
+
+    def __eq__(self, o): return self._bin(o, lambda x, y: x == y, "=")
+    def __ne__(self, o): return self._bin(o, lambda x, y: x != y, "!=")
+    def __lt__(self, o): return self._bin(o, lambda x, y: x < y, "<")
+    def __le__(self, o): return self._bin(o, lambda x, y: x <= y, "<=")
+    def __gt__(self, o): return self._bin(o, lambda x, y: x > y, ">")
+    def __ge__(self, o): return self._bin(o, lambda x, y: x >= y, ">=")
+    def __add__(self, o): return self._bin(o, lambda x, y: x + y, "+")
+    def __sub__(self, o): return self._bin(o, lambda x, y: x - y, "-")
+    def __mul__(self, o): return self._bin(o, lambda x, y: x * y, "*")
+    def __truediv__(self, o): return self._bin(o, lambda x, y: x / y, "/")
+    def __radd__(self, o): return _lit(o)._bin(self, lambda x, y: x + y, "+")
+    def __rsub__(self, o): return _lit(o)._bin(self, lambda x, y: x - y, "-")
+    def __rmul__(self, o): return _lit(o)._bin(self, lambda x, y: x * y, "*")
+    def __and__(self, o): return self._bin(o, lambda x, y: _bool(x) & _bool(y), "AND")
+    def __or__(self, o): return self._bin(o, lambda x, y: _bool(x) | _bool(y), "OR")
+    def __invert__(self):
+        a = self
+        return Column(lambda d: ~_bool(_series(a.fn(d), d)), "(NOT %s)" % a.name)
+
+    def __bool__(self):
+        raise ValueError("Cannot convert column into bool: use '&' for 'and', '|' for 'or', '~' for 'not' when building column expressions.")
+
+    def isNull(self):
+        a = self
+        return Column(lambda d: _series(a.fn(d), d).isna(), "(%s IS NULL)" % a.name)
+
+    def isNotNull(self):
+        a = self
+        return Column(lambda d: _series(a.fn(d), d).notna(), "(%s IS NOT NULL)" % a.name)
+
+    def isin(self, *vals):
+        if len(vals) == 1 and isinstance(vals[0], (list, tuple, set)):
+            vals = tuple(vals[0])
+        a = self
+        return Column(lambda d: _series(a.fn(d), d).isin(list(vals)), "(%s IN %s)" % (a.name, list(vals)))
+
+    def contains(self, s):
+        a = self
+        return Column(lambda d: _series(a.fn(d), d).astype("string").str.contains(str(s), regex=False).fillna(False).astype(bool), "contains(%s, %s)" % (a.name, s))
+
+    def startswith(self, s):
+        a = self
+        return Column(lambda d: _series(a.fn(d), d).astype("string").str.startswith(str(s)).fillna(False).astype(bool), "startswith(%s, %s)" % (a.name, s))
+
+    def cast(self, t):
+        a = self
+        t = str(t).lower()
+        def f(d):
+            s = _series(a.fn(d), d)
+            if t in ("int", "integer", "long", "bigint"):
+                return pd.to_numeric(s, errors="coerce").astype("Int64")
+            if t in ("double", "float", "decimal"):
+                return pd.to_numeric(s, errors="coerce").astype(float)
+            if t == "string":
+                return s.astype(object).where(s.isna(), s.astype(str))
+            if t == "boolean":
+                return s.astype(bool)
+            raise AnalysisException("Unsupported cast type: " + t)
+        return Column(f, "CAST(%s AS %s)" % (a.name, t.upper()))
+
+
+def _bool(s):
+    return s.fillna(False).astype(bool)
+
+
+def _lit(v):
+    if isinstance(v, Column):
+        return v
+    return Column(lambda d, v=v: v, str(v))
+
+
+def _ev(c, d):
+    if isinstance(c, str):
+        c = F.col(c)
+    return _series(_lit(c).fn(d), d)
+
+
+class When(Column):
+    def __init__(self, conds, other=None):
+        self.conds, self.other = conds, other
+        Column.__init__(self, self._eval, "CASE WHEN ...")
+
+    def _eval(self, d):
+        if self.other is not None:
+            res = _series(_lit(self.other).fn(d), d).astype(object)
+        else:
+            res = pd.Series([None] * len(d), index=d.index, dtype=object)
+        for c, v in reversed(self.conds):
+            res = res.mask(_bool(_ev(c, d)), _series(_lit(v).fn(d), d).astype(object))
+        return res.infer_objects()
+
+    def when(self, cond, val):
+        return When(self.conds + [(cond, val)], self.other)
+
+    def otherwise(self, val):
+        return When(self.conds, val)
+
+
+def _agg(kind, c):
+    star = isinstance(c, str) and c == "*"
+    if isinstance(c, str) and not star:
+        c = F.col(c)
+    label = "1" if star else c.name
+    src = None if star else c
+    return Column(None, "%s(%s)" % (kind, label), agg=(kind, src, None))
+
+
+class _Functions:
+    def col(self, name):
+        def f(d, name=name):
+            if name not in d.columns:
+                raise AnalysisException("[UNRESOLVED_COLUMN] A column or function parameter with name `%s` cannot be resolved. Did you mean one of the following? [%s]" % (name, ", ".join("`%s`" % c for c in d.columns)))
+            return d[name]
+        return Column(f, name)
+    column = col
+    def lit(self, v): return Column(lambda d, v=v: v, str(v))
+    def when(self, cond, val): return When([(cond, val)])
+    def _str(self, c, nm, fn):
+        c = self.col(c) if isinstance(c, str) else c
+        return Column(lambda d: fn(_series(c.fn(d), d).astype("string")).astype(object).where(lambda s: s.notna(), None), "%s(%s)" % (nm, c.name))
+    def lower(self, c): return self._str(c, "lower", lambda s: s.str.lower())
+    def upper(self, c): return self._str(c, "upper", lambda s: s.str.upper())
+    def trim(self, c): return self._str(c, "trim", lambda s: s.str.strip())
+    def length(self, c):
+        c = self.col(c) if isinstance(c, str) else c
+        return Column(lambda d: _series(c.fn(d), d).astype("string").str.len().astype("Int64"), "length(%s)" % c.name)
+    def round(self, c, n=0):
+        c = self.col(c) if isinstance(c, str) else c
+        if c.agg:
+            prev = c.agg[2]
+            return Column(None, "round(%s, %d)" % (c.name, n), agg=(c.agg[0], c.agg[1], lambda s, prev=prev: (prev(s) if prev else s).round(n)))
+        return Column(lambda d: _series(c.fn(d), d).round(n), "round(%s, %d)" % (c.name, n))
+    def abs(self, c):
+        c = self.col(c) if isinstance(c, str) else c
+        if c.agg:
+            prev = c.agg[2]
+            return Column(None, "abs(%s)" % c.name, agg=(c.agg[0], c.agg[1], lambda s, prev=prev: (prev(s) if prev else s).abs()))
+        return Column(lambda d: _series(c.fn(d), d).abs(), "abs(%s)" % c.name)
+    def concat(self, *cs):
+        cs = [self.col(c) if isinstance(c, str) else c for c in cs]
+        def f(d):
+            out = _series(cs[0].fn(d), d).astype(str)
+            for c in cs[1:]:
+                out = out + _series(c.fn(d), d).astype(str)
+            return out
+        return Column(f, "concat(%s)" % ", ".join(c.name for c in cs))
+    def coalesce(self, *cs):
+        cs = [self.col(c) if isinstance(c, str) else c for c in cs]
+        def f(d):
+            out = _series(cs[0].fn(d), d)
+            for c in cs[1:]:
+                out = out.fillna(_series(c.fn(d), d))
+            return out
+        return Column(f, "coalesce(%s)" % ", ".join(c.name for c in cs))
+    def count(self, c): return _agg("count", c)
+    def sum(self, c): return _agg("sum", c)
+    def avg(self, c): return _agg("avg", c)
+    mean = avg
+    def min(self, c): return _agg("min", c)
+    def max(self, c): return _agg("max", c)
+    def countDistinct(self, c): return _agg("count_distinct", c)
+
+
+F = _Functions()
+_PANDAS_AGG = {"count": "count", "sum": "sum", "avg": "mean", "min": "min", "max": "max", "count_distinct": "nunique"}
+
+
+def _agg_frame(d, keys, aggs):
+    tmp = pd.DataFrame(index=d.index)
+    knames = []
+    for k in keys:
+        k = F.col(k) if isinstance(k, str) else k
+        tmp[k.name] = _ev(k, d)
+        knames.append(k.name)
+    named = {}
+    posts = {}
+    for i, a in enumerate(aggs):
+        kind, src, post = a.agg
+        col = "__a%d" % i
+        tmp[col] = 1 if src is None else _ev(src, d)
+        named[a.name] = (col, _PANDAS_AGG[kind])
+        if post:
+            posts[a.name] = post
+    if knames:
+        out = tmp.groupby(knames, dropna=False, sort=True).agg(**named).reset_index()
+    else:
+        out = pd.DataFrame({nm: [getattr(tmp[col], fn)()] for nm, (col, fn) in named.items()})
+    for nm, post in posts.items():
+        out[nm] = post(out[nm])
+    return out
+
+
+class Row(tuple):
+    def __new__(cls, *args, **kwargs):
+        if kwargs:
+            r = tuple.__new__(cls, tuple(kwargs.values()))
+            r.__dict__["_fields"] = tuple(kwargs.keys())
+            return r
+        r = tuple.__new__(cls, args)
+        r.__dict__["_fields"] = ()
+        return r
+
+    def __getattr__(self, n):
+        if n.startswith("_"):
+            raise AttributeError(n)
+        if n in self._fields:
+            return self[self._fields.index(n)]
+        raise AttributeError(n)
+
+    def __getitem__(self, k):
+        if isinstance(k, str):
+            return tuple.__getitem__(self, self._fields.index(k))
+        return tuple.__getitem__(self, k)
+
+    def asDict(self):
+        return dict(zip(self._fields, self))
+
+    def __repr__(self):
+        if self._fields:
+            return "Row(%s)" % ", ".join("%s=%r" % (k, v) for k, v in zip(self._fields, self))
+        return "Row(%s)" % ", ".join(repr(v) for v in self)
+
+
+def _pyval(v):
+    if isinstance(v, np.integer):
+        return int(v)
+    if isinstance(v, np.floating):
+        return float(v)
+    if isinstance(v, np.bool_):
+        return bool(v)
+    if v is pd.NA or (isinstance(v, float) and math.isnan(v)):
+        return None
+    return v
+
+
+def _sparktype(dt):
+    s = str(dt)
+    if s.startswith("int") or s.startswith("Int"):
+        return "long"
+    if s.startswith("float") or s.startswith("Float"):
+        return "double"
+    if s.startswith("bool") or s.startswith("boolean"):
+        return "boolean"
+    return "string"
+
+
+def _fmt(v, trunc):
+    v = _pyval(v)
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    s = str(v)
+    if trunc and len(s) > 20:
+        s = s[:17] + "..."
+    return s
+
+
+class _RDD:
+    def __init__(self, df):
+        self._df = df
+    def getNumPartitions(self):
+        return self._df._stages[-1]
+
+
+class DataFrame:
+    def __init__(self, session, compute, plan, stages):
+        self._s, self._compute, self._plan, self._stages = session, compute, plan, stages
+
+    def _t(self, fn, step, wide=False, parts=None):
+        parent = self._compute
+        COUNTERS["transforms"] += 1
+        stages = list(self._stages)
+        if wide:
+            stages.append(parts or self._s.shuffle_parts)
+        elif parts:
+            stages[-1] = parts
+        return DataFrame(self._s, lambda: fn(parent()), self._plan + [step], stages)
+
+    def _peek(self):
+        return self._compute()
+
+    @property
+    def columns(self):
+        return list(self._peek().columns)
+
+    @property
+    def dtypes(self):
+        return [(c, _sparktype(t)) for c, t in self._peek().dtypes.items()]
+
+    @property
+    def rdd(self):
+        return _RDD(self)
+
+    def __getitem__(self, name):
+        if isinstance(name, (list, tuple)):
+            return self.select(*name)
+        return F.col(name)
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        if name in self._peek().columns:
+            return F.col(name)
+        raise AttributeError("'DataFrame' object has no attribute '%s'" % name)
+
+    def __repr__(self):
+        return "DataFrame[%s]" % ", ".join("%s: %s" % (c, "bigint" if t == "long" else t) for c, t in self.dtypes)
+
+    # ---- transformations (lazy) ----
+    def select(self, *cols):
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+            cols = tuple(cols[0])
+        cs = []
+        for c in cols:
+            cs.append(c)
+        def fn(d):
+            if any(isinstance(c, Column) and c.agg for c in cs):
+                return _agg_frame(d, [], [c for c in cs])
+            out = pd.DataFrame(index=d.index)
+            for c in cs:
+                if isinstance(c, str) and c == "*":
+                    for k in d.columns:
+                        out[k] = d[k]
+                    continue
+                cc = F.col(c) if isinstance(c, str) else c
+                out[cc.name] = _ev(cc, d)
+            return out.reset_index(drop=True)
+        names = ", ".join((c if isinstance(c, str) else c.name) for c in cs)
+        if any(isinstance(c, Column) and c.agg for c in cs):
+            return self._t(fn, ("agg", "keys=[], functions=[%s]" % names), wide=True)
+        return self._t(fn, ("project", "[%s]" % names))
+
+    def filter(self, cond):
+        def fn(d):
+            if isinstance(cond, str):
+                return d.query(cond, engine="python").reset_index(drop=True)
+            return d[_bool(_ev(cond, d))].reset_index(drop=True)
+        return self._t(fn, ("filter", cond if isinstance(cond, str) else cond.name))
+    where = filter
+
+    def withColumn(self, name, col):
+        def fn(d):
+            d = d.copy()
+            d[name] = _ev(col, d)
+            return d
+        return self._t(fn, ("project", "[*, %s AS %s]" % (_lit(col).name, name)))
+
+    def withColumnRenamed(self, old, new):
+        return self._t(lambda d: d.rename(columns={old: new}), ("project", "[%s AS %s]" % (old, new)))
+
+    def drop(self, *cols):
+        return self._t(lambda d: d.drop(columns=[c for c in cols if c in d.columns]), ("project", "drop %s" % list(cols)))
+
+    def dropDuplicates(self, subset=None):
+        return self._t(lambda d: d.drop_duplicates(subset=subset).reset_index(drop=True), ("dedupe", "keys=%s" % (subset or "all columns")), wide=True)
+
+    def distinct(self):
+        return self.dropDuplicates()
+
+    def dropna(self, how="any", subset=None):
+        return self._t(lambda d: d.dropna(how=how, subset=subset).reset_index(drop=True), ("project", "dropna"))
+
+    def fillna(self, value, subset=None):
+        def fn(d):
+            d = d.copy()
+            if isinstance(value, dict):
+                return d.fillna(value)
+            cols = subset or list(d.columns)
+            d[cols] = d[cols].fillna(value)
+            return d
+        return self._t(fn, ("project", "fillna"))
+
+    def orderBy(self, *cols):
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+            cols = tuple(cols[0])
+        def fn(d):
+            tmp = d.copy()
+            by, asc = [], []
+            for i, c in enumerate(cols):
+                cc = F.col(c) if isinstance(c, str) else c
+                nm = "__s%d" % i
+                tmp[nm] = _ev(cc, d)
+                by.append(nm)
+                asc.append(cc.asc)
+            tmp = tmp.sort_values(by=by, ascending=asc, kind="stable")
+            return tmp[list(d.columns)].reset_index(drop=True)
+        names = ", ".join("%s %s" % ((c if isinstance(c, str) else c.name), ("ASC" if (isinstance(c, str) or c.asc) else "DESC")) for c in cols)
+        return self._t(fn, ("sort", names), wide=True)
+    sort = orderBy
+
+    def limit(self, n):
+        return self._t(lambda d: d.head(n).reset_index(drop=True), ("limit", str(n)))
+
+    def groupBy(self, *cols):
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+            cols = tuple(cols[0])
+        return GroupedData(self, cols)
+    groupby = groupBy
+
+    def agg(self, *aggs):
+        return GroupedData(self, ()).agg(*aggs)
+
+    def join(self, other, on=None, how="inner"):
+        if isinstance(on, Column):
+            raise AnalysisException("This shim joins on column names, for example df.join(other, 'policy_type'). Join conditions built from two DataFrames are not supported here.")
+        keys = [on] if isinstance(on, str) else list(on or [])
+        how = {"left_outer": "left", "right_outer": "right", "full": "outer", "full_outer": "outer"}.get(how, how)
+        other_c = other._compute
+        def fn(d):
+            o = other_c()
+            for k in keys:
+                if k not in d.columns or k not in o.columns:
+                    raise AnalysisException("[UNRESOLVED_USING_COLUMN_FOR_JOIN] USING column `%s` cannot be resolved on one side of the join." % k)
+            if how == "left_semi":
+                return d[d.set_index(keys).index.isin(o.set_index(keys).index)].reset_index(drop=True)
+            if how == "left_anti":
+                return d[~d.set_index(keys).index.isin(o.set_index(keys).index)].reset_index(drop=True)
+            return pd.merge(d, o, on=keys, how=how, suffixes=("", "_right"))
+        res = self._t(fn, ("join", "%s on %s" % (how, keys)), wide=True)
+        res._stages = list(self._stages) + [self._s.shuffle_parts]
+        return res
+
+    def union(self, other):
+        oc = other._compute
+        return self._t(lambda d: pd.concat([d, oc()], ignore_index=True), ("union", ""))
+
+    def repartition(self, n):
+        return self._t(lambda d: d, ("repartition", str(n)), wide=True, parts=n)
+
+    def coalesce(self, n):
+        return self._t(lambda d: d, ("coalesce", str(n)), parts=n)
+
+    def cache(self): return self
+    persist = cache
+    def unpersist(self): return self
+
+    def createOrReplaceTempView(self, name):
+        self._s._views[name] = self._compute().copy()
+
+    # ---- actions (trigger a job) ----
+    def _run(self, action):
+        d = self._compute()
+        JOBS.append({"id": len(JOBS), "action": action, "stages": len(self._stages), "tasks": int(sum(self._stages)),
+                     "partitions": self._stages[-1], "plan": " > ".join(k for k, _ in self._plan)})
+        return d
+
+    def count(self):
+        return int(len(self._run("count")))
+
+    def collect(self):
+        d = self._run("collect")
+        cols = list(d.columns)
+        return [Row(**{c: _pyval(v) for c, v in zip(cols, r)}) for r in d.itertuples(index=False)]
+
+    def take(self, n):
+        return self.limit(n).collect()
+
+    def head(self, n=None):
+        if n is None:
+            r = self.take(1)
+            return r[0] if r else None
+        return self.take(n)
+
+    def first(self):
+        return self.head()
+
+    def toPandas(self):
+        return self._run("toPandas").copy()
+
+    def show(self, n=20, truncate=True, vertical=False):
+        if isinstance(n, bool):
+            n, truncate = 20, n
+        d = self._run("show")
+        part = d.head(n)
+        cols = list(part.columns)
+        rows = [[_fmt(v, truncate) for v in r] for r in part.itertuples(index=False)]
+        widths = [max([len(c)] + [len(r[i]) for r in rows]) for i, c in enumerate(cols)]
+        sep = "+" + "+".join("-" * w for w in widths) + "+"
+        def line(vals):
+            cells = [(v.rjust(w) if truncate else v.ljust(w)) for v, w in zip(vals, widths)]
+            return "|" + "|".join(cells) + "|"
+        out = [sep, line(cols), sep] + [line(r) for r in rows] + [sep]
+        if len(d) > n:
+            out.append("only showing top %d row%s" % (n, "" if n == 1 else "s"))
+        print("\n".join(out))
+
+    def printSchema(self):
+        print("root")
+        for c, t in self.dtypes:
+            print(" |-- %s: %s (nullable = true)" % (c, t))
+
+    def explain(self, extended=False):
+        nodes = []
+        for kind, txt in reversed(self._plan):
+            n = self._s.shuffle_parts
+            if kind == "agg":
+                nodes += ["HashAggregate(%s)" % txt, "Exchange hashpartitioning(..., %d)" % n, "HashAggregate(partial)"]
+            elif kind == "dedupe":
+                nodes += ["HashAggregate(%s)" % txt, "Exchange hashpartitioning(..., %d)" % n, "HashAggregate(partial)"]
+            elif kind == "sort":
+                nodes += ["Sort [%s]" % txt, "Exchange rangepartitioning(..., %d)" % n]
+            elif kind == "join":
+                nodes += ["SortMergeJoin(%s)" % txt, "Exchange hashpartitioning(..., %d)" % n]
+            elif kind == "repartition":
+                nodes += ["Exchange RoundRobinPartitioning(%s)" % txt]
+            elif kind == "coalesce":
+                nodes += ["Coalesce %s" % txt]
+            elif kind == "filter":
+                nodes += ["Filter %s" % txt]
+            elif kind == "project":
+                nodes += ["Project %s" % txt]
+            elif kind == "limit":
+                nodes += ["GlobalLimit %s" % txt]
+            elif kind == "union":
+                nodes += ["Union"]
+            elif kind == "scan":
+                nodes += ["Scan %s" % txt]
+            elif kind == "sql":
+                nodes += ["Sql %s" % txt[:60]]
+        print("== Physical Plan (simplified) ==")
+        for i, nd in enumerate(nodes):
+            print(("" if i == 0 else " " * (3 * (i - 1)) + "+- ") + nd)
+        print("Transformations are recorded lazily. No job runs until an action such as show(), count() or collect().")
+
+    def partition_sizes(self):
+        """Teaching helper, not part of PySpark: how many rows each partition would hold."""
+        n = len(self._peek())
+        p = self._stages[-1]
+        return [n // p + (1 if i < n % p else 0) for i in range(p)]
+
+
+class GroupedData:
+    def __init__(self, df, keys):
+        self._df, self._keys = df, keys
+
+    def agg(self, *aggs):
+        if len(aggs) == 1 and isinstance(aggs[0], (list, tuple)):
+            aggs = tuple(aggs[0])
+        keys = self._keys
+        for a in aggs:
+            if not (isinstance(a, Column) and a.agg):
+                raise AnalysisException("agg() needs aggregate functions such as F.count('*') or F.avg('amount').")
+        names = ", ".join(a.name for a in aggs)
+        kn = ", ".join(k if isinstance(k, str) else k.name for k in keys)
+        return self._df._t(lambda d: _agg_frame(d, keys, list(aggs)), ("agg", "keys=[%s], functions=[%s]" % (kn, names)), wide=True)
+
+    def count(self):
+        return self.agg(F.count("*").alias("count"))
+
+    def _simple(self, kind, cols):
+        return self.agg(*[getattr(F, kind)(c) for c in cols])
+
+    def sum(self, *c): return self._simple("sum", c)
+    def avg(self, *c): return self._simple("avg", c)
+    mean = avg
+    def min(self, *c): return self._simple("min", c)
+    def max(self, *c): return self._simple("max", c)
+
+
+class SparkSession:
+    def __init__(self):
+        self._tables, self._views = {}, {}
+        self.shuffle_parts = 8
+        self.base_parts = 4
+        self.version = "3.5 (shim)"
+
+    class _Builder:
+        def appName(self, n): return self
+        def master(self, n): return self
+        def config(self, *a, **k): return self
+        def enableHiveSupport(self): return self
+        def getOrCreate(self): return spark
+
+    builder = _Builder()
+
+    class _Conf:
+        def __init__(self, s): self._s = s
+        def set(self, k, v):
+            if k == "spark.sql.shuffle.partitions":
+                self._s.shuffle_parts = int(v)
+        def get(self, k, default=None):
+            return str(self._s.shuffle_parts) if k == "spark.sql.shuffle.partitions" else default
+
+    @property
+    def conf(self):
+        return SparkSession._Conf(self)
+
+    def _df(self, compute, plan):
+        return DataFrame(self, compute, [plan], [self.base_parts])
+
+    def register(self, name, pdf):
+        self._tables[name] = pdf
+
+    def table(self, name):
+        src = self._views.get(name)
+        if src is None:
+            src = self._tables.get(name)
+        if src is None:
+            raise AnalysisException("[TABLE_OR_VIEW_NOT_FOUND] The table or view `%s` cannot be found." % name)
+        return self._df(lambda n=name: (self._views.get(n) if n in self._views else self._tables[n]).copy(), ("scan", name))
+
+    def createDataFrame(self, data, schema=None):
+        if isinstance(data, pd.DataFrame):
+            pdf = data.copy()
+        else:
+            data = list(data)
+            if data and isinstance(data[0], Row) and data[0]._fields:
+                pdf = pd.DataFrame([r.asDict() for r in data])
+            elif data and isinstance(data[0], dict):
+                pdf = pd.DataFrame(data)
+            else:
+                names = schema
+                if isinstance(schema, str):
+                    names = [p.strip().split()[0] for p in schema.split(",")]
+                pdf = pd.DataFrame([tuple(r) for r in data], columns=names)
+        return self._df(lambda: pdf.copy(), ("scan", "LocalTableScan"))
+
+    def range(self, n):
+        return self._df(lambda: pd.DataFrame({"id": np.arange(n)}), ("scan", "Range(%d)" % n))
+
+    def sql(self, query):
+        def compute():
+            con = sqlite3.connect(":memory:")
+            for n, t in list(self._tables.items()) + list(self._views.items()):
+                t.to_sql(n, con, index=False, if_exists="replace")
+            try:
+                return pd.read_sql_query(query, con)
+            except Exception as e:
+                raise AnalysisException("[SQL_ERROR] " + str(e))
+            finally:
+                con.close()
+        return self._df(compute, ("sql", " ".join(query.split())))
+
+
+spark = SparkSession()
+
+
+def install_modules():
+    pyspark = types.ModuleType("pyspark")
+    sql = types.ModuleType("pyspark.sql")
+    fn = types.ModuleType("pyspark.sql.functions")
+    for name in dir(F):
+        if not name.startswith("_"):
+            setattr(fn, name, getattr(F, name))
+    sql.SparkSession, sql.Row, sql.DataFrame, sql.Column, sql.functions = SparkSession, Row, DataFrame, Column, fn
+    pyspark.sql = sql
+    sys.modules.update({"pyspark": pyspark, "pyspark.sql": sql, "pyspark.sql.functions": fn})
+
+
+claims_pdf = pd.DataFrame(make_claims())
+spark.register("claims", claims_pdf)
+spark.register("policy_types", pd.DataFrame({"policy_type": ["annuity", "life", "group"], "risk_class": ["high", "medium", "low"]}))
+install_modules()
+
+def fresh_ns():
+    return {"spark": spark, "F": F, "Row": Row, "pd": pd, "JOBS": JOBS}
+
+def norm(x):
+    if isinstance(x, DataFrame):
+        x = x.toPandas()
+    if isinstance(x, pd.DataFrame):
+        return sorted(tuple(round(float(v), 2) if isinstance(v, (int, float, np.integer, np.floating)) and not isinstance(v, bool) else str(v) for v in r) for r in x.itertuples(index=False))
+    try:
+        return round(float(x), 2)
+    except Exception:
+        return str(x)
+
+def claims_clean():
+    d = claims_pdf.drop_duplicates().copy()
+    d["note"] = d["note"].str.strip().str.lower()
+    return d
+
+EX = [
+    dict(title="Playground", prompt="Explore. spark and F (pyspark.sql.functions) are ready, and the tables claims and policy_types can be read with spark.table(). Try show(), explain() and printSchema().",
+         starter='df = spark.table("claims")\ndf.printSchema()\ndf.show(5)', hint="", expected=None),
+    dict(title="Filter and select",
+         prompt="From claims, keep open claims with amount above 5000 and select claim_id and amount. Put the DataFrame in result.",
+         starter='df = spark.table("claims")\nresult = ', hint="filter() takes a column expression, and combine conditions with & (not and). Wrap each comparison in parentheses.",
+         expected=lambda: claims_pdf[(claims_pdf.status == "open") & (claims_pdf.amount > 5000)][["claim_id", "amount"]]),
+    dict(title="Group and aggregate",
+         prompt="For each policy_type, compute the number of claims and the average amount rounded to 2 decimals. Put the DataFrame in result (column names do not matter).",
+         starter='df = spark.table("claims")\nresult = ', hint="groupBy('policy_type').agg(F.count('*'), F.round(F.avg('amount'), 2)).",
+         expected=lambda: claims_pdf.groupby("policy_type").agg(n=("claim_id", "size"), avg=("amount", "mean")).round(2).reset_index()),
+    dict(title="Clean with functions",
+         prompt="Drop duplicate rows, trim and lowercase the note column, then count claims per note. Put the DataFrame in result.",
+         starter='df = spark.table("claims")\nresult = ', hint="dropDuplicates() first, then withColumn('note', F.lower(F.trim('note'))), then groupBy('note').count().",
+         expected=lambda: claims_clean().groupby("note").size().reset_index()),
+    dict(title="Join",
+         prompt="Join claims to policy_types on policy_type and compute the total amount per risk_class. Put the DataFrame in result.",
+         starter='claims = spark.table("claims")\ntypes = spark.table("policy_types")\nresult = ', hint="claims.join(types, 'policy_type') then groupBy('risk_class').agg(F.sum('amount')).",
+         expected=lambda: claims_pdf.merge(pd.DataFrame({"policy_type": ["annuity", "life", "group"], "risk_class": ["high", "medium", "low"]}), on="policy_type").groupby("risk_class")["amount"].sum().reset_index()),
+    dict(title="Lazy or eager?", lazy=True,
+         prompt="Build a transformed DataFrame that keeps only claims in state 'PA', then trigger exactly ONE job that counts its rows. Put the count in result. Your code must not run any other action.",
+         starter='df = spark.table("claims")\npa = \nresult = ', hint="Transformations such as filter() run no job. count() is an action and runs one. Do not call show(), collect() or count() more than once.",
+         expected=lambda: int((claims_pdf.state == "PA").sum())),
+]
+
+EXAMPLES = [
+    ["Lazy plan, then action", 'df = spark.table("claims")\nbig = df.filter(F.col("amount") > 5000).select("claim_id", "amount")\nprint("jobs so far:", len(JOBS))\nbig.explain()\nbig.show(3)\nprint("jobs after show:", len(JOBS))'],
+    ["Shuffle and stages", 'df = spark.table("claims")\nsummary = df.groupBy("state").agg(F.count("*").alias("n")).orderBy(F.col("n").desc())\nsummary.explain()\nsummary.show()'],
+    ["Partitions", 'df = spark.table("claims")\nprint("partitions:", df.rdd.getNumPartitions(), df.partition_sizes())\nmore = df.repartition(6)\nprint("after repartition(6):", more.rdd.getNumPartitions(), more.partition_sizes())\nmore.count()'],
+    ["SQL on a view", 'df = spark.table("claims")\ndf.filter(F.col("status") == "open").createOrReplaceTempView("open_claims")\nspark.sql("SELECT policy_type, COUNT(*) AS n FROM open_claims GROUP BY policy_type").show()'],
+    ["Unresolved column", 'df = spark.table("claims")\ndf.select("amout").show()'],
+]
+
+def info():
+    return json.dumps({"ex": [{"title": e["title"], "prompt": e["prompt"], "starter": e["starter"], "hint": e["hint"], "check": e["expected"] is not None} for e in EX], "examples": EXAMPLES})
+
+def tables():
+    out = []
+    for name in ["claims", "policy_types"]:
+        d = spark._tables[name]
+        out.append({"name": name, "cols": list(d.columns), "rows": [[str(v) for v in r] for r in d.head(5).itertuples(index=False)], "n": len(d)})
+    return json.dumps(out)
+
+def execute(code):
+    JOBS.clear()
+    COUNTERS["transforms"] = 0
+    ns = fresh_ns()
+    out, err = exec_capture(code, ns)
+    return ns, out, err
+
+def run(idx, code):
+    ns, out, err = execute(code)
+    return json.dumps({"out": out, "err": err, "jobs": list(JOBS), "transforms": COUNTERS["transforms"]})
+
+def check(idx, code):
+    idx = int(idx)
+    ns, out, err = execute(code)
+    base = {"out": out, "err": err, "jobs": list(JOBS), "transforms": COUNTERS["transforms"]}
+    if err:
+        base.update(ok=False, msg="Your code raised an error, so there is nothing to check yet.")
+        return json.dumps(base)
+    e = EX[idx]
+    if e["expected"] is None:
+        base.update(ok=None, msg="")
+        return json.dumps(base)
+    if "result" not in ns:
+        base.update(ok=False, msg="Assign your answer to a variable named result.")
+        return json.dumps(base)
+    try:
+        ok = norm(ns["result"]) == norm(e["expected"]())
+    except Exception:
+        ok = False
+    if ok and e.get("lazy") and len(JOBS) != 1:
+        base.update(ok=False, msg="The count is right, but your code ran %d jobs. Aim for exactly one." % len(JOBS))
+        return json.dumps(base)
+    base.update(ok=ok, msg="Correct." if ok else "Not quite. Compare your rows with what the task asks, then check the hint.")
+    return json.dumps(base)
+
+API = {"py_info": info, "py_tables": tables, "py_run": run, "py_check": check}
+for _n, _f in API.items():
+    setattr(window, _n, create_proxy(_f))
+window.py_ready = True
+</script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+  },
+  async load(){
+    this.state='loading';this.pct=0;this.text='Starting';
+    if(this.draw)this.draw();
+    try{
+      const w=await import('https://esm.run/@mlc-ai/web-llm');
+      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
+        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+      }});
+      this.state='ready';
+    }catch(err){
+      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    }
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
+};
+
+const S={ex:[],examples:[],tables:[],idx:0,code:[],res:null,solved:{},showHint:false};
+const QA=[
+ ['What problem does it solve?','Spark splits data into partitions and processes them in parallel across many machines, so transformations that would not fit or would take hours on one machine finish quickly. PySpark is the Python API for it.'],
+ ['What would you use instead?','pandas when the data fits on one machine, or SQL on a warehouse. Databricks and EMR are the usual places Spark runs.'],
+ ['What breaks without it?','Very large joins and aggregations stall or run out of memory on a single machine. The lasting lesson here is lazy evaluation: building a plan is cheap, and only actions cost a job.']
+];
+function save(){const t=$('#code');if(t)S.code[S.idx]=t.value;}
+function call(fn,a,b){const f=window[fn];if(!f)throw new Error('Python is not ready yet.');return JSON.parse(b===undefined?f(a):f(a,b));}
+function sparkUi(r){
+  if(!r)return '';
+  let h='';
+  if(r.err)h+='<div class="out err">'+esc(r.err)+'</div>';
+  else h+='<div class="out">'+(esc(r.out)||'(no output)')+'</div>';
+  if(r.msg)h+='<div class="status '+(r.ok?'ok':'warn')+'">'+esc(r.msg)+'</div>';
+  h+='<h3>Spark UI (simplified)</h3><div class="tiles"><div class="tile"><b>'+r.transforms+'</b><span>transformations recorded (lazy)</span></div><div class="tile"><b>'+r.jobs.length+'</b><span>jobs run by actions</span></div></div>';
+  if(r.jobs.length)h+=table(['Job','Action','Stages','Tasks','Output partitions','Plan'],r.jobs.map(j=>[j.id,j.action,j.stages,j.tasks,j.partitions,j.plan]),560)+'<p class="small muted">Each wide step (groupBy, join, orderBy, distinct, repartition) adds a shuffle and a new stage. Tasks is the sum of partitions across stages.</p>';
+  else h+='<p class="small muted">No actions ran, so Spark would not have started any job. Try adding show() or count().</p>';
+  return h;
+}
+function render(){
+  if(!PYSTATE.ready)return '<div class="status warn">Starting Python in your browser. The first visit downloads the runtime and pandas.</div>';
+  const e=S.ex[S.idx];
+  const tabs=S.ex.map((x,i)=>'<button class="tog" data-act="pick" data-val="'+i+'" aria-pressed="'+(i===S.idx?'true':'false')+'">'+(S.solved[i]?'✓ ':'')+esc(x.title)+'</button>').join('');
+  const ex=S.idx===0?'<p class="small muted">Load an example:</p><div class="row">'+S.examples.map((x,i)=>btn('example',i,esc(x[0]),'ghost sm')).join('')+'</div>':'';
+  const tb='<div class="grid2" style="margin-top:12px">'+S.tables.map(t=>'<div class="box"><b>'+esc(t.name)+'</b> <span class="muted small">'+t.n+' rows</span><br><span class="small muted">'+esc(t.cols.join(', '))+'</span></div>').join('')+'</div>';
+  return '<div class="tabs">'+tabs+'</div><h2>'+esc(e.title)+'</h2><p>'+esc(e.prompt)+'</p>'+tb+ex+
+  '<textarea class="editor" id="code" data-act="code" rows="9" spellcheck="false" autocapitalize="off" autocorrect="off" style="margin-top:12px">'+esc(S.code[S.idx])+'</textarea>'+
+  '<div class="row" style="margin-top:10px">'+btn('run','','Run')+(e.check?btn('check','','Check answer'):'')+btn('reset','','Reset code','ghost')+(e.hint?btn('hint','','Hint','ghost'):'')+'</div>'+
+  (S.showHint&&e.hint?'<div class="status">'+esc(e.hint)+'</div>':'')+
+  sparkUi(S.res)+qa(QA);
+}
+const draw=app({
+  render,
+  act:{
+    pick:v=>{save();S.idx=+v;S.res=null;S.showHint=false;},
+    example:v=>{S.code[0]=S.examples[+v][1];S.res=null;},
+    run:()=>{save();S.res=call('py_run',S.idx,S.code[S.idx]);},
+    check:()=>{save();S.res=call('py_check',S.idx,S.code[S.idx]);if(S.res.ok)S.solved[S.idx]=true;},
+    reset:()=>{S.code[S.idx]=S.ex[S.idx].starter;S.res=null;},
+    hint:()=>{S.showHint=!S.showHint;}
+  },
+  input:{code:t=>{S.code[S.idx]=t.value;}},
+  onError:err=>{S.res={out:'',err:String((err&&err.message)||err),jobs:[],transforms:0};}
+});
+(async function boot(){
+  await waitPy();
+  const i=pyj('py_info');
+  S.ex=i.ex;S.examples=i.examples;S.code=S.ex.map(e=>e.starter);S.tables=pyj('py_tables');
+  draw();
+})();
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MLflow lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">MLflow tracking and registry (real scikit-learn, MLflow-style tracker)</span></div>
+  <header>
+    <h1>MLflow lab</h1>
+    <p class="lede">Train real models in your browser, log every run with parameters, metrics and artifacts, then compare runs, chart them and register the best one. The tracker has MLflow&#x27;s method names and stores runs in SQLite tables.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the models are real (scikit-learn running in your browser) but MLflow itself is not, because it needs a tracking server. The tracker here mirrors mlflow.start_run, log_param, log_metric and log_artifact so the code you read transfers directly. The registry and stage names follow MLflow's model registry concepts.</p>
+</div>
+<script type="py" config='{"packages":["scikit-learn","numpy","sqlite3"]}'>
+import json, time, pickle, sqlite3, datetime
+import numpy as np
+from pyodide.ffi import create_proxy
+from pyscript import window
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, f1_score
+
+X, y = make_classification(n_samples=800, n_features=12, n_informative=6, n_redundant=2, flip_y=0.05, class_sep=0.8, random_state=3)
+XTR, XTE, YTR, YTE = train_test_split(X, y, test_size=0.3, random_state=0)
+
+DB = sqlite3.connect(":memory:")
+DB.executescript("""
+CREATE TABLE runs (run_id TEXT PRIMARY KEY, run_name TEXT, started TEXT, status TEXT);
+CREATE TABLE params (run_id TEXT, key TEXT, value TEXT);
+CREATE TABLE metrics (run_id TEXT, key TEXT, value REAL);
+CREATE TABLE artifacts (run_id TEXT, path TEXT, bytes INTEGER);
+CREATE TABLE registry (version INTEGER, run_id TEXT, stage TEXT);
+""")
+MODELS = {}
+
+class Tracker:
+    """MLflow-style tracking API backed by SQLite."""
+    def __init__(self):
+        self.run_id = None
+    def start_run(self, run_name=None):
+        n = DB.execute("SELECT COUNT(*) FROM runs").fetchone()[0] + 1
+        self.run_id = "run_%04d" % n
+        DB.execute("INSERT INTO runs VALUES (?,?,?,?)", (self.run_id, run_name or self.run_id, datetime.datetime.now().isoformat(timespec="seconds"), "RUNNING"))
+        return self.run_id
+    def log_param(self, k, v):
+        DB.execute("INSERT INTO params VALUES (?,?,?)", (self.run_id, k, str(v)))
+    def log_metric(self, k, v):
+        DB.execute("INSERT INTO metrics VALUES (?,?,?)", (self.run_id, k, float(v)))
+    def log_artifact(self, path, nbytes):
+        DB.execute("INSERT INTO artifacts VALUES (?,?,?)", (self.run_id, path, int(nbytes)))
+    def end_run(self, status="FINISHED"):
+        DB.execute("UPDATE runs SET status = ? WHERE run_id = ?", (status, self.run_id))
+        DB.commit()
+
+mlflow = Tracker()
+
+def build(model, p):
+    if model == "logreg":
+        return LogisticRegression(C=float(p["C"]), max_iter=500)
+    if model == "forest":
+        md = None if str(p["max_depth"]) == "None" else int(p["max_depth"])
+        return RandomForestClassifier(n_estimators=int(p["n_estimators"]), max_depth=md, random_state=0)
+    return DecisionTreeClassifier(max_depth=int(p["max_depth"]), random_state=0)
+
+def summary(rid):
+    row = DB.execute("SELECT run_name, started, status FROM runs WHERE run_id = ?", (rid,)).fetchone()
+    params = {k: v for k, v in DB.execute("SELECT key, value FROM params WHERE run_id = ?", (rid,))}
+    metrics = {k: v for k, v in DB.execute("SELECT key, value FROM metrics WHERE run_id = ?", (rid,))}
+    arts = [{"path": a, "bytes": b} for a, b in DB.execute("SELECT path, bytes FROM artifacts WHERE run_id = ?", (rid,))]
+    return {"id": rid, "name": row[0], "started": row[1], "status": row[2], "params": params, "metrics": metrics, "artifacts": arts}
+
+def train(payload_json):
+    p = json.loads(payload_json)
+    model, params, auto = p["model"], p["params"], bool(p.get("autolog"))
+    rid = mlflow.start_run(p.get("name"))
+    try:
+        mlflow.log_param("model_type", model)
+        if auto:
+            m = build(model, params)
+            for k, v in m.get_params().items():
+                mlflow.log_param(k, v)
+        else:
+            for k, v in params.items():
+                mlflow.log_param(k, v)
+        m = build(model, params)
+        t0 = time.perf_counter()
+        m.fit(XTR, YTR)
+        dt = time.perf_counter() - t0
+        pred = m.predict(XTE)
+        mlflow.log_metric("train_accuracy", accuracy_score(YTR, m.predict(XTR)))
+        mlflow.log_metric("test_accuracy", accuracy_score(YTE, pred))
+        mlflow.log_metric("test_f1", f1_score(YTE, pred))
+        mlflow.log_metric("fit_seconds", dt)
+        blob = pickle.dumps(m)
+        mlflow.log_artifact("model/model.pkl", len(blob))
+        MODELS[rid] = m
+        mlflow.end_run("FINISHED")
+    except Exception as e:
+        mlflow.end_run("FAILED")
+        raise
+    return json.dumps(summary(rid))
+
+def runs():
+    ids = [r[0] for r in DB.execute("SELECT run_id FROM runs ORDER BY run_id")]
+    return json.dumps([summary(i) for i in ids])
+
+def register(rid):
+    v = DB.execute("SELECT COUNT(*) FROM registry").fetchone()[0] + 1
+    DB.execute("INSERT INTO registry VALUES (?,?,?)", (v, rid, "None"))
+    DB.commit()
+    return json.dumps({"version": v})
+
+def set_stage(payload_json):
+    p = json.loads(payload_json)
+    if p["stage"] == "Production":
+        DB.execute("UPDATE registry SET stage = 'Archived' WHERE stage = 'Production'")
+    DB.execute("UPDATE registry SET stage = ? WHERE version = ?", (p["stage"], int(p["version"])))
+    DB.commit()
+    return "ok"
+
+def registry():
+    rows = DB.execute("SELECT version, run_id, stage FROM registry ORDER BY version").fetchall()
+    return json.dumps([{"version": a, "run": b, "stage": c} for a, b, c in rows])
+
+def predict(version):
+    row = DB.execute("SELECT run_id FROM registry WHERE version = ?", (int(version),)).fetchone()
+    if not row:
+        return json.dumps({"error": "No such version."})
+    m = MODELS[row[0]]
+    idx = list(range(6))
+    pred = m.predict(XTE[idx]).tolist()
+    return json.dumps({"run": row[0], "rows": [{"row": i, "predicted": int(p), "actual": int(YTE[i])} for i, p in zip(idx, pred)]})
+
+def run_sql(q):
+    s = (q or "").strip().rstrip(";").strip()
+    if not s.lower().startswith(("select", "with")):
+        return json.dumps({"error": "Only SELECT or WITH queries are allowed here."})
+    try:
+        cur = DB.execute(s)
+        return json.dumps({"cols": [d[0] for d in cur.description], "rows": [list(r) for r in cur.fetchmany(200)]})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+API = {"py_train": train, "py_runs": runs, "py_register": register, "py_stage": set_stage, "py_registry": registry, "py_predict": predict, "py_sql": run_sql}
+for _n, _f in API.items():
+    setattr(window, _n, create_proxy(_f))
+window.py_ready = True
+</script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+  },
+  async load(){
+    this.state='loading';this.pct=0;this.text='Starting';
+    if(this.draw)this.draw();
+    try{
+      const w=await import('https://esm.run/@mlc-ai/web-llm');
+      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
+        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+      }});
+      this.state='ready';
+    }catch(err){
+      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    }
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
+};
+
+const SPACE={
+  logreg:{label:'Logistic regression',params:{C:['0.01','0.1','1','10','100']}},
+  forest:{label:'Random forest',params:{n_estimators:['10','50','100','200'],max_depth:['2','4','8','None']}},
+  tree:{label:'Decision tree',params:{max_depth:['1','2','4','8','16']}}
+};
+const S={model:'logreg',vals:{},auto:false,runs:[],reg:[],sel:[],busy:false,xkey:'',msg:'',pred:null,sqlq:"SELECT run_id, key, ROUND(value, 3) AS value\nFROM metrics\nWHERE key = 'test_accuracy'\nORDER BY value DESC;",sqlres:null,sortBy:'test_accuracy'};
+const QA=[
+ ['What problem does it solve?','MLflow tracking records the parameters, metrics and artifacts of every training run in one place. You can compare runs, reproduce a result and register the version you trust.'],
+ ['What would you use instead?','A spreadsheet for a tiny project, or other tracking tools such as Weights & Biases or SageMaker Experiments. On Databricks, MLflow is built in.'],
+ ['What breaks without it?','You cannot say which setting produced last week\'s best number, and you cannot reproduce it or promote it with an audit trail.']
+];
+function defaults(){
+  S.vals={};
+  for(const k in SPACE[S.model].params)S.vals[k]=SPACE[S.model].params[k][Math.min(2,SPACE[S.model].params[k].length-1)];
+}
+defaults();
+function call(fn,a){const f=window[fn];if(!f)throw new Error('Python is not ready yet.');return JSON.parse(a===undefined?f():f(a));}
+function refresh(){S.runs=call('py_runs');S.reg=call('py_registry');}
+function trainOne(model,params){
+  const name=SPACE[model].label+' '+Object.entries(params).map(e=>e[0]+'='+e[1]).join(' ');
+  return call('py_train',JSON.stringify({model,params,autolog:S.auto,name}));
+}
+function numeric(v){const n=Number(v);return v!==''&&v!==null&&!isNaN(n);}
+function chart(){
+  const pts=[];
+  const keys=[...new Set(S.runs.flatMap(r=>Object.keys(r.params)).filter(k=>k!=='model_type'&&S.runs.some(r=>numeric(r.params[k]))))];
+  if(!keys.length||S.runs.length<2)return '';
+  if(!keys.includes(S.xkey))S.xkey=keys[0];
+  const ms='test_accuracy';
+  const data=S.runs.filter(r=>numeric(r.params[S.xkey])&&r.metrics[ms]!==undefined).map(r=>({x:Number(r.params[S.xkey]),y:r.metrics[ms],m:r.params.model_type,id:r.id}));
+  if(!data.length)return '';
+  const xs=data.map(d=>d.x),ys=data.map(d=>d.y);
+  const logx=Math.min(...xs)>0&&Math.max(...xs)/Math.min(...xs)>=20;
+  const fx=v=>logx?Math.log10(v):v;
+  const x0=Math.min(...xs.map(fx)),x1=Math.max(...xs.map(fx)),y0=Math.min(...ys)-0.02,y1=Math.max(...ys)+0.02;
+  const W=560,H=240,L=46,B=34,T=10,R=12;
+  const px=v=>L+((fx(v)-x0)/((x1-x0)||1))*(W-L-R),py2=v=>T+(1-(v-y0)/((y1-y0)||1))*(H-T-B);
+  const col={logreg:'#0E6F8E',forest:'#1D6B4B',tree:'#A9650A'};
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Test accuracy against '+esc(S.xkey)+'"><rect x="0" y="0" width="'+W+'" height="'+H+'" fill="none"/>';
+  svg+='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="currentColor" opacity=".4"/><line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(H-B)+'" stroke="currentColor" opacity=".4"/>';
+  svg+='<text x="'+L+'" y="'+(T+10)+'" font-size="11" fill="currentColor" opacity=".7" dx="6">'+y1.toFixed(2)+'</text><text x="'+L+'" y="'+(H-B-4)+'" font-size="11" fill="currentColor" opacity=".7" dx="6">'+y0.toFixed(2)+'</text>';
+  svg+='<text x="'+((L+W-R)/2)+'" y="'+(H-8)+'" font-size="12" text-anchor="middle" fill="currentColor">'+esc(S.xkey)+(logx?' (log scale)':'')+'</text>';
+  data.forEach(d=>{svg+='<circle cx="'+px(d.x).toFixed(1)+'" cy="'+py2(d.y).toFixed(1)+'" r="6" fill="'+(col[d.m]||'#888')+'" fill-opacity=".8"><title>'+esc(d.id)+' '+esc(d.m)+' '+S.xkey+'='+d.x+' accuracy '+d.y.toFixed(3)+'</title></circle>';});
+  svg+='</svg>';
+  const leg=Object.keys(col).map(k=>'<span class="small"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+col[k]+';margin-right:4px"></span>'+SPACE[k].label+'</span>').join(' &nbsp; ');
+  return '<h3>Test accuracy against a parameter</h3><div class="row">'+keys.map(k=>tog('xkey',k,esc(k),S.xkey===k)).join('')+'</div><div class="svgbox" style="margin-top:8px">'+svg+'</div><p class="small muted">'+leg+'</p>';
+}
+function snippet(){
+  const r=S.runs.length?S.runs[S.runs.length-1]:null;
+  const params=r?Object.entries(r.params).map(e=>'    mlflow.log_param("'+e[0]+'", '+(numeric(e[1])?e[1]:'"'+e[1]+'"')+')').join('\n'):'    mlflow.log_param("C", 1)';
+  const mets=r?Object.entries(r.metrics).filter(e=>e[0]!=='fit_seconds').map(e=>'    mlflow.log_metric("'+e[0]+'", '+e[1].toFixed(4)+')').join('\n'):'    mlflow.log_metric("test_accuracy", 0.85)';
+  return 'import mlflow\n\nwith mlflow.start_run(run_name="'+(r?r.name:'my run')+'"):\n'+params+'\n'+mets+'\n    mlflow.sklearn.log_model(model, "model")';
+}
+function render(){
+  if(!PYSTATE.ready)return '<div class="status warn">Starting Python and scikit-learn in your browser. The first visit downloads a few tens of MB.</div>';
+  const sp=SPACE[S.model];
+  const ctrls=Object.keys(sp.params).map(k=>'<label class="range" for="p_'+k+'">'+esc(k)+'</label><select id="p_'+k+'" data-act="pval" data-key="'+k+'">'+sp.params[k].map(v=>'<option'+(S.vals[k]===v?' selected':'')+'>'+v+'</option>').join('')+'</select>').join('');
+  let runsHtml='<div class="status">No runs yet. Train one, or run a sweep.</div>';
+  if(S.runs.length){
+    const sorted=S.runs.slice().sort((a,b)=>(b.metrics[S.sortBy]||0)-(a.metrics[S.sortBy]||0));
+    const best=sorted[0].id;
+    runsHtml='<div class="row"><span class="small muted">Sort by</span>'+['test_accuracy','test_f1','train_accuracy'].map(k=>tog('sort',k,k,S.sortBy===k)).join('')+'</div><div style="margin-top:8px">'+
+    '<div class="scroll"><table style="min-width:780px"><thead><tr><th>Run</th><th>Model</th><th>Parameters</th><th>Test acc.</th><th>Train acc.</th><th>Fit s</th><th></th></tr></thead><tbody>'+
+    sorted.map(r=>'<tr><td><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-act="sel" data-val="'+r.id+'" '+(S.sel.includes(r.id)?'checked':'')+' aria-label="Select '+r.id+'"> '+r.id+(r.id===best?' '+chip('best','good'):'')+'</label></td>'+
+    '<td>'+esc(r.params.model_type)+'</td><td class="small">'+esc(Object.entries(r.params).filter(e=>e[0]!=='model_type').slice(0,4).map(e=>e[0]+'='+e[1]).join(', '))+'</td><td>'+r.metrics.test_accuracy.toFixed(3)+'</td><td>'+r.metrics.train_accuracy.toFixed(3)+'</td><td>'+r.metrics.fit_seconds.toFixed(2)+'</td><td>'+btn('register',r.id,'Register','ghost sm')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  }
+  let cmp='';
+  if(S.sel.length===2){
+    const a=S.runs.find(r=>r.id===S.sel[0]),b=S.runs.find(r=>r.id===S.sel[1]);
+    if(a&&b){
+      const keys=[...new Set([...Object.keys(a.params),...Object.keys(b.params)])];
+      const mk=[...new Set([...Object.keys(a.metrics),...Object.keys(b.metrics)])];
+      cmp='<h3>'+a.id+' compared with '+b.id+'</h3>'+table(['Item',a.id,b.id],
+        keys.map(k=>['param: '+k,a.params[k]===undefined?'':a.params[k],b.params[k]===undefined?'':b.params[k]]).filter(r=>r[1]!==r[2]).concat(
+        mk.map(k=>['metric: '+k,a.metrics[k]===undefined?'':a.metrics[k].toFixed(3),b.metrics[k]===undefined?'':b.metrics[k].toFixed(3)])),420)+'<p class="small muted">Only parameters that differ are shown, which is how you see what caused a change.</p>';
+    }
+  }
+  let regHtml='';
+  if(S.reg.length){
+    regHtml='<h3>Model registry: lapse-model</h3>'+table(['Version','From run','Stage',''],S.reg.map(v=>[v.version,v.run,v.stage,'']),380).replace(/<tbody>[\s\S]*<\/tbody>/,'<tbody>'+S.reg.map(v=>'<tr><td>'+v.version+'</td><td>'+esc(v.run)+'</td><td>'+esc(v.stage)+'</td><td>'+['Staging','Production','Archived'].filter(s=>s!==v.stage).map(s=>btn('stage',v.version+':'+s,s,'ghost sm')).join(' ')+' '+btn('predict',v.version,'Predict 6 rows','ghost sm')+'</td></tr>').join('')+'</tbody>');
+    if(S.pred)regHtml+=S.pred.error?'<div class="out err">'+esc(S.pred.error)+'</div>':'<p class="small muted">Loaded the model from '+esc(S.pred.run)+' by registry version, then predicted held-out rows.</p>'+table(['Test row','Predicted','Actual'],S.pred.rows.map(r=>[r.row,r.predicted,r.actual]),300);
+  }
+  const sql=S.sqlres?(S.sqlres.error?'<div class="out err">'+esc(S.sqlres.error)+'</div>':table(S.sqlres.cols,S.sqlres.rows,320)):'';
+  return '<h2>Train and log a run</h2><p>Experiment: lapse-prediction (800 synthetic customers, 12 features, 70/30 split).</p>'+
+  '<div class="row">'+Object.keys(SPACE).map(k=>tog('model',k,SPACE[k].label,S.model===k)).join('')+'</div>'+ctrls+
+  '<div class="row" style="margin-top:12px">'+tog('auto','','Autolog: log every model parameter',S.auto)+'</div>'+
+  '<div class="row" style="margin-top:12px">'+btn('train','','Train and log run','',S.busy)+btn('sweep','','Run a sweep of 9 runs','ghost',S.busy)+'</div>'+
+  (S.msg?'<div class="status warn" style="margin-top:10px">'+esc(S.msg)+'</div>':'')+
+  '<h3>Runs</h3>'+runsHtml+cmp+chart()+regHtml+
+  '<h3>The equivalent MLflow code</h3><pre>'+esc(snippet())+'</pre>'+
+  '<h3>Query the tracking tables</h3><textarea class="editor" id="sqlq" data-act="sqlq" rows="4" spellcheck="false">'+esc(S.sqlq)+'</textarea><div style="margin-top:8px">'+btn('sql','','Run query','ghost')+'</div>'+sql+
+  '<p class="small muted">Tables: runs, params, metrics, artifacts, registry.</p>'+qa(QA);
+}
+const draw=app({
+  render,
+  act:{
+    model:v=>{S.model=v;defaults();},
+    auto:()=>{S.auto=!S.auto;},
+    train:async()=>{S.busy=true;S.msg='Training...';draw();await sleep(30);S.msg='';try{trainOne(S.model,{...S.vals});}finally{S.busy=false;}refresh();},
+    sweep:async()=>{
+      S.busy=true;S.msg='Running sweep...';draw();await sleep(30);
+      try{
+        for(const c of ['0.01','0.1','1','10','100'])trainOne('logreg',{C:c});
+        for(const d of ['1','4','16'])trainOne('tree',{max_depth:d});
+        trainOne('forest',{n_estimators:'100',max_depth:'8'});
+      }finally{S.busy=false;S.msg='';}
+      refresh();
+    },
+    sort:v=>{S.sortBy=v;},
+    sel:()=>false,
+    register:v=>{call('py_register',v);refresh();},
+    stage:v=>{const p=v.split(':');call('py_stage',JSON.stringify({version:p[0],stage:p[1]}));refresh();},
+    predict:v=>{S.pred=call('py_predict',v);},
+    xkey:v=>{S.xkey=v;},
+    sql:()=>{const t=$('#sqlq');if(t)S.sqlq=t.value;S.sqlres=call('py_sql',S.sqlq);}
+  },
+  change:{
+    pval:t=>{S.vals[t.dataset.key]=t.value;return false;},
+    sel:t=>{const id=t.dataset.val;if(t.checked){S.sel.push(id);if(S.sel.length>2)S.sel.shift();}else S.sel=S.sel.filter(x=>x!==id);}
+  },
+  input:{sqlq:t=>{S.sqlq=t.value;}},
+  onError:err=>{S.busy=false;S.msg=String((err&&err.message)||err);}
+});
+(async function boot(){await waitPy();refresh();draw();})();
+draw();
+</script>
+</body>
+</html>

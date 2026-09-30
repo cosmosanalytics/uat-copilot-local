@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AgentCore lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">AgentCore concepts (a real agent loop, local tools)</span></div>
+  <header>
+    <h1>AgentCore lab</h1>
+    <p class="lede">Run a small agent that picks tools, one step at a time. Around it sit the pieces AgentCore provides as managed services: a runtime for the loop, a gateway of tools, memory, identity with scopes, policy rules, and observability traces. Switch the planner between scripted rules and a real language model.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the agent loop, tools, scopes, policy checks, approval step and traces are real code running in your browser against made-up data. AgentCore is an AWS service and nothing here calls it. The policy rules imitate a Cedar-style policy, and the model planner uses a small on-device model through WebLLM, so expect it to be less reliable than a production model. That unreliability is useful: it shows why guardrails matter.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+  },
+  async load(){
+    this.state='loading';this.pct=0;this.text='Starting';
+    if(this.draw)this.draw();
+    try{
+      const w=await import('https://esm.run/@mlc-ai/web-llm');
+      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
+        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+      }});
+      this.state='ready';
+    }catch(err){
+      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    }
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
+};
+
+PYSTATE.needsPy=false;
+/*AGENT-START*/
+const POLICIES={
+  'A-1001':{type:'annuity',owner:'M. Alvarez',balance:48200,address:'14 Elm St, Pittsburgh PA'},
+  'L-2002':{type:'life',owner:'T. Okafor',balance:0,address:'9 Pine Rd, Raleigh NC'},
+  'G-3003':{type:'group',owner:'R. Chen',balance:0,address:'77 Lake Ave, Fort Wayne IN'}
+};
+const CLAIMS={2:{policy:'A-1001',status:'in review',opened:'2026-09-02'},5:{policy:'L-2002',status:'approved',opened:'2026-08-21'}};
+const TOOLS={
+  get_claim_status:{desc:'Look up the status of a claim by id',args:'claim_id',scope:'read_policy'},
+  lookup_policy:{desc:'Read a policy record by id',args:'policy_id',scope:'read_policy'},
+  update_address:{desc:'Change the mailing address on a policy',args:'policy_id, address',scope:'write_policy'},
+  request_withdrawal:{desc:'Request a withdrawal from an annuity',args:'policy_id, amount',scope:'write_payments'},
+  send_email:{desc:'Send an email to any address',args:'to, body',scope:'send_mail'}
+};
+const POLICY_RULES=[
+  {text:'forbid (principal, action == Action::"send_email", resource);',check:(t,a)=>t==='send_email'?'Policy forbids sending email from the agent.':null},
+  {text:'forbid (principal, action == Action::"request_withdrawal", resource)\n  when { context.amount > 10000 && !context.approved };',check:(t,a,ctx)=>t==='request_withdrawal'&&Number(a.amount)>10000&&!ctx.approved?'NEEDS_APPROVAL':null}
+];
+function runTool(name,args,env){
+  if(name==='get_claim_status'){
+    const c=CLAIMS[Number(args.claim_id)];
+    return c?{ok:true,data:{claim_id:Number(args.claim_id),policy:c.policy,status:c.status,opened:c.opened}}:{ok:false,data:'No claim with that id.'};
+  }
+  if(name==='lookup_policy'){
+    const p=POLICIES[args.policy_id];
+    return p?{ok:true,data:{policy_id:args.policy_id,type:p.type,owner:p.owner,balance:p.balance,address:p.address}}:{ok:false,data:'No policy with that id.'};
+  }
+  if(name==='update_address'){
+    const p=POLICIES[args.policy_id];
+    if(!p)return{ok:false,data:'No policy with that id.'};
+    p.address=String(args.address);
+    return{ok:true,data:{policy_id:args.policy_id,address:p.address,updated:true}};
+  }
+  if(name==='request_withdrawal'){
+    const p=POLICIES[args.policy_id];
+    if(!p)return{ok:false,data:'No policy with that id.'};
+    if(p.type!=='annuity')return{ok:false,data:'Withdrawals apply to annuities only.'};
+    const amt=Number(args.amount);
+    if(!(amt>0)||amt>p.balance)return{ok:false,data:'Invalid amount or more than the balance of '+p.balance+'.'};
+    p.balance-=amt;
+    return{ok:true,data:{policy_id:args.policy_id,withdrawn:amt,new_balance:p.balance}};
+  }
+  if(name==='send_email')return{ok:true,data:{sent:true}};
+  return{ok:false,data:'Unknown tool.'};
+}
+/* Gateway, Identity and Policy checks. Returns {ok} or {ok:false,reason,approval?} */
+function authorize(name,args,env){
+  const t=TOOLS[name];
+  if(!t)return{ok:false,reason:'Gateway: no tool named '+name+' is registered.'};
+  if(!env.enabled[name])return{ok:false,reason:'Gateway: tool '+name+' is not exposed to this agent.'};
+  if(!env.scopes[t.scope])return{ok:false,reason:'Identity: the user has not delegated scope '+t.scope+'.'};
+  for(const r of POLICY_RULES){
+    const v=r.check(name,args,{approved:!!env.approved});
+    if(v==='NEEDS_APPROVAL')return{ok:false,approval:true,reason:'Policy: withdrawals above 10000 need human approval.'};
+    if(v)return{ok:false,reason:v};
+  }
+  return{ok:true};
+}
+function rulesPlan(msg,obs){
+  const pid=(msg.match(/[AGL]-\d{4}/)||[])[0];
+  const cid=(msg.match(/claim\s*#?\s*(\d+)/i)||[])[1];
+  const amt=(msg.match(/\$\s?([\d,]+)/)||[])[1];
+  const addr=(msg.match(/address (?:on [A-Z]-\d{4} )?to (.+?)\.?$/i)||[])[1];
+  const called=n=>obs.some(o=>o.tool===n);
+  const last=obs[obs.length-1];
+  const fin=t=>({final:t});
+  if(last&&!last.ok&&last.blocked)return fin('I could not complete that: '+last.detail);
+  if(last&&!last.ok&&!last.blocked&&last.tool!=='lookup_policy')return fin('That did not work: '+last.detail);
+  if(/claim/i.test(msg)&&cid){
+    if(!called('get_claim_status'))return{thought:'The user asks about a claim. Look up its status.',tool:'get_claim_status',args:{claim_id:cid}};
+    return fin(last.ok?'Claim '+last.data.claim_id+' on policy '+last.data.policy+' is '+last.data.status+'.':'I could not find that claim.');
+  }
+  if(/withdraw|take out|surrender/i.test(msg)&&pid&&amt){
+    if(!called('lookup_policy'))return{thought:'Check the policy before moving money.',tool:'lookup_policy',args:{policy_id:pid}};
+    if(!called('request_withdrawal'))return{thought:'The policy exists. Request the withdrawal.',tool:'request_withdrawal',args:{policy_id:pid,amount:amt.replace(/,/g,'')}};
+    return fin(last.ok?'Done. Withdrew '+last.data.withdrawn+' from '+last.data.policy_id+'. New balance: '+last.data.new_balance+'.':'The withdrawal did not go through.');
+  }
+  if(/address|moved|mailing/i.test(msg)&&pid&&addr){
+    if(!called('lookup_policy'))return{thought:'Confirm the policy before changing it.',tool:'lookup_policy',args:{policy_id:pid}};
+    if(!called('update_address'))return{thought:'Update the mailing address.',tool:'update_address',args:{policy_id:pid,address:addr}};
+    return fin(last.ok?'Address on '+last.data.policy_id+' is now '+last.data.address+'.':'The update did not go through.');
+  }
+  if(/email|send/i.test(msg)&&!called('send_email'))return{thought:'The user wants something sent. Use send_email.',tool:'send_email',args:{to:'external',body:msg}};
+  return fin('I need a policy id (like A-1001) or a claim id, plus what you want done.');
+}
+function parseModelAction(text){
+  const m=String(text).match(/\{[\s\S]*\}/);
+  if(!m)return null;
+  try{const o=JSON.parse(m[0]);if(o.final||o.tool)return o;}catch(e){}
+  return null;
+}
+/*AGENT-END*/
+const SCENARIOS=[
+  ['Claim status','What is the status of claim 2?'],
+  ['Address change','Please change the mailing address on L-2002 to 12 Oak St, Denver CO.'],
+  ['Large withdrawal','I want to withdraw $20,000 from A-1001.'],
+  ['Small withdrawal','I want to withdraw $2,500 from A-1001.'],
+  ['Email request','Email my beneficiary list to my friend.']
+];
+const S={
+  msg:SCENARIOS[0][1],planner:'rules',maxSteps:6,
+  scopes:{read_policy:true,write_policy:true,write_payments:true,send_mail:true},
+  enabled:{get_claim_status:true,lookup_policy:true,update_address:true,request_withdrawal:true,send_email:true},
+  run:null,longMem:[],busy:false,approved:false,err:''
+};
+const QA=[
+ ['What problem does it solve?','AgentCore gives agents the managed infrastructure they need around the model: a runtime that hosts the loop in isolated sessions, a gateway for tools, memory, identity for acting on a user\'s behalf, policy controls and observability.'],
+ ['What would you use instead?','A fixed workflow in Step Functions when the steps are known in advance, or agent frameworks you host and operate yourself, such as LangGraph or Strands, on your own infrastructure.'],
+ ['What breaks without it?','The agent runs with whatever access its code happens to have, nobody can see why it took an action, and there is no enforced approval for risky steps. The guardrails in this page are the point.']
+];
+function now(){return performance.now();}
+async function planStep(msg,obs){
+  if(S.planner==='rules')return rulesPlan(msg,obs);
+  if(!LLM.ready())throw new Error('Load the model first, or switch the planner to rules.');
+  const tools=Object.keys(TOOLS).filter(k=>S.enabled[k]).map(k=>'- '+k+'('+TOOLS[k].args+'): '+TOOLS[k].desc).join('\n');
+  const hist=obs.map(o=>'Tool '+o.tool+' returned: '+JSON.stringify(o.ok?o.data:o.detail)).join('\n');
+  const sys='You are an insurance service agent. Decide the next step. Tools:\n'+tools+'\nReply with ONLY one JSON object. To call a tool: {"thought":"...","tool":"name","args":{...}}. To finish: {"final":"answer for the user"}.';
+  for(let attempt=0;attempt<2;attempt++){
+    const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:'Request: '+msg+(hist?'\nSo far:\n'+hist:'')}],temperature:0,max_tokens:140});
+    const a=parseModelAction(r.choices[0].message.content);
+    if(a)return a;
+  }
+  return{final:'I could not produce a valid action, so I stopped.',plannerFailed:true};
+}
+async function runAgent(resume){
+  const R=S.run;
+  while(R.steps<S.maxSteps){
+    R.steps++;
+    const t0=now();
+    let act;
+    try{act=await planStep(R.msg,R.obs);}catch(e){R.error=String(e.message||e);R.status='error';return;}
+    const planMs=now()-t0;
+    R.trace.push({span:'plan',detail:act.final?'final answer':(act.thought||'choose tool')+' → '+act.tool,ms:planMs,status:act.plannerFailed?'error':'ok'});
+    if(act.final){R.final=act.final;R.status='done';R.trace.push({span:'respond',detail:'',ms:1,status:'ok'});remember(R);return;}
+    const auth=authorize(act.tool,act.args||{},{enabled:S.enabled,scopes:S.scopes,approved:false});
+    if(!auth.ok&&auth.approval){
+      R.paused={tool:act.tool,args:act.args};R.status='paused';
+      R.trace.push({span:'policy',detail:auth.reason,ms:1,status:'paused'});
+      return;
+    }
+    const t1=now();
+    let obs;
+    if(!auth.ok){obs={tool:act.tool,ok:false,blocked:true,detail:auth.reason};R.trace.push({span:'policy',detail:auth.reason,ms:1,status:'denied'});}
+    else{const res=runTool(act.tool,act.args||{});obs={tool:act.tool,ok:res.ok,data:res.data,detail:res.ok?'':String(res.data)};R.trace.push({span:'tool:'+act.tool,detail:JSON.stringify(act.args||{}),ms:now()-t1+4,status:res.ok?'ok':'error'});}
+    R.obs.push(obs);
+  }
+  R.final='I stopped after '+S.maxSteps+' steps (the runtime limit) without finishing.';R.status='limit';
+}
+function remember(R){
+  const mem=R.obs.filter(o=>o.ok&&(o.tool==='update_address'||o.tool==='request_withdrawal')).map(o=>o.tool==='update_address'?'Policy '+o.data.policy_id+' address changed to '+o.data.address:'Policy '+o.data.policy_id+' had a withdrawal of '+o.data.withdrawn);
+  mem.forEach(m=>{if(!S.longMem.includes(m))S.longMem.push(m);});
+}
+function newRun(){return{id:'sess-'+Math.random().toString(36).slice(2,8),msg:S.msg,obs:[],trace:[],steps:0,status:'running',final:'',paused:null,error:''};}
+function spans(R){return R.trace.map(t=>[t.span,t.detail,Math.round(t.ms)+' ms',t.status]);}
+function render(){
+  const sc=SCENARIOS.map((s,i)=>btn('scenario',i,esc(s[0]),'ghost sm')).join('');
+  const scopes=Object.keys(S.scopes).map(k=>tog('scope',k,esc(k),S.scopes[k])).join('');
+  const tools=Object.keys(TOOLS).map(k=>'<tr><td>'+tog('tool',k,S.enabled[k]?'On':'Off',S.enabled[k])+'</td><td>'+esc(k)+'</td><td class="small">'+esc(TOOLS[k].desc)+'</td><td class="small">'+esc(TOOLS[k].scope)+'</td></tr>').join('');
+  const R=S.run;
+  let out='';
+  if(R){
+    out+='<h3>Runtime: session '+esc(R.id)+' '+(R.status==='done'?chip('done','good'):R.status==='paused'?chip('waiting for approval','warn'):R.status==='running'?chip('running','warn'):chip(R.status,'bad'))+'</h3>';
+    if(R.error)out+='<div class="out err">'+esc(R.error)+'</div>';
+    out+='<ol class="trace">'+R.trace.map((t,i)=>'<li><span class="chip '+(t.status==='ok'?'good':(t.status==='paused'?'warn':'bad'))+'">'+esc(t.span)+'</span><div>'+esc(t.detail)+'</div></li>').join('')+'</ol>';
+    if(R.paused)out+='<div class="status warn"><b>Approval needed.</b> The agent wants to call '+esc(R.paused.tool)+' with '+esc(JSON.stringify(R.paused.args))+'.<div class="row" style="margin-top:8px">'+btn('approve','','Approve','')+btn('reject','','Reject','ghost')+'</div></div>';
+    if(R.final)out+='<div class="status ok"><b>Agent answer:</b> '+esc(R.final)+'</div>';
+    if(R.trace.length)out+='<h3>Observability: trace spans</h3>'+table(['Span','Detail','Duration','Status'],spans(R),520)+'<p class="small muted">Durations are measured in your browser. In AgentCore, traces like these are emitted for each agent step so you can debug and monitor behaviour.</p>';
+    if(R.obs.length)out+='<h3>Memory: this session (short-term)</h3>'+table(['Tool','Result'],R.obs.map(o=>[o.tool,o.ok?JSON.stringify(o.data):o.detail]),420);
+  }
+  const lm=S.longMem.length?'<ul class="checks">'+S.longMem.map(m=>'<li>'+esc(m)+'</li>').join('')+'</ul>':'<p class="small muted">Nothing yet. Successful changes are saved after a session ends.</p>';
+  return '<h2>Give the agent a request</h2><div class="row">'+sc+'</div>'+
+  '<textarea class="editor" id="msg" data-act="msg" rows="3" style="margin-top:10px;min-height:70px">'+esc(S.msg)+'</textarea>'+
+  '<h3>Planner (the model\'s job)</h3><div class="row">'+tog('planner','rules','Scripted rules',S.planner==='rules')+tog('planner','model','Language model (WebLLM)',S.planner==='model')+'</div>'+
+  (S.planner==='model'?'<div style="margin-top:10px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+'<p class="small muted">A small model may choose wrong tools or return invalid JSON. The runtime retries once, then stops.</p></div>':'')+
+  '<h3>Identity: scopes the user delegated</h3><div class="row">'+scopes+'</div>'+
+  '<h3>Gateway: tools exposed to the agent</h3><div class="scroll"><table style="min-width:520px"><thead><tr><th></th><th>Tool</th><th>What it does</th><th>Needs scope</th></tr></thead><tbody>'+tools+'</tbody></table></div>'+
+  '<h3>Policy: rules checked before every tool call</h3><pre>'+esc(POLICY_RULES.map(r=>r.text).join('\n\n'))+'</pre><p class="small muted">A Cedar-style illustration. These run outside the model, so the model cannot talk its way past them.</p>'+
+  '<label class="range" for="maxsteps">Runtime step limit</label><select id="maxsteps" data-act="maxsteps">'+[3,4,6,8,10].map(v=>'<option'+(S.maxSteps===v?' selected':'')+'>'+v+'</option>').join('')+'</select>'+
+  '<div class="row" style="margin-top:14px">'+btn('run','','Start session','',S.busy)+btn('clearmem','','Clear long-term memory','ghost')+'</div>'+out+
+  '<h3>Memory: long-term</h3>'+lm+qa(QA);
+}
+const draw=app({
+  render,
+  act:{
+    scenario:v=>{S.msg=SCENARIOS[+v][1];},
+    scope:v=>{S.scopes[v]=!S.scopes[v];},
+    tool:v=>{S.enabled[v]=!S.enabled[v];},
+    planner:v=>{S.planner=v;},
+    run:async()=>{
+      const t=$('#msg');if(t)S.msg=t.value;
+      S.busy=true;S.run=newRun();draw();
+      try{await runAgent();}finally{S.busy=false;}
+    },
+    approve:async()=>{
+      const R=S.run,p=R.paused;R.paused=null;R.status='running';S.busy=true;draw();
+      const res=runTool(p.tool,p.args||{});
+      R.trace.push({span:'approval',detail:'A human approved the request',ms:1,status:'ok'});
+      R.trace.push({span:'tool:'+p.tool,detail:JSON.stringify(p.args||{}),ms:5,status:res.ok?'ok':'error'});
+      R.obs.push({tool:p.tool,ok:res.ok,data:res.data,detail:res.ok?'':String(res.data)});
+      try{await runAgent();}finally{S.busy=false;}
+    },
+    reject:()=>{const R=S.run;const p=R.paused;R.paused=null;R.trace.push({span:'approval',detail:'A human rejected the request',ms:1,status:'denied'});R.obs.push({tool:p.tool,ok:false,blocked:true,detail:'A human reviewer rejected the request.'});R.status='running';return runAgent();},
+    clearmem:()=>{S.longMem=[];},
+    ...LLM.act
+  },
+  change:{maxsteps:t=>{S.maxSteps=Number(t.value);return false;},...LLM.change},
+  input:{msg:t=>{S.msg=t.value;}},
+  onError:err=>{S.busy=false;if(S.run){S.run.error=String((err&&err.message)||err);S.run.status='error';}}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>

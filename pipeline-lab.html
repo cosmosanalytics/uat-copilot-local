@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipeline Lab: a live AI workflow in your browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+</style>
+<script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <h1>Pipeline Lab</h1>
+    <p class="lede">A small insurance-service triage workflow that runs for real in your browser: Python and pandas, SQL on SQLite, a language model on your GPU, and tracked runs you can query.</p>
+    <div class="row">
+      <button class="btn" data-act="example">Run the example</button>
+      <span class="small muted">Cleans the data, runs two prompts and opens the run comparison.</span>
+    </div>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <div class="layout">
+    <nav class="rail" aria-label="Pipeline stages"><ol id="rail"></ol></nav>
+    <main id="main" class="panel" aria-live="polite"></main>
+  </div>
+  <p class="foot">What is real here: the Python and pandas code, the SQL (SQLite), the model (WebLLM on WebGPU), and the confidence scores taken from the model's own token probabilities. What is imitated: PySpark and MLflow cannot run in a browser, so their code is shown for reference and runs are tracked by a small SQLite tracker with the same method names. The agent trace is a scripted illustration. Check AWS and Databricks documentation before relying on any specific feature.</p>
+</div>
+
+<script type="py" config='{"packages":["pandas","sqlite3"]}'>
+import json, sqlite3, datetime
+import pandas as pd
+from pyodide.ffi import create_proxy
+from pyscript import window
+
+COLS = ["id", "policy", "name", "ssn", "text", "label"]
+BASE = [
+ (1, "annuity", "M. Alvarez", "4412", "Please remove my ex-spouse and name my daughter as beneficiary.", "BEN"),
+ (2, "life", "T. Okafor", "9081", "I want to take out $20,000 from my annuity before year end.", "WDR"),
+ (3, "group", "R. Chen", "2275", "I have called three times and nobody has fixed my billing error!", "CMP"),
+ (4, "life", "S. Patel", "6630", "I moved to Denver last month, update the mailing address please.", "ADR"),
+ (5, "annuity", "D. Brooks", "1147", "Change of beneficiary form attached, effective immediately.", "BEN"),
+ (6, "annuity", "L. Novak", "3859", "Requesting a partial surrender of my contract.", "WDR"),
+ (7, "life", "K. Ito", "7724", "Your website lost my payment and support was rude.", "CMP"),
+ (8, "group", "A. Haddad", "5096", "New PO box below, please send all statements there.", "ADR"),
+ (9, "annuity", "P. Green", "8313", "Who gets my policy if I die? I want my sister to be listed instead.", "BEN"),
+ (10, "life", "E. Vasquez", "2468", "Send me the money from my account, I also want to complain about fees.", "WDR"),
+ (11, "group", "J. Kim", "0952", "Moving next week; will mail new address later.", "ADR"),
+ (12, "annuity", "H. Berg", "1730", "Fees on this product are unfair and I am filing a formal complaint.", "CMP"),
+]
+
+def as_rows(seq):
+    return [dict(zip(COLS, r)) for r in seq]
+
+RAW = as_rows(BASE)
+RAW[6]["text"] = "   " + RAW[6]["text"] + "   "
+RAW[11]["text"] = RAW[11]["text"].upper()
+RAW.append(dict(RAW[3]))
+RAW.append({"id": 13, "policy": "group", "name": "C. Duarte", "ssn": "3301", "text": None, "label": "BEN"})
+GOLD = as_rows(BASE)
+
+DB = sqlite3.connect(":memory:")
+DB.execute("CREATE TABLE notes_raw (id INTEGER, policy TEXT, name TEXT, ssn TEXT, text TEXT, label TEXT)")
+DB.execute("CREATE TABLE notes_gold (id INTEGER, policy TEXT, name TEXT, ssn TEXT, text TEXT, label TEXT)")
+DB.executemany("INSERT INTO notes_raw VALUES (?,?,?,?,?,?)", [tuple(r[c] for c in COLS) for r in RAW])
+DB.executemany("INSERT INTO notes_gold VALUES (?,?,?,?,?,?)", [tuple(r[c] for c in COLS) for r in GOLD])
+
+VIEWS = {
+    "ml": ("v_ml", "SELECT id, policy, '******' AS name, '******' AS ssn, text, label FROM notes_gold"),
+    "analyst": ("v_analyst", "SELECT id, policy, name, '******' AS ssn, text, label FROM notes_gold"),
+    "auditor": ("v_auditor", "SELECT id, policy, name, ssn, '******' AS text, label FROM notes_gold"),
+}
+for _k, (_n, _q) in VIEWS.items():
+    DB.execute("CREATE VIEW " + _n + " AS " + _q)
+
+DB.executescript("""
+CREATE TABLE audit (ts TEXT, role TEXT, statement TEXT);
+CREATE TABLE runs (run_id TEXT PRIMARY KEY, started TEXT);
+CREATE TABLE params (run_id TEXT, key TEXT, value TEXT);
+CREATE TABLE metrics (run_id TEXT, key TEXT, value REAL);
+CREATE TABLE predictions (run_id TEXT, id INTEGER, true_label TEXT, pred TEXT, conf REAL, escalated INTEGER, correct INTEGER);
+CREATE TABLE registry (version INTEGER, run_id TEXT, stage TEXT);
+CREATE TABLE cases (case_id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT, message TEXT, status TEXT);
+CREATE TABLE executions (exec_id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT, pred TEXT, conf REAL, branch TEXT, ts TEXT);
+""")
+DB.commit()
+
+def now():
+    return datetime.datetime.now().isoformat(timespec="seconds")
+
+class Tracker:
+    """A tiny stand-in for MLflow tracking: same method names, SQLite storage."""
+    def start_run(self):
+        n = DB.execute("SELECT COUNT(*) FROM runs").fetchone()[0] + 1
+        self.run_id = "run_%04d" % n
+        DB.execute("INSERT INTO runs VALUES (?,?)", (self.run_id, now()))
+        return self.run_id
+    def log_param(self, key, value):
+        DB.execute("INSERT INTO params VALUES (?,?,?)", (self.run_id, key, str(value)))
+    def log_metric(self, key, value):
+        DB.execute("INSERT INTO metrics VALUES (?,?,?)", (self.run_id, key, float(value)))
+
+mlflow = Tracker()
+
+def get_data():
+    return json.dumps({"raw": RAW})
+
+def build_sql(f):
+    text_expr = "LOWER(TRIM(text)) AS text" if f.get("normalize") else "text"
+    sql = "SELECT " + ("DISTINCT " if f.get("dedupe") else "") + "id, policy, name, ssn, " + text_expr + ", label\nFROM notes_raw"
+    if f.get("dropnull"):
+        sql += "\nWHERE text IS NOT NULL AND TRIM(text) <> ''"
+    return sql
+
+def pandas_code(f):
+    lines = ["df = pd.DataFrame(rows)"]
+    if f.get("dedupe"):
+        lines.append("df = df.drop_duplicates()")
+    if f.get("dropnull"):
+        lines.append("df = df[df['text'].notna() & (df['text'].str.strip() != '')]")
+    if f.get("normalize"):
+        lines.append("df['text'] = df['text'].str.strip().str.lower()")
+    return "\n".join(lines)
+
+def pyspark_code(f):
+    lines = ['df = spark.table("main.claims.notes_raw")']
+    if f.get("dedupe"):
+        lines.append("df = df.dropDuplicates()")
+    if f.get("dropnull"):
+        lines.append('df = df.filter(F.col("text").isNotNull() & (F.trim("text") != ""))')
+    if f.get("normalize"):
+        lines.append('df = df.withColumn("text", F.lower(F.trim("text")))')
+    return "\n".join(lines)
+
+def prep(flags_json):
+    f = json.loads(flags_json)
+    sql = build_sql(f)
+    DB.execute("DROP TABLE IF EXISTS notes_clean")
+    DB.execute("CREATE TABLE notes_clean AS " + sql)
+    DB.commit()
+    cur = DB.execute("SELECT id, policy, name, ssn, text, label FROM notes_clean ORDER BY id")
+    rows = [dict(zip(COLS, r)) for r in cur.fetchall()]
+    dup = DB.execute("SELECT COUNT(*) - COUNT(DISTINCT id) FROM notes_clean").fetchone()[0] or 0
+    nul = DB.execute("SELECT SUM(text IS NULL OR TRIM(text) = '') FROM notes_clean").fetchone()[0] or 0
+
+    df = pd.DataFrame(RAW)
+    if f.get("dedupe"):
+        df = df.drop_duplicates()
+    if f.get("dropnull"):
+        df = df[df["text"].notna() & (df["text"].str.strip() != "")]
+    if f.get("normalize"):
+        df = df.assign(text=df["text"].str.strip().str.lower())
+    pd_rows = []
+    for r in df.itertuples():
+        t = None if pd.isna(r.text) else r.text
+        pd_rows.append((int(r.id), r.policy, t))
+    sql_rows = [(r["id"], r["policy"], r["text"]) for r in rows]
+    key = lambda r: (r[0], r[2] or "")
+    same = sorted(sql_rows, key=key) == sorted(pd_rows, key=key)
+
+    return json.dumps({
+        "sql": sql, "pandas": pandas_code(f), "pyspark": pyspark_code(f),
+        "rows": rows, "n_in": len(RAW), "n_out": len(rows),
+        "dup": int(dup), "nul": int(nul), "same": same,
+    })
+
+def run_sql(query):
+    s = (query or "").strip().rstrip(";").strip()
+    if not s.lower().startswith(("select", "with")):
+        return json.dumps({"error": "Only SELECT or WITH queries are allowed here."})
+    try:
+        cur = DB.execute(s)
+        cols = [d[0] for d in cur.description]
+        rows = [list(r) for r in cur.fetchmany(200)]
+        return json.dumps({"cols": cols, "rows": rows})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+def run_summary(rid):
+    params = {k: v for k, v in DB.execute("SELECT key, value FROM params WHERE run_id = ?", (rid,))}
+    metrics = {k: v for k, v in DB.execute("SELECT key, value FROM metrics WHERE run_id = ?", (rid,))}
+    return {"id": rid, "params": params, "metrics": metrics}
+
+def log_run(payload_json):
+    p = json.loads(payload_json)
+    thr = float(p["threshold"])
+    rid = mlflow.start_run()
+    n = len(p["results"])
+    correct = auto = auto_ok = 0
+    for r in p["results"]:
+        pred = r["pred"]
+        conf = float(r["conf"] or 0.0)
+        esc = 1 if (pred is None or conf < thr) else 0
+        ok = 1 if pred == r["true"] else 0
+        DB.execute("INSERT INTO predictions VALUES (?,?,?,?,?,?,?)", (rid, r["id"], r["true"], pred, conf, esc, ok))
+        correct += ok
+        if not esc:
+            auto += 1
+            auto_ok += ok
+    mlflow.log_param("prompt", p["prompt"])
+    mlflow.log_param("model", p["model"])
+    mlflow.log_param("threshold", thr)
+    mlflow.log_param("prep_steps", p["prep_steps"])
+    mlflow.log_metric("rows", n)
+    mlflow.log_metric("accuracy", correct / n if n else 0.0)
+    mlflow.log_metric("human_review", n - auto)
+    if auto:
+        mlflow.log_metric("auto_accuracy", auto_ok / auto)
+    DB.commit()
+    return json.dumps(run_summary(rid))
+
+def search_runs():
+    ids = [r[0] for r in DB.execute("SELECT run_id FROM runs ORDER BY run_id")]
+    return json.dumps([run_summary(i) for i in ids])
+
+def gate(rid):
+    s = run_summary(rid)
+    p, m = s["params"], s["metrics"]
+    rows = m.get("rows", 0)
+    checks = [
+        ["Data prep complete (3 of 3 steps)", p.get("prep_steps") == "3"],
+        ["Model-only accuracy is at least 85%", m.get("accuracy", 0) >= 0.85],
+        ["Accuracy on automatic cases is at least 95%", m.get("auto_accuracy", 0) >= 0.95],
+        ["No more than 40% of cases go to humans", rows > 0 and m.get("human_review", 0) / rows <= 0.4],
+    ]
+    return json.dumps(checks)
+
+def register(rid):
+    v = DB.execute("SELECT COUNT(*) FROM registry").fetchone()[0] + 1
+    DB.execute("INSERT INTO registry VALUES (?,?,?)", (v, rid, "Staging"))
+    DB.commit()
+    return json.dumps({"version": v})
+
+def promote(version):
+    DB.execute("UPDATE registry SET stage = 'Production' WHERE version = ?", (int(version),))
+    DB.commit()
+    return "ok"
+
+def get_registry():
+    rows = DB.execute("SELECT version, run_id, stage FROM registry ORDER BY version").fetchall()
+    return json.dumps([{"version": r[0], "run": r[1], "stage": r[2]} for r in rows])
+
+def role_query(role):
+    name, q = VIEWS[role]
+    DB.execute("INSERT INTO audit VALUES (?,?,?)", (now(), role, "SELECT * FROM " + name))
+    DB.commit()
+    cur = DB.execute("SELECT * FROM " + name + " ORDER BY id")
+    cols = [d[0] for d in cur.description]
+    rows = [list(r) for r in cur.fetchall()]
+    log = [r[0] + "  " + r[1] + "  " + r[2] for r in DB.execute("SELECT ts, role, statement FROM audit ORDER BY rowid DESC LIMIT 12")]
+    return json.dumps({"cols": cols, "rows": rows, "view_sql": "CREATE VIEW " + name + " AS\n" + q.replace(" FROM", "\nFROM"), "audit": log})
+
+def validate(text):
+    t = (text or "").strip()
+    if not t:
+        return json.dumps({"ok": False, "reason": "the message is empty"})
+    if len(t) > 500:
+        return json.dumps({"ok": False, "reason": "the message is longer than 500 characters"})
+    return json.dumps({"ok": True})
+
+def create_case(payload_json):
+    p = json.loads(payload_json)
+    cur = DB.execute("INSERT INTO cases (label, message, status) VALUES (?,?,?)", (p["label"], p["message"], p["status"]))
+    DB.commit()
+    return json.dumps({"case_id": cur.lastrowid})
+
+def record_execution(payload_json):
+    p = json.loads(payload_json)
+    DB.execute("INSERT INTO executions (message, pred, conf, branch, ts) VALUES (?,?,?,?,?)",
+               (p["message"], p["pred"], float(p["conf"] or 0), p["branch"], now()))
+    DB.commit()
+    return "ok"
+
+API = {
+    "py_get_data": get_data, "py_prep": prep, "py_run_sql": run_sql, "py_log_run": log_run,
+    "py_search_runs": search_runs, "py_gate": gate, "py_register": register, "py_promote": promote,
+    "py_registry": get_registry, "py_role_query": role_query, "py_validate": validate,
+    "py_create_case": create_case, "py_record_execution": record_execution,
+}
+for _name, _fn in API.items():
+    setattr(window, _name, create_proxy(_fn))
+window.py_ready = True
+</script>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+
+const LABELS={BEN:'Beneficiary change',WDR:'Withdrawal',CMP:'Complaint',ADR:'Address change'};
+const LET={A:'BEN',B:'WDR',C:'CMP',D:'ADR'};
+const MODELS=[
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+];
+const SYS='You classify insurance service requests. Reply with a single letter only.';
+const OPTIONS='A) Beneficiary change\nB) Withdrawal\nC) Complaint\nD) Address change';
+const PROMPTS={
+  v1:t=>'Classify this customer message.\n'+OPTIONS+'\nReply with one letter.\n\nMessage: '+t,
+  v2:t=>'Sort this insurance service request.\nA) Beneficiary change: who receives the proceeds of a policy.\nB) Withdrawal: taking money out, including a partial surrender of a contract.\nC) Complaint: unhappy about service, billing or fees.\nD) Address change: a new mailing address or a move.\nIf several apply, choose the main intent.\nReply with one letter.\n\nMessage: '+t
+};
+/* stand-in answers used only when WebGPU is unavailable or the person chooses them */
+const P={1:{v1:['BEN',.93],v2:['BEN',.97]},2:{v1:['WDR',.91],v2:['WDR',.96]},3:{v1:['CMP',.88],v2:['CMP',.94]},4:{v1:['ADR',.90],v2:['ADR',.97]},5:{v1:['BEN',.86],v2:['BEN',.95]},6:{v1:['ADR',.52],v2:['WDR',.88]},7:{v1:['CMP',.79],v2:['CMP',.91]},8:{v1:['ADR',.84],v2:['ADR',.93]},9:{v1:['WDR',.48],v2:['BEN',.71]},10:{v1:['CMP',.55],v2:['CMP',.58]},11:{v1:['ADR',.58],v2:['ADR',.66]},12:{v1:['CMP',.82],v2:['CMP',.95]}};
+function heuristic(t){
+  t=t.toLowerCase();
+  if(/beneficiar|listed instead|who gets/.test(t))return['BEN',.7];
+  if(/withdraw|take out|surrender|send me the money/.test(t))return['WDR',.7];
+  if(/complain|unfair|rude|nobody|fees/.test(t))return['CMP',.65];
+  if(/address|moved|moving|po box|mail/.test(t))return['ADR',.7];
+  return['CMP',.3];
+}
+
+const STAGES=[
+ {tool:'Python + SQL',title:'Prepare the data',why:'Clean messy records before a model sees them.',
+  blurb:'Raw service requests arrive with duplicates, empty notes and messy text. Each toggle runs a real SQL query in SQLite and the same steps in pandas, then checks that both agree.'},
+ {tool:'Bedrock (WebLLM here)',title:'Classify with a language model',why:'Call a model and route doubtful cases to a person.',
+  blurb:'A small model runs on your device through WebGPU. Its confidence comes from the probability of the letter it chose, so the escalation threshold works on real numbers.'},
+ {tool:'MLflow-style tracker',title:'Track and compare runs',why:'Log every run so you can show a change helped.',
+  blurb:'Every run from the model step is logged to tables you can query. Compare two runs, then check whether one passes the gate to be registered.'},
+ {tool:'Databricks-style governance',title:'Govern who sees what',why:'Column masking and an audit trail in SQL.',
+  blurb:'Each role reads the same table through its own SQL view that masks columns. Switching role runs the view and writes to an audit table.'},
+ {tool:'Step Functions + AgentCore',title:'Orchestrate the steps',why:'A fixed workflow versus an agent that chooses.',
+  blurb:'The workflow below is a small state machine that really runs: it validates your message, classifies it with the model, branches on confidence and writes to a database.'},
+ {tool:'SageMaker',title:'Know when to train your own',why:'Where custom training fits next to Bedrock.',
+  blurb:'Answer three questions to see which service fits the job, and why Bedrock is usually the starting point for this kind of work.'},
+ {tool:'SQL console',title:'Query everything yourself',why:'Runs, predictions, cases and audit rows are tables.',
+  blurb:'Write your own SELECT queries against every table this page has created. Run a few stages first so there is something to query.'}
+];
+const QA=[
+ [['What problem does it solve?','PySpark splits a large table across many workers so cleaning and joining finish quickly. SQL is the query language most data teams share for selecting, filtering and aggregating.'],
+  ['What would you use instead?','pandas on a single machine for small data, or a SQL warehouse such as Redshift or Snowflake when the data already lives there.'],
+  ['What breaks without it?','Duplicates and empty notes flow into the model and the metrics. Switch cleaning off, then run the model step and compare the accuracy.']],
+ [['What problem does it solve?','Bedrock lets you call foundation models through an API without hosting or scaling any model yourself. WebLLM plays that role in this page.'],
+  ['What would you use instead?','Running an open model on your own servers, or calling another provider\'s API directly.'],
+  ['What breaks without it?','Nothing answers the classification. You would have to train, host and scale a model before the first request.']],
+ [['What problem does it solve?','MLflow records the parameters, metrics and artifacts of every run so results can be compared and reproduced, and it keeps a registry of approved model versions.'],
+  ['What would you use instead?','A spreadsheet for a tiny project, or other tracking tools such as Weights & Biases or SageMaker Experiments.'],
+  ['What breaks without it?','You cannot prove which prompt change improved the result, or reproduce last month\'s number when an auditor asks.']],
+ [['What problem does it solve?','Databricks gives data teams one platform for Spark, notebooks and jobs, and Unity Catalog adds central control over who can read which tables and columns.'],
+  ['What would you use instead?','AWS-native pieces such as EMR with Glue and Lake Formation, or a warehouse platform like Snowflake.'],
+  ['What breaks without it?','Sensitive columns get copied into ungoverned files, and nobody can answer who accessed what.']],
+ [['What problem does it solve?','Step Functions runs a workflow you define, with retries, branching and a record of every execution. An agent, such as one run on AgentCore, lets the model decide which tool to call next.'],
+  ['What would you use instead?','Airflow or custom code for fixed workflows. Agent frameworks you host yourself for agents.'],
+  ['What breaks without it?','Steps run out of order, failures are not retried, and there is no trace to audit. With an agent, nothing limits which tools it may use.']],
+ [['What problem does it solve?','SageMaker is AWS\'s environment for building, training and deploying your own ML models, with managed notebooks through SageMaker Studio.'],
+  ['What would you use instead?','Bedrock when a hosted foundation model is enough, or Databricks ML if your team already works there.'],
+  ['What breaks without it?','You lose a managed place to train and host custom models. For this triage job you would barely notice, because Bedrock covers it.']],
+ null
+];
+
+const S={
+  stage:0,pyReady:false,
+  prep:{dedupe:false,dropnull:false,normalize:false},prepInfo:null,clean:[],parts:2,
+  mode:HAS_GPU?'real':'standin',modelId:MODELS[0][0],engine:null,load:{state:'idle',pct:0,text:''},
+  prompt:'v1',thr:0.7,busy:false,notice:'',
+  runsList:[],last:null,sel:[],gate:null,gateChecks:null,registry:[],
+  role:'ml',rolesSeen:{ml:true},roleRes:null,
+  caseKey:'clear',wfText:'',wfSteps:[],wfRan:false,agentShown:false,
+  deci:{train:'no',fm:'yes',nb:'no'},deciTouched:false,
+  sql:"SELECT run_id, key, value\nFROM metrics\nORDER BY run_id, key;",sqlRes:null,sqlRan:false
+};
+const CASES={
+  clear:{label:'Clear request',id:4,text:'I moved to Denver last month, update the mailing address please.'},
+  ambiguous:{label:'Ambiguous request',id:10,text:'Send me the money from my account, I also want to complain about fees.'}
+};
+S.wfText=CASES.clear.text;
+const AG={
+  clear:[['Think','','Goal: resolve this request. Classify it first.'],['Tool','classify_request','Address change, confidence 0.97.'],['Think','','Clear and low risk. Update the address.'],['Tool','update_address','Mailing address updated.'],['Finish','','Done in 5 steps.']],
+  ambiguous:[['Think','','Goal: resolve this request. Classify it first.'],['Tool','classify_request','Complaint, confidence 0.58. Two intents detected.'],['Think','','Low confidence and money is involved. I need account context.'],['Tool','lookup_policy','Annuity contract, no pending withdrawal on file.'],['Think','','The main intent is a withdrawal. The complaint is secondary.'],['Tool','create_case','Withdrawal case opened, complaint flagged.'],['Think','','Money movement needs a licensed reviewer to approve.'],['Tool','request_approval','Approval request sent. Status: pending.'],['Finish','','Done in 9 steps, waiting on a person.']]
+};
+
+/* ---------- Python bridge ---------- */
+const py=(fn,arg)=>{const f=window[fn];if(!f)throw new Error('Python is not ready yet.');return arg===undefined?f():f(arg);};
+function prepCount(){return Object.values(S.prep).filter(Boolean).length;}
+function applyPrep(){
+  S.prepInfo=JSON.parse(py('py_prep',JSON.stringify(S.prep)));
+  S.clean=S.prepInfo.rows;
+}
+function refreshRuns(){
+  S.runsList=JSON.parse(py('py_search_runs'));
+  S.registry=JSON.parse(py('py_registry'));
+}
+
+/* ---------- model ---------- */
+async function loadModel(){
+  S.load={state:'loading',pct:0,text:'Starting'};S.notice='';render();updateStatus();
+  try{
+    const webllm=await import('https://esm.run/@mlc-ai/web-llm');
+    S.engine=await webllm.CreateMLCEngine(S.modelId,{initProgressCallback:p=>{
+      S.load.pct=Math.round((p.progress||0)*100);S.load.text=p.text||'';paintLoad();updateStatus();
+    }});
+    S.load={state:'ready',pct:100,text:'Ready'};
+  }catch(err){
+    S.engine=null;S.load={state:'error',pct:0,text:String((err&&err.message)||err)};
+  }
+  render();updateStatus();
+}
+function paintLoad(){
+  const b=$('#loadbar'),t=$('#loadtext');
+  if(b)b.value=S.load.pct;
+  if(t)t.textContent=S.load.text;
+}
+async function classify(text,prompt,id){
+  if(S.mode==='real'){
+    const r=await S.engine.chat.completions.create({
+      messages:[{role:'system',content:SYS},{role:'user',content:PROMPTS[prompt](text)}],
+      temperature:0,max_tokens:3,logprobs:true,top_logprobs:4
+    });
+    const ch=r.choices[0];
+    const letter=String((ch.message&&ch.message.content)||'').trim().toUpperCase().charAt(0);
+    const pred=LET[letter]||null;
+    if(!pred)return{pred:null,conf:0};
+    const lp=ch.logprobs&&ch.logprobs.content&&ch.logprobs.content[0];
+    const conf=(lp&&typeof lp.logprob==='number')?Math.exp(lp.logprob):1;
+    return{pred,conf};
+  }
+  if(id&&P[id])return{pred:P[id][prompt][0],conf:P[id][prompt][1]};
+  const h=heuristic(text);
+  return{pred:h[0],conf:h[1]};
+}
+function setProg(t){const e=$('#prog');if(e)e.textContent=t;}
+async function runOnce(prompt){
+  const rows=S.clean,results=[];
+  for(let i=0;i<rows.length;i++){
+    setProg('Classifying '+(i+1)+' of '+rows.length);
+    const x=rows[i];
+    if(x.text===null||String(x.text).trim()===''){results.push({id:x.id,true:x.label,pred:null,conf:0});continue;}
+    const c=await classify(String(x.text).trim(),prompt,x.id);
+    results.push({id:x.id,true:x.label,pred:c.pred,conf:c.conf});
+  }
+  const payload={prompt,model:S.mode==='real'?S.modelId:'stand-in',mode:S.mode,threshold:S.thr,prep_steps:prepCount(),results};
+  const run=JSON.parse(py('py_log_run',JSON.stringify(payload)));
+  S.last={run,results,thr:S.thr};
+  refreshRuns();
+  return run;
+}
+function modelReady(){return S.mode==='standin'||S.load.state==='ready';}
+
+/* ---------- rendering ---------- */
+function stageDone(i){
+  if(i===0)return prepCount()===3;
+  if(i===1)return !!S.last;
+  if(i===2)return S.registry.length>0;
+  if(i===3)return Object.keys(S.rolesSeen).length>=2&&!!S.roleRes;
+  if(i===4)return S.wfRan;
+  if(i===5)return S.deciTouched;
+  if(i===6)return S.sqlRan;
+  return false;
+}
+function updateStatus(){
+  const pyc=S.pyReady?'<span class="chip good">Python ready</span>':'<span class="chip warn">Python starting</span>';
+  const gpu=HAS_GPU?'<span class="chip good">WebGPU available</span>':'<span class="chip bad">No WebGPU</span>';
+  let m='<span class="chip">Model not loaded</span>';
+  if(S.load.state==='ready')m='<span class="chip good">Model ready</span>';
+  else if(S.load.state==='loading')m='<span class="chip warn">Model loading '+S.load.pct+'%</span>';
+  else if(S.load.state==='error')m='<span class="chip bad">Model failed to load</span>';
+  $('#status').innerHTML=pyc+gpu+m;
+}
+function renderRail(){
+  $('#rail').innerHTML=STAGES.map((s,i)=>{
+    const done=stageDone(i);
+    return '<li><button class="stagebtn'+(done?' done':'')+'" data-act="stage" data-val="'+i+'" '+(i===S.stage?'aria-current="step"':'')+'>'+
+      '<span class="node" aria-hidden="true">'+(done&&i!==S.stage?'✓':i+1)+'</span>'+
+      '<span><span class="tool">'+esc(s.tool)+'</span><span class="why">'+esc(s.why)+'</span></span></button></li>';
+  }).join('');
+}
+function head(i){
+  return '<h2>'+esc(STAGES[i].title)+'</h2><p class="muted small" style="margin-bottom:4px">'+esc(STAGES[i].tool)+'</p><p>'+esc(STAGES[i].blurb)+'</p>';
+}
+function checkYourself(i){
+  if(!QA[i])return '';
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    QA[i].map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+val+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function loadingView(i){
+  return head(i)+'<div class="status warn">Starting Python in your browser. The first visit downloads the runtime and pandas, which can take a little while.</div>';
+}
+
+function s0(){
+  const I=S.prepInfo,p=S.prep;
+  const issuesN=I.dup+I.nul;
+  const st=issuesN===0?'<div class="status ok">Clean. '+I.n_out+' rows are ready for the model.</div>':
+    '<div class="status warn">'+issuesN+' issue'+(issuesN>1?'s':'')+' remain: '+(I.dup?I.dup+' duplicate id':'')+(I.dup&&I.nul?' and ':'')+(I.nul?I.nul+' empty note':'')+'. These will reach the model.</div>';
+  const agree=I.same?'<div class="status ok">The SQL result and the pandas result match, row for row.</div>':'<div class="status bad">The SQL and pandas results differ. Check the code below.</div>';
+  const parts=[];
+  for(let k=0;k<S.parts;k++){
+    const ids=S.clean.filter(x=>x.id%S.parts===k).map(x=>'<i>'+x.id+'</i>').join('');
+    parts.push('<div class="part"><b>Partition '+k+'</b><div class="ids">'+(ids||'<span class="muted small">empty</span>')+'</div></div>');
+  }
+  const seen=new Set();
+  const trs=S.clean.map(x=>{
+    const dupe=seen.has(x.id);seen.add(x.id);
+    const empty=x.text===null||String(x.text).trim()==='';
+    return '<tr class="'+(dupe||empty?'flag':'')+'"><td>'+x.id+'</td><td>'+esc(x.policy)+'</td><td>'+(empty?'<span class="chip warn">empty</span>':'<span style="white-space:pre-wrap">'+esc(x.text)+'</span>')+(dupe?' <span class="chip warn">duplicate</span>':'')+'</td></tr>';
+  }).join('');
+  return head(0)+
+  '<div class="row">'+tog('prep','dedupe','Remove duplicate rows',p.dedupe)+tog('prep','dropnull','Drop empty notes',p.dropnull)+tog('prep','normalize','Trim and lowercase text',p.normalize)+'</div>'+
+  st+
+  '<div class="tiles"><div class="tile"><b>'+I.n_in+'</b><span>rows in</span></div><div class="tile"><b>'+I.n_out+'</b><span>rows out</span></div><div class="tile"><b>'+I.dup+'</b><span>duplicate ids left</span></div><div class="tile"><b>'+I.nul+'</b><span>empty notes left</span></div></div>'+
+  '<h3>SQL (runs in SQLite)</h3><pre>'+esc(I.sql)+'</pre>'+
+  '<h3>pandas (runs in Python)</h3><pre>'+esc(I.pandas)+'</pre>'+agree+
+  '<h3>PySpark (reference only, not executed)</h3><pre>'+esc(I.pyspark)+'</pre>'+
+  '<p class="small muted">PySpark needs a Java runtime, so a browser cannot run it. The steps are the same ones you just ran above.</p>'+
+  '<h3>How Spark splits the work</h3>'+
+  '<label class="range" for="parts">Partitions: <span id="partsval">'+S.parts+'</span></label>'+
+  '<input id="parts" type="range" min="1" max="4" value="'+S.parts+'" data-act="parts">'+
+  '<p class="small muted">Spark divides a table into partitions so workers handle pieces in parallel. Here each row goes to the partition given by its id.</p>'+
+  '<div class="parts">'+parts.join('')+'</div>'+
+  '<h3>Rows after your steps</h3>'+
+  '<div class="scroll"><table><thead><tr><th>id</th><th>policy</th><th>message</th></tr></thead><tbody>'+trs+'</tbody></table></div>'+
+  checkYourself(0);
+}
+
+function modelPanel(){
+  const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===S.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+  let loadUi='';
+  if(S.mode==='real'){
+    loadUi='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(S.load.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+    '<p class="small muted" style="margin-top:8px">The first load downloads the model (roughly 0.4 to 1 GB) and caches it in your browser. Model names can change between WebLLM releases; if one fails to load, try another.</p>';
+    if(S.load.state==='loading')loadUi+='<progress id="loadbar" max="100" value="'+S.load.pct+'"></progress><p class="small muted" id="loadtext">'+esc(S.load.text)+'</p>';
+    else if(S.load.state==='ready')loadUi+='<div class="status ok">Model ready on your device.</div>';
+    else{
+      if(S.load.state==='error')loadUi+='<div class="status bad">Could not load the model: '+esc(S.load.text)+'</div>';
+      loadUi+='<button class="btn" data-act="loadmodel">Load model</button>';
+    }
+  }else{
+    loadUi='<div class="status warn">Stand-in answers are hard-coded for the 12 sample messages, and a few keyword rules for anything else. They are not a real model.</div>';
+  }
+  return '<div class="row">'+tog('mode','real','Real model (WebLLM)',S.mode==='real',!HAS_GPU||S.busy)+tog('mode','standin','Stand-in answers',S.mode==='standin',S.busy)+'</div>'+
+    (!HAS_GPU?'<p class="small muted" style="margin-top:8px">This browser does not report WebGPU, so only stand-in answers are available. WebGPU also needs the page to be served over https.</p>':'')+
+    '<div style="margin-top:10px">'+loadUi+'</div>';
+}
+
+function s1(){
+  const I=S.prepInfo,issuesN=I.dup+I.nul;
+  const warn=issuesN>0?'<div class="status warn">Data prep left '+issuesN+' issue'+(issuesN>1?'s':'')+'. <button class="btn ghost sm" data-act="stage" data-val="0">Fix in data prep</button></div>':'';
+  const note=S.notice?'<div class="status warn">'+esc(S.notice)+'</div>':'';
+  let res='';
+  if(S.last){
+    const L=S.last,run=L.run,m=run.metrics;
+    const trs=L.results.map(o=>{
+      const esc2=o.pred===null||o.conf<L.thr,ok=o.pred===o.true;
+      const row=S.clean.find(x=>x.id===o.id&&true);
+      const txt=row&&row.text!==null?String(row.text).trim():'(empty)';
+      const outcome=esc2?'<span class="chip warn">To human review</span>':(ok?'<span class="chip good">Correct</span>':'<span class="chip bad">Wrong</span>');
+      return '<tr><td>'+o.id+'</td><td>'+esc(txt)+'</td><td>'+LABELS[o.true]+'</td><td>'+(o.pred?LABELS[o.pred]:'No valid answer')+'</td><td>'+o.conf.toFixed(2)+'</td><td>'+outcome+'</td></tr>';
+    }).join('');
+    const auto=m.rows-m.human_review;
+    res='<hr class="sep"><h3>Result of '+run.id+'</h3>'+
+    '<div class="tiles"><div class="tile"><b>'+pct(m.accuracy)+'</b><span>model-only accuracy</span></div>'+
+    '<div class="tile"><b>'+auto+'</b><span>handled automatically</span></div>'+
+    '<div class="tile"><b>'+(m.auto_accuracy===undefined?'n/a':pct(m.auto_accuracy))+'</b><span>accuracy on those</span></div>'+
+    '<div class="tile"><b>'+m.human_review+'</b><span>sent to a person</span></div></div>'+
+    '<p class="small muted">Logged as '+run.id+'. Try the other prompt, then move the threshold and watch accuracy trade against workload.</p>'+
+    '<div class="scroll"><table style="min-width:640px"><thead><tr><th>id</th><th>message</th><th>true label</th><th>model said</th><th>confidence</th><th>outcome</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+  }
+  const canRun=!S.busy&&modelReady();
+  return head(1)+warn+note+modelPanel()+
+  '<h3>Prompt</h3><div class="row">'+tog('prompt','v1','Vague prompt',S.prompt==='v1',S.busy)+tog('prompt','v2','Prompt with definitions',S.prompt==='v2',S.busy)+'</div>'+
+  '<h3>Prompt sent to the model</h3><pre>'+esc(PROMPTS[S.prompt]('{{text}}'))+'</pre>'+
+  '<label class="range" for="thr">Send to a person below confidence <span id="thrval">'+S.thr.toFixed(2)+'</span></label>'+
+  '<input id="thr" type="range" min="0.5" max="0.95" step="0.05" value="'+S.thr+'" data-act="thr">'+
+  '<p class="small muted">The model handles confident cases and hands over uncertain ones. This is an escalation path.</p>'+
+  '<button class="btn" data-act="run"'+(canRun?'':' disabled')+'>Run model on '+S.clean.length+' rows</button> <span class="small muted" id="prog"></span>'+
+  (S.mode==='real'&&S.load.state!=='ready'?'<p class="small muted" style="margin-top:8px">Load the model first.</p>':'')+
+  res+checkYourself(1);
+}
+
+function metricCell(m,k,isPct){const v=m[k];return v===undefined?'n/a':(isPct?pct(v):String(v));}
+function s2(){
+  let body;
+  if(!S.runsList.length){
+    body='<div class="status">No runs yet. Run the model in the previous stage, or use Run the example at the top.</div><button class="btn" data-act="stage" data-val="1">Go to the model step</button>';
+  }else{
+    const trs=S.runsList.map(r=>{
+      const p=r.params,m=r.metrics;
+      return '<tr><td><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-act="sel" data-val="'+r.id+'" '+(S.sel.includes(r.id)?'checked':'')+' aria-label="Select '+r.id+' to compare"> '+r.id+'</label></td>'+
+      '<td>'+esc(p.prompt)+'</td><td>'+esc(p.model)+'</td><td>'+Number(p.threshold).toFixed(2)+'</td><td>'+esc(p.prep_steps)+' of 3</td><td>'+metricCell(m,'accuracy',true)+'</td><td>'+metricCell(m,'auto_accuracy',true)+'</td><td>'+metricCell(m,'human_review',false)+' of '+metricCell(m,'rows',false)+'</td>'+
+      '<td><button class="btn ghost sm" data-act="gate" data-val="'+r.id+'">Check gate</button></td></tr>';
+    }).join('');
+    body='<div class="scroll"><table style="min-width:820px"><thead><tr><th>Run</th><th>Prompt</th><th>Model</th><th>Threshold</th><th>Prep</th><th>Accuracy</th><th>Auto accuracy</th><th>To humans</th><th></th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+    if(S.sel.length===2){
+      const a=S.runsList.find(r=>r.id===S.sel[0]),b=S.runsList.find(r=>r.id===S.sel[1]);
+      if(a&&b){
+        const d=(x,y)=>{if(x===undefined||y===undefined)return 'n/a';const v=Math.round((y-x)*100);return v===0?'no change':(v>0?'+':'')+v+' points';};
+        const hd=(b.metrics.human_review||0)-(a.metrics.human_review||0);
+        body+='<h3>'+a.id+' compared with '+b.id+'</h3>'+
+        '<div class="scroll"><table style="min-width:420px"><thead><tr><th>Metric</th><th>'+a.id+'</th><th>'+b.id+'</th><th>Change</th></tr></thead><tbody>'+
+        '<tr><td>Prompt</td><td>'+esc(a.params.prompt)+'</td><td>'+esc(b.params.prompt)+'</td><td></td></tr>'+
+        '<tr><td>Model-only accuracy</td><td>'+metricCell(a.metrics,'accuracy',true)+'</td><td>'+metricCell(b.metrics,'accuracy',true)+'</td><td>'+d(a.metrics.accuracy,b.metrics.accuracy)+'</td></tr>'+
+        '<tr><td>Cases to humans</td><td>'+metricCell(a.metrics,'human_review',false)+'</td><td>'+metricCell(b.metrics,'human_review',false)+'</td><td>'+(hd===0?'no change':(hd>0?'+':'')+hd)+'</td></tr></tbody></table></div>'+
+        '<p class="small muted">This is the habit the job rewards: change one thing, measure, then decide.</p>';
+      }
+    }else body+='<p class="small muted" style="margin-top:10px">Tick two runs to compare them side by side.</p>';
+    if(S.gate&&S.gateChecks){
+      const pass=S.gateChecks.every(c=>c[1]);
+      body+='<h3>Promotion gate for '+S.gate+'</h3><ul class="checks">'+S.gateChecks.map(c=>'<li>'+(c[1]?'<span class="chip good">Pass</span>':'<span class="chip bad">Fail</span>')+' '+esc(c[0])+'</li>').join('')+'</ul>'+
+      (pass?'<div class="status ok">All checks pass. This run can be registered.</div><button class="btn" data-act="register" data-val="'+S.gate+'">Register as claims-triage</button>':'<div class="status bad">Blocked. Fix the failing checks, then run again.</div>');
+    }
+    if(S.registry.length){
+      body+='<h3>Model registry: claims-triage</h3>'+
+      '<div class="scroll"><table style="min-width:380px"><thead><tr><th>Version</th><th>From run</th><th>Stage</th><th></th></tr></thead><tbody>'+
+      S.registry.map(v=>'<tr><td>'+v.version+'</td><td>'+esc(v.run)+'</td><td>'+esc(v.stage)+'</td><td>'+(v.stage==='Staging'?'<button class="btn ghost sm" data-act="promote" data-val="'+v.version+'">Promote to Production</button>':'')+'</td></tr>').join('')+'</tbody></table></div>';
+    }
+  }
+  return head(2)+body+
+  '<h3>The code behind it</h3><pre>with mlflow.start_run():\n    mlflow.log_param("prompt", "v2")\n    mlflow.log_metric("accuracy", 0.92)</pre>'+
+  '<p class="small muted">This page ships a tiny tracker with the same method names, stored in SQLite tables named runs, params, metrics and predictions. Real MLflow needs a tracking server, so it cannot run in a browser. Query the tables in the SQL console.</p>'+
+  checkYourself(2);
+}
+
+const ROLES={
+  ml:{name:'ML engineer',desc:'Reads message text to build and test the model. Identity fields are masked.'},
+  analyst:{name:'Claims analyst',desc:'Handles cases, so sees names and messages. ID digits stay masked.'},
+  auditor:{name:'Auditor',desc:'Checks the trail. Sees names and ID digits, but not message text.'}
+};
+function s3(){
+  let body;
+  if(!S.roleRes){
+    body='<p class="muted">Pick a role to run its view.</p>';
+  }else{
+    const R=S.roleRes;
+    body='<p>'+esc(ROLES[S.role].desc)+'</p><h3>The view this role queries</h3><pre>'+esc(R.view_sql)+'</pre>'+
+    '<div class="scroll"><table style="min-width:640px"><thead><tr>'+R.cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    R.rows.map(r=>'<tr>'+r.map((c,i)=>'<td>'+(c==='******'?'<span class="mask">******</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+
+    '<h3>Audit table</h3><pre>'+esc(R.audit.join('\n'))+'</pre>';
+  }
+  return head(3)+
+  '<div class="row">'+Object.keys(ROLES).map(k=>tog('role',k,ROLES[k].name,S.role===k&&!!S.roleRes)).join('')+'</div>'+
+  '<div style="margin-top:10px">'+body+'</div>'+
+  '<h3>Lineage</h3><p class="small"><span class="chip">notes_raw</span> becomes <span class="chip">notes_clean</span> becomes <span class="chip">predictions</span> becomes <span class="chip">metrics</span></p>'+
+  '<p class="small muted">Illustrative rules. In Databricks, Unity Catalog applies grants and column masks centrally, and records lineage and access for you.</p>'+
+  checkYourself(3);
+}
+
+function s4(){
+  const steps=S.wfSteps.map((s,i)=>'<li><span class="chip">'+(i+1)+'</span><div><b>'+esc(s.n)+'</b> <span class="muted small">'+esc(s.k)+'</span><br>'+esc(s.d)+'</div></li>').join('');
+  const ag=AG[S.caseKey];
+  const agTrace=S.agentShown?'<ol class="trace">'+ag.map((s,i)=>{
+    const cls=s[0]==='Tool'?'':(s[0]==='Think'?'warn':'good');
+    return '<li><span class="chip '+cls+'">'+s[0]+'</span><div>'+(s[1]?'<b>'+esc(s[1])+'</b><br>':'')+esc(s[2])+'</div></li>';
+  }).join('')+'</ol>':'';
+  return head(4)+
+  '<h3>Workflow (runs for real)</h3>'+
+  '<div class="row">'+Object.keys(CASES).map(k=>'<button class="btn ghost sm" data-act="sample" data-val="'+k+'"'+(S.busy?' disabled':'')+'>Use '+CASES[k].label.toLowerCase()+'</button>').join('')+'</div>'+
+  '<label class="range" for="wftext">Message</label><textarea id="wftext" data-act="wftext" rows="3">'+esc(S.wfText)+'</textarea>'+
+  '<p class="small muted">Uses the model, prompt and threshold ('+S.thr.toFixed(2)+') from the model step. '+(S.mode==='real'?(S.load.state==='ready'?'The real model will answer.':'Load the model in the model step first, or switch to stand-in answers.'):'Stand-in answers are in use.')+'</p>'+
+  '<button class="btn" data-act="wfrun"'+((S.busy||!modelReady())?' disabled':'')+'>Run workflow</button>'+
+  (steps?'<ol class="trace">'+steps+'</ol>':'<p class="muted" style="margin-top:10px">Press Run to execute the states. Each write lands in the cases and executions tables.</p>')+
+  '<h3>Agent (scripted illustration)</h3>'+
+  '<p class="small muted">A real agent on AgentCore is an AWS service and cannot run here, so these traces are written by hand to show the difference.</p>'+
+  '<div class="row">'+Object.keys(CASES).map(k=>tog('case',k,CASES[k].label,S.caseKey===k)).join('')+'<button class="btn ghost" data-act="agentshow">Show agent trace</button></div>'+
+  '<div class="quote">'+esc(CASES[S.caseKey].text)+'</div>'+agTrace+
+  '<h3>Side by side</h3>'+
+  '<div class="scroll"><table style="min-width:480px"><thead><tr><th></th><th>Step Functions</th><th>AgentCore agent</th></tr></thead><tbody>'+
+  '<tr><td>Who picks the next step</td><td>You, in advance</td><td>The model, at run time</td></tr>'+
+  '<tr><td>Path for the same input</td><td>Always the same</td><td>Can vary</td></tr>'+
+  '<tr><td>Best for</td><td>Steps you can list ahead of time</td><td>Open-ended tasks that need judgment</td></tr>'+
+  '<tr><td>Audit</td><td>Every state recorded</td><td>Needs tool limits and step logging</td></tr>'+
+  '<tr><td>Main risk</td><td>Rigid when cases vary</td><td>Wrong tool choice or extra cost</td></tr></tbody></table></div>'+
+  checkYourself(4);
+}
+
+function advice(){
+  const d=S.deci;let main,why;
+  if(d.train==='yes'){main='SageMaker';why='You need to train a model on your own data. SageMaker provides managed training jobs, tuning and hosted endpoints for that.';}
+  else if(d.fm==='yes'){main='Bedrock';why='You want a hosted foundation model behind an API with no model infrastructure to run. That is what your triage workflow uses.';}
+  else{main='Neither yet';why='If you are not training a model or calling a foundation model, clarify the job first. Rules, SQL or a small classic model may be enough.';}
+  const extra=d.nb==='yes'?' You also want a managed notebook workspace, so SageMaker Studio is worth a look for your data scientists, even when the model itself comes from Bedrock.':'';
+  return{main,text:why+extra};
+}
+function yn(key,val){return tog('deci',key+':'+val,val==='yes'?'Yes':'No',S.deci[key]===val);}
+function s5(){
+  const a=advice();
+  return head(5)+
+  '<h3>Do you need to train a model on your own data?</h3><div class="row">'+yn('train','yes')+yn('train','no')+'</div>'+
+  '<h3>Is a hosted foundation model enough for the task?</h3><div class="row">'+yn('fm','yes')+yn('fm','no')+'</div>'+
+  '<h3>Does your team want a managed notebook workspace?</h3><div class="row">'+yn('nb','yes')+yn('nb','no')+'</div>'+
+  '<div class="status ok" style="margin-top:18px"><b>'+a.main+'</b><br>'+esc(a.text)+'</div>'+
+  '<p class="small muted">Service features change, so confirm current details in the AWS documentation.</p>'+
+  checkYourself(5);
+}
+
+const EXAMPLES=[
+  ['List tables and views',"SELECT name, type\nFROM sqlite_master\nWHERE type IN ('table','view')\nORDER BY name;"],
+  ['Accuracy per run',"SELECT run_id,\n       COUNT(*) AS rows,\n       ROUND(AVG(correct), 3) AS accuracy\nFROM predictions\nGROUP BY run_id;"],
+  ['Wrong answers',"SELECT run_id, id, true_label, pred, ROUND(conf, 2) AS conf\nFROM predictions\nWHERE correct = 0\nORDER BY run_id, conf DESC;"],
+  ['Cases and executions',"SELECT * FROM cases;"],
+  ['Audit trail',"SELECT * FROM audit ORDER BY rowid DESC;"]
+];
+function s6(){
+  let res='';
+  if(S.sqlRes){
+    if(S.sqlRes.error)res='<div class="status bad">'+esc(S.sqlRes.error)+'</div>';
+    else res='<p class="small muted">'+S.sqlRes.rows.length+' row'+(S.sqlRes.rows.length===1?'':'s')+'</p>'+table(S.sqlRes.cols,S.sqlRes.rows,420);
+  }
+  return head(6)+
+  '<div class="row">'+EXAMPLES.map((e,i)=>'<button class="btn ghost sm" data-act="sqlex" data-val="'+i+'">'+esc(e[0])+'</button>').join('')+'</div>'+
+  '<label class="range" for="sqlbox">Query (SELECT or WITH only)</label>'+
+  '<textarea id="sqlbox" class="code" data-act="sqlbox" rows="5" spellcheck="false">'+esc(S.sql)+'</textarea>'+
+  '<div style="margin-top:10px"><button class="btn" data-act="sqlrun">Run query</button></div>'+res+
+  '<p class="small muted" style="margin-top:12px">Tables: notes_raw, notes_clean, notes_gold, runs, params, metrics, predictions, registry, cases, executions, audit. Views: v_ml, v_analyst, v_auditor.</p>';
+}
+
+const RENDER=[s0,s1,s2,s3,s4,s5,s6];
+function render(){
+  const a=document.activeElement;
+  const key=a&&a.dataset&&a.dataset.act?{act:a.dataset.act,val:a.dataset.val}:null;
+  renderRail();
+  $('#main').innerHTML=S.pyReady?RENDER[S.stage]():loadingView(S.stage);
+  if(key){
+    const el=document.querySelector('#main [data-act="'+key.act+'"]'+(key.val!==undefined?'[data-val="'+key.val+'"]':''));
+    if(el&&!el.disabled)el.focus({preventScroll:true});
+  }
+}
+function go(i){S.stage=i;render();window.scrollTo({top:0,behavior:'smooth'});}
+
+/* ---------- workflow ---------- */
+async function runWorkflow(){
+  if(S.busy)return;
+  S.busy=true;S.wfSteps=[];render();
+  const add=(n,k,d)=>{S.wfSteps.push({n,k,d});render();};
+  try{
+    const text=S.wfText.trim();
+    const v=JSON.parse(py('py_validate',text));
+    add('ValidateInput','Python',v.ok?'The message passes the checks.':'Rejected because '+v.reason+'.');
+    if(!v.ok){add('Done','End','Execution stopped at validation.');S.busy=false;S.wfRan=true;render();return;}
+    const known=Object.values(CASES).find(c=>c.text===text);
+    const c=await classify(text,S.prompt,known&&known.id);
+    add('Classify',S.mode==='real'?'WebLLM':'Stand-in',c.pred?LABELS[c.pred]+', confidence '+c.conf.toFixed(2)+'.':'No valid answer, confidence 0.');
+    const auto=!!c.pred&&c.conf>=S.thr;
+    add('ConfidenceCheck','Choice',c.conf.toFixed(2)+(auto?' is at or above ':' is below ')+S.thr.toFixed(2)+', so take the '+(auto?'automatic':'review')+' branch.');
+    const branch=auto?'auto':'review';
+    const made=JSON.parse(py('py_create_case',JSON.stringify({label:c.pred||'unknown',message:text,status:auto?'auto-handled':'needs review'})));
+    if(auto)add('UpdateRecord','SQLite write','Case #'+made.case_id+' saved as auto-handled.');
+    else add('HumanReview','SQLite write','Case #'+made.case_id+' saved for a person to review.');
+    py('py_record_execution',JSON.stringify({message:text,pred:c.pred,conf:c.conf,branch}));
+    add('Done','End','Execution recorded. Query the cases and executions tables in the SQL console.');
+    S.wfRan=true;
+  }catch(err){
+    add('Error','Python or model',String((err&&err.message)||err));
+  }
+  S.busy=false;render();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act]');
+  if(!t||t.disabled)return;
+  const act=t.dataset.act,val=t.dataset.val;
+  if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+  try{
+  switch(act){
+    case'stage':go(+val);return;
+    case'prep':S.prep[val]=!S.prep[val];applyPrep();break;
+    case'mode':S.mode=val;S.notice='';break;
+    case'loadmodel':loadModel();return;
+    case'prompt':S.prompt=val;break;
+    case'run':{
+      if(S.busy||!modelReady())return;
+      S.busy=true;render();
+      try{await runOnce(S.prompt);}catch(err){S.notice='The run failed: '+((err&&err.message)||err);}
+      S.busy=false;break;}
+    case'gate':S.gate=val;S.gateChecks=JSON.parse(py('py_gate',val));break;
+    case'register':py('py_register',val);refreshRuns();break;
+    case'promote':py('py_promote',val);refreshRuns();break;
+    case'role':{S.role=val;S.rolesSeen[val]=true;S.roleRes=JSON.parse(py('py_role_query',val));break;}
+    case'sample':S.wfText=CASES[val].text;S.caseKey=val;break;
+    case'case':S.caseKey=val;S.agentShown=false;break;
+    case'agentshow':S.agentShown=true;break;
+    case'deci':{const p=val.split(':');S.deci[p[0]]=p[1];S.deciTouched=true;break;}
+    case'sqlex':S.sql=EXAMPLES[+val][1];break;
+    case'sqlrun':{
+      const box=$('#sqlbox');if(box)S.sql=box.value;
+      S.sqlRes=JSON.parse(py('py_run_sql',S.sql));S.sqlRan=true;break;}
+    case'wfrun':{const box=$('#wftext');if(box)S.wfText=box.value;runWorkflow();return;}
+    case'example':{
+      if(S.busy||!S.pyReady)return;
+      if(!modelReady()){S.notice='Load the model first, then press Run the example again.';go(1);return;}
+      S.busy=true;S.prep={dedupe:true,dropnull:true,normalize:true};applyPrep();S.stage=1;render();
+      try{
+        S.thr=0.7;
+        await runOnce('v1');S.prompt='v2';await runOnce('v2');
+        const n=S.runsList.length;
+        S.sel=[S.runsList[n-2].id,S.runsList[n-1].id];
+        S.stage=2;
+      }catch(err){S.notice='The example failed: '+((err&&err.message)||err);}
+      S.busy=false;render();window.scrollTo({top:0,behavior:'smooth'});return;}
+    default:return;
+  }
+  }catch(err){S.notice=String((err&&err.message)||err);}
+  render();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;if(!t.dataset)return;
+  try{
+    if(t.dataset.act==='sel'){
+      const id=t.dataset.val;
+      if(t.checked){S.sel.push(id);if(S.sel.length>2)S.sel.shift();}else S.sel=S.sel.filter(x=>x!==id);
+      render();
+    }else if(t.dataset.act==='parts'){S.parts=+t.value;render();}
+    else if(t.dataset.act==='thr'){S.thr=+t.value;render();}
+    else if(t.dataset.act==='modelsel'){S.modelId=t.value;S.engine=null;S.load={state:'idle',pct:0,text:''};updateStatus();render();}
+  }catch(err){S.notice=String((err&&err.message)||err);render();}
+});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!t.dataset)return;
+  if(t.dataset.act==='parts'){const v=$('#partsval');if(v)v.textContent=t.value;}
+  if(t.dataset.act==='thr'){const v=$('#thrval');if(v)v.textContent=(+t.value).toFixed(2);}
+  if(t.dataset.act==='wftext')S.wfText=t.value;
+  if(t.dataset.act==='sqlbox')S.sql=t.value;
+});
+
+/* ---------- boot ---------- */
+updateStatus();render();
+(async function boot(){
+  while(!window.py_ready)await sleep(300);
+  try{
+    applyPrep();refreshRuns();S.pyReady=true;
+  }catch(err){S.notice='Python started but failed to set up: '+((err&&err.message)||err);S.pyReady=true;S.prepInfo={sql:'',pandas:'',pyspark:'',rows:[],n_in:0,n_out:0,dup:0,nul:0,same:false};}
+  updateStatus();render();
+})();
+</script>
+</body>
+</html>
