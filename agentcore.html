@@ -292,46 +292,46 @@ const LLM={
 
 PYSTATE.needsPy=false;
 /*AGENT-START*/
-const POLICIES={
-  'A-1001':{type:'annuity',owner:'M. Alvarez',balance:48200,address:'14 Elm St, Pittsburgh PA'},
-  'L-2002':{type:'life',owner:'T. Okafor',balance:0,address:'9 Pine Rd, Raleigh NC'},
-  'G-3003':{type:'group',owner:'R. Chen',balance:0,address:'77 Lake Ave, Fort Wayne IN'}
+const ORDERS={
+  'O-1001':{item:'Standing desk',customer:'M. Alvarez',paid:480,refunded:0,status:'delivered',address:'14 Elm St, Pittsburgh PA'},
+  'O-2002':{item:'Table lamp',customer:'T. Okafor',paid:60,refunded:0,status:'shipped',address:'9 Pine Rd, Raleigh NC'},
+  'O-3003':{item:'Rain jacket',customer:'R. Chen',paid:95,refunded:0,status:'delivered',address:'77 Lake Ave, Fort Wayne IN'}
 };
-const CLAIMS={2:{policy:'A-1001',status:'in review',opened:'2026-09-02'},5:{policy:'L-2002',status:'approved',opened:'2026-08-21'}};
+const TICKETS={2:{order:'O-1001',status:'in review',opened:'2026-09-02'},5:{order:'O-2002',status:'resolved',opened:'2026-08-21'}};
 const TOOLS={
-  get_claim_status:{desc:'Look up the status of a claim by id',args:'claim_id',scope:'read_policy'},
-  lookup_policy:{desc:'Read a policy record by id',args:'policy_id',scope:'read_policy'},
-  update_address:{desc:'Change the mailing address on a policy',args:'policy_id, address',scope:'write_policy'},
-  request_withdrawal:{desc:'Request a withdrawal from an annuity',args:'policy_id, amount',scope:'write_payments'},
+  get_ticket_status:{desc:'Look up the status of a support ticket by id',args:'ticket_id',scope:'read_orders'},
+  lookup_order:{desc:'Read an order record by id',args:'order_id',scope:'read_orders'},
+  update_address:{desc:'Change the shipping address on an order that has not been delivered',args:'order_id, address',scope:'write_orders'},
+  request_refund:{desc:'Refund part or all of what a customer paid for an order',args:'order_id, amount',scope:'write_payments'},
   send_email:{desc:'Send an email to any address',args:'to, body',scope:'send_mail'}
 };
 const POLICY_RULES=[
   {text:'forbid (principal, action == Action::"send_email", resource);',check:(t,a)=>t==='send_email'?'Policy forbids sending email from the agent.':null},
-  {text:'forbid (principal, action == Action::"request_withdrawal", resource)\n  when { context.amount > 10000 && !context.approved };',check:(t,a,ctx)=>t==='request_withdrawal'&&Number(a.amount)>10000&&!ctx.approved?'NEEDS_APPROVAL':null}
+  {text:'forbid (principal, action == Action::"request_refund", resource)\n  when { context.amount > 200 && !context.approved };',check:(t,a,ctx)=>t==='request_refund'&&Number(a.amount)>200&&!ctx.approved?'NEEDS_APPROVAL':null}
 ];
 function runTool(name,args,env){
-  if(name==='get_claim_status'){
-    const c=CLAIMS[Number(args.claim_id)];
-    return c?{ok:true,data:{claim_id:Number(args.claim_id),policy:c.policy,status:c.status,opened:c.opened}}:{ok:false,data:'No claim with that id.'};
+  if(name==='get_ticket_status'){
+    const c=TICKETS[Number(args.ticket_id)];
+    return c?{ok:true,data:{ticket_id:Number(args.ticket_id),order:c.order,status:c.status,opened:c.opened}}:{ok:false,data:'No ticket with that id.'};
   }
-  if(name==='lookup_policy'){
-    const p=POLICIES[args.policy_id];
-    return p?{ok:true,data:{policy_id:args.policy_id,type:p.type,owner:p.owner,balance:p.balance,address:p.address}}:{ok:false,data:'No policy with that id.'};
+  if(name==='lookup_order'){
+    const o=ORDERS[args.order_id];
+    return o?{ok:true,data:{order_id:args.order_id,item:o.item,customer:o.customer,paid:o.paid,refunded:o.refunded,status:o.status,address:o.address}}:{ok:false,data:'No order with that id.'};
   }
   if(name==='update_address'){
-    const p=POLICIES[args.policy_id];
-    if(!p)return{ok:false,data:'No policy with that id.'};
-    p.address=String(args.address);
-    return{ok:true,data:{policy_id:args.policy_id,address:p.address,updated:true}};
+    const o=ORDERS[args.order_id];
+    if(!o)return{ok:false,data:'No order with that id.'};
+    if(o.status==='delivered')return{ok:false,data:'The order was already delivered, so the address cannot change.'};
+    o.address=String(args.address);
+    return{ok:true,data:{order_id:args.order_id,address:o.address,updated:true}};
   }
-  if(name==='request_withdrawal'){
-    const p=POLICIES[args.policy_id];
-    if(!p)return{ok:false,data:'No policy with that id.'};
-    if(p.type!=='annuity')return{ok:false,data:'Withdrawals apply to annuities only.'};
-    const amt=Number(args.amount);
-    if(!(amt>0)||amt>p.balance)return{ok:false,data:'Invalid amount or more than the balance of '+p.balance+'.'};
-    p.balance-=amt;
-    return{ok:true,data:{policy_id:args.policy_id,withdrawn:amt,new_balance:p.balance}};
+  if(name==='request_refund'){
+    const o=ORDERS[args.order_id];
+    if(!o)return{ok:false,data:'No order with that id.'};
+    const amt=Number(args.amount),left=o.paid-o.refunded;
+    if(!(amt>0)||amt>left)return{ok:false,data:'Invalid amount, or more than the '+left+' still refundable.'};
+    o.refunded+=amt;
+    return{ok:true,data:{order_id:args.order_id,refunded:amt,remaining:o.paid-o.refunded}};
   }
   if(name==='send_email')return{ok:true,data:{sent:true}};
   return{ok:false,data:'Unknown tool.'};
@@ -344,37 +344,37 @@ function authorize(name,args,env){
   if(!env.scopes[t.scope])return{ok:false,reason:'Identity: the user has not delegated scope '+t.scope+'.'};
   for(const r of POLICY_RULES){
     const v=r.check(name,args,{approved:!!env.approved});
-    if(v==='NEEDS_APPROVAL')return{ok:false,approval:true,reason:'Policy: withdrawals above 10000 need human approval.'};
+    if(v==='NEEDS_APPROVAL')return{ok:false,approval:true,reason:'Policy: refunds above 200 need human approval.'};
     if(v)return{ok:false,reason:v};
   }
   return{ok:true};
 }
 function rulesPlan(msg,obs){
-  const pid=(msg.match(/[AGL]-\d{4}/)||[])[0];
-  const cid=(msg.match(/claim\s*#?\s*(\d+)/i)||[])[1];
+  const oid=(msg.match(/O-\d{4}/)||[])[0];
+  const tid=(msg.match(/ticket\s*#?\s*(\d+)/i)||[])[1];
   const amt=(msg.match(/\$\s?([\d,]+)/)||[])[1];
-  const addr=(msg.match(/address (?:on [A-Z]-\d{4} )?to (.+?)\.?$/i)||[])[1];
+  const addr=(msg.match(/address (?:on O-\d{4} )?to (.+?)\.?$/i)||[])[1];
   const called=n=>obs.some(o=>o.tool===n);
   const last=obs[obs.length-1];
   const fin=t=>({final:t});
   if(last&&!last.ok&&last.blocked)return fin('I could not complete that: '+last.detail);
-  if(last&&!last.ok&&!last.blocked&&last.tool!=='lookup_policy')return fin('That did not work: '+last.detail);
-  if(/claim/i.test(msg)&&cid){
-    if(!called('get_claim_status'))return{thought:'The user asks about a claim. Look up its status.',tool:'get_claim_status',args:{claim_id:cid}};
-    return fin(last.ok?'Claim '+last.data.claim_id+' on policy '+last.data.policy+' is '+last.data.status+'.':'I could not find that claim.');
+  if(last&&!last.ok&&!last.blocked&&last.tool!=='lookup_order')return fin('That did not work: '+last.detail);
+  if(/ticket/i.test(msg)&&tid){
+    if(!called('get_ticket_status'))return{thought:'The user asks about a ticket. Look up its status.',tool:'get_ticket_status',args:{ticket_id:tid}};
+    return fin(last.ok?'Ticket '+last.data.ticket_id+' on order '+last.data.order+' is '+last.data.status+'.':'I could not find that ticket.');
   }
-  if(/withdraw|take out|surrender/i.test(msg)&&pid&&amt){
-    if(!called('lookup_policy'))return{thought:'Check the policy before moving money.',tool:'lookup_policy',args:{policy_id:pid}};
-    if(!called('request_withdrawal'))return{thought:'The policy exists. Request the withdrawal.',tool:'request_withdrawal',args:{policy_id:pid,amount:amt.replace(/,/g,'')}};
-    return fin(last.ok?'Done. Withdrew '+last.data.withdrawn+' from '+last.data.policy_id+'. New balance: '+last.data.new_balance+'.':'The withdrawal did not go through.');
+  if(/refund|money back/i.test(msg)&&oid&&amt){
+    if(!called('lookup_order'))return{thought:'Check the order before moving money.',tool:'lookup_order',args:{order_id:oid}};
+    if(!called('request_refund'))return{thought:'The order exists. Request the refund.',tool:'request_refund',args:{order_id:oid,amount:amt.replace(/,/g,'')}};
+    return fin(last.ok?'Done. Refunded '+last.data.refunded+' on '+last.data.order_id+'. Still refundable: '+last.data.remaining+'.':'The refund did not go through.');
   }
-  if(/address|moved|mailing/i.test(msg)&&pid&&addr){
-    if(!called('lookup_policy'))return{thought:'Confirm the policy before changing it.',tool:'lookup_policy',args:{policy_id:pid}};
-    if(!called('update_address'))return{thought:'Update the mailing address.',tool:'update_address',args:{policy_id:pid,address:addr}};
-    return fin(last.ok?'Address on '+last.data.policy_id+' is now '+last.data.address+'.':'The update did not go through.');
+  if(/address|moved|shipping/i.test(msg)&&oid&&addr){
+    if(!called('lookup_order'))return{thought:'Confirm the order before changing it.',tool:'lookup_order',args:{order_id:oid}};
+    if(!called('update_address'))return{thought:'Update the shipping address.',tool:'update_address',args:{order_id:oid,address:addr}};
+    return fin(last.ok?'Shipping address on '+last.data.order_id+' is now '+last.data.address+'.':'The update did not go through.');
   }
   if(/email|send/i.test(msg)&&!called('send_email'))return{thought:'The user wants something sent. Use send_email.',tool:'send_email',args:{to:'external',body:msg}};
-  return fin('I need a policy id (like A-1001) or a claim id, plus what you want done.');
+  return fin('I need an order id (like O-1001) or a ticket id, plus what you want done.');
 }
 function parseModelAction(text){
   const m=String(text).match(/\{[\s\S]*\}/);
@@ -384,16 +384,17 @@ function parseModelAction(text){
 }
 /*AGENT-END*/
 const SCENARIOS=[
-  ['Claim status','What is the status of claim 2?'],
-  ['Address change','Please change the mailing address on L-2002 to 12 Oak St, Denver CO.'],
-  ['Large withdrawal','I want to withdraw $20,000 from A-1001.'],
-  ['Small withdrawal','I want to withdraw $2,500 from A-1001.'],
-  ['Email request','Email my beneficiary list to my friend.']
+  ['Ticket status','What is the status of ticket 2?'],
+  ['Address change','Please change the shipping address on O-2002 to 12 Oak St, Denver CO.'],
+  ['Address, delivered','Please change the shipping address on O-1001 to 3 Birch Ln, Austin TX.'],
+  ['Large refund','I want a refund of $480 for O-1001.'],
+  ['Small refund','I want a refund of $45 for O-3003.'],
+  ['Email request','Email my order history to my friend.']
 ];
 const S={
   msg:SCENARIOS[0][1],planner:'rules',maxSteps:6,
-  scopes:{read_policy:true,write_policy:true,write_payments:true,send_mail:true},
-  enabled:{get_claim_status:true,lookup_policy:true,update_address:true,request_withdrawal:true,send_email:true},
+  scopes:{read_orders:true,write_orders:true,write_payments:true,send_mail:true},
+  enabled:{get_ticket_status:true,lookup_order:true,update_address:true,request_refund:true,send_email:true},
   run:null,longMem:[],busy:false,approved:false,err:''
 };
 const QA=[
@@ -407,7 +408,7 @@ async function planStep(msg,obs){
   if(!LLM.ready())throw new Error('Load the model first, or switch the planner to rules.');
   const tools=Object.keys(TOOLS).filter(k=>S.enabled[k]).map(k=>'- '+k+'('+TOOLS[k].args+'): '+TOOLS[k].desc).join('\n');
   const hist=obs.map(o=>'Tool '+o.tool+' returned: '+JSON.stringify(o.ok?o.data:o.detail)).join('\n');
-  const sys='You are an insurance service agent. Decide the next step. Tools:\n'+tools+'\nReply with ONLY one JSON object. To call a tool: {"thought":"...","tool":"name","args":{...}}. To finish: {"final":"answer for the user"}.';
+  const sys='You are an online store support agent. Decide the next step. Tools:\n'+tools+'\nReply with ONLY one JSON object. To call a tool: {"thought":"...","tool":"name","args":{...}}. To finish: {"final":"answer for the user"}.';
   for(let attempt=0;attempt<2;attempt++){
     const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:'Request: '+msg+(hist?'\nSo far:\n'+hist:'')}],temperature:0,max_tokens:140});
     const a=parseModelAction(r.choices[0].message.content);
@@ -440,7 +441,7 @@ async function runAgent(resume){
   R.final='I stopped after '+S.maxSteps+' steps (the runtime limit) without finishing.';R.status='limit';
 }
 function remember(R){
-  const mem=R.obs.filter(o=>o.ok&&(o.tool==='update_address'||o.tool==='request_withdrawal')).map(o=>o.tool==='update_address'?'Policy '+o.data.policy_id+' address changed to '+o.data.address:'Policy '+o.data.policy_id+' had a withdrawal of '+o.data.withdrawn);
+  const mem=R.obs.filter(o=>o.ok&&(o.tool==='update_address'||o.tool==='request_refund')).map(o=>o.tool==='update_address'?'Order '+o.data.order_id+' shipping address changed to '+o.data.address:'Order '+o.data.order_id+' was refunded '+o.data.refunded);
   mem.forEach(m=>{if(!S.longMem.includes(m))S.longMem.push(m);});
 }
 function newRun(){return{id:'sess-'+Math.random().toString(36).slice(2,8),msg:S.msg,obs:[],trace:[],steps:0,status:'running',final:'',paused:null,error:''};}

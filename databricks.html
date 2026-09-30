@@ -180,8 +180,8 @@ HIST = {}
 GRANTS = []
 AUDIT = []
 LINEAGE = []
-MASKS = {"main.claims.policyholders": {"ssn_last4": ["auditors", "admins"], "name": ["analysts", "auditors", "admins"]}}
-MASK_TEXT = {"ssn_last4": "****", "name": "*** masked ***"}
+MASKS = {"main.sales.customers": {"email": ["auditors", "admins"], "name": ["analysts", "auditors", "admins"]}}
+MASK_TEXT = {"email": "****@****", "name": "*** masked ***"}
 
 def now():
     return datetime.datetime.now().strftime("%H:%M:%S")
@@ -202,24 +202,25 @@ def snapshot(fq, op, user):
     HIST[fq].append({"version": v, "timestamp": now(), "user": user, "operation": op})
     DB.commit()
 
-make_table("main.claims.policyholders", "id INTEGER, name TEXT, ssn_last4 TEXT, state TEXT, segment TEXT", [
-    (1, "M. Alvarez", "4412", "PA", "retail"), (2, "T. Okafor", "9081", "NC", "retail"), (3, "R. Chen", "2275", "IN", "group"),
-    (4, "S. Patel", "6630", "NJ", "retail"), (5, "D. Brooks", "1147", "OH", "group"), (6, "L. Novak", "3859", "PA", "retail")])
-make_table("main.claims.claim_notes", "claim_id INTEGER, policyholder_id INTEGER, note TEXT, amount REAL", [
-    (1, 1, "beneficiary update", 0.0), (2, 2, "partial withdrawal", 20000.0), (3, 3, "billing complaint", 140.5),
-    (4, 4, "address change", 0.0), (5, 1, "fee complaint", 85.0), (6, 6, "partial surrender", 5200.0)])
-make_table("main.finance.premiums", "policyholder_id INTEGER, annual_premium REAL", [(1, 1800.0), (2, 950.0), (3, 2400.0), (4, 1300.0), (5, 700.0), (6, 3100.0)])
+make_table("main.sales.customers", "id INTEGER, name TEXT, email TEXT, state TEXT, segment TEXT", [
+    (1, "M. Alvarez", "m.alvarez@example.com", "PA", "consumer"), (2, "T. Okafor", "t.okafor@example.com", "NC", "consumer"),
+    (3, "R. Chen", "r.chen@example.com", "IN", "business"), (4, "S. Patel", "s.patel@example.com", "NJ", "consumer"),
+    (5, "D. Brooks", "d.brooks@example.com", "OH", "business"), (6, "L. Novak", "l.novak@example.com", "PA", "consumer")])
+make_table("main.sales.order_notes", "order_id INTEGER, customer_id INTEGER, note TEXT, amount REAL", [
+    (1, 1, "gift message", 0.0), (2, 2, "partial refund", 120.0), (3, 3, "billing complaint", 14.5),
+    (4, 4, "address change", 0.0), (5, 1, "shipping complaint", 8.5), (6, 6, "exchange request", 52.0)])
+make_table("main.finance.revenue", "customer_id INTEGER, annual_revenue REAL", [(1, 1800.0), (2, 950.0), (3, 2400.0), (4, 1300.0), (5, 700.0), (6, 3100.0)])
 
 for g in ["ml_engineers", "analysts", "auditors"]:
     GRANTS.append([g, "USE CATALOG", "catalog", "main"])
-    GRANTS.append([g, "USE SCHEMA", "schema", "main.claims"])
+    GRANTS.append([g, "USE SCHEMA", "schema", "main.sales"])
 GRANTS += [
-    ["ml_engineers", "SELECT", "table", "main.claims.policyholders"],
-    ["ml_engineers", "SELECT", "table", "main.claims.claim_notes"],
-    ["analysts", "SELECT", "schema", "main.claims"],
-    ["analysts", "MODIFY", "table", "main.claims.claim_notes"],
-    ["analysts", "CREATE TABLE", "schema", "main.claims"],
-    ["auditors", "SELECT", "table", "main.claims.policyholders"],
+    ["ml_engineers", "SELECT", "table", "main.sales.customers"],
+    ["ml_engineers", "SELECT", "table", "main.sales.order_notes"],
+    ["analysts", "SELECT", "schema", "main.sales"],
+    ["analysts", "MODIFY", "table", "main.sales.order_notes"],
+    ["analysts", "CREATE TABLE", "schema", "main.sales"],
+    ["auditors", "SELECT", "table", "main.sales.customers"],
 ]
 PRIVS = ["USE CATALOG", "USE SCHEMA", "SELECT", "MODIFY", "CREATE TABLE"]
 FQ = re.compile(r"\b([A-Za-z_]\w*\.[A-Za-z_]\w*\.[A-Za-z_]\w*)\b")
@@ -381,7 +382,7 @@ def select_query(user, s, keep=False):
         if fq not in names:
             names.append(fq)
     if not names:
-        return {"error": "Use full three-level names such as main.claims.policyholders."}
+        return {"error": "Use full three-level names such as main.sales.customers."}
     for fq in names:
         if fq not in TABLES:
             return {"error": "[TABLE_OR_VIEW_NOT_FOUND] The table or view %s cannot be found." % fq}
@@ -563,21 +564,21 @@ const LLM={
   change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';}}
 };
 
-const USERS=[['maria','ML engineer','ml_engineers'],['sam','Claims analyst','analysts'],['lee','Auditor','auditors'],['admin','Metastore admin','admins']];
+const USERS=[['maria','ML engineer','ml_engineers'],['sam','Sales analyst','analysts'],['lee','Auditor','auditors'],['admin','Metastore admin','admins']];
 const EXAMPLES=[
- ['ML engineer reads policyholders','maria','SELECT * FROM main.claims.policyholders'],
- ['Auditor reads the same table','lee','SELECT * FROM main.claims.policyholders'],
- ['Auditor reads notes (denied)','lee','SELECT * FROM main.claims.claim_notes'],
- ['Analyst joins two tables','sam','SELECT p.name, n.note, n.amount\nFROM main.claims.claim_notes n\nJOIN main.claims.policyholders p ON p.id = n.policyholder_id'],
- ['Analyst reads finance (denied)','sam','SELECT * FROM main.finance.premiums'],
+ ['ML engineer reads customers','maria','SELECT * FROM main.sales.customers'],
+ ['Auditor reads the same table','lee','SELECT * FROM main.sales.customers'],
+ ['Auditor reads notes (denied)','lee','SELECT * FROM main.sales.order_notes'],
+ ['Analyst joins two tables','sam','SELECT p.name, n.note, n.amount\nFROM main.sales.order_notes n\nJOIN main.sales.customers p ON p.id = n.customer_id'],
+ ['Analyst reads finance (denied)','sam','SELECT * FROM main.finance.revenue'],
  ['Admin grants USE SCHEMA','admin','GRANT USE SCHEMA ON SCHEMA main.finance TO analysts'],
- ['Admin grants SELECT','admin','GRANT SELECT ON TABLE main.finance.premiums TO analysts'],
- ['Analyst updates a claim','sam','UPDATE main.claims.claim_notes SET amount = 0 WHERE claim_id = 2'],
- ['Show table history','sam','DESCRIBE HISTORY main.claims.claim_notes'],
- ['Time travel to version 0','sam','SELECT * FROM main.claims.claim_notes VERSION AS OF 0'],
- ['Restore version 0','sam','RESTORE TABLE main.claims.claim_notes TO VERSION AS OF 0'],
- ['Create a summary table','sam','CREATE TABLE main.claims.claim_totals AS\nSELECT policyholder_id, SUM(amount) AS total\nFROM main.claims.claim_notes\nGROUP BY policyholder_id'],
- ['Show grants on a table','admin','SHOW GRANTS ON TABLE main.claims.claim_notes']
+ ['Admin grants SELECT','admin','GRANT SELECT ON TABLE main.finance.revenue TO analysts'],
+ ['Analyst updates an order note','sam','UPDATE main.sales.order_notes SET amount = 0 WHERE order_id = 2'],
+ ['Show table history','sam','DESCRIBE HISTORY main.sales.order_notes'],
+ ['Time travel to version 0','sam','SELECT * FROM main.sales.order_notes VERSION AS OF 0'],
+ ['Restore version 0','sam','RESTORE TABLE main.sales.order_notes TO VERSION AS OF 0'],
+ ['Create a summary table','sam','CREATE TABLE main.sales.order_totals AS\nSELECT customer_id, SUM(amount) AS total\nFROM main.sales.order_notes\nGROUP BY customer_id'],
+ ['Show grants on a table','admin','SHOW GRANTS ON TABLE main.sales.order_notes']
 ];
 const S={user:'maria',sql:EXAMPLES[0][2],res:null,cat:null,audit:[],lin:[],err:''};
 const QA=[
@@ -617,7 +618,7 @@ function render(){
   '<h3>Catalog explorer</h3>'+catHtml()+
   '<h3>Audit log</h3>'+(S.audit.length?table(['Time','User','Statement','Result'],S.audit,520):'<p class="muted small">Run a statement to see entries.</p>')+
   '<h3>Lineage</h3>'+(S.lin.length?'<ul class="checks">'+S.lin.map(l=>'<li>'+esc(l[0])+' → '+esc(l[1])+'</li>').join('')+'</ul>':'<p class="muted small">Create a table with CREATE TABLE ... AS SELECT to record lineage.</p>')+
-  '<h3>Privileges at play</h3><p class="small muted">To read a table you need USE CATALOG on its catalog, USE SCHEMA on its schema, and SELECT on the table, or SELECT granted higher up so it inherits down. Try SHOW GRANTS ON TABLE main.claims.claim_notes.</p>'+
+  '<h3>Privileges at play</h3><p class="small muted">To read a table you need USE CATALOG on its catalog, USE SCHEMA on its schema, and SELECT on the table, or SELECT granted higher up so it inherits down. Try SHOW GRANTS ON TABLE main.sales.order_notes.</p>'+
   qa(QA);
 }
 const draw=app({

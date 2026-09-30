@@ -136,7 +136,7 @@ details p{margin:8px 0 0;color:var(--muted);}
 <div class="shell">
   <header>
     <h1>Pipeline Lab</h1>
-    <p class="lede">A small insurance-service triage workflow that runs for real in your browser: Python and pandas, SQL on SQLite, a language model on your GPU, and tracked runs you can query.</p>
+    <p class="lede">A small customer-support triage workflow that runs for real in your browser: Python and pandas, SQL on SQLite, a language model on your GPU, and tracked runs you can query.</p>
     <div class="row">
       <button class="btn" data-act="example">Run the example</button>
       <span class="small muted">Cleans the data, runs two prompts and opens the run comparison.</span>
@@ -156,20 +156,20 @@ import pandas as pd
 from pyodide.ffi import create_proxy
 from pyscript import window
 
-COLS = ["id", "policy", "name", "ssn", "text", "label"]
+COLS = ["id", "category", "name", "phone", "text", "label"]
 BASE = [
- (1, "annuity", "M. Alvarez", "4412", "Please remove my ex-spouse and name my daughter as beneficiary.", "BEN"),
- (2, "life", "T. Okafor", "9081", "I want to take out $20,000 from my annuity before year end.", "WDR"),
- (3, "group", "R. Chen", "2275", "I have called three times and nobody has fixed my billing error!", "CMP"),
- (4, "life", "S. Patel", "6630", "I moved to Denver last month, update the mailing address please.", "ADR"),
- (5, "annuity", "D. Brooks", "1147", "Change of beneficiary form attached, effective immediately.", "BEN"),
- (6, "annuity", "L. Novak", "3859", "Requesting a partial surrender of my contract.", "WDR"),
- (7, "life", "K. Ito", "7724", "Your website lost my payment and support was rude.", "CMP"),
- (8, "group", "A. Haddad", "5096", "New PO box below, please send all statements there.", "ADR"),
- (9, "annuity", "P. Green", "8313", "Who gets my policy if I die? I want my sister to be listed instead.", "BEN"),
- (10, "life", "E. Vasquez", "2468", "Send me the money from my account, I also want to complain about fees.", "WDR"),
- (11, "group", "J. Kim", "0952", "Moving next week; will mail new address later.", "ADR"),
- (12, "annuity", "H. Berg", "1730", "Fees on this product are unfair and I am filing a formal complaint.", "CMP"),
+ (1, "electronics", "M. Alvarez", "4412", "Where is my order? It was supposed to arrive on Monday.", "ORD"),
+ (2, "home", "T. Okafor", "9081", "I want my money back for the blender I bought last week.", "REF"),
+ (3, "apparel", "R. Chen", "2275", "I have written three times and nobody has fixed my billing error!", "CMP"),
+ (4, "home", "S. Patel", "6630", "I moved to Denver last month, update the shipping address please.", "ADR"),
+ (5, "electronics", "D. Brooks", "1147", "Order confirmation attached, please tell me the delivery date.", "ORD"),
+ (6, "electronics", "L. Novak", "3859", "Requesting a partial refund for the damaged screen.", "REF"),
+ (7, "home", "K. Ito", "7724", "Your website lost my payment and support was rude.", "CMP"),
+ (8, "apparel", "A. Haddad", "5096", "New PO box below, please send everything there.", "ADR"),
+ (9, "electronics", "P. Green", "8313", "Who signed for my package? Please check it and send it again.", "ORD"),
+ (10, "home", "E. Vasquez", "2468", "Refund me for the broken lamp, and I also want to complain about shipping fees.", "REF"),
+ (11, "apparel", "J. Kim", "0952", "Moving next week; will send the new address later.", "ADR"),
+ (12, "electronics", "H. Berg", "1730", "Delivery fees are unfair and I am filing a formal complaint.", "CMP"),
 ]
 
 def as_rows(seq):
@@ -179,19 +179,19 @@ RAW = as_rows(BASE)
 RAW[6]["text"] = "   " + RAW[6]["text"] + "   "
 RAW[11]["text"] = RAW[11]["text"].upper()
 RAW.append(dict(RAW[3]))
-RAW.append({"id": 13, "policy": "group", "name": "C. Duarte", "ssn": "3301", "text": None, "label": "BEN"})
+RAW.append({"id": 13, "category": "apparel", "name": "C. Duarte", "phone": "3301", "text": None, "label": "ORD"})
 GOLD = as_rows(BASE)
 
 DB = sqlite3.connect(":memory:")
-DB.execute("CREATE TABLE notes_raw (id INTEGER, policy TEXT, name TEXT, ssn TEXT, text TEXT, label TEXT)")
-DB.execute("CREATE TABLE notes_gold (id INTEGER, policy TEXT, name TEXT, ssn TEXT, text TEXT, label TEXT)")
+DB.execute("CREATE TABLE notes_raw (id INTEGER, category TEXT, name TEXT, phone TEXT, text TEXT, label TEXT)")
+DB.execute("CREATE TABLE notes_gold (id INTEGER, category TEXT, name TEXT, phone TEXT, text TEXT, label TEXT)")
 DB.executemany("INSERT INTO notes_raw VALUES (?,?,?,?,?,?)", [tuple(r[c] for c in COLS) for r in RAW])
 DB.executemany("INSERT INTO notes_gold VALUES (?,?,?,?,?,?)", [tuple(r[c] for c in COLS) for r in GOLD])
 
 VIEWS = {
-    "ml": ("v_ml", "SELECT id, policy, '******' AS name, '******' AS ssn, text, label FROM notes_gold"),
-    "analyst": ("v_analyst", "SELECT id, policy, name, '******' AS ssn, text, label FROM notes_gold"),
-    "auditor": ("v_auditor", "SELECT id, policy, name, ssn, '******' AS text, label FROM notes_gold"),
+    "ml": ("v_ml", "SELECT id, category, '******' AS name, '******' AS phone, text, label FROM notes_gold"),
+    "analyst": ("v_analyst", "SELECT id, category, name, '******' AS phone, text, label FROM notes_gold"),
+    "auditor": ("v_auditor", "SELECT id, category, name, phone, '******' AS text, label FROM notes_gold"),
 }
 for _k, (_n, _q) in VIEWS.items():
     DB.execute("CREATE VIEW " + _n + " AS " + _q)
@@ -230,7 +230,7 @@ def get_data():
 
 def build_sql(f):
     text_expr = "LOWER(TRIM(text)) AS text" if f.get("normalize") else "text"
-    sql = "SELECT " + ("DISTINCT " if f.get("dedupe") else "") + "id, policy, name, ssn, " + text_expr + ", label\nFROM notes_raw"
+    sql = "SELECT " + ("DISTINCT " if f.get("dedupe") else "") + "id, category, name, phone, " + text_expr + ", label\nFROM notes_raw"
     if f.get("dropnull"):
         sql += "\nWHERE text IS NOT NULL AND TRIM(text) <> ''"
     return sql
@@ -246,7 +246,7 @@ def pandas_code(f):
     return "\n".join(lines)
 
 def pyspark_code(f):
-    lines = ['df = spark.table("main.claims.notes_raw")']
+    lines = ['df = spark.table("main.support.notes_raw")']
     if f.get("dedupe"):
         lines.append("df = df.dropDuplicates()")
     if f.get("dropnull"):
@@ -261,7 +261,7 @@ def prep(flags_json):
     DB.execute("DROP TABLE IF EXISTS notes_clean")
     DB.execute("CREATE TABLE notes_clean AS " + sql)
     DB.commit()
-    cur = DB.execute("SELECT id, policy, name, ssn, text, label FROM notes_clean ORDER BY id")
+    cur = DB.execute("SELECT id, category, name, phone, text, label FROM notes_clean ORDER BY id")
     rows = [dict(zip(COLS, r)) for r in cur.fetchall()]
     dup = DB.execute("SELECT COUNT(*) - COUNT(DISTINCT id) FROM notes_clean").fetchone()[0] or 0
     nul = DB.execute("SELECT SUM(text IS NULL OR TRIM(text) = '') FROM notes_clean").fetchone()[0] or 0
@@ -276,8 +276,8 @@ def prep(flags_json):
     pd_rows = []
     for r in df.itertuples():
         t = None if pd.isna(r.text) else r.text
-        pd_rows.append((int(r.id), r.policy, t))
-    sql_rows = [(r["id"], r["policy"], r["text"]) for r in rows]
+        pd_rows.append((int(r.id), r.category, t))
+    sql_rows = [(r["id"], r["category"], r["text"]) for r in rows]
     key = lambda r: (r[0], r[2] or "")
     same = sorted(sql_rows, key=key) == sorted(pd_rows, key=key)
 
@@ -413,27 +413,27 @@ const pct=v=>Math.round(v*100)+'%';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const HAS_GPU=!!(navigator&&navigator.gpu);
 
-const LABELS={BEN:'Beneficiary change',WDR:'Withdrawal',CMP:'Complaint',ADR:'Address change'};
-const LET={A:'BEN',B:'WDR',C:'CMP',D:'ADR'};
+const LABELS={ORD:'Order status',REF:'Refund request',CMP:'Complaint',ADR:'Address change'};
+const LET={A:'ORD',B:'REF',C:'CMP',D:'ADR'};
 const MODELS=[
   ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
   ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
   ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
 ];
-const SYS='You classify insurance service requests. Reply with a single letter only.';
-const OPTIONS='A) Beneficiary change\nB) Withdrawal\nC) Complaint\nD) Address change';
+const SYS='You classify online store customer requests. Reply with a single letter only.';
+const OPTIONS='A) Order status\nB) Refund request\nC) Complaint\nD) Address change';
 const PROMPTS={
   v1:t=>'Classify this customer message.\n'+OPTIONS+'\nReply with one letter.\n\nMessage: '+t,
-  v2:t=>'Sort this insurance service request.\nA) Beneficiary change: who receives the proceeds of a policy.\nB) Withdrawal: taking money out, including a partial surrender of a contract.\nC) Complaint: unhappy about service, billing or fees.\nD) Address change: a new mailing address or a move.\nIf several apply, choose the main intent.\nReply with one letter.\n\nMessage: '+t
+  v2:t=>'Sort this online store customer request.\nA) Order status: asking where an order or package is, or when it arrives.\nB) Refund request: wanting money back, including a partial refund or a return.\nC) Complaint: unhappy about service, billing or fees.\nD) Address change: a new shipping address or a move.\nIf several apply, choose the main intent.\nReply with one letter.\n\nMessage: '+t
 };
 /* stand-in answers used only when WebGPU is unavailable or the person chooses them */
-const P={1:{v1:['BEN',.93],v2:['BEN',.97]},2:{v1:['WDR',.91],v2:['WDR',.96]},3:{v1:['CMP',.88],v2:['CMP',.94]},4:{v1:['ADR',.90],v2:['ADR',.97]},5:{v1:['BEN',.86],v2:['BEN',.95]},6:{v1:['ADR',.52],v2:['WDR',.88]},7:{v1:['CMP',.79],v2:['CMP',.91]},8:{v1:['ADR',.84],v2:['ADR',.93]},9:{v1:['WDR',.48],v2:['BEN',.71]},10:{v1:['CMP',.55],v2:['CMP',.58]},11:{v1:['ADR',.58],v2:['ADR',.66]},12:{v1:['CMP',.82],v2:['CMP',.95]}};
+const P={1:{v1:['ORD',.93],v2:['ORD',.97]},2:{v1:['REF',.91],v2:['REF',.96]},3:{v1:['CMP',.88],v2:['CMP',.94]},4:{v1:['ADR',.90],v2:['ADR',.97]},5:{v1:['ORD',.86],v2:['ORD',.95]},6:{v1:['ADR',.52],v2:['REF',.88]},7:{v1:['CMP',.79],v2:['CMP',.91]},8:{v1:['ADR',.84],v2:['ADR',.93]},9:{v1:['REF',.48],v2:['ORD',.71]},10:{v1:['CMP',.55],v2:['CMP',.58]},11:{v1:['ADR',.58],v2:['ADR',.66]},12:{v1:['CMP',.82],v2:['CMP',.95]}}
 function heuristic(t){
   t=t.toLowerCase();
-  if(/beneficiar|listed instead|who gets/.test(t))return['BEN',.7];
-  if(/withdraw|take out|surrender|send me the money/.test(t))return['WDR',.7];
+  if(/where is my order|delivery date|signed for|package|tracking/.test(t))return['ORD',.7];
+  if(/refund|money back|return/.test(t))return['REF',.7];
   if(/complain|unfair|rude|nobody|fees/.test(t))return['CMP',.65];
-  if(/address|moved|moving|po box|mail/.test(t))return['ADR',.7];
+  if(/address|moved|moving|po box/.test(t))return['ADR',.7];
   return['CMP',.3];
 }
 
@@ -487,13 +487,13 @@ const S={
   sql:"SELECT run_id, key, value\nFROM metrics\nORDER BY run_id, key;",sqlRes:null,sqlRan:false
 };
 const CASES={
-  clear:{label:'Clear request',id:4,text:'I moved to Denver last month, update the mailing address please.'},
-  ambiguous:{label:'Ambiguous request',id:10,text:'Send me the money from my account, I also want to complain about fees.'}
+  clear:{label:'Clear request',id:4,text:'I moved to Denver last month, update the shipping address please.'},
+  ambiguous:{label:'Ambiguous request',id:10,text:'Refund me for the broken lamp, and I also want to complain about shipping fees.'}
 };
 S.wfText=CASES.clear.text;
 const AG={
   clear:[['Think','','Goal: resolve this request. Classify it first.'],['Tool','classify_request','Address change, confidence 0.97.'],['Think','','Clear and low risk. Update the address.'],['Tool','update_address','Mailing address updated.'],['Finish','','Done in 5 steps.']],
-  ambiguous:[['Think','','Goal: resolve this request. Classify it first.'],['Tool','classify_request','Complaint, confidence 0.58. Two intents detected.'],['Think','','Low confidence and money is involved. I need account context.'],['Tool','lookup_policy','Annuity contract, no pending withdrawal on file.'],['Think','','The main intent is a withdrawal. The complaint is secondary.'],['Tool','create_case','Withdrawal case opened, complaint flagged.'],['Think','','Money movement needs a licensed reviewer to approve.'],['Tool','request_approval','Approval request sent. Status: pending.'],['Finish','','Done in 9 steps, waiting on a person.']]
+  ambiguous:[['Think','','Goal: resolve this request. Classify it first.'],['Tool','classify_request','Complaint, confidence 0.58. Two intents detected.'],['Think','','Low confidence and money is involved. I need order context.'],['Tool','lookup_order','Order delivered, no refund on file.'],['Think','','The main intent is a refund. The complaint is secondary.'],['Tool','create_case','Refund case opened, complaint flagged.'],['Think','','Money movement needs a person to approve.'],['Tool','request_approval','Approval request sent. Status: pending.'],['Finish','','Done in 9 steps, waiting on a person.']]
 };
 
 /* ---------- Python bridge ---------- */
@@ -625,7 +625,7 @@ function s0(){
   const trs=S.clean.map(x=>{
     const dupe=seen.has(x.id);seen.add(x.id);
     const empty=x.text===null||String(x.text).trim()==='';
-    return '<tr class="'+(dupe||empty?'flag':'')+'"><td>'+x.id+'</td><td>'+esc(x.policy)+'</td><td>'+(empty?'<span class="chip warn">empty</span>':'<span style="white-space:pre-wrap">'+esc(x.text)+'</span>')+(dupe?' <span class="chip warn">duplicate</span>':'')+'</td></tr>';
+    return '<tr class="'+(dupe||empty?'flag':'')+'"><td>'+x.id+'</td><td>'+esc(x.category)+'</td><td>'+(empty?'<span class="chip warn">empty</span>':'<span style="white-space:pre-wrap">'+esc(x.text)+'</span>')+(dupe?' <span class="chip warn">duplicate</span>':'')+'</td></tr>';
   }).join('');
   return head(0)+
   '<div class="row">'+tog('prep','dedupe','Remove duplicate rows',p.dedupe)+tog('prep','dropnull','Drop empty notes',p.dropnull)+tog('prep','normalize','Trim and lowercase text',p.normalize)+'</div>'+
@@ -641,7 +641,7 @@ function s0(){
   '<p class="small muted">Spark divides a table into partitions so workers handle pieces in parallel. Here each row goes to the partition given by its id.</p>'+
   '<div class="parts">'+parts.join('')+'</div>'+
   '<h3>Rows after your steps</h3>'+
-  '<div class="scroll"><table><thead><tr><th>id</th><th>policy</th><th>message</th></tr></thead><tbody>'+trs+'</tbody></table></div>'+
+  '<div class="scroll"><table><thead><tr><th>id</th><th>category</th><th>message</th></tr></thead><tbody>'+trs+'</tbody></table></div>'+
   checkYourself(0);
 }
 
@@ -729,10 +729,10 @@ function s2(){
     if(S.gate&&S.gateChecks){
       const pass=S.gateChecks.every(c=>c[1]);
       body+='<h3>Promotion gate for '+S.gate+'</h3><ul class="checks">'+S.gateChecks.map(c=>'<li>'+(c[1]?'<span class="chip good">Pass</span>':'<span class="chip bad">Fail</span>')+' '+esc(c[0])+'</li>').join('')+'</ul>'+
-      (pass?'<div class="status ok">All checks pass. This run can be registered.</div><button class="btn" data-act="register" data-val="'+S.gate+'">Register as claims-triage</button>':'<div class="status bad">Blocked. Fix the failing checks, then run again.</div>');
+      (pass?'<div class="status ok">All checks pass. This run can be registered.</div><button class="btn" data-act="register" data-val="'+S.gate+'">Register as ticket-triage</button>':'<div class="status bad">Blocked. Fix the failing checks, then run again.</div>');
     }
     if(S.registry.length){
-      body+='<h3>Model registry: claims-triage</h3>'+
+      body+='<h3>Model registry: ticket-triage</h3>'+
       '<div class="scroll"><table style="min-width:380px"><thead><tr><th>Version</th><th>From run</th><th>Stage</th><th></th></tr></thead><tbody>'+
       S.registry.map(v=>'<tr><td>'+v.version+'</td><td>'+esc(v.run)+'</td><td>'+esc(v.stage)+'</td><td>'+(v.stage==='Staging'?'<button class="btn ghost sm" data-act="promote" data-val="'+v.version+'">Promote to Production</button>':'')+'</td></tr>').join('')+'</tbody></table></div>';
     }
@@ -745,7 +745,7 @@ function s2(){
 
 const ROLES={
   ml:{name:'ML engineer',desc:'Reads message text to build and test the model. Identity fields are masked.'},
-  analyst:{name:'Claims analyst',desc:'Handles cases, so sees names and messages. ID digits stay masked.'},
+  analyst:{name:'Support analyst',desc:'Handles cases, so sees names and messages. Phone digits stay masked.'},
   auditor:{name:'Auditor',desc:'Checks the trail. Sees names and ID digits, but not message text.'}
 };
 function s3(){

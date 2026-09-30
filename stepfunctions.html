@@ -451,7 +451,7 @@ function runASL(def,input,lambdas,opt){
 /*ASL-END*/
 var caught=false;
 const DEFAULT_DEF={
-  Comment:'Claims triage',
+  Comment:'Support ticket triage',
   StartAt:'ValidateInput',
   States:{
     ValidateInput:{Type:'Task',Resource:'ValidateInput',Next:'Classify',Catch:[{ErrorEquals:['ValidationError'],Next:'Rejected',ResultPath:'$.error'}]},
@@ -464,15 +464,15 @@ const DEFAULT_DEF={
   }
 };
 const SAMPLES={
-  clear:{message:'I moved to Denver last month, update the mailing address please.'},
-  ambiguous:{message:'Send me the money from my account, I also want to complain about fees.'},
+  clear:{message:'I moved to Denver last month, update the shipping address please.'},
+  ambiguous:{message:'Refund me for the broken lamp, and I also want to complain about shipping fees.'},
   empty:{message:'   '}
 };
 const S={def:JSON.stringify(DEFAULT_DEF,null,2),input:JSON.stringify(SAMPLES.clear,null,2),flaky:'0',hard:false,res:null,err:'',problems:[],caseN:0,showEv:true};
 function classify(text){
   const t=text.toLowerCase();
-  const intents=[/beneficiar|listed instead/,/withdraw|take out|surrender|send me the money/,/complain|unfair|rude|fees/,/address|moved|moving|po box|mail/].filter(r=>r.test(t)).length;
-  const label=/address|moved|moving|po box/.test(t)?'Address change':(/money|withdraw|surrender/.test(t)?'Withdrawal':(/complain|fees/.test(t)?'Complaint':'Beneficiary change'));
+  const intents=[/where is my order|tracking|delivery date|signed for|package/,/refund|money back|return/,/complain|unfair|rude|fees/,/address|moved|moving|po box/].filter(r=>r.test(t)).length;
+  const label=/address|moved|moving|po box/.test(t)?'Address change':(/refund|money back|return/.test(t)?'Refund request':(/complain|fees/.test(t)?'Complaint':'Order status'));
   return{label,confidence:intents>1?0.58:0.92};
 }
 function makeLambdas(){
@@ -484,7 +484,7 @@ function makeLambdas(){
       return classify(inp.message);
     },
     SaveCase:inp=>({caseId:1000+(++S.caseN),status:inp.status,label:inp.label}),
-    NotifyReviewer:inp=>({notified:true,queue:'claims-review'})
+    NotifyReviewer:inp=>({notified:true,queue:'support-review'})
   };
 }
 const QA=[
@@ -515,7 +515,7 @@ function render(){
     if(S.showEv)res+='<div class="scroll" style="margin-top:8px"><table style="min-width:520px"><thead><tr><th>#</th><th>Event</th><th>State</th><th>Detail</th></tr></thead><tbody>'+
       r.events.map(e=>'<tr><td>'+e.id+'</td><td>'+(/Failed/.test(e.type)?chip(e.type,'bad'):(/Retry|Catch/.test(e.type)?chip(e.type,'warn'):esc(e.type)))+'</td><td>'+esc(e.state)+'</td><td class="small">'+esc(e.detail)+'</td></tr>').join('')+'</tbody></table></div>';
   }
-  return '<h2>State machine</h2><p class="small muted">Edit the JSON, then run it. The default routes a claims message: validate, classify with retries, then branch on confidence.</p>'+
+  return '<h2>State machine</h2><p class="small muted">Edit the JSON, then run it. The default routes a support message: validate, classify with retries, then branch on confidence.</p>'+
   '<textarea class="editor" id="def" data-act="def" rows="14" spellcheck="false" autocapitalize="off" autocorrect="off">'+esc(S.def)+'</textarea>'+
   '<div class="row" style="margin-top:8px">'+btn('resetdef','','Reset definition','ghost sm')+'</div>'+
   '<h3>Input</h3><div class="row">'+Object.keys(SAMPLES).map(k=>btn('sample',k,k==='empty'?'Empty message':(k==='clear'?'Clear request':'Ambiguous request'),'ghost sm')).join('')+'</div>'+

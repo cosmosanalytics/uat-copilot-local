@@ -196,23 +196,23 @@ def exec_capture(code, ns):
 
 import random
 
-def make_claims(n=40, seed=7):
+def make_orders(n=40, seed=7):
     r = random.Random(seed)
-    types = ["annuity", "life", "group"]
+    cats = ["electronics", "home", "apparel"]
     states = ["PA", "NC", "IN", "NJ", "OH"]
-    statuses = ["open", "closed", "review"]
-    notes = ["address change", "beneficiary update", "partial withdrawal", "billing complaint", "fee complaint", "loan request"]
+    statuses = ["open", "shipped", "returned"]
+    notes = ["address change", "gift message", "partial refund", "billing complaint", "shipping complaint", "exchange request"]
     rows = []
     for i in range(1, n + 1):
         note = r.choice(notes)
         if i % 7 == 0:
             note = "  " + note.upper() + "  "
         rows.append({
-            "claim_id": i,
-            "policy_type": r.choice(types),
+            "order_id": i,
+            "category": r.choice(cats),
             "state": r.choice(states),
-            "amount": round(r.uniform(200, 9000), 2),
-            "days_open": r.randint(1, 90),
+            "amount": round(r.uniform(20, 900), 2),
+            "days_open": r.randint(1, 30),
             "status": r.choice(statuses),
             "note": note,
         })
@@ -665,7 +665,7 @@ class DataFrame:
 
     def join(self, other, on=None, how="inner"):
         if isinstance(on, Column):
-            raise AnalysisException("This shim joins on column names, for example df.join(other, 'policy_type'). Join conditions built from two DataFrames are not supported here.")
+            raise AnalysisException("This shim joins on column names, for example df.join(other, 'category'). Join conditions built from two DataFrames are not supported here.")
         keys = [on] if isinstance(on, str) else list(on or [])
         how = {"left_outer": "left", "right_outer": "right", "full": "outer", "full_outer": "outer"}.get(how, how)
         other_c = other._compute
@@ -910,9 +910,9 @@ def install_modules():
     sys.modules.update({"pyspark": pyspark, "pyspark.sql": sql, "pyspark.sql.functions": fn})
 
 
-claims_pdf = pd.DataFrame(make_claims())
-spark.register("claims", claims_pdf)
-spark.register("policy_types", pd.DataFrame({"policy_type": ["annuity", "life", "group"], "risk_class": ["high", "medium", "low"]}))
+orders_pdf = pd.DataFrame(make_orders())
+spark.register("orders", orders_pdf)
+spark.register("categories", pd.DataFrame({"category": ["electronics", "home", "apparel"], "margin_class": ["low", "medium", "high"]}))
 install_modules()
 
 def fresh_ns():
@@ -928,42 +928,42 @@ def norm(x):
     except Exception:
         return str(x)
 
-def claims_clean():
-    d = claims_pdf.drop_duplicates().copy()
+def orders_clean():
+    d = orders_pdf.drop_duplicates().copy()
     d["note"] = d["note"].str.strip().str.lower()
     return d
 
 EX = [
-    dict(title="Playground", prompt="Explore. spark and F (pyspark.sql.functions) are ready, and the tables claims and policy_types can be read with spark.table(). Try show(), explain() and printSchema().",
-         starter='df = spark.table("claims")\ndf.printSchema()\ndf.show(5)', hint="", expected=None),
+    dict(title="Playground", prompt="Explore. spark and F (pyspark.sql.functions) are ready, and the tables orders and categories can be read with spark.table(). Try show(), explain() and printSchema().",
+         starter='df = spark.table("orders")\ndf.printSchema()\ndf.show(5)', hint="", expected=None),
     dict(title="Filter and select",
-         prompt="From claims, keep open claims with amount above 5000 and select claim_id and amount. Put the DataFrame in result.",
-         starter='df = spark.table("claims")\nresult = ', hint="filter() takes a column expression, and combine conditions with & (not and). Wrap each comparison in parentheses.",
-         expected=lambda: claims_pdf[(claims_pdf.status == "open") & (claims_pdf.amount > 5000)][["claim_id", "amount"]]),
+         prompt="From orders, keep open orders with amount above 500 and select order_id and amount. Put the DataFrame in result.",
+         starter='df = spark.table("orders")\nresult = ', hint="filter() takes a column expression, and combine conditions with & (not and). Wrap each comparison in parentheses.",
+         expected=lambda: orders_pdf[(orders_pdf.status == "open") & (orders_pdf.amount > 500)][["order_id", "amount"]]),
     dict(title="Group and aggregate",
-         prompt="For each policy_type, compute the number of claims and the average amount rounded to 2 decimals. Put the DataFrame in result (column names do not matter).",
-         starter='df = spark.table("claims")\nresult = ', hint="groupBy('policy_type').agg(F.count('*'), F.round(F.avg('amount'), 2)).",
-         expected=lambda: claims_pdf.groupby("policy_type").agg(n=("claim_id", "size"), avg=("amount", "mean")).round(2).reset_index()),
+         prompt="For each category, compute the number of orders and the average amount rounded to 2 decimals. Put the DataFrame in result (column names do not matter).",
+         starter='df = spark.table("orders")\nresult = ', hint="groupBy('category').agg(F.count('*'), F.round(F.avg('amount'), 2)).",
+         expected=lambda: orders_pdf.groupby("category").agg(n=("order_id", "size"), avg=("amount", "mean")).round(2).reset_index()),
     dict(title="Clean with functions",
-         prompt="Drop duplicate rows, trim and lowercase the note column, then count claims per note. Put the DataFrame in result.",
-         starter='df = spark.table("claims")\nresult = ', hint="dropDuplicates() first, then withColumn('note', F.lower(F.trim('note'))), then groupBy('note').count().",
-         expected=lambda: claims_clean().groupby("note").size().reset_index()),
+         prompt="Drop duplicate rows, trim and lowercase the note column, then count orders per note. Put the DataFrame in result.",
+         starter='df = spark.table("orders")\nresult = ', hint="dropDuplicates() first, then withColumn('note', F.lower(F.trim('note'))), then groupBy('note').count().",
+         expected=lambda: orders_clean().groupby("note").size().reset_index()),
     dict(title="Join",
-         prompt="Join claims to policy_types on policy_type and compute the total amount per risk_class. Put the DataFrame in result.",
-         starter='claims = spark.table("claims")\ntypes = spark.table("policy_types")\nresult = ', hint="claims.join(types, 'policy_type') then groupBy('risk_class').agg(F.sum('amount')).",
-         expected=lambda: claims_pdf.merge(pd.DataFrame({"policy_type": ["annuity", "life", "group"], "risk_class": ["high", "medium", "low"]}), on="policy_type").groupby("risk_class")["amount"].sum().reset_index()),
+         prompt="Join orders to categories on category and compute the total amount per margin_class. Put the DataFrame in result.",
+         starter='orders = spark.table("orders")\ncats = spark.table("categories")\nresult = ', hint="orders.join(cats, 'category') then groupBy('margin_class').agg(F.sum('amount')).",
+         expected=lambda: orders_pdf.merge(pd.DataFrame({"category": ["electronics", "home", "apparel"], "margin_class": ["low", "medium", "high"]}), on="category").groupby("margin_class")["amount"].sum().reset_index()),
     dict(title="Lazy or eager?", lazy=True,
-         prompt="Build a transformed DataFrame that keeps only claims in state 'PA', then trigger exactly ONE job that counts its rows. Put the count in result. Your code must not run any other action.",
-         starter='df = spark.table("claims")\npa = \nresult = ', hint="Transformations such as filter() run no job. count() is an action and runs one. Do not call show(), collect() or count() more than once.",
-         expected=lambda: int((claims_pdf.state == "PA").sum())),
+         prompt="Build a transformed DataFrame that keeps only orders in state 'PA', then trigger exactly ONE job that counts its rows. Put the count in result. Your code must not run any other action.",
+         starter='df = spark.table("orders")\npa = \nresult = ', hint="Transformations such as filter() run no job. count() is an action and runs one. Do not call show(), collect() or count() more than once.",
+         expected=lambda: int((orders_pdf.state == "PA").sum())),
 ]
 
 EXAMPLES = [
-    ["Lazy plan, then action", 'df = spark.table("claims")\nbig = df.filter(F.col("amount") > 5000).select("claim_id", "amount")\nprint("jobs so far:", len(JOBS))\nbig.explain()\nbig.show(3)\nprint("jobs after show:", len(JOBS))'],
-    ["Shuffle and stages", 'df = spark.table("claims")\nsummary = df.groupBy("state").agg(F.count("*").alias("n")).orderBy(F.col("n").desc())\nsummary.explain()\nsummary.show()'],
-    ["Partitions", 'df = spark.table("claims")\nprint("partitions:", df.rdd.getNumPartitions(), df.partition_sizes())\nmore = df.repartition(6)\nprint("after repartition(6):", more.rdd.getNumPartitions(), more.partition_sizes())\nmore.count()'],
-    ["SQL on a view", 'df = spark.table("claims")\ndf.filter(F.col("status") == "open").createOrReplaceTempView("open_claims")\nspark.sql("SELECT policy_type, COUNT(*) AS n FROM open_claims GROUP BY policy_type").show()'],
-    ["Unresolved column", 'df = spark.table("claims")\ndf.select("amout").show()'],
+    ["Lazy plan, then action", 'df = spark.table("orders")\nbig = df.filter(F.col("amount") > 500).select("order_id", "amount")\nprint("jobs so far:", len(JOBS))\nbig.explain()\nbig.show(3)\nprint("jobs after show:", len(JOBS))'],
+    ["Shuffle and stages", 'df = spark.table("orders")\nsummary = df.groupBy("state").agg(F.count("*").alias("n")).orderBy(F.col("n").desc())\nsummary.explain()\nsummary.show()'],
+    ["Partitions", 'df = spark.table("orders")\nprint("partitions:", df.rdd.getNumPartitions(), df.partition_sizes())\nmore = df.repartition(6)\nprint("after repartition(6):", more.rdd.getNumPartitions(), more.partition_sizes())\nmore.count()'],
+    ["SQL on a view", 'df = spark.table("orders")\ndf.filter(F.col("status") == "open").createOrReplaceTempView("open_orders")\nspark.sql("SELECT category, COUNT(*) AS n FROM open_orders GROUP BY category").show()'],
+    ["Unresolved column", 'df = spark.table("orders")\ndf.select("amout").show()'],
 ]
 
 def info():
@@ -971,7 +971,7 @@ def info():
 
 def tables():
     out = []
-    for name in ["claims", "policy_types"]:
+    for name in ["orders", "categories"]:
         d = spark._tables[name]
         out.append({"name": name, "cols": list(d.columns), "rows": [[str(v) for v in r] for r in d.head(5).itertuples(index=False)], "n": len(d)})
     return json.dumps(out)

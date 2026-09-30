@@ -157,7 +157,7 @@ a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
   <div class="app-top"><span class="small muted">Python + pandas (runs for real)</span></div>
   <header>
     <h1>Python lab</h1>
-    <p class="lede">Write real Python and pandas in your browser and get your answers checked. Each exercise is a small data-prep task on an insurance claims table.</p>
+    <p class="lede">Write real Python and pandas in your browser and get your answers checked. Each exercise is a small data-prep task on an online store orders table.</p>
     <div id="status" class="row" aria-live="polite"></div>
   </header>
   <main id="main" class="panel" aria-live="polite"></main>
@@ -197,23 +197,23 @@ def exec_capture(code, ns):
 
 import random
 
-def make_claims(n=40, seed=7):
+def make_orders(n=40, seed=7):
     r = random.Random(seed)
-    types = ["annuity", "life", "group"]
+    cats = ["electronics", "home", "apparel"]
     states = ["PA", "NC", "IN", "NJ", "OH"]
-    statuses = ["open", "closed", "review"]
-    notes = ["address change", "beneficiary update", "partial withdrawal", "billing complaint", "fee complaint", "loan request"]
+    statuses = ["open", "shipped", "returned"]
+    notes = ["address change", "gift message", "partial refund", "billing complaint", "shipping complaint", "exchange request"]
     rows = []
     for i in range(1, n + 1):
         note = r.choice(notes)
         if i % 7 == 0:
             note = "  " + note.upper() + "  "
         rows.append({
-            "claim_id": i,
-            "policy_type": r.choice(types),
+            "order_id": i,
+            "category": r.choice(cats),
             "state": r.choice(states),
-            "amount": round(r.uniform(200, 9000), 2),
-            "days_open": r.randint(1, 90),
+            "amount": round(r.uniform(20, 900), 2),
+            "days_open": r.randint(1, 30),
             "status": r.choice(statuses),
             "note": note,
         })
@@ -222,7 +222,7 @@ def make_claims(n=40, seed=7):
     return rows
 
 
-DF = pd.DataFrame(make_claims())
+DF = pd.DataFrame(make_orders())
 
 def norm(x):
     if isinstance(x, pd.DataFrame):
@@ -247,24 +247,24 @@ def clean_count():
 EX = [
     dict(title="Playground", prompt="Explore freely. The table is a DataFrame called df. Try df.describe(), df.dtypes or df.groupby('state').amount.mean().",
          starter="df.head()", hint="", expected=None),
-    dict(title="Claims per policy type",
-         prompt="Count the claims for each policy_type, duplicates included. Put a pandas Series (or dict) in a variable named result.",
-         starter="result = ", hint="value_counts() counts rows per value. groupby('policy_type').size() does the same.",
-         expected=lambda: DF["policy_type"].value_counts().to_dict()),
-    dict(title="Average open claim",
-         prompt="What is the average amount of claims whose status is 'open'? Put a number in result.",
+    dict(title="Orders per category",
+         prompt="Count the orders in each category, duplicates included. Put a pandas Series (or dict) in a variable named result.",
+         starter="result = ", hint="value_counts() counts rows per value. groupby('category').size() does the same.",
+         expected=lambda: DF["category"].value_counts().to_dict()),
+    dict(title="Average open order",
+         prompt="What is the average amount of orders whose status is 'open'? Put a number in result.",
          starter="result = ", hint="Filter with a boolean mask, df[df.status == 'open'], then take .amount.mean().",
          expected=lambda: float(DF[DF["status"] == "open"]["amount"].mean())),
-    dict(title="Large claims",
-         prompt="How many claims have an amount above 5000? Put an integer in result.",
+    dict(title="Large orders",
+         prompt="How many orders have an amount above 500? Put an integer in result.",
          starter="result = ", hint="Comparing a column to a number gives True or False per row. Summing booleans counts the Trues.",
-         expected=lambda: int((DF["amount"] > 5000).sum())),
-    dict(title="Top claim per state",
-         prompt="For each state, find the claim with the highest amount. Put the list of those claim_id values in result.",
+         expected=lambda: int((DF["amount"] > 500).sum())),
+    dict(title="Top order per state",
+         prompt="For each state, find the order with the highest amount. Put the list of those order_id values in result.",
          starter="result = ", hint="groupby('state').amount.idxmax() gives the row label of the maximum in each group. Use it with df.loc.",
-         expected=lambda: DF.loc[DF.groupby("state")["amount"].idxmax(), "claim_id"].tolist()),
+         expected=lambda: DF.loc[DF.groupby("state")["amount"].idxmax(), "order_id"].tolist()),
     dict(title="Clean, then count",
-         prompt="Some rows are duplicates, and some notes have extra spaces or capitals. Drop duplicate rows, strip and lowercase the note column, then count claims whose note is 'billing complaint'. Put an integer in result.",
+         prompt="Some rows are duplicates, and some notes have extra spaces or capitals. Drop duplicate rows, strip and lowercase the note column, then count orders whose note is 'billing complaint'. Put an integer in result.",
          starter="result = ", hint="drop_duplicates() first, then df['note'].str.strip().str.lower(). Compare with == and sum.",
          expected=lambda: clean_count()),
 ]

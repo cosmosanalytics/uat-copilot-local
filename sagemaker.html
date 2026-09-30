@@ -202,7 +202,7 @@ def fit_job(n_estimators, lr, depth, log_every=None):
 def train(payload_json):
     p = json.loads(payload_json)
     STATE["n"] += 1
-    name = "claims-gbm-%s-%02d" % (stamp(), STATE["n"])
+    name = "churn-gbm-%s-%02d" % (stamp(), STATE["n"])
     n, lr, d = int(p["n_estimators"]), float(p["learning_rate"]), int(p["max_depth"])
     m, dt, lines = fit_job(n, lr, d, log_every=max(1, n // 8))
     val = accuracy_score(YVA, m.predict(XVA))
@@ -211,7 +211,7 @@ def train(payload_json):
     return json.dumps({"name": name, "status": "Completed", "hyperparameters": {"n_estimators": n, "learning_rate": lr, "max_depth": d},
                        "log": lines, "validation_accuracy": val, "test_accuracy": float(accuracy_score(YTE, m.predict(XTE))),
                        "billable_seconds": round(dt, 2), "artifact_bytes": len(blob),
-                       "artifact": "s3://your-bucket/claims-gbm/%s/output/model.tar.gz" % name})
+                       "artifact": "s3://your-bucket/churn-gbm/%s/output/model.tar.gz" % name})
 
 def tune(payload_json):
     p = json.loads(payload_json)
@@ -228,7 +228,7 @@ def tune(payload_json):
         trials.append(t)
         if best is None or v > best["objective"]:
             best = t
-            name = "claims-gbm-tune-%s-best" % stamp()
+            name = "churn-gbm-tune-%s-best" % stamp()
             JOBS[name] = {"model": m, "val": v}
             best["job"] = name
     best_name = best["job"]
@@ -237,7 +237,7 @@ def tune(payload_json):
 def deploy(job):
     if job not in JOBS:
         return json.dumps({"error": "Unknown training job."})
-    STATE["endpoint"] = {"name": "claims-endpoint-%s" % stamp(), "job": job, "status": "InService"}
+    STATE["endpoint"] = {"name": "churn-endpoint-%s" % stamp(), "job": job, "status": "InService"}
     return json.dumps(STATE["endpoint"])
 
 def invoke(payload_json):

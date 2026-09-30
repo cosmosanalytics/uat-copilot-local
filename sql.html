@@ -157,7 +157,7 @@ a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
   <div class="app-top"><span class="small muted">SQL (real SQLite in your browser)</span></div>
   <header>
     <h1>SQL lab</h1>
-    <p class="lede">Write real SQL against three related tables and get each answer checked. The engine is SQLite, so the queries are the ones you would write on any database, including window functions and CTEs.</p>
+    <p class="lede">Write real SQL against three related tables: customers, orders and refunds and get each answer checked. The engine is SQLite, so the queries are the ones you would write on any database, including window functions and CTEs.</p>
     <div id="status" class="row" aria-live="polite"></div>
   </header>
   <main id="main" class="panel" aria-live="polite"></main>
@@ -174,43 +174,43 @@ NAMES = ["Alvarez", "Okafor", "Chen", "Patel", "Brooks", "Novak", "Ito", "Haddad
 STATES = ["PA", "NC", "IN", "NJ", "OH"]
 DB.executescript("""
 CREATE TABLE customers (cust_id INTEGER PRIMARY KEY, name TEXT, state TEXT, segment TEXT);
-CREATE TABLE policies (policy_id INTEGER PRIMARY KEY, cust_id INTEGER, type TEXT, premium REAL, issue_year INTEGER);
-CREATE TABLE claims (claim_id INTEGER PRIMARY KEY, policy_id INTEGER, amount REAL, status TEXT, filed TEXT, days_open INTEGER);
+CREATE TABLE orders (order_id INTEGER PRIMARY KEY, cust_id INTEGER, category TEXT, order_total REAL, order_year INTEGER);
+CREATE TABLE refunds (refund_id INTEGER PRIMARY KEY, order_id INTEGER, amount REAL, status TEXT, filed TEXT, days_open INTEGER);
 """)
 for i, n in enumerate(NAMES, 1):
-    DB.execute("INSERT INTO customers VALUES (?,?,?,?)", (i, n, r.choice(STATES), r.choice(["retail", "retail", "group"])))
+    DB.execute("INSERT INTO customers VALUES (?,?,?,?)", (i, n, r.choice(STATES), r.choice(["consumer", "consumer", "business"])))
 for i in range(1, 21):
-    DB.execute("INSERT INTO policies VALUES (?,?,?,?,?)", (i, r.randint(1, 10), r.choice(["annuity", "life", "group"]), round(r.uniform(300, 2400), 2), r.randint(2015, 2024)))
+    DB.execute("INSERT INTO orders VALUES (?,?,?,?,?)", (i, r.randint(1, 10), r.choice(["electronics", "home", "apparel"]), round(r.uniform(20, 900), 2), r.randint(2021, 2026)))
 for i in range(1, 31):
-    DB.execute("INSERT INTO claims VALUES (?,?,?,?,?,?)", (i, r.randint(1, 20), round(r.uniform(150, 9000), 2),
-               r.choice(["open", "closed", "review"]), "2026-%02d-%02d" % (r.randint(1, 9), r.randint(1, 28)), r.randint(1, 90)))
+    DB.execute("INSERT INTO refunds VALUES (?,?,?,?,?,?)", (i, r.randint(1, 20), round(r.uniform(5, 400), 2),
+               r.choice(["open", "issued", "rejected"]), "2026-%02d-%02d" % (r.randint(1, 9), r.randint(1, 28)), r.randint(1, 30)))
 DB.commit()
 
 EX = [
     dict(title="Filter and sort", ordered=True,
-         prompt="List the claim_id and amount of open claims above 2000, largest amount first.",
-         sol="SELECT claim_id, amount FROM claims WHERE status = 'open' AND amount > 2000 ORDER BY amount DESC",
+         prompt="List the refund_id and amount of open refunds above 150, largest amount first.",
+         sol="SELECT refund_id, amount FROM refunds WHERE status = 'open' AND amount > 150 ORDER BY amount DESC",
          hint="WHERE combines conditions with AND. ORDER BY amount DESC sorts largest first."),
     dict(title="Join and total", ordered=False,
-         prompt="For each customer who has claims, show the customer name and the total claim amount (rounded to 2 decimals). Customers go through policies to reach claims.",
-         sol="SELECT c.name, ROUND(SUM(cl.amount), 2) FROM customers c JOIN policies p ON p.cust_id = c.cust_id JOIN claims cl ON cl.policy_id = p.policy_id GROUP BY c.name",
-         hint="Join customers to policies on cust_id, then policies to claims on policy_id. GROUP BY name and SUM the amount."),
+         prompt="For each customer who has refunds, show the customer name and the total refund amount (rounded to 2 decimals). Customers go through orders to reach refunds.",
+         sol="SELECT c.name, ROUND(SUM(rf.amount), 2) FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN refunds rf ON rf.order_id = o.order_id GROUP BY c.name",
+         hint="Join customers to orders on cust_id, then orders to refunds on order_id. GROUP BY name and SUM the amount."),
     dict(title="Filter groups with HAVING", ordered=False,
-         prompt="Which policy types have an average premium above 1300? Show the type and the average premium rounded to 2 decimals.",
-         sol="SELECT type, ROUND(AVG(premium), 2) FROM policies GROUP BY type HAVING AVG(premium) > 1300",
+         prompt="Which categories have an average order total above 450? Show the category and the average order total rounded to 2 decimals.",
+         sol="SELECT category, ROUND(AVG(order_total), 2) FROM orders GROUP BY category HAVING AVG(order_total) > 450",
          hint="WHERE filters rows before grouping. HAVING filters groups after aggregation."),
     dict(title="Find what is missing", ordered=False,
-         prompt="Which customers have never had a claim? Show their names.",
-         sol="SELECT c.name FROM customers c WHERE c.cust_id NOT IN (SELECT p.cust_id FROM policies p JOIN claims cl ON cl.policy_id = p.policy_id)",
-         hint="NOT IN with a subquery is the simplest route. With a LEFT JOIN, be careful: a customer with two policies, one of them claim-free, must not appear. Count claims per customer and keep the zeros."),
+         prompt="Which customers have never had a refund? Show their names.",
+         sol="SELECT c.name FROM customers c WHERE c.cust_id NOT IN (SELECT o.cust_id FROM orders o JOIN refunds rf ON rf.order_id = o.order_id)",
+         hint="NOT IN with a subquery is the simplest route. With a LEFT JOIN, be careful: a customer with two orders, one of them refund-free, must not appear. Count refunds per customer and keep the zeros."),
     dict(title="CTE and comparison", ordered=False,
-         prompt="Using a WITH clause, find customers whose total claim amount is above the average total among customers with claims. Show the name and total, rounded to 2 decimals.",
-         sol="WITH t AS (SELECT c.name AS name, SUM(cl.amount) AS total FROM customers c JOIN policies p ON p.cust_id = c.cust_id JOIN claims cl ON cl.policy_id = p.policy_id GROUP BY c.name) SELECT name, ROUND(total, 2) FROM t WHERE total > (SELECT AVG(total) FROM t)",
+         prompt="Using a WITH clause, find customers whose total refund amount is above the average total among customers with refunds. Show the name and total, rounded to 2 decimals.",
+         sol="WITH t AS (SELECT c.name AS name, SUM(rf.amount) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN refunds rf ON rf.order_id = o.order_id GROUP BY c.name) SELECT name, ROUND(total, 2) FROM t WHERE total > (SELECT AVG(total) FROM t)",
          hint="Put the per-customer totals in a WITH clause, then select from it and compare each total to (SELECT AVG(total) FROM t)."),
     dict(title="Window function", ordered=False,
-         prompt="Rank claims by amount within each policy type, largest first. Show claim_id, the policy type, amount and the rank. Use a window function.",
-         sol="SELECT cl.claim_id, p.type, cl.amount, RANK() OVER (PARTITION BY p.type ORDER BY cl.amount DESC) FROM claims cl JOIN policies p ON p.policy_id = cl.policy_id",
-         hint="RANK() OVER (PARTITION BY type ORDER BY amount DESC) restarts the ranking for each type."),
+         prompt="Rank refunds by amount within each order category, largest first. Show refund_id, the category, amount and the rank. Use a window function.",
+         sol="SELECT rf.refund_id, o.category, rf.amount, RANK() OVER (PARTITION BY o.category ORDER BY rf.amount DESC) FROM refunds rf JOIN orders o ON o.order_id = rf.order_id",
+         hint="RANK() OVER (PARTITION BY category ORDER BY amount DESC) restarts the ranking for each category."),
 ]
 
 def run_q(q):
