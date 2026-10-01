@@ -363,15 +363,36 @@ async function chat(messages,max){
 }
 function fill(tpl,vars){return tpl.replace(/\{(\w+)\}/g,(m,k)=>(k in vars)?vars[k]:m);}
 function tplVars(tpl){return [...new Set((tpl.match(/\{(\w+)\}/g)||[]).map(x=>x.slice(1,-1)))];}
-function extractJson(text){
-  const m=String(text).match(/\{[\s\S]*\}/);
-  if(!m)return null;
-  try{return JSON.parse(m[0]);}catch(e){return null;}
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
 }
-function parseAction(text){
-  const o=extractJson(text);
+function extractJson(t,pred){
+  for(const c of jsonCandidates(t)){
+    let o;try{o=JSON.parse(c);}catch(e){continue;}
+    if(!o||typeof o!=='object')continue;
+    if(!pred||pred(o))return o;
+  }
+  const m=String(t).match(/\{[\s\S]*\}/);
+  if(m){try{const o=JSON.parse(m[0]);if(!pred||pred(o))return o;}catch(e){}}
+  return null;
+}
+function asText(v){return typeof v==='string'?v:(v===null||v===undefined?'':JSON.stringify(v));}
+function parseAction(t){
+  const o=extractJson(t,x=>x.final!==undefined||x.tool);
   if(!o)return null;
-  if(o.final!==undefined)return{final:String(o.final)};
+  if(o.final!==undefined)return{final:asText(o.final)};
   if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};
   return null;
 }
@@ -382,11 +403,12 @@ async function agentLoop(cfg){
   const sys=cfg.system+'\nYou can call tools. Tools:\n'+toolText+'\nReply with ONLY one JSON object.\nTo call a tool: {"tool":"name","args":{...}}\nTo answer the user: {"final":"your answer"}\nUse a tool whenever the answer depends on data you do not have. After a tool result, answer with {"final": ...}.';
   const msgs=[{role:'user',content:cfg.question}];
   const steps=[];
+  let lastKey=null,lastRes=null;
   for(let c=1;c<=max;c++){
-    let out=await chat([{role:'system',content:sys}].concat(msgs),140);
+    let out=await chat([{role:'system',content:sys}].concat(msgs),160);
     let act=parseAction(out.text),retried=false;
     if(!act){
-      out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),140);
+      out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),160);
       act=parseAction(out.text);retried=true;
     }
     if(!act){steps.push({cycle:c,type:'parse_error',raw:out.text,ms:out.ms,retried});return{steps,final:'',status:'parse_error'};}
@@ -396,14 +418,22 @@ async function agentLoop(cfg){
       return{steps,final:act.final,status:'done'};
     }
     const spec=tools.find(t=>t.name===act.tool);
+    const key=act.tool+JSON.stringify(act.args),repeat=key===lastKey&&lastRes;
     let result='',ok=true,sub=null;
-    if(!spec){result='Error: there is no tool named '+act.tool;ok=false;}
+    if(repeat){result=lastRes.result;ok=lastRes.ok;sub=lastRes.sub;}
+    else if(!spec){result='Error: there is no tool named '+act.tool;ok=false;}
     else{
       try{const r=await spec.run(act.args);if(r&&typeof r==='object'){result=r.text;sub=r.sub;}else result=String(r);}
       catch(e){result='Error: '+e.message;ok=false;}
     }
-    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result});
-    steps.push({cycle:c,type:'tool',tool:act.tool,args:act.args,result,ok,sub,raw:out.text,ms:out.ms,retried});
+    lastKey=key;lastRes={result,ok,sub};
+    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result+(repeat?'\n(Not run again: identical call.) Answer the user now with {"final": ...}.':'')});
+    steps.push({cycle:c,type:'tool',tool:act.tool,args:act.args,result,ok,sub,raw:out.text,ms:out.ms,retried,repeat:!!repeat});
+  }
+  if(steps.some(s=>s.type==='tool'&&s.ok)){
+    const out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'user',content:'You are out of steps. Using the tool results above, answer the user now. Reply with ONE JSON object: {"final": "..."}.'}]),160);
+    const act=parseAction(out.text);
+    if(act&&act.final!==undefined){steps.push({cycle:max+1,type:'final',raw:out.text,text:act.final,ms:out.ms,forced:true});return{steps,final:act.final,status:'done',forced:true};}
   }
   return{steps,final:'',status:'max_cycles'};
 }
@@ -472,7 +502,7 @@ function lc3(){
     const r=S.r3;
     out='<h3>The message list</h3>'+table(['Message type','Content'],lcMessages(r),520)+
       (r.status==='done'?'<div class="status ok"><b>Agent answer:</b> '+esc(r.final)+'</div>':'<div class="status bad">The loop stopped without an answer ('+esc(r.status)+'). Small models sometimes fail at tool calling, which is why agents need limits and checks.</div>')+
-      '<p class="small muted">'+r.steps.length+' model call'+(r.steps.length===1?'':'s')+', stopped because: '+esc(r.status)+'.</p>';
+      '<p class="small muted">'+r.steps.length+' model call'+(r.steps.length===1?'':'s')+', stopped because: '+esc(r.status)+'.'+(r.forced?' The model ran out of steps, so the loop asked once more for a final answer.':'')+'</p>';
   }
   const codeText='from langchain.agents import create_agent\nfrom langchain_core.tools import tool\n\n@tool\ndef get_order_status(order_id: str) -> str:\n    """Look up the status of an order by its id."""\n    ...\n\n@tool\ndef calculate(expression: str) -> str:\n    """Evaluate a basic arithmetic expression."""\n    ...\n\nagent = create_agent(model, tools=[get_order_status, calculate], system_prompt="You are an online store support agent.")\nagent.invoke({"messages": [{"role": "user", "content": '+JSON.stringify(S.q3)+'}]})';
   return '<h2>Lab 3: tools and the agent loop</h2><p>In an agent, the model decides whether to call a tool. LangChain stores the exchange as typed messages: the human message, an AI message with a tool call, a tool message with the result, then the final AI message.</p>'+
@@ -509,10 +539,10 @@ function stEvents(r,label){
   const rows=[];
   r.steps.forEach(s=>{
     if(s.type==='tool'){
-      rows.push([s.cycle,'model','stopReason: tool_use. toolUse: '+s.tool+' '+JSON.stringify(s.args)]);
+      rows.push([s.cycle,'model','stopReason: tool_use. toolUse: '+s.tool+' '+JSON.stringify(s.args)+(s.repeat?' (repeat call, not run again)':'')]);
       rows.push([s.cycle,'tool','toolResult status: '+(s.ok?'success':'error')+'. '+String(s.result).slice(0,120)]);
       if(s.sub)s.sub.forEach(x=>rows.push(['  ↳','sub-agent',x.type==='tool'?('toolUse: '+x.tool+' '+JSON.stringify(x.args)+' → '+String(x.result).slice(0,60)):(x.type==='final'?('end_turn: '+x.text.slice(0,80)):x.type)]));
-    }else if(s.type==='final')rows.push([s.cycle,'model','stopReason: end_turn. text: '+s.text]);
+    }else if(s.type==='final')rows.push([s.cycle,'model','stopReason: end_turn. text: '+s.text+(s.forced?' (asked again after the steps ran out)':'')]);
     else rows.push([s.cycle,'model','could not parse: '+String(s.raw).slice(0,80)]);
   });
   return table(['Cycle','Who','Event'],rows,520);
@@ -620,7 +650,7 @@ const draw=app({
       const attempts=[];let final=null;
       for(let n=1;n<=2&&!final;n++){
         const out=await chat(msgs,120);
-        const o=extractJson(out.text);const errs=[];
+        const o=extractJson(out.text,x=>x.label!==undefined||x.urgency!==undefined||x.reason!==undefined);const errs=[];
         if(!o)errs.push('no valid JSON found');
         else{
           if(['Order status','Refund request','Complaint','Address change'].indexOf(o.label)<0)errs.push('label must be one of the four options');

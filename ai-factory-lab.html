@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Factory lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Companion to the AI Factory deck (a real on-device model, simulated factory)</span></div>
+  <header>
+    <h1>AI Factory lab</h1>
+    <p class="lede">Run the ideas from the deck. Plan with MPC on a deterministic model, push a request through the centaur harness with its four checkpoints, run the full business request workflow, simulate factory scenarios, and consolidate decisions up the levels.</p>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the inventory MPC, the scenario simulation and the consolidation are real calculations in JavaScript on made-up numbers. The language model is a small open model running locally through WebLLM and WebGPU, and its confidence comes from token probabilities. The four checkpoints, the Control rules and the consolidation rules are simplified illustrations of the ideas in the deck, not a formal implementation. Small models make mistakes, and the checks are there to catch them. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- data ---------- */
+const ORDERS0={
+  'O-1001':{item:'Standing desk',paid:480,status:'delivered',refunded:0},
+  'O-2002':{item:'Table lamp',paid:60,status:'shipped',refunded:0},
+  'O-3003':{item:'Rain jacket',paid:95,status:'processing',refunded:0}
+};
+let ORDERS=JSON.parse(JSON.stringify(ORDERS0));
+const LABELS={A:'Order status',B:'Refund request',C:'Complaint',D:'Address change',E:'Stock question'};
+const REQUIRE={'Order status':['order_id'],'Refund request':['order_id','amount'],'Complaint':[],'Address change':['order_id','address'],'Stock question':['item']};
+const CAL=[
+ ['I moved last month and need my shipping address updated.','D'],['Please send my next order to my new PO box in Ohio.','D'],
+ ['I want my money back for the blender I bought last week.','B'],['How do I return this jacket for a refund?','B'],
+ ['Your delivery fees are unfair and the rep was rude to me.','C'],['I am unhappy about the charge on my last bill.','C'],
+ ['Where is my order? It was due on Monday.','A'],['Can you check the tracking for my package?','A'],
+ ['Can you update where my parcels get delivered?','D'],['I would like a refund for the damaged screen.','B'],
+ ['Why was I charged twice this month? This is unacceptable.','C'],['Has my order shipped yet?','A']
+];
+const QA={
+ mpc:[['What is MPC in one sentence?','Simulate several courses of action over a short horizon, pick the best, apply only the first step, then re-measure and repeat.'],['Why does a horizon shorter than the lead time fail?','An order placed today has not arrived inside the horizon, so the simulation cannot see its effect and the plan keeps ordering more.'],['What does MPC need first?','A model to simulate with. Here the model is the inventory equations.']],
+ cen:[['Why are Monitor and Control separate?','Monitor judges whether an output is trustworthy and does not act. Control decides what happens next. Splitting them stops a system from grading its own work and acting on it in one step.'],['Why does confidence decay with extra passes?','Each extra reasoning pass can add its own errors, so trust is discounted as steps stack up. The 0.9 factor is illustrative.'],['What cannot the model check by itself?','Coverage gaps and conflicts with verified data. Those checks live outside the model.']],
+ biz:[['Where does Model 1 sit?','Inside the business request model as a tool the agent can call, like a calculator for planning.'],['Why is there an approval step?','Refunds above a limit are expensive to undo, so a person decides.'],['What does the Contradiction check catch here?','An answer that claims an action no tool performed.']],
+ fac:[['What is simulated?','Each option over a short horizon: cost, queue and accuracy. Options that break a hard rule are dropped, and the cheapest of the rest wins.'],['What does the audit slider do?','It lowers the estimated accuracy of the small model, like new evidence, and the best plan changes with no change to the logic.'],['What is the weakness of the measured curve?','It comes from 12 messages, which is far too few to trust.']],
+ con:[['What is consolidated?','Many decisions at one step become one decision at the next step up.'],['Is this tested?','No. It is a proposed principle, shown here with simple illustrative rules.']]
+};
+/* ---------- MPC core: the deterministic model ---------- */
+const MULT=[0.8,1,1.3],WGT=[0.25,0.5,0.25];
+function simBase(I,pipe,S,F,H,h,s){
+  let cost=0;pipe=pipe.slice();
+  for(let k=0;k<H;k++){
+    if(k>0)I+=pipe.shift();
+    const IP=I+pipe.reduce((a,b)=>a+b,0);
+    const x=Math.max(0,S-IP);
+    pipe.push(x);
+    I-=F;
+    cost+=h*Math.max(I,0)+s*Math.max(-I,0);
+  }
+  return cost;
+}
+function mpcDecide(I,pipe,F,H,h,s){
+  let best=null;const curve=[];
+  for(let S=0;S<=700;S+=10){
+    let c=0;MULT.forEach((m,i)=>{c+=WGT[i]*simBase(I,pipe,S,F*m,H,h,s);});
+    curve.push({S,cost:c});
+    if(!best||c<best.cost-1e-9)best={S,cost:c};
+  }
+  const IP=I+pipe.reduce((a,b)=>a+b,0);
+  return{S:best.S,x:Math.max(0,best.S-IP),cost:best.cost,curve,IP,I,F};
+}
+function demandPath(scn){
+  const d=Array(12).fill(100);
+  if(scn==='spike')for(let t=4;t<8;t++)d[t]=160;
+  if(scn==='drop')for(let t=4;t<8;t++)d[t]=50;
+  if(scn==='season')for(let t=0;t<12;t++)d[t]=Math.round(100+40*Math.sin(t/12*2*Math.PI));
+  return d;
+}
+function runInv(p){
+  const T=12,h=1,s=5,L=p.L,H=p.H,D=demandPath(p.scn),out={D};
+  for(const pol of['mpc','rule']){
+    let I=p.I0;const pipe=Array(L).fill(100),hist=[100,100,100];
+    const rec={I:[],x:[],cost:0,plans:[]};
+    for(let t=0;t<T;t++){
+      I+=pipe.shift();
+      const F=Math.round((hist[hist.length-1]+hist[hist.length-2]+hist[hist.length-3])/3);
+      let x;
+      if(pol==='mpc'){const pl=mpcDecide(I,pipe,F,H,h,s);x=Math.round(pl.x);rec.plans.push(pl);}
+      else x=Math.round(F*1.1);
+      pipe.push(x);
+      I-=D[t];
+      rec.cost+=h*Math.max(I,0)+s*Math.max(-I,0);
+      rec.I.push(I);rec.x.push(x);
+      hist.push(D[t]);
+    }
+    out[pol]=rec;
+  }
+  return out;
+}
+const ITEMS={lamp:{D:40,I0:20,L:2,label:'Table lamps'},desk:{D:15,I0:30,L:1,label:'Standing desks'},jacket:{D:60,I0:40,L:1,label:'Rain jackets'}};
+function planInventory(item){
+  const it=ITEMS[item];if(!it)return 'No planning model for item '+item+'. Known items: '+Object.keys(ITEMS).join(', ')+'.';
+  const pipe=Array(it.L-1).fill(it.D),I=it.I0;
+  const pl=mpcDecide(I,pipe,it.D,Math.max(3,it.L+2),1,5);
+  return it.label+': on hand '+it.I0+', forecast demand '+it.D+' per period, lead time '+it.L+'. MPC recommends ordering '+Math.round(pl.x)+' units now (order-up-to level '+pl.S+').';
+}
+/* ---------- tiny chart ---------- */
+function lineSvg(series,opt){
+  const W=opt.w||560,H=opt.h||210,L=44,R=12,T=12,B=26;
+  const all=series.flatMap(s=>s.values);
+  const lo=Math.min(0,...all),hi=Math.max(...all),n=series[0].values.length;
+  const px=i=>L+(n===1?0:i/(n-1))*(W-L-R),py=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+esc(opt.label||'chart')+'">';
+  svg+='<line x1="'+L+'" y1="'+py(0).toFixed(1)+'" x2="'+(W-R)+'" y2="'+py(0).toFixed(1)+'" stroke="currentColor" opacity=".35"/>';
+  svg+='<text x="4" y="'+(T+8)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(hi)+'</text><text x="4" y="'+(H-B)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(lo)+'</text>';
+  series.forEach(s=>{
+    const pts=s.values.map((v,i)=>px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ');
+    svg+='<polyline points="'+pts+'" fill="none" stroke="'+s.color+'" stroke-width="2.5"'+(s.dash?' stroke-dasharray="5 4"':'')+'/>';
+  });
+  if(opt.mark!==undefined&&opt.mark>=0){const v=series[0].values[opt.mark];svg+='<circle cx="'+px(opt.mark).toFixed(1)+'" cy="'+py(v).toFixed(1)+'" r="6" fill="#E3A21A" stroke="#17262D" stroke-width="1"/>';}
+  (opt.xlabels||[]).forEach((lb,i)=>{if(lb!=='')svg+='<text x="'+px(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+esc(lb)+'</text>';});
+  return svg+'</svg>';
+}
+function legend(items){return '<div class="row small" style="gap:14px">'+items.map(i=>'<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+i[1]+';margin-right:4px"></span>'+esc(i[0])+'</span>').join('')+'</div>';}
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
+async function chat(messages,max,lp){
+  need();
+  const t0=performance.now();
+  const req={messages,temperature:0,max_tokens:max||120};
+  if(lp){req.logprobs=true;req.top_logprobs=4;}
+  const r=await LLM.engine.chat.completions.create(req);
+  const ch=r.choices[0];
+  return{text:String((ch.message&&ch.message.content)||'').trim(),ms:Math.round(performance.now()-t0),lp:(ch.logprobs&&ch.logprobs.content)||[],promptTokens:(r.usage&&r.usage.prompt_tokens)||0};
+}
+const CLS_SYS='You classify online store customer requests. Reply as instructed.';
+function clsPrompt(text,mode,feedback){
+  const base='Classify this online store customer request.\nA) Order status\nB) Refund request\nC) Complaint\nD) Address change\nE) Stock question\nRequest: '+text+'\n';
+  if(mode==='think')return base+(feedback?'A reviewer flagged a problem with a first attempt: '+feedback+'\n':'')+'Give a short reason in one sentence, then end with "Answer: X" where X is one letter.';
+  return base+'Reply with one letter.';
+}
+async function classify(text,mode,feedback){
+  const out=await chat([{role:'system',content:CLS_SYS},{role:'user',content:clsPrompt(text,mode,feedback)}],mode==='think'?110:6,true);
+  const up=out.text.toUpperCase();
+  let letter='';
+  if(mode==='think'){const m=up.match(/ANSWER:\s*\(?([A-E])/);letter=m?m[1]:'';}
+  else{const m=up.match(/(?:^|[^A-Z])([A-E])(?![A-Z])/);letter=m?m[1]:'';}
+  let conf=0;
+  if(letter&&out.lp.length){
+    const idx=out.lp.map(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter);
+    let at=-1;for(let i=idx.length-1;i>=0;i--)if(idx[i]){at=i;break;}
+    if(at>=0&&typeof out.lp[at].logprob==='number')conf=Math.exp(out.lp[at].logprob);
+  }
+  return{letter,label:LABELS[letter]||'',conf,raw:out.text,ms:out.ms,promptTokens:out.promptTokens,mode};
+}
+function fieldsOf(text){
+  const oid=(text.match(/O-\d{4}/i)||[])[0];
+  const am=text.match(/\$\s?(\d[\d,]*(?:\.\d+)?)/);
+  const addr=(text.match(/\baddress\b.*?\bto\s+(.+?)\.?$/i)||[])[1]||null;
+  const it=(text.match(/\b(lamps?|desks?|jackets?)\b/i)||[])[1]||null;
+  return{order_id:oid?oid.toUpperCase():null,amount:am?Number(am[1].replace(/,/g,'')):null,address:addr,item:it?it.toLowerCase().replace(/s$/,''):null};
+}
+/* ---------- Monitor (four checkpoints) and Control ---------- */
+function checkpoints(label,f,conf,passes){
+  const miss=(REQUIRE[label]||[]).filter(k=>!f[k]);
+  const c1={name:'Coverage',pass:!miss.length,reason:miss.length?'missing '+miss.join(', '):'everything needed is present'};
+  const con=[];
+  if(f.order_id&&!ORDERS[f.order_id])con.push('order '+f.order_id+' does not exist');
+  const o=f.order_id&&ORDERS[f.order_id];
+  if(label==='Refund request'&&o&&f.amount&&f.amount>o.paid-o.refunded)con.push('refund '+f.amount+' is more than the '+(o.paid-o.refunded)+' still refundable');
+  if(label==='Address change'&&o&&o.status==='delivered')con.push('order '+f.order_id+' is already delivered');
+  if(label==='Stock question'&&f.item&&!ITEMS[f.item])con.push('no planning model for '+f.item);
+  const c2={name:'Contradiction',pass:!con.length,reason:con.length?con.join('; '):'consistent with verified data'};
+  const c3={name:'Confidence',pass:conf>=0.7,reason:'confidence '+conf.toFixed(2)+(conf>=0.7?' meets':' is below')+' the 0.70 bar'};
+  const eff=conf*Math.pow(0.9,passes-1);
+  const stakes=(label==='Refund request'&&f.amount>200)?'high':((label==='Refund request'||label==='Address change')?'medium':'low');
+  const bar={low:0.6,medium:0.8,high:2}[stakes];
+  const c4={name:'Risk gate',stakes,pass:eff>=bar,reason:'stakes '+stakes+'; confidence after '+passes+' pass'+(passes>1?'es':'')+' is '+eff.toFixed(2)+(bar>1?' (high stakes always need a person)':' (bar '+bar.toFixed(2)+')')};
+  return[c1,c2,c3,c4];
+}
+function control(checks,passes,maxPasses){
+  const g=n=>checks.find(c=>c.name===n);
+  if(checks.every(c=>c.pass))return{action:'Accept',why:'All four checkpoints passed.'};
+  if(!g('Contradiction').pass)return{action:'Escalate to a person',why:'The request conflicts with verified data.'};
+  if(!g('Coverage').pass)return{action:'Ask for more information',why:'Something needed is missing.'};
+  if(!g('Risk gate').pass&&g('Risk gate').stakes==='high')return{action:'Escalate to a person',why:'High stakes always need a person.'};
+  if(passes<maxPasses)return{action:'Retry (System 2)',why:'Confidence is too low. Try a deeper pass.'};
+  return{action:'Escalate to a person',why:'Still not confident after '+passes+' pass'+(passes>1?'es':'')+'.'};
+}
+/* ---------- state ---------- */
+const S={tab:'mpc',busy:false,err:'',showModel:false,
+  inv:{scn:'drop',L:'1',H:'3',I0:'60',view:'0'},
+  req2:'I want a refund of $480 for O-1001.',mode2:'s1',r2:null,
+  req3:'I want a refund of $45 for O-3003.',r3:null,
+  f:{t:0,Q:0,path:'spike',cap:'30',target:'95',drop:'0',H:'3',hist:[],cal:null,calMsg:''},
+  log:[]};
+const PATHS={steady:[60,60,60,60,60,60,60,60,60,60],spike:[60,60,160,160,60,60,60,60,60,60],ramp:[40,60,80,100,120,140,140,140,140,140]};
+/* ---------- lab 1: MPC ---------- */
+function lab1(){
+  const p={scn:S.inv.scn,L:+S.inv.L,H:+S.inv.H,I0:+S.inv.I0};
+  const r=runInv(p),v=+S.inv.view,pl=r.mpc.plans[v];
+  const warn=p.H<=p.L?'<div class="status warn">The horizon ('+p.H+') is not longer than the lead time ('+p.L+'). An order placed now has not arrived inside the horizon, so the simulation cannot see its effect. Lengthen the horizon.</div>':'';
+  const ch=lineSvg([{name:'Demand',color:'#8A98A0',values:r.D,dash:true},{name:'MPC on hand',color:'#0E6F8E',values:r.mpc.I},{name:'Rule on hand',color:'#E3A21A',values:r.rule.I}],{label:'On-hand inventory by period',xlabels:r.D.map((_,i)=>i%2===0?String(i+1):'')});
+  const cv=lineSvg([{name:'Expected cost',color:'#2B4A57',values:pl.curve.map(c=>c.cost)}],{label:'Expected cost against order-up-to level',mark:pl.curve.findIndex(c=>c.S===pl.S),xlabels:pl.curve.map(c=>c.S%100===0?String(c.S):'')});
+  const rows=r.D.map((d,t)=>[t+1,d,r.mpc.x[t],r.mpc.I[t],r.rule.x[t],r.rule.I[t]]);
+  return '<h2>1. MPC on a deterministic model</h2><p class="small muted">Deck slides 2, 5 and 9. Model 1 is a sales and operations style inventory model. Demand is the only external input, and every state is observed.</p>'+
+    '<div class="grid2"><div><label class="range" for="scn">Demand scenario</label><select id="scn" data-act="scn">'+[['steady','Steady'],['drop','Drop in the middle'],['spike','Spike in the middle'],['season','Seasonal']].map(o=>'<option value="'+o[0]+'"'+(S.inv.scn===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="Lt">Lead time (periods)</label><select id="Lt" data-act="Lt">'+['1','2'].map(o=>'<option'+(S.inv.L===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="Hz">Planning horizon (periods)</label><select id="Hz" data-act="Hz">'+['1','2','3','4','5'].map(o=>'<option'+(S.inv.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="I0">Starting on hand</label><select id="I0" data-act="I0">'+['0','60','100','160'].map(o=>'<option'+(S.inv.I0===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+warn+
+    '<div class="tiles" style="margin-top:12px"><div class="tile"><b>'+Math.round(r.mpc.cost)+'</b><span>MPC total cost</span></div><div class="tile"><b>'+Math.round(r.rule.cost)+'</b><span>Rule total cost (forecast plus 10%)</span></div></div>'+
+    '<h3>On-hand inventory (below zero is a backlog)</h3><div class="svgbox">'+ch+'</div>'+legend([['Demand','#8A98A0'],['MPC','#0E6F8E'],['Rule','#E3A21A']])+
+    '<h3>Look inside one planning step</h3><label class="range" for="view">Period</label><select id="view" data-act="view">'+r.D.map((_,i)=>'<option value="'+i+'"'+(S.inv.view===String(i)?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select>'+
+    '<p>At period '+(v+1)+' the forecast is <b>'+pl.F+'</b>. The planner simulated every order-up-to level over '+p.H+' period'+(p.H===1?'':'s')+' under three demand scenarios (80%, 100% and 130% of forecast) and picked the cheapest on average: level <b>'+pl.S+'</b>. Inventory position is '+pl.IP+', so it orders <b>'+Math.round(pl.x)+'</b>, applies only that first order, and re-plans next period.</p>'+
+    '<div class="svgbox">'+cv+'</div><p class="small muted">Amber dot: the chosen level. Each point is one simulated scenario set, which is the "simulate and choose" step.</p>'+
+    '<h3>Period by period</h3>'+table(['Period','Demand','MPC order','MPC on hand','Rule order','Rule on hand'],rows,520)+
+    '<p class="small muted"><b>What to notice:</b> MPC is only as good as its model and forecast. A lagging forecast can make it overreact to a spike, and a short horizon makes it fail outright.</p>';
+}
+/* ---------- lab 2: the centaur ---------- */
+function stageChips(r){
+  const first=r.passes[0];
+  const st=[['Encoding',first.promptTokens?first.promptTokens+' prompt tokens (real count)':'text becomes tokens',true],['Syntactic','inside the model, not observable here',false],['Semantic','inside the model, not observable here',false],['Reasoning',r.passes.length>1?'System 2: a second, deeper pass ran':'System 1: one pass',r.passes.length>1],['Decoding','"'+String(r.passes[r.passes.length-1].raw).slice(0,40)+'"',true]];
+  return '<div class="scroll"><table style="min-width:560px"><thead><tr>'+st.map(s=>'<th>'+esc(s[0])+'</th>').join('')+'</tr></thead><tbody><tr>'+st.map(s=>'<td class="small" style="'+(s[2]?'':'opacity:.6')+'">'+esc(s[1])+'</td>').join('')+'</tr></tbody></table></div>';
+}
+async function runCentaur(text,sys2){
+  const f=fieldsOf(text);
+  const passes=[];let checks,ctl,fb='';
+  const max=sys2?2:1;
+  for(let n=1;n<=max;n++){
+    const c=await classify(text,n===1?'fast':'think',fb);
+    passes.push(c);
+    checks=checkpoints(c.label,f,c.conf,n);
+    ctl=control(checks,n,max);
+    if(ctl.action!=='Retry (System 2)')break;
+    fb=checks.filter(x=>!x.pass).map(x=>x.name+': '+x.reason).join('; ');
+  }
+  return{text,fields:f,passes,checks,ctl,max};
+}
+function lab2(){
+  let out='';
+  if(S.r2){
+    const r=S.r2,last=r.passes[r.passes.length-1];
+    out='<h3>The five stages</h3>'+stageChips(r)+
+      '<h3>The model\'s answer</h3>'+table(['Pass','Mode','Label','Confidence','Raw output'],r.passes.map((c,i)=>[i+1,c.mode==='think'?'System 2':'System 1',c.label||'(none)',c.conf.toFixed(2),String(c.raw).slice(0,70)]),520)+
+      '<h3>Monitor: four checkpoints</h3><ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>'+
+      '<h3>Control</h3><div class="status '+(r.ctl.action==='Accept'?'ok':'warn')+'"><b>'+esc(r.ctl.action)+'.</b> '+esc(r.ctl.why)+'</div>'+
+      (r.ctl.action!=='Accept'?'<div class="row" style="margin-top:8px">'+btn('human2','approve','Human approves','ghost sm')+btn('human2','reject','Human rejects','ghost sm')+'</div>'+(r.human?'<div class="status ok">Human decision recorded: '+esc(r.human)+'.</div>':''):'');
+  }
+  return '<h2>2. The centaur: AI runs it, a human checks it</h2><p class="small muted">Deck slide 6. The model runs the pipeline. Monitor judges the output with four checkpoints, and Control decides what happens next. The human owns Monitor and Control.</p>'+
+    '<div class="row">'+['I want a refund of $480 for O-1001.','Where is order O-2002?','I want a refund for the broken lamp.','Refund $900 for order O-3003.','Please change my address on O-1001 to 3 Birch Ln, Austin TX.'].map((q,i)=>btn('pick2',i,esc(q.length>26?q.slice(0,26)+'…':q),'ghost sm')).join('')+'</div>'+
+    '<textarea class="editor" id="req2" data-act="req2" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req2)+'</textarea>'+
+    '<div class="row" style="margin-top:8px">'+tog('mode2','s1','System 1: one pass',S.mode2==='s1')+tog('mode2','s2','System 2: allow a retry',S.mode2==='s2')+'</div>'+
+    '<div class="row" style="margin-top:10px">'+btn('run2','','Run through the centaur','',S.busy)+'</div>'+out+
+    '<p class="small muted"><b>What to notice:</b> coverage and contradiction come from rules and data outside the model. Confidence comes from the model\'s own token probability. In System 2 the retry gets the Monitor feedback.</p>';
+}
+/* ---------- lab 3: the business request ---------- */
+function cleanText(t){return String(t).replace(/\s+/g,' ').replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g,'').trim();}
+function maskText(t){return t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]').replace(/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g,'[phone]');}
+const BIZ_TOOLS=ctx=>[
+  {name:'get_order_status',desc:'Look up the status of an order by id, such as O-1001.',params:{order_id:'The order id'},run:a=>ORDERS[a.order_id]?JSON.stringify({order_id:a.order_id,item:ORDERS[a.order_id].item,status:ORDERS[a.order_id].status,paid:ORDERS[a.order_id].paid}):'No order with that id.'},
+  {name:'request_refund',desc:'Refund an amount on an order. Refunds above 200 need a person to approve.',params:{order_id:'The order id',amount:'The amount to refund'},run:a=>{
+    const o=ORDERS[a.order_id],amt=Number(a.amount);
+    if(!o)return 'No order with that id.';
+    if(!(amt>0)||amt>o.paid-o.refunded)return 'Invalid amount. Refundable: '+(o.paid-o.refunded)+'.';
+    if(amt>200){ctx.pending={order_id:a.order_id,amount:amt};return 'NOT EXECUTED: refunds above 200 need a person to approve.';}
+    o.refunded+=amt;ctx.refunded=(ctx.refunded||0)+amt;return 'Refund of '+amt+' processed on '+a.order_id+'.';}},
+  {name:'plan_inventory',desc:'Run the inventory planning model (Model 1) for an item: lamp, desk or jacket.',params:{item:'lamp, desk or jacket'},run:a=>{ctx.usedModel1=true;return planInventory(String(a.item||'').toLowerCase());}}
+];
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function extractJson(t,pred){
+  for(const c of jsonCandidates(t)){
+    let o;try{o=JSON.parse(c);}catch(e){continue;}
+    if(!o||typeof o!=='object')continue;
+    if(!pred||pred(o))return o;
+  }
+  const m=String(t).match(/\{[\s\S]*\}/);
+  if(m){try{const o=JSON.parse(m[0]);if(!pred||pred(o))return o;}catch(e){}}
+  return null;
+}
+function asText(v){return typeof v==='string'?v:(v===null||v===undefined?'':JSON.stringify(v));}
+function parseAction(t){
+  const o=extractJson(t,x=>x.final!==undefined||x.tool);
+  if(!o)return null;
+  if(o.final!==undefined)return{final:asText(o.final)};
+  if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};
+  return null;
+}
+async function agentLoop(question,tools,max){
+  const sys='You are an online store support agent.\nYou can call tools. Tools:\n'+tools.map(t=>'- '+t.name+'('+Object.keys(t.params).join(', ')+'): '+t.desc).join('\n')+'\nReply with ONLY one JSON object.\nTo call a tool: {"tool":"name","args":{...}}\nTo answer the user: {"final":"your answer"}\nUse a tool whenever the answer depends on data you do not have. Never say an action is done unless a tool result shows it. After a tool result, answer with {"final": ...}.';
+  const msgs=[{role:'user',content:question}],steps=[];
+  let lastKey=null,lastRes=null;
+  for(let c=1;c<=(max||5);c++){
+    let out=await chat([{role:'system',content:sys}].concat(msgs),160);
+    let act=parseAction(out.text);
+    if(!act){out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),160);act=parseAction(out.text);}
+    if(!act){steps.push({type:'parse_error',raw:out.text});return{steps,final:'',status:'parse_error'};}
+    if(act.final!==undefined){msgs.push({role:'assistant',content:out.text});steps.push({type:'final',text:act.final});return{steps,final:act.final,status:'done'};}
+    const spec=tools.find(t=>t.name===act.tool);
+    const key=act.tool+JSON.stringify(act.args),repeat=key===lastKey&&lastRes;
+    let result,ok=true;
+    if(repeat){result=lastRes.result;ok=lastRes.ok;}
+    else if(!spec){result='Error: no tool named '+act.tool;ok=false;}
+    else{try{result=String(await spec.run(act.args));}catch(e){result='Error: '+e.message;ok=false;}}
+    lastKey=key;lastRes={result,ok};
+    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result+(repeat?'\n(Not run again: identical call, so no side effect repeated.) Answer the user now with {"final": ...}.':'')});
+    steps.push({type:'tool',tool:act.tool,args:act.args,result,ok,repeat:!!repeat});
+  }
+  if(steps.some(s=>s.type==='tool'&&s.ok)){
+    const out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'user',content:'You are out of steps. Using the tool results above, answer the user now. Reply with ONE JSON object: {"final": "..."}.'}]),160);
+    const act=parseAction(out.text);
+    if(act&&act.final!==undefined){steps.push({type:'final',text:act.final,forced:true});return{steps,final:act.final,status:'done',forced:true};}
+  }
+  return{steps,final:'',status:'max_steps'};
+}
+async function runBusiness(raw){
+  const r={raw,stations:[]};
+  const cleaned=cleanText(raw);
+  r.cleaned=cleaned;
+  if(!cleaned){r.outcome={action:'Rejected',why:'The message is empty after cleaning.'};return r;}
+  const c=await classify(cleaned,'fast');
+  r.cls=c;
+  r.masked=maskText(cleaned);
+  const f=fieldsOf(cleaned);r.fields=f;
+  const ctx={};r.ctx=ctx;
+  const automatable=['Order status','Refund request','Stock question'].indexOf(c.label)>=0;
+  if(c.conf<0.7||!automatable){
+    r.agent=null;
+  }else{
+    r.agent=await agentLoop(cleaned,BIZ_TOOLS(ctx),5);
+  }
+  const checks=checkpoints(c.label,f,c.conf,1);
+  if(r.agent&&/refund(?:ed)?\b.*\b(processed|issued|completed|done)|\b(processed|issued|completed)\b.*refund|i have refunded|has been refunded/i.test(r.agent.final)&&!ctx.refunded){
+    const k=checks.find(x=>x.name==='Contradiction');k.pass=false;k.reason='the answer claims a refund that no tool performed';
+  }
+  r.checks=checks;
+  if(!r.agent)r.outcome={action:'Escalate to a person',why:c.conf<0.7?'Confidence is below the bar, so the agent did not act.':'This type is not automated in the demo.'};
+  else if(ctx.pending)r.outcome={action:'Needs approval',why:'A refund above 200 waits for a person.'};
+  else r.outcome=control(checks,1,1);
+  return r;
+}
+function lab3(){
+  let out='';
+  if(S.r3){
+    const r=S.r3;
+    const cards=[['1. Clean',['Process','slate'],r.raw!==r.cleaned?'Tidied: '+esc(JSON.stringify(r.cleaned)):'Nothing to clean.']];
+    if(r.cls){
+      cards.push(['2. Sort',['AI step','good'],'Label: <b>'+esc(r.cls.label||'(none)')+'</b>, confidence '+r.cls.conf.toFixed(2)]);
+      cards.push(['3. Protect',['Process','slate'],'Logged text: '+esc(r.masked)]);
+      cards.push(['4. Act',['AI step','good'],r.agent?(r.agent.steps.map(s=>s.type==='tool'?'tool <b>'+esc(s.tool)+'</b> '+esc(JSON.stringify(s.args))+' → '+esc(String(s.result).slice(0,140)):(s.type==='final'?'answer: '+esc(s.text):'parse error')).join('<br>')+(r.agent.forced?'<br><span class="small muted">The model ran out of steps, so the loop asked once more for a final answer.</span>':'')+(r.ctx.usedModel1?'<br><span class="chip warn">Model 1 used as a tool</span>':'')):'The agent did not act: '+esc(r.outcome.why)]);
+      cards.push(['5. Monitor',['Oversight','warn'],'<ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>']);
+    }
+    cards.push(['6. Control',['Oversight','warn'],'<b>'+esc(r.outcome.action)+'.</b> '+esc(r.outcome.why)+(r.outcome.action==='Needs approval'&&!r.approved?'<div style="margin-top:8px">'+btn('approve3','','Approve the refund','')+'</div>':'')+(r.approved?'<div class="status ok" style="margin-top:8px">Approved by a person: '+esc(r.approved)+'</div>':'')]);
+    out=cards.map(c=>'<div class="box" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>'+c[0]+'</b>'+chip(c[1][0],c[1][1]==='slate'?'':c[1][1])+'</div><div style="margin-top:6px">'+c[2]+'</div></div>').join('');
+  }
+  return '<h2>3. The business request, end to end</h2><p class="small muted">Deck slides 4 and 7. Six stations. Sort and Act are the AI core (Model 2), Monitor and Control close the loop, and Model 1 can be called as a tool.</p>'+
+    '<div class="row">'+['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '].map((q,i)=>btn('pick3',i,esc(q.trim().length>24?q.trim().slice(0,24)+'…':q.trim()),'ghost sm')).join('')+'</div>'+
+    '<textarea class="editor" id="req3" data-act="req3" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req3)+'</textarea>'+
+    '<div class="row" style="margin-top:10px">'+btn('run3','','Run the workflow','',S.busy)+btn('reset3','','Reset the orders','ghost')+'</div>'+out+
+    '<p class="small muted"><b>What to notice:</b> the large refund is not executed until a person approves. If the agent claims an action that no tool performed, the Contradiction check fails.</p>';
+}
+/* ---------- lab 4: the factory, scenario simulation ---------- */
+function baseCurve(drop){
+  const small={0.5:[0.90,0.92],0.7:[0.75,0.96],0.9:[0.50,0.99]};
+  const large={0.5:[0.95,0.95],0.7:[0.85,0.97],0.9:[0.65,0.995]};
+  const cal=S.f.cal;
+  const out=[];
+  [0.5,0.7,0.9].forEach(th=>{
+    let a=small[th][0],acc=small[th][1];
+    if(cal&&cal.curve[th]){a=cal.curve[th][0];acc=cal.curve[th][1];}
+    out.push({m:'small',th,a,acc:Math.max(0,acc-drop/100)});
+    out.push({m:'large',th,a:large[th][0],acc:large[th][1]});
+  });
+  return out;
+}
+function factoryParams(){
+  const F=S.f;
+  return{H:+F.H,cap:+F.cap,target:+F.target/100,qmax:10,cm:{small:1,large:5},ch:20,ce:100,cw:2,path:PATHS[F.path]};
+}
+function evalOption(o,t,Q,P){
+  let q=Q,cost=0,feasible=true;const notes=[];
+  for(let j=0;j<P.H;j++){
+    const V=P.path[Math.min(t+j,P.path.length-1)];
+    const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
+    q=Math.max(q+human-P.cap,0);
+    cost+=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*q;
+    if(q>P.qmax+1e-9&&notes.indexOf('queue over '+P.qmax)<0){feasible=false;notes.push('queue over '+P.qmax);}
+  }
+  if(o.acc<P.target-1e-9){feasible=false;notes.push('accuracy under '+Math.round(P.target*100)+'%');}
+  return{cost,feasible,notes};
+}
+function planFactory(){
+  const F=S.f,P=factoryParams();
+  const opts=baseCurve(+F.drop).map(o=>({...o,...evalOption(o,F.t,F.Q,P)}));
+  const feas=opts.filter(o=>o.feasible);
+  const best=feas.length?feas.reduce((a,b)=>b.cost<a.cost-1e-9?b:a):null;
+  return{opts,best,P};
+}
+async function calibrate(){
+  const res=[];
+  for(let i=0;i<CAL.length;i++){
+    S.f.calMsg='Calibrating '+(i+1)+' of '+CAL.length;draw();await sleep(0);
+    const c=await classify(CAL[i][0],'fast');
+    res.push({ok:c.letter===CAL[i][1],conf:c.conf});
+  }
+  const curve={};
+  [0.5,0.7,0.9].forEach(th=>{const auto=res.filter(r=>r.conf>=th);curve[th]=[auto.length/res.length,auto.length?auto.filter(r=>r.ok).length/auto.length:1];});
+  S.f.cal={model:LLM.modelId,n:res.length,curve,acc:res.filter(r=>r.ok).length/res.length};
+  S.f.calMsg='';
+}
+function lab4(){
+  const F=S.f,pl=planFactory(),P=pl.P,maxC=Math.max(...pl.opts.map(o=>o.cost));
+  const rows=pl.opts.map(o=>{
+    const best=pl.best&&o.m===pl.best.m&&o.th===pl.best.th;
+    const bw=Math.round(o.cost/maxC*100);
+    return '<tr style="'+(best?'background:var(--good-bg)':'')+'"><td>'+(o.feasible?'✓':'✗')+'</td><td>'+(o.m==='small'?'Small':'Large')+' model, bar '+o.th.toFixed(1)+'</td><td>'+Math.round(o.a*100)+'%</td><td>'+(o.acc*100).toFixed(1)+'%</td><td><div style="background:'+(o.feasible?(best?'#2E7D5B':'#0E6F8E'):'#B9C4C9')+';height:12px;width:'+bw+'%;min-width:4px;border-radius:3px"></div><span class="small">'+Math.round(o.cost)+'</span></td><td class="small">'+esc(o.notes.join('; ')||(best?'best feasible plan':'feasible'))+'</td></tr>';
+  }).join('');
+  const hist=F.hist.length?table(['Period','Volume','Applied','Queue after','Cost'],F.hist.map(h=>[h.t+1,h.V,h.opt,h.Q.toFixed(0),Math.round(h.cost)]),460):'<p class="small muted">Nothing applied yet.</p>';
+  return '<h2>4. The factory: MPC as scenario simulation</h2><p class="small muted">Deck slides 8 and 9. The factory chooses a configuration for the product: which model and which confidence bar. Each option is simulated over a short horizon, options that break a hard rule are dropped, and the cheapest of the rest wins.</p>'+
+    '<div class="grid2"><div><label class="range" for="fpath">Volume path</label><select id="fpath" data-act="fpath">'+[['steady','Steady 60'],['spike','Spike to 160'],['ramp','Ramp up']].map(o=>'<option value="'+o[0]+'"'+(F.path===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="fcap">People can review per period</label><select id="fcap" data-act="fcap">'+['20','30','50'].map(o=>'<option'+(F.cap===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="fH">Horizon (periods)</label><select id="fH" data-act="fH">'+['1','2','3','4'].map(o=>'<option'+(F.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="ftarget">Accuracy rule on automatic cases</label><select id="ftarget" data-act="ftarget">'+['90','95','98'].map(o=>'<option value="'+o+'"'+(F.target===o?' selected':'')+'>'+o+'%</option>').join('')+'</select></div></div>'+
+    '<label class="range" for="fdrop">Audit finding: the small model\'s accuracy drops by (points)</label><select id="fdrop" data-act="fdrop">'+['0','1','3','5'].map(o=>'<option'+(F.drop===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'+
+    '<p style="margin-top:12px">Now at period <b>'+(F.t+1)+'</b>. Volume '+P.path[Math.min(F.t,P.path.length-1)]+', queue '+F.Q.toFixed(0)+'.</p>'+
+    '<div class="scroll"><table style="min-width:640px"><thead><tr><th></th><th>Option</th><th>Automated</th><th>Accuracy</th><th>Cost over '+P.H+' period'+(P.H===1?'':'s')+'</th><th>Verdict</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    (pl.best?'<div class="status ok"><b>Best feasible plan:</b> '+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'. Apply only the first period, then re-measure.</div>':'<div class="status bad"><b>No feasible plan.</b> Every option breaks a hard rule, so the factory escalates to a person.</div>')+
+    '<div class="row" style="margin-top:10px">'+btn('apply4','','Apply the first period and advance','',!pl.best||F.t>=PATHS[F.path].length-1)+btn('reset4f','','Reset','ghost')+'</div>'+hist+
+    '<h3>Calibrate from the loaded model</h3><p class="small muted">The default numbers are assumed. This runs 12 labelled messages through the loaded model and replaces the small-model curve with what it measured. Twelve messages are far too few to trust.</p>'+
+    '<div class="row">'+btn('cal4','','Measure the loaded model','',S.busy)+'</div>'+(F.calMsg?'<div class="status warn">'+esc(F.calMsg)+'</div>':'')+
+    (F.cal?'<div class="status ok">Measured with '+esc(F.cal.model)+': overall accuracy '+Math.round(F.cal.acc*100)+'% on '+F.cal.n+' messages. The small-model rows now use this curve.</div>':'')+
+    '<p class="small muted"><b>What to notice:</b> raise the audit drop and the best plan changes with no change to the logic, as new evidence moves the numbers. Costs per request: small model 1, large model 5, human review 20, an error 100.</p>';
+}
+/* ---------- lab 5: consolidation ---------- */
+function lab5(){
+  const L=S.log,n=L.length;
+  const cnt={};L.forEach(x=>{cnt[x.decision]=(cnt[x.decision]||0)+1;});
+  const esc_=L.filter(x=>/Escalate|Needs approval|Ask for more/.test(x.decision)).length,acc=L.filter(x=>x.decision==='Accept'||x.decision==='Completed').length;
+  const avg=n?L.reduce((a,x)=>a+(x.conf||0),0)/n:0;
+  let signal;
+  if(n<3)signal='Run at least three requests in labs 2 and 3 to have something to consolidate.';
+  else if(esc_/n>0.4)signal='Many requests need a person ('+Math.round(esc_/n*100)+'%). Improve the prompt, add examples, or use a larger model.';
+  else if(acc/n>0.8)signal='Almost everything is accepted ('+Math.round(acc/n*100)+'%). Audit a sample, then consider relaxing the confidence bar slightly.';
+  else signal='Keep the thresholds and keep auditing a sample.';
+  const pl=planFactory();
+  const H=S.f.hist,large=H.filter(h=>/Large/.test(h.opt)).length;
+  let design;
+  if(!H.length)design='Apply a few periods in lab 4 to give the factory some operation history.';
+  else if(large/H.length>0.5)design='The large model was chosen in '+Math.round(large/H.length*100)+'% of periods. Make it the default in the next design.';
+  else design='The small model handled most periods. Keep it as the default and review again after more audits.';
+  const box=(cls,title,sub,body)=>'<div class="box" style="margin-bottom:10px;border-left:6px solid '+cls+'"><b>'+title+'</b><br><span class="small muted">'+sub+'</span><div style="margin-top:6px">'+body+'</div></div>';
+  return '<h2>5. Consolidate up the levels</h2><p class="small muted">Deck slide 10. Two kinds of consolidation alternate: within a level, design is the consolidated operation. Up a level, operation is the consolidated design. The rules below are simple illustrations of a proposed principle, not a tested method.</p>'+
+    box('#0E6F8E','Product operation','The lowest level: per-request decisions from labs 2 and 3',n?table(['Decision','Count'],Object.keys(cnt).map(k=>[k,cnt[k]]),300)+'<p class="small muted">Average confidence '+avg.toFixed(2)+' over '+n+' request'+(n===1?'':'s')+'.</p>':'<p class="small muted">No requests yet.</p>')+
+    '<div style="text-align:center;color:#E3A21A">↑ consolidate (within a level)</div>'+
+    box('#0A566F','Product design = consolidated product operation','Thresholds and prompts chosen from many requests','Design signal: '+esc(signal))+
+    '<div style="text-align:center;color:#2E7D5B">↑ consolidate (up a level)</div>'+
+    box('#2B4A57','Factory operation = consolidated product design','Which configuration each product gets',pl.best?'The factory\'s current best plan for this product: <b>'+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'</b>, given the design signal above.':'No feasible configuration right now.')+
+    '<div style="text-align:center;color:#E3A21A">↑ consolidate (within a level)</div>'+
+    box('#0B2B36','Factory design = consolidated factory operation','Models, harness and release gate',esc(design))+
+    '<p class="small muted"><b>What to notice:</b> each step up replaces many decisions with one. The levels are labeled as in the deck, and every rule here is an assumption you can argue with.</p>';
+}
+/* ---------- shell ---------- */
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Labs 1 and 5 need no model. Labs 2 to 4 use it.</p></div>';
+}
+function render(){
+  const tabs=[['mpc','1 MPC'],['cen','2 Centaur'],['biz','3 Request'],['fac','4 Factory'],['con','5 Consolidate']];
+  const body={mpc:lab1,cen:lab2,biz:lab3,fac:lab4,con:lab5}[S.tab]();
+  return modelBox()+'<div class="tabs">'+tabs.map(t=>tog('tab',t[0],t[1],S.tab===t[0])).join('')+'</div>'+
+    (S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn">Running on your device...</div>':'')+
+    '<div style="margin-top:12px">'+body+'</div>'+qa(QA[S.tab]);
+}
+async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;}
+const draw=app({
+  render,
+  act:{
+    tab:v=>{S.tab=v;S.err='';},
+    model:()=>{S.showModel=!S.showModel;},
+    pick2:v=>{S.req2=['I want a refund of $480 for O-1001.','Where is order O-2002?','I want a refund for the broken lamp.','Refund $900 for order O-3003.','Please change my address on O-1001 to 3 Birch Ln, Austin TX.'][+v];S.r2=null;},
+    mode2:v=>{S.mode2=v;},
+    run2:()=>guard(async()=>{
+      const r=await runCentaur(S.req2,S.mode2==='s2');S.r2=r;
+      S.log.push({lab:'centaur',decision:r.ctl.action,conf:r.passes[r.passes.length-1].conf,label:r.passes[r.passes.length-1].label});
+    }),
+    human2:v=>{if(S.r2){S.r2.human=v==='approve'?'approved':'rejected';S.log.push({lab:'centaur',decision:'Human '+S.r2.human,conf:1});}},
+    pick3:v=>{S.req3=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '][+v];S.r3=null;},
+    run3:()=>guard(async()=>{
+      const r=await runBusiness(S.req3);S.r3=r;
+      S.log.push({lab:'business',decision:r.outcome.action==='Accept'?'Accept':r.outcome.action,conf:r.cls?r.cls.conf:0,label:r.cls?r.cls.label:''});
+    }),
+    approve3:()=>{
+      const r=S.r3;if(!r||!r.ctx.pending)return;
+      const p=r.ctx.pending,o=ORDERS[p.order_id];o.refunded+=p.amount;
+      r.approved='refund of '+p.amount+' processed on '+p.order_id;r.ctx.pending=null;r.ctx.refunded=p.amount;
+      S.log.push({lab:'business',decision:'Human approved',conf:1});
+    },
+    reset3:()=>{ORDERS=JSON.parse(JSON.stringify(ORDERS0));S.r3=null;},
+    apply4:()=>{
+      const F=S.f,pl=planFactory();if(!pl.best)return;
+      const P=pl.P,V=P.path[Math.min(F.t,P.path.length-1)],o=pl.best;
+      const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
+      F.Q=Math.max(F.Q+human-P.cap,0);
+      const cost=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*F.Q;
+      F.hist.push({t:F.t,V,opt:(o.m==='small'?'Small':'Large')+' @ '+o.th.toFixed(1),Q:F.Q,cost});
+      F.t+=1;
+    },
+    reset4f:()=>{S.f.t=0;S.f.Q=0;S.f.hist=[];},
+    cal4:()=>guard(calibrate),
+    ...LLM.act
+  },
+  change:{
+    scn:t=>{S.inv.scn=t.value;},Lt:t=>{S.inv.L=t.value;},Hz:t=>{S.inv.H=t.value;},I0:t=>{S.inv.I0=t.value;},view:t=>{S.inv.view=t.value;},
+    fpath:t=>{S.f.path=t.value;S.f.t=0;S.f.Q=0;S.f.hist=[];},fcap:t=>{S.f.cap=t.value;},fH:t=>{S.f.H=t.value;},ftarget:t=>{S.f.target=t.value;},fdrop:t=>{S.f.drop=t.value;},
+    ...LLM.change
+  },
+  input:{req2:t=>{S.req2=t.value;},req3:t=>{S.req3=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>

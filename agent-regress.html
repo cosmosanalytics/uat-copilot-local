@@ -338,8 +338,42 @@ const S={fw:'strands',tab:'tower',depth:2,goal:DEFAULT_GOAL,seed:seedFor(2,DEFAU
 /* ---------- model helpers ---------- */
 function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
 async function chat(messages,max){need();const t0=performance.now();const r=await LLM.engine.chat.completions.create({messages,temperature:0,max_tokens:max||200});return{text:String((r.choices[0].message&&r.choices[0].message.content)||'').trim(),ms:Math.round(performance.now()-t0)};}
-function extractJson(t){const m=String(t).match(/\{[\s\S]*\}/);if(!m)return null;try{return JSON.parse(m[0]);}catch(e){return null;}}
-function parseAction(t){const o=extractJson(t);if(!o)return null;if(o.final!==undefined)return{final:String(o.final)};if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};return null;}
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function extractJson(t,pred){
+  let first=null;
+  for(const c of jsonCandidates(t)){
+    let o;try{o=JSON.parse(c);}catch(e){continue;}
+    if(!o||typeof o!=='object')continue;
+    if(!pred||pred(o))return o;
+    if(first===null)first=o;
+  }
+  if(first!==null&&!pred)return first;
+  const m=String(t).match(/\{[\s\S]*\}/);
+  if(m){try{const o=JSON.parse(m[0]);if(!pred||pred(o))return o;}catch(e){}}
+  return null;
+}
+function asText(v){return typeof v==='string'?v:(v===null||v===undefined?'':JSON.stringify(v));}
+function parseAction(t){
+  const o=extractJson(t,x=>x.final!==undefined||x.tool);
+  if(!o)return null;
+  if(o.final!==undefined)return{final:asText(o.final)};
+  if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};
+  return null;
+}
 const stats={calls:0,ms:0};
 async function llm(messages,max){const r=await chat(messages,max);stats.calls++;stats.ms+=r.ms;return r;}
 /* ---------- write one spec: the heart of the regress ---------- */
@@ -350,10 +384,11 @@ async function writeSpec(cur,k,below,mode){
   else if(below===0)ask='You are Level '+k+'. Write the JSON spec for the task agent one level below you (Level 0). Reply with ONLY one JSON object: {"name":"...","system_prompt":"...","tools":["tool names from the list"]}. No other text.\nTools that exist:\n'+toolList();
   else ask='You are Level '+k+'. Write the JSON spec for the '+levelName(below)+' one level below you (Level '+below+'). It writes specs for Level '+(below-1)+'. Reply with ONLY one JSON object: {"name":"...","system_prompt":"..."}. The system_prompt you write is that builder\'s instructions. No other text.';
   const msgs=[{role:'system',content:cur.system_prompt},{role:'user',content:ask}];
-  let out=await llm(msgs,360);let o=extractJson(out.text),ms=out.ms;
+  const isSpec=x=>typeof x.system_prompt==='string';
+  let out=await llm(msgs,360);let o=extractJson(out.text,isSpec),ms=out.ms;
   if(!o||typeof o.system_prompt!=='string'||o.system_prompt.trim().length<20){
     out=await llm(msgs.concat([{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only, with a system_prompt string.'}]),360);
-    ms+=out.ms;o=extractJson(out.text);
+    ms+=out.ms;o=extractJson(out.text,isSpec);
   }
   if(!o||typeof o.system_prompt!=='string'||o.system_prompt.trim().length<20)return{ok:false,raw:out.text,ms,err:'no valid spec with a system_prompt'};
   return{ok:true,ms,spec:{name:String(o.name||('Level '+below)),system_prompt:o.system_prompt.trim(),tools:Array.isArray(o.tools)?o.tools.map(String):null}};
@@ -362,20 +397,32 @@ async function writeSpec(cur,k,below,mode){
 async function agentLoop(system,question,tools,max){
   const sys=system+'\nYou can call tools. Tools:\n'+(tools.length?tools.map(t=>'- '+t.name+'('+Object.keys(t.params).join(', ')+'): '+t.desc).join('\n'):'(none)')+'\nReply with ONLY one JSON object.\nTo call a tool: {"tool":"name","args":{...}}\nTo answer the user: {"final":"your answer"}\nAfter a tool result, answer with {"final": ...}.';
   const msgs=[{role:'user',content:question}],steps=[];
+  let lastKey=null,lastRes=null,lastRaw='';
   for(let c=1;c<=(max||4);c++){
-    let out=await llm([{role:'system',content:sys}].concat(msgs),140);
+    let out=await llm([{role:'system',content:sys}].concat(msgs),160);
     let act=parseAction(out.text);
-    if(!act){out=await llm([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),140);act=parseAction(out.text);}
-    if(!act){steps.push({type:'parse_error'});return{steps,final:'',status:'parse_error'};}
-    if(act.final!==undefined){steps.push({type:'final',text:act.final});return{steps,final:act.final,status:'done'};}
+    if(!act){out=await llm([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),160);act=parseAction(out.text);}
+    lastRaw=out.text;
+    if(!act){steps.push({type:'parse_error',raw:out.text});return{steps,final:'',status:'parse_error',raw:out.text};}
+    if(act.final!==undefined){steps.push({type:'final',text:act.final});return{steps,final:act.final,status:'done',raw:out.text};}
     const spec=tools.find(t=>t.name===act.tool);
+    const key=act.tool+JSON.stringify(act.args),repeat=key===lastKey&&lastRes;
     let result,ok=true;
-    if(!spec){result='Error: no tool named '+act.tool+' is available to this agent';ok=false;}
+    if(repeat){result=lastRes.result;ok=lastRes.ok;}
+    else if(!spec){result='Error: no tool named '+act.tool+' is available to this agent';ok=false;}
     else{try{result=String(spec.run(act.args));}catch(e){result='Error: '+e.message;ok=false;}}
-    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result});
-    steps.push({type:'tool',tool:act.tool,args:act.args,result,ok});
+    lastKey=key;lastRes={result,ok};
+    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result+(repeat?'\nYou already called this tool with the same arguments. Answer the user now with {"final": ...}.':'')});
+    steps.push({type:'tool',tool:act.tool,args:act.args,result,ok,repeat});
   }
-  return{steps,final:'',status:'max_steps'};
+  // out of steps: one forced attempt to answer from what the tools returned
+  if(steps.some(s=>s.type==='tool'&&s.ok)){
+    const out=await llm([{role:'system',content:sys}].concat(msgs,[{role:'user',content:'You are out of steps. Using the tool results above, answer the user now. Reply with ONE JSON object: {"final": "..."}.'}]),160);
+    const act=parseAction(out.text);
+    if(act&&act.final!==undefined){steps.push({type:'final',text:act.final,forced:true});return{steps,final:act.final,status:'done (forced)',raw:out.text};}
+    lastRaw=out.text;
+  }
+  return{steps,final:'',status:'max_steps',raw:lastRaw};
 }
 async function runTests(spec){
   const tools=(Array.isArray(spec.tools)?spec.tools:[]).map(n=>TOOLS[n]).filter(Boolean);
@@ -384,9 +431,10 @@ async function runTests(spec){
     S.prog='Testing the Level 0 agent: question '+(i+1)+' of '+TESTS.length;draw();await sleep(0);
     const r=await agentLoop(spec.system_prompt,TESTS[i].q,tools,4);
     const low=r.final.toLowerCase();
-    res.push({q:TESTS[i].q,final:r.final,status:r.status,ok:TESTS[i].want.every(w=>low.indexOf(w)>=0),tools:r.steps.filter(s=>s.type==='tool').map(s=>s.tool+(s.ok?'':' (refused)'))});
+    const missing=TESTS[i].want.filter(w=>low.indexOf(w)<0);
+    res.push({q:TESTS[i].q,want:TESTS[i].want,final:r.final,status:r.status,raw:r.raw||'',missing,ok:missing.length===0,steps:r.steps,tools:r.steps.filter(s=>s.type==='tool').map(s=>s.tool+(s.ok?'':' (refused)'))});
   }
-  return{tools:tools.map(t=>t.name),res,score:res.filter(r=>r.ok).length};
+  return{model:LLM.modelId,tools:tools.map(t=>t.name),res,score:res.filter(r=>r.ok).length};
 }
 /* ---------- building the tower ---------- */
 async function buildTower(){
@@ -458,7 +506,13 @@ function towerView(){
 }
 function testView(label,t){
   if(!t)return '';
-  return '<h3>'+esc(label)+': '+t.score+' of '+TESTS.length+' correct</h3><p class="small muted">Tools it was given: '+esc(t.tools.join(', ')||'none')+'</p>'+table(['Question','Answer','Result'],t.res.map(r=>[r.q,r.final||('('+r.status+')'),(r.ok?'✓ ':'✗ ')+(r.tools.length?'used '+r.tools.join(', '):'no tool')]),520);
+  const bad=t.res.filter(r=>!r.ok);
+  return '<h3>'+esc(label)+': '+t.score+' of '+TESTS.length+' correct</h3><p class="small muted">Model: '+esc(t.model)+'. Tools it was given: '+esc(t.tools.join(', ')||'none')+'</p>'+
+    table(['Question','Must mention','Answer','Result'],t.res.map(r=>[r.q,r.want.join(' and '),r.final||('('+r.status+')'),(r.ok?'✓ ':'✗ ')+(r.tools.length?'used '+r.tools.join(', '):'no tool')+(/forced/.test(r.status)?' (answer forced after the steps ran out)':'')]),620)+
+    (bad.length?'<h3>Why it missed</h3>'+bad.map(r=>'<div class="box" style="margin-bottom:8px"><b>'+esc(r.q)+'</b><p class="small" style="margin:6px 0 0">Ended with: <b>'+esc(r.status)+'</b>. Missing: '+esc(r.missing.join(', ')||'nothing')+'.'+
+      '</p><p class="small muted" style="margin:6px 0 0">Steps: '+esc(r.steps.map(s=>s.type==='tool'?('called '+s.tool+' '+JSON.stringify(s.args)+' → '+String(s.result).slice(0,60)+(s.repeat?' (repeat)':'')):(s.type==='final'?('answered: '+s.text.slice(0,80)+(s.forced?' (forced)':'')):'could not parse')).join('  |  ')||'none')+'</p>'+
+      (r.raw?'<p class="small muted" style="margin:6px 0 0">Last model output: '+esc(String(r.raw).slice(0,200))+'</p>':'')+'</div>').join('')+
+      '<p class="small muted">A score below 3 on a hand-written agent usually points at the model, not the tower. Small models often skip the tool, repeat it, or answer in an unexpected shape.</p>':'');
 }
 function tabTower(){
   const d=S.depth;
