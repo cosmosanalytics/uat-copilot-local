@@ -495,9 +495,11 @@ function app(cfg){
 
 /* Shared WebLLM loader for apps that use a real model. */
 const MODELS=[
-  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, fastest)'],
-  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B'],
-  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (largest, usually best)']
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
 ];
 const LLM={
   state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
@@ -513,9 +515,9 @@ const LLM={
     if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
     const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
     let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
-      '<p class="small muted" style="margin-top:8px">The first load downloads roughly 0.4 to 1 GB and caches it in your browser. Model names can change between WebLLM releases, so if one fails, try another.</p>';
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
     if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
-    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.</div>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
     else{
       if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
       h+=btn('loadmodel','','Load model');
@@ -530,17 +532,32 @@ const LLM={
     setStatus(this.chip());
   },
   async load(){
-    this.state='loading';this.pct=0;this.text='Starting';
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
     if(this.draw)this.draw();
-    try{
-      const w=await import('https://esm.run/@mlc-ai/web-llm');
-      this.engine=await w.CreateMLCEngine(this.modelId,{initProgressCallback:p=>{
-        this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
-      }});
-      this.state='ready';
-    }catch(err){
-      this.engine=null;this.state='error';this.text=String((err&&err.message)||err);
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
     }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
     if(this.draw)this.draw();
     this.paint();
   },
@@ -697,7 +714,7 @@ async function classify(text,prompt,id){
     if(!pred)return{pred:null,conf:0};
     const arr=(ch.logprobs&&ch.logprobs.content)||[];
     const lp=arr.find(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter)||arr[0];
-    return{pred,conf:(lp&&typeof lp.logprob==='number')?Math.exp(lp.logprob):1};
+    return{pred,conf:(lp&&typeof lp.logprob==='number')?Math.exp(lp.logprob):0};
   }
   if(id&&P[id])return{pred:P[id][prompt][0],conf:P[id][prompt][1]};
   const h=heuristic(text);
@@ -719,11 +736,15 @@ async function planStep(msg,obs){
   if(!usingReal())return rulesPlan(msg,obs);
   const tools=Object.keys(TOOLS).map(k=>'- '+k+'('+TOOLS[k].args+'): '+TOOLS[k].desc).join('\n');
   const hist=obs.map(o=>'Tool '+o.tool+' returned: '+JSON.stringify(o.ok?o.data:o.detail)).join('\n');
-  const sys='You are an online store support agent. Decide the next step. Tools:\n'+tools+'\nReply with ONLY one JSON object. To call a tool: {"thought":"...","tool":"name","args":{...}}. To finish: {"final":"answer for the user"}.';
-  for(let a=0;a<2;a++){
-    const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:'Request: '+msg+(hist?'\nSo far:\n'+hist:'')}],temperature:0,max_tokens:140});
+  const sys='You are an online store support agent. You act ONLY by calling tools. Tools:\n'+tools+'\nReply with ONLY one JSON object.\nTo call a tool: {"thought":"short reason","tool":"tool_name","args":{...}}\nTo finish: {"final":"answer for the user"}\nRules: If the request mentions an order id (like O-1001) or a ticket number, you MUST call a tool before finishing. Never say an action is done unless a tool result shows it. Finish only after you have the tool results you need.\nExamples:\nRequest: What is the status of ticket 5?\n{"thought":"look up the ticket","tool":"get_ticket_status","args":{"ticket_id":"5"}}\nRequest: Refund $20 for O-2002.\n{"thought":"check the order first","tool":"lookup_order","args":{"order_id":"O-2002"}}\nAfter the lookup succeeds:\n{"thought":"request the refund","tool":"request_refund","args":{"order_id":"O-2002","amount":"20"}}';
+  const needsTool=/O-\d{4}|ticket\s*#?\s*\d+/i.test(msg);
+  let note='';
+  for(let a=0;a<3;a++){
+    const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:'Request: '+msg+(hist?'\nSo far:\n'+hist:'')+note}],temperature:0,max_tokens:140});
     const x=parseModelAction(r.choices[0].message.content);
+    if(x&&x.final&&needsTool&&obs.length===0){note='\nReminder: you have not called any tool yet. Call one now.';continue;}
     if(x)return x;
+    note='\nReminder: reply with one valid JSON object only.';
   }
   return{final:'I could not produce a valid action, so I stopped.'};
 }
