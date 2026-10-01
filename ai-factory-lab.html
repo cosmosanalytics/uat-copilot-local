@@ -149,18 +149,23 @@ details p{margin:8px 0 0;color:var(--muted);}
 a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
 a.card:hover{border-color:var(--accent);}
 a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
 </style>
 </head>
 <body>
 <div class="shell narrow">
-  <div class="app-top"><span class="small muted">The AI Factory ideas, hands on (a real on-device model, simulated factory)</span></div>
+  <div class="app-top"><span class="small muted">A hierarchy of four agents (a real on-device model, simulated factory)</span></div>
   <header>
     <h1>AI Factory lab</h1>
-    <p class="lede">Try the AI Factory ideas hands on. Plan with MPC on a deterministic model, push a request through the centaur harness with its four checkpoints, run the full business request workflow, simulate factory scenarios, and consolidate decisions up the levels.</p>
+    <p class="lede">The AI Factory as a hierarchy of four agents. Decisions consolidate up, limits flow down, and the top is written by a human.</p>
+    <ol class="lede-items"><li><b>Product operator</b>: Handles each request, from clean to control, with a model and tools.</li><li><b>Product designer</b>: Consolidates the operator&#x27;s decisions into a design signal and a calibration curve.</li><li><b>Factory operator</b>: Uses MPC scenario simulation to choose the product&#x27;s configuration.</li><li><b>Factory designer</b>: Consolidates the factory operator&#x27;s decisions into limits and defaults.</li></ol>
     <div id="status" class="row" aria-live="polite"></div>
   </header>
   <main id="main" class="panel" aria-live="polite"></main>
-  <p class="foot">Honest label: the inventory MPC, the scenario simulation and the consolidation are real calculations in JavaScript on made-up numbers. The language model is a small open model running locally through WebLLM and WebGPU, and its confidence comes from token probabilities. The four checkpoints, the Control rules and the consolidation rules are simplified illustrations of the AI Factory ideas, not a formal implementation. Small models make mistakes, and the checks are there to catch them. Nothing leaves your device.</p>
+  <p class="foot">Honest label: the inventory MPC, the scenario simulation and the consolidation are real calculations in JavaScript on made-up numbers. The language model is a small open model running locally through WebLLM and WebGPU, and its confidence comes from token probabilities. The four agents are a framing: each one observes, decides, acts and reports, and only Level 1 uses the model to act. The four checkpoints, the Control rules, the design signals and the proposals are simplified illustrations of the AI Factory ideas, not a formal implementation. Small models make mistakes, and the checks are there to catch them. Nothing leaves your device.</p>
 </div>
 <script>
 "use strict";
@@ -309,7 +314,6 @@ const LLM={
 };
 
 PYSTATE.needsPy=false;
-/* ---------- data ---------- */
 const ORDERS0={
   'O-1001':{item:'Standing desk',paid:480,status:'delivered',refunded:0},
   'O-2002':{item:'Table lamp',paid:60,status:'shipped',refunded:0},
@@ -326,13 +330,7 @@ const CAL=[
  ['Can you update where my parcels get delivered?','D'],['I would like a refund for the damaged screen.','B'],
  ['Why was I charged twice this month? This is unacceptable.','C'],['Has my order shipped yet?','A']
 ];
-const QA={
- mpc:[['What is MPC in one sentence?','Simulate several courses of action over a short horizon, pick the best, apply only the first step, then re-measure and repeat.'],['Why does a horizon shorter than the lead time fail?','An order placed today has not arrived inside the horizon, so the simulation cannot see its effect and the plan keeps ordering more.'],['What does MPC need first?','A model to simulate with. Here the model is the inventory equations.']],
- cen:[['Why are Monitor and Control separate?','Monitor judges whether an output is trustworthy and does not act. Control decides what happens next. Splitting them stops a system from grading its own work and acting on it in one step.'],['Why does confidence decay with extra passes?','Each extra reasoning pass can add its own errors, so trust is discounted as steps stack up. The 0.9 factor is illustrative.'],['What cannot the model check by itself?','Coverage gaps and conflicts with verified data. Those checks live outside the model.']],
- biz:[['Where does Model 1 sit?','Inside the business request model as a tool the agent can call, like a calculator for planning.'],['Why is there an approval step?','Refunds above a limit are expensive to undo, so a person decides.'],['What does the Contradiction check catch here?','An answer that claims an action no tool performed.']],
- fac:[['What is simulated?','Each option over a short horizon: cost, queue and accuracy. Options that break a hard rule are dropped, and the cheapest of the rest wins.'],['What does the audit slider do?','It lowers the estimated accuracy of the small model, like new evidence, and the best plan changes with no change to the logic.'],['What is the weakness of the measured curve?','It comes from 12 messages, which is far too few to trust.']],
- con:[['What is consolidated?','Many decisions at one step become one decision at the next step up.'],['Is this tested?','No. It is a proposed principle, shown here with simple illustrative rules.']]
-};
+
 /* ---------- MPC core: the deterministic model ---------- */
 const MULT=[0.8,1,1.3],WGT=[0.25,0.5,0.25];
 function simBase(I,pipe,S,F,H,h,s){
@@ -410,6 +408,7 @@ function lineSvg(series,opt){
   return svg+'</svg>';
 }
 function legend(items){return '<div class="row small" style="gap:14px">'+items.map(i=>'<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+i[1]+';margin-right:4px"></span>'+esc(i[0])+'</span>').join('')+'</div>';}
+
 /* ---------- model helpers ---------- */
 function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
 async function chat(messages,max,lp){
@@ -448,8 +447,26 @@ function fieldsOf(text){
   const it=(text.match(/\b(lamps?|desks?|jackets?)\b/i)||[])[1]||null;
   return{order_id:oid?oid.toUpperCase():null,amount:am?Number(am[1].replace(/,/g,'')):null,address:addr,item:it?it.toLowerCase().replace(/s$/,''):null};
 }
+
+
+const QA={
+ 1:[['What does the product operator do?','It handles one request at a time: clean, sort with the model, protect private data, act with tools, then Monitor checks the plan and the answer and Control decides what happens next.'],['Where does the confidence bar come from?','From above. Level 3 assigns it when you apply a plan, and Monitor uses it in the Confidence checkpoint.'],['Why is a refund above 200 not just executed?','High stakes always need a person. The tool refuses to run until someone approves.']],
+ 2:[['What does the product designer consolidate?','Level 1 decisions: how many were accepted, escalated or retried, and how confident the model was. It also measures a calibration curve.'],['Why calibrate?','Level 3 needs to know how many requests each confidence bar would automate and how accurate they would be. Twelve messages is far too few to trust, so treat the curve as a demo.']],
+ 3:[['What does the factory operator simulate?','Each option, a model class and a confidence bar, over a short horizon. Options that break a hard rule are dropped, and the cheapest of the rest wins.'],['What happens when you apply a plan?','Only the first period is applied, the product is reconfigured, and the next period is planned again with fresh numbers.'],['What does the audit evidence do?','It lowers the small model\'s estimated accuracy, and the best plan changes with no change to the logic.']],
+ 4:[['Who sets the limits?','At the top of any hierarchy, a human. Level 4 proposes changes from the history of Level 3, and you adopt or ignore them.'],['Why does a limit matter to Level 3?','Level 3 treats the accuracy rule, reviewer capacity and queue size as hard rules. Change one and the best plan can change.']]
+};
+const PATHS={steady:[60,60,60,60,60,60,60,60,60,60],spike:[60,60,160,160,60,60,60,60,60,60],ramp:[40,60,80,100,120,140,140,140,140,140]};
+function classOf(id){return /(3B|1\.5B)/.test(String(id))?'large':'small';}
+/* ---------- state ---------- */
+const S={lvl:1,sub1:'run',busy:false,err:'',showModel:false,
+  req:'I want a refund of $45 for O-3003.',sys2:false,r1:null,log:[],
+  cfg:{theta:0.7,cls:'large',fromPeriod:null},
+  inv:{scn:'drop',L:'1',H:'3',I0:'60',view:'0'},
+  curves:{},l2msg:'',memo:'',
+  f:{t:0,Q:0,path:'spike',H:'3',drop:'0',hist:[]},
+  lim:{target:95,cap:30,qmax:10},defCls:null};
 /* ---------- Monitor (four checkpoints) and Control ---------- */
-function checkpoints(label,f,conf,passes){
+function checkpoints(label,f,conf,passes,theta){
   const miss=(REQUIRE[label]||[]).filter(k=>!f[k]);
   const c1={name:'Coverage',pass:!miss.length,reason:miss.length?'missing '+miss.join(', '):'everything needed is present'};
   const con=[];
@@ -459,7 +476,7 @@ function checkpoints(label,f,conf,passes){
   if(label==='Address change'&&o&&o.status==='delivered')con.push('order '+f.order_id+' is already delivered');
   if(label==='Stock question'&&f.item&&!ITEMS[f.item])con.push('no planning model for '+f.item);
   const c2={name:'Contradiction',pass:!con.length,reason:con.length?con.join('; '):'consistent with verified data'};
-  const c3={name:'Confidence',pass:conf>=0.7,reason:'confidence '+conf.toFixed(2)+(conf>=0.7?' meets':' is below')+' the 0.70 bar'};
+  const c3={name:'Confidence',pass:conf>=theta,reason:'confidence '+conf.toFixed(2)+(conf>=theta?' meets':' is below')+' the '+theta.toFixed(2)+' bar set from above'};
   const eff=conf*Math.pow(0.9,passes-1);
   const stakes=(label==='Refund request'&&f.amount>200)?'high':((label==='Refund request'||label==='Address change')?'medium':'low');
   const bar={low:0.6,medium:0.8,high:2}[stakes];
@@ -473,25 +490,130 @@ function control(checks,passes,maxPasses){
   if(!g('Coverage').pass)return{action:'Ask for more information',why:'Something needed is missing.'};
   if(!g('Risk gate').pass&&g('Risk gate').stakes==='high')return{action:'Escalate to a person',why:'High stakes always need a person.'};
   if(passes<maxPasses)return{action:'Retry (System 2)',why:'Confidence is too low. Try a deeper pass.'};
-  return{action:'Escalate to a person',why:'Still not confident after '+passes+' pass'+(passes>1?'es':'')+'.'};
+  return{action:'Escalate to a person',why:'Not confident enough after '+passes+' pass'+(passes>1?'es':'')+'.'};
 }
-/* ---------- state ---------- */
-const S={tab:'mpc',busy:false,err:'',showModel:false,
-  inv:{scn:'drop',L:'1',H:'3',I0:'60',view:'0'},
-  req2:'I want a refund of $480 for O-1001.',mode2:'s1',r2:null,
-  req3:'I want a refund of $45 for O-3003.',r3:null,
-  f:{t:0,Q:0,path:'spike',cap:'30',target:'95',drop:'0',H:'3',hist:[],cal:null,calMsg:''},
-  log:[]};
-const PATHS={steady:[60,60,60,60,60,60,60,60,60,60],spike:[60,60,160,160,60,60,60,60,60,60],ramp:[40,60,80,100,120,140,140,140,140,140]};
-/* ---------- lab 1: MPC ---------- */
-function lab1(){
+/* ---------- Level 1: the product operator ---------- */
+async function runRequest(raw,sys2){
+  const theta=S.cfg.theta;
+  const r={raw,theta,passes:[]};
+  r.cleaned=cleanText(raw);
+  if(!r.cleaned){r.outcome={action:'Rejected',why:'The message is empty after cleaning.'};return r;}
+  let c=await classify(r.cleaned,'fast');r.passes.push(c);
+  const f=fieldsOf(r.cleaned);r.fields=f;
+  if(c.conf<theta&&sys2)c=await classify(r.cleaned,'think','confidence '+c.conf.toFixed(2)+' is below the bar of '+theta.toFixed(2)),r.passes.push(c);
+  r.cls=c;r.masked=maskText(r.cleaned);
+  const passes=r.passes.length;
+  const ctx={};r.ctx=ctx;
+  const checks=checkpoints(c.label,f,c.conf,passes,theta);
+  const failing=checks.filter(x=>!x.pass);
+  const onlyHigh=failing.length===1&&failing[0].name==='Risk gate'&&failing[0].stakes==='high';
+  const automatable=['Order status','Refund request','Stock question'].indexOf(c.label)>=0;
+  r.agent=null;
+  if(automatable&&(failing.length===0||onlyHigh))r.agent=await agentLoop(r.cleaned,BIZ_TOOLS(ctx),5);
+  if(r.agent&&/refund(?:ed)?\b.*\b(processed|issued|completed|done)|\b(processed|issued|completed)\b.*refund|i have refunded|has been refunded/i.test(r.agent.final)&&!ctx.refunded&&!ctx.pending){
+    const k=checks.find(x=>x.name==='Contradiction');k.pass=false;k.reason='the answer claims a refund that no tool performed';
+  }
+  r.checks=checks;
+  const stillFailing=checks.filter(x=>!x.pass);
+  if(ctx.pending)r.outcome={action:'Needs approval',why:'A refund above 200 waits for a person.'};
+  else if(!stillFailing.length)r.outcome=r.agent?{action:'Accept',why:'All four checkpoints passed.'}:{action:'Escalate to a person',why:'This type of request is not automated in the demo.'};
+  else r.outcome=control(checks,passes,passes);
+  return r;
+}
+function logOutcome(r){
+  S.log.push({decision:r.outcome.action,conf:r.cls?r.cls.conf:0,label:r.cls?r.cls.label:'',passes:r.passes.length,theta:r.theta,cls:S.cfg.cls});
+}
+/* ---------- Level 2: the product designer ---------- */
+function l2Stats(){
+  const L=S.log.filter(x=>!/^Human/.test(x.decision)),H=S.log.filter(x=>/^Human/.test(x.decision));
+  const n=L.length,cnt={};
+  L.forEach(x=>{cnt[x.decision]=(cnt[x.decision]||0)+1;});
+  return{n,cnt,accept:L.filter(x=>x.decision==='Accept').length,esc:L.filter(x=>/Escalate|Needs approval|Ask for more/.test(x.decision)).length,
+    retry:L.filter(x=>x.passes>1).length,avg:n?L.reduce((a,x)=>a+x.conf,0)/n:0,
+    hApprove:H.filter(x=>/approved/.test(x.decision)).length,hReject:H.filter(x=>/rejected/.test(x.decision)).length,
+    share:th=>n?L.filter(x=>x.conf>=th).length/n:0};
+}
+function designSignal(st){
+  if(st.n<3)return 'Run at least three requests at Level 1 so there is something to consolidate.';
+  if(st.hReject>st.hApprove)return 'Humans reject more than they approve. The prompt or the bar is wrong.';
+  if(st.esc/st.n>0.4)return 'Many requests ('+Math.round(st.esc/st.n*100)+'%) need a person. Improve the prompt, add examples, or ask Level 3 for a larger model.';
+  if(st.accept/st.n>0.8)return 'Almost everything is accepted ('+Math.round(st.accept/st.n*100)+'%). Audit a sample before relaxing the bar.';
+  return 'Keep the design and keep auditing a sample.';
+}
+function shortSignal(st){return st.n<3?'needs more requests':(st.hReject>st.hApprove?'humans reject often':(st.esc/st.n>0.4?'too many escalations':(st.accept/st.n>0.8?'almost all accepted':'steady')));}
+async function calibrate(){
+  const cls=classOf(LLM.modelId),res=[];
+  for(let i=0;i<CAL.length;i++){
+    S.l2msg='Calibrating '+(i+1)+' of '+CAL.length;draw();await sleep(0);
+    const c=await classify(CAL[i][0],'fast');
+    res.push({ok:c.letter===CAL[i][1],conf:c.conf});
+  }
+  const curve={};
+  [0.5,0.7,0.9].forEach(th=>{const auto=res.filter(r=>r.conf>=th);curve[th]=[auto.length/res.length,auto.length?auto.filter(r=>r.ok).length/auto.length:1];});
+  S.curves[cls]={model:LLM.modelId,n:res.length,curve,acc:res.filter(r=>r.ok).length/res.length};
+  S.l2msg='';
+}
+async function writeMemo(){
+  const st=l2Stats();
+  const txt='Requests handled: '+st.n+'. Accepted: '+st.accept+'. Escalated or needing approval: '+st.esc+'. Retried with a deeper pass: '+st.retry+'. Average confidence: '+st.avg.toFixed(2)+'. Human reviews: '+st.hApprove+' approved, '+st.hReject+' rejected. Current confidence bar: '+S.cfg.theta.toFixed(2)+'.';
+  const out=await chat([{role:'system',content:'You are a product designer agent for an online store support workflow. Be concrete and short.'},{role:'user',content:'Here are consolidated statistics from the product operator:\n'+txt+'\nWrite three short bullet points recommending changes to the product design (prompt, tools or confidence bar).'}],170);
+  S.memo=out.text;
+}
+/* ---------- Level 3: the factory operator ---------- */
+const ASSUMED={small:{0.5:[0.90,0.92],0.7:[0.75,0.96],0.9:[0.50,0.99]},large:{0.5:[0.95,0.95],0.7:[0.85,0.97],0.9:[0.65,0.995]}};
+function baseCurve(drop){
+  const out=[];
+  ['small','large'].forEach(m=>{[0.5,0.7,0.9].forEach(th=>{
+    let a=ASSUMED[m][th][0],acc=ASSUMED[m][th][1],src='assumed';
+    const cal=S.curves[m];
+    if(cal&&cal.curve[th]){a=cal.curve[th][0];acc=cal.curve[th][1];src='measured';}
+    out.push({m,th,a,acc:Math.max(0,acc-(m==='small'?drop/100:0)),src});
+  });});
+  return out;
+}
+function factoryParams(){return{H:+S.f.H,cap:S.lim.cap,target:S.lim.target/100,qmax:S.lim.qmax,cm:{small:1,large:5},ch:20,ce:100,cw:2,path:PATHS[S.f.path]};}
+function evalOption(o,t,Q,P){
+  let q=Q,cost=0,feasible=true;const notes=[];
+  for(let j=0;j<P.H;j++){
+    const V=P.path[Math.min(t+j,P.path.length-1)];
+    const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
+    q=Math.max(q+human-P.cap,0);
+    cost+=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*q;
+    if(q>P.qmax+1e-9&&notes.indexOf('queue over '+P.qmax)<0){feasible=false;notes.push('queue over '+P.qmax);}
+  }
+  if(o.acc<P.target-1e-9){feasible=false;notes.push('accuracy under '+Math.round(P.target*100)+'%');}
+  return{cost,feasible,notes};
+}
+function planFactory(){
+  const F=S.f,P=factoryParams();
+  const opts=baseCurve(+F.drop).map(o=>({...o,...evalOption(o,F.t,F.Q,P)}));
+  const feas=opts.filter(o=>o.feasible);
+  const best=feas.length?feas.reduce((a,b)=>b.cost<a.cost-1e-9?b:a):null;
+  return{opts,best,P};
+}
+/* ---------- Level 4: the factory designer ---------- */
+function l4Stats(){
+  const H=S.f.hist;
+  return{n:H.length,large:H.filter(h=>/^Large/.test(h.opt)).length,small:H.filter(h=>/^Small/.test(h.opt)).length,people:H.filter(h=>/All to people/.test(h.opt)).length,maxQ:Math.max(0,...H.map(h=>h.Q)),cost:H.reduce((a,h)=>a+h.cost,0)};
+}
+function l4Proposals(){
+  const st=l4Stats(),P=[];
+  if(st.n<2)return[{id:'none',text:'Apply at least two periods at Level 3 so there is something to consolidate.'}];
+  if(st.people>0||st.maxQ>=S.lim.qmax)P.push({id:'cap',text:'Some periods handed everything to people or filled the queue. Raise reviewer capacity to '+(S.lim.cap+10)+' per period.'});
+  if(st.large/st.n>0.5)P.push({id:'defLarge',text:'The large model was chosen in '+Math.round(st.large/st.n*100)+'% of periods. Make it the default model class.'});
+  else if(st.small/st.n>0.5)P.push({id:'defSmall',text:'The small model handled most periods. Keep it as the default model class.'});
+  if(!P.length)P.push({id:'none',text:'Nothing to change. Keep the limits and keep watching.'});
+  return P;
+}
+
+function invPanel(){
   const p={scn:S.inv.scn,L:+S.inv.L,H:+S.inv.H,I0:+S.inv.I0};
   const r=runInv(p),v=+S.inv.view,pl=r.mpc.plans[v];
   const warn=p.H<=p.L?'<div class="status warn">The horizon ('+p.H+') is not longer than the lead time ('+p.L+'). An order placed now has not arrived inside the horizon, so the simulation cannot see its effect. Lengthen the horizon.</div>':'';
   const ch=lineSvg([{name:'Demand',color:'#8A98A0',values:r.D,dash:true},{name:'MPC on hand',color:'#0E6F8E',values:r.mpc.I},{name:'Rule on hand',color:'#E3A21A',values:r.rule.I}],{label:'On-hand inventory by period',xlabels:r.D.map((_,i)=>i%2===0?String(i+1):'')});
   const cv=lineSvg([{name:'Expected cost',color:'#2B4A57',values:pl.curve.map(c=>c.cost)}],{label:'Expected cost against order-up-to level',mark:pl.curve.findIndex(c=>c.S===pl.S),xlabels:pl.curve.map(c=>c.S%100===0?String(c.S):'')});
   const rows=r.D.map((d,t)=>[t+1,d,r.mpc.x[t],r.mpc.I[t],r.rule.x[t],r.rule.I[t]]);
-  return '<h2>1. MPC on a deterministic model</h2><p class="small muted">Model predictive control (MPC) plans several steps ahead by simulating options, applies only the first step, then re-plans. It runs here on Model 1, a sales and operations style inventory model, where demand is the only external input and every state is observed.</p>'+
+  return '<h3>Tool: the inventory planner (Model 1)</h3><p class="small muted">Model predictive control (MPC) plans several steps ahead by simulating options, applies only the first step, then re-plans. It runs here on Model 1, a sales and operations style inventory model, where demand is the only external input and every state is observed. The product operator can call this planner as a tool.</p>'+
     '<div class="grid2"><div><label class="range" for="scn">Demand scenario</label><select id="scn" data-act="scn">'+[['steady','Steady'],['drop','Drop in the middle'],['spike','Spike in the middle'],['season','Seasonal']].map(o=>'<option value="'+o[0]+'"'+(S.inv.scn===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
     '<div><label class="range" for="Lt">Lead time (periods)</label><select id="Lt" data-act="Lt">'+['1','2'].map(o=>'<option'+(S.inv.L===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
     '<div><label class="range" for="Hz">Planning horizon (periods)</label><select id="Hz" data-act="Hz">'+['1','2','3','4','5'].map(o=>'<option'+(S.inv.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
@@ -504,44 +626,13 @@ function lab1(){
     '<h3>Period by period</h3>'+table(['Period','Demand','MPC order','MPC on hand','Rule order','Rule on hand'],rows,520)+
     '<p class="small muted"><b>What to notice:</b> MPC is only as good as its model and forecast. A lagging forecast can make it overreact to a spike, and a short horizon makes it fail outright.</p>';
 }
-/* ---------- lab 2: the centaur ---------- */
+
 function stageChips(r){
   const first=r.passes[0];
   const st=[['Encoding',first.promptTokens?first.promptTokens+' prompt tokens (real count)':'text becomes tokens',true],['Syntactic','inside the model, not observable here',false],['Semantic','inside the model, not observable here',false],['Reasoning',r.passes.length>1?'System 2: a second, deeper pass ran':'System 1: one pass',r.passes.length>1],['Decoding','"'+String(r.passes[r.passes.length-1].raw).slice(0,40)+'"',true]];
   return '<div class="scroll"><table style="min-width:560px"><thead><tr>'+st.map(s=>'<th>'+esc(s[0])+'</th>').join('')+'</tr></thead><tbody><tr>'+st.map(s=>'<td class="small" style="'+(s[2]?'':'opacity:.6')+'">'+esc(s[1])+'</td>').join('')+'</tr></tbody></table></div>';
 }
-async function runCentaur(text,sys2){
-  const f=fieldsOf(text);
-  const passes=[];let checks,ctl,fb='';
-  const max=sys2?2:1;
-  for(let n=1;n<=max;n++){
-    const c=await classify(text,n===1?'fast':'think',fb);
-    passes.push(c);
-    checks=checkpoints(c.label,f,c.conf,n);
-    ctl=control(checks,n,max);
-    if(ctl.action!=='Retry (System 2)')break;
-    fb=checks.filter(x=>!x.pass).map(x=>x.name+': '+x.reason).join('; ');
-  }
-  return{text,fields:f,passes,checks,ctl,max};
-}
-function lab2(){
-  let out='';
-  if(S.r2){
-    const r=S.r2,last=r.passes[r.passes.length-1];
-    out='<h3>The five stages</h3>'+stageChips(r)+
-      '<h3>The model\'s answer</h3>'+table(['Pass','Mode','Label','Confidence','Raw output'],r.passes.map((c,i)=>[i+1,c.mode==='think'?'System 2':'System 1',c.label||'(none)',c.conf.toFixed(2),String(c.raw).slice(0,70)]),520)+
-      '<h3>Monitor: four checkpoints</h3><ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>'+
-      '<h3>Control</h3><div class="status '+(r.ctl.action==='Accept'?'ok':'warn')+'"><b>'+esc(r.ctl.action)+'.</b> '+esc(r.ctl.why)+'</div>'+
-      (r.ctl.action!=='Accept'?'<div class="row" style="margin-top:8px">'+btn('human2','approve','Human approves','ghost sm')+btn('human2','reject','Human rejects','ghost sm')+'</div>'+(r.human?'<div class="status ok">Human decision recorded: '+esc(r.human)+'.</div>':''):'');
-  }
-  return '<h2>2. The centaur: AI runs it, a human checks it</h2><p class="small muted">Model 2 is the centaur: AI runs the pipeline and a human owns Monitor and Control. The model sorts the request, Monitor judges the output with four checkpoints (coverage, contradiction, confidence, risk), and Control decides what happens next.</p>'+
-    '<div class="row">'+['I want a refund of $480 for O-1001.','Where is order O-2002?','I want a refund for the broken lamp.','Refund $900 for order O-3003.','Please change my address on O-1001 to 3 Birch Ln, Austin TX.'].map((q,i)=>btn('pick2',i,esc(q.length>26?q.slice(0,26)+'…':q),'ghost sm')).join('')+'</div>'+
-    '<textarea class="editor" id="req2" data-act="req2" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req2)+'</textarea>'+
-    '<div class="row" style="margin-top:8px">'+tog('mode2','s1','System 1: one pass',S.mode2==='s1')+tog('mode2','s2','System 2: allow a retry',S.mode2==='s2')+'</div>'+
-    '<div class="row" style="margin-top:10px">'+btn('run2','','Run through the centaur','',S.busy)+'</div>'+out+
-    '<p class="small muted"><b>What to notice:</b> coverage and contradiction come from rules and data outside the model. Confidence comes from the model\'s own token probability. In System 2 the retry gets the Monitor feedback.</p>';
-}
-/* ---------- lab 3: the business request ---------- */
+
 function cleanText(t){return String(t).replace(/\s+/g,' ').replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g,'').trim();}
 function maskText(t){return t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]').replace(/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g,'[phone]');}
 const BIZ_TOOLS=ctx=>[
@@ -614,208 +705,176 @@ async function agentLoop(question,tools,max){
   }
   return{steps,final:'',status:'max_steps'};
 }
-async function runBusiness(raw){
-  const r={raw,stations:[]};
-  const cleaned=cleanText(raw);
-  r.cleaned=cleaned;
-  if(!cleaned){r.outcome={action:'Rejected',why:'The message is empty after cleaning.'};return r;}
-  const c=await classify(cleaned,'fast');
-  r.cls=c;
-  r.masked=maskText(cleaned);
-  const f=fieldsOf(cleaned);r.fields=f;
-  const ctx={};r.ctx=ctx;
-  const automatable=['Order status','Refund request','Stock question'].indexOf(c.label)>=0;
-  if(c.conf<0.7||!automatable){
-    r.agent=null;
-  }else{
-    r.agent=await agentLoop(cleaned,BIZ_TOOLS(ctx),5);
-  }
-  const checks=checkpoints(c.label,f,c.conf,1);
-  if(r.agent&&/refund(?:ed)?\b.*\b(processed|issued|completed|done)|\b(processed|issued|completed)\b.*refund|i have refunded|has been refunded/i.test(r.agent.final)&&!ctx.refunded){
-    const k=checks.find(x=>x.name==='Contradiction');k.pass=false;k.reason='the answer claims a refund that no tool performed';
-  }
-  r.checks=checks;
-  if(!r.agent)r.outcome={action:'Escalate to a person',why:c.conf<0.7?'Confidence is below the bar, so the agent did not act.':'This type is not automated in the demo.'};
-  else if(ctx.pending)r.outcome={action:'Needs approval',why:'A refund above 200 waits for a person.'};
-  else r.outcome=control(checks,1,1);
-  return r;
-}
-function lab3(){
-  let out='';
-  if(S.r3){
-    const r=S.r3;
-    const cards=[['1. Clean',['Process','slate'],r.raw!==r.cleaned?'Tidied: '+esc(JSON.stringify(r.cleaned)):'Nothing to clean.']];
-    if(r.cls){
-      cards.push(['2. Sort',['AI step','good'],'Label: <b>'+esc(r.cls.label||'(none)')+'</b>, confidence '+r.cls.conf.toFixed(2)]);
-      cards.push(['3. Protect',['Process','slate'],'Logged text: '+esc(r.masked)]);
-      cards.push(['4. Act',['AI step','good'],r.agent?(r.agent.steps.map(s=>s.type==='tool'?'tool <b>'+esc(s.tool)+'</b> '+esc(JSON.stringify(s.args))+' → '+esc(String(s.result).slice(0,140)):(s.type==='final'?'answer: '+esc(s.text):'parse error')).join('<br>')+(r.agent.forced?'<br><span class="small muted">The model ran out of steps, so the loop asked once more for a final answer.</span>':'')+(r.ctx.usedModel1?'<br><span class="chip warn">Model 1 used as a tool</span>':'')):'The agent did not act: '+esc(r.outcome.why)]);
-      cards.push(['5. Monitor',['Oversight','warn'],'<ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>']);
-    }
-    cards.push(['6. Control',['Oversight','warn'],'<b>'+esc(r.outcome.action)+'.</b> '+esc(r.outcome.why)+(r.outcome.action==='Needs approval'&&!r.approved?'<div style="margin-top:8px">'+btn('approve3','','Approve the refund','')+'</div>':'')+(r.approved?'<div class="status ok" style="margin-top:8px">Approved by a person: '+esc(r.approved)+'</div>':'')]);
-    out=cards.map(c=>'<div class="box" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>'+c[0]+'</b>'+chip(c[1][0],c[1][1]==='slate'?'':c[1][1])+'</div><div style="margin-top:6px">'+c[2]+'</div></div>').join('');
-  }
-  return '<h2>3. The business request, end to end</h2><p class="small muted">Model 3 is the whole business request workflow. Six stations run in order: Clean, Sort, Protect, Act, Monitor and Control. Sort and Act are the AI core (Model 2), Monitor and Control close the loop, and Model 1 can be called as a tool.</p>'+
-    '<div class="row">'+['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '].map((q,i)=>btn('pick3',i,esc(q.trim().length>24?q.trim().slice(0,24)+'…':q.trim()),'ghost sm')).join('')+'</div>'+
-    '<textarea class="editor" id="req3" data-act="req3" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req3)+'</textarea>'+
-    '<div class="row" style="margin-top:10px">'+btn('run3','','Run the workflow','',S.busy)+btn('reset3','','Reset the orders','ghost')+'</div>'+out+
-    '<p class="small muted"><b>What to notice:</b> the large refund is not executed until a person approves. If the agent claims an action that no tool performed, the Contradiction check fails.</p>';
-}
-/* ---------- lab 4: the factory, scenario simulation ---------- */
-function baseCurve(drop){
-  const small={0.5:[0.90,0.92],0.7:[0.75,0.96],0.9:[0.50,0.99]};
-  const large={0.5:[0.95,0.95],0.7:[0.85,0.97],0.9:[0.65,0.995]};
-  const cal=S.f.cal;
-  const out=[];
-  [0.5,0.7,0.9].forEach(th=>{
-    let a=small[th][0],acc=small[th][1];
-    if(cal&&cal.curve[th]){a=cal.curve[th][0];acc=cal.curve[th][1];}
-    out.push({m:'small',th,a,acc:Math.max(0,acc-drop/100)});
-    out.push({m:'large',th,a:large[th][0],acc:large[th][1]});
+
+
+/* ---------- rendering ---------- */
+function kv(rows){return '<dl class="kv" style="margin:8px 0 12px">'+rows.map(r=>'<dt>'+esc(r[0])+'</dt><dd>'+r[1]+'</dd>').join('')+'</dl>';}
+function hierarchy(){
+  const st=l2Stats();
+  const cfgTxt=S.cfg.fromPeriod?('Assigned: '+S.cfg.cls+' model, bar '+S.cfg.theta.toFixed(1)+' (period '+S.cfg.fromPeriod+')'):'Nothing assigned yet. The product runs with its defaults: bar 0.7.';
+  const cur=Object.keys(S.curves);
+  const cards=[
+    [4,'Factory designer','factory design = consolidated factory operation','Limits: accuracy at least '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'. Default model: '+(S.defCls||'not set')+'.','#0B2B36'],
+    [3,'Factory operator','factory operation = consolidated product design',cfgTxt,'#2B4A57'],
+    [2,'Product designer','product design = consolidated product operation',(cur.length?'Calibrated: '+cur.join(', ')+'. ':'Calibration assumed. ')+'Signal: '+shortSignal(st)+'.','#0A566F'],
+    [1,'Product operator','product operation, the lowest level',st.n+' request'+(st.n===1?'':'s')+': '+st.accept+' accepted, '+st.esc+' to people.','#0E6F8E']
+  ];
+  let h='';
+  cards.forEach((c,i)=>{
+    const on=S.lvl===c[0];
+    h+='<div data-act="lvl" data-val="'+c[0]+'" role="button" tabindex="0" style="cursor:pointer;border:2px solid '+(on?'#E3A21A':'transparent')+';border-left:8px solid '+c[4]+';border-radius:10px;padding:10px 12px;background:var(--chip)">'+
+      '<b>Level '+c[0]+': '+esc(c[1])+'</b> <span class="small muted">'+esc(c[2])+'</span><div class="small" style="margin-top:2px">'+esc(c[3])+'</div></div>';
+    if(i<3)h+='<div class="row small muted" style="justify-content:center;gap:28px;margin:2px 0"><span>↓ limits</span><span style="color:#A66A00">↑ consolidates</span></div>';
   });
-  return out;
+  return h;
 }
-function factoryParams(){
-  const F=S.f;
-  return{H:+F.H,cap:+F.cap,target:+F.target/100,qmax:10,cm:{small:1,large:5},ch:20,ce:100,cw:2,path:PATHS[F.path]};
+function agentCard(lv){
+  const cfg=S.cfg;
+  if(lv===1)return kv([['Observes','One request at a time.'],['Decides','Which type it is, whether to act, and what to do next.'],['Acts','Tools and replies, within permissions and policy.'],['Reports up','Every decision, to Level 2.'],['Limits from above','Confidence bar '+cfg.theta.toFixed(2)+(cfg.fromPeriod?' (from Level 3)':' (default)')+'. Refunds above 200 need approval.']]);
+  if(lv===2)return kv([['Observes','The log of Level 1 decisions.'],['Decides','The design signal, and the calibration curve for the model.'],['Acts','Updates the product design record.'],['Reports up','The curve and the observed rates, to Level 3.'],['Limits from above','Whatever model class and bar Level 3 assigned.']]);
+  if(lv===3)return kv([['Observes','The product design from Level 2.'],['Decides','Model class and confidence bar, by simulating options over a short horizon (MPC).'],['Acts','Assigns the configuration to the product. Level 1 starts using it.'],['Reports up','The history of its decisions, to Level 4.'],['Limits from above','Accuracy rule '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'.']]);
+  return kv([['Observes','The history of Level 3 decisions.'],['Decides','Limits and the default model class.'],['Acts','Sets the limits Level 3 must respect.'],['Reports up','Nothing. At the top, a human writes the first design.'],['Limits from above','None.']]);
 }
-function evalOption(o,t,Q,P){
-  let q=Q,cost=0,feasible=true;const notes=[];
-  for(let j=0;j<P.H;j++){
-    const V=P.path[Math.min(t+j,P.path.length-1)];
-    const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
-    q=Math.max(q+human-P.cap,0);
-    cost+=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*q;
-    if(q>P.qmax+1e-9&&notes.indexOf('queue over '+P.qmax)<0){feasible=false;notes.push('queue over '+P.qmax);}
+function l1Run(){
+  let out='';
+  if(S.r1){
+    const r=S.r1;
+    const cards=[['1. Clean','Process',r.raw!==r.cleaned?'Tidied: '+esc(JSON.stringify(r.cleaned)):'Nothing to clean.']];
+    if(r.cls){
+      cards.push(['2. Sort','AI step',stageChips(r)+'<p style="margin:8px 0 0">Label: <b>'+esc(r.cls.label||'(none)')+'</b>, confidence '+r.cls.conf.toFixed(2)+(r.passes.length>1?' after a deeper second pass':'')+'</p>']);
+      cards.push(['3. Protect','Process','Logged text: '+esc(r.masked)]);
+      cards.push(['4. Act','AI step',r.agent?(r.agent.steps.map(s=>s.type==='tool'?'tool <b>'+esc(s.tool)+'</b> '+esc(JSON.stringify(s.args))+' → '+esc(String(s.result).slice(0,140))+(s.repeat?' (repeat, not run again)':''):(s.type==='final'?'answer: '+esc(s.text):'parse error')).join('<br>')+(r.agent.forced?'<br><span class="small muted">The model ran out of steps, so the loop asked once more for a final answer.</span>':'')+(r.ctx.usedModel1?'<br><span class="chip warn">Model 1 used as a tool</span>':'')):'The agent did not act: '+esc(r.outcome.why)]);
+      cards.push(['5. Monitor','Oversight','<p class="small muted" style="margin:0 0 4px">The checks gate the action, then check the answer.</p><ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>']);
+    }
+    const o=r.outcome;
+    let ctl='<b>'+esc(o.action)+'.</b> '+esc(o.why);
+    if(o.action==='Needs approval'&&!r.approved&&!r.rejected)ctl+='<div class="row" style="margin-top:8px">'+btn('approve1','','Approve the refund')+btn('reject1','','Reject','ghost')+'</div>';
+    else if(o.action!=='Accept'&&o.action!=='Rejected'&&!r.human)ctl+='<div class="row" style="margin-top:8px">'+btn('human1','approve','Human approves','ghost sm')+btn('human1','reject','Human rejects','ghost sm')+'</div>';
+    if(r.approved)ctl+='<div class="status ok" style="margin-top:8px">Approved by a person: '+esc(r.approved)+'</div>';
+    if(r.rejected)ctl+='<div class="status warn" style="margin-top:8px">Rejected by a person.</div>';
+    if(r.human)ctl+='<div class="status ok" style="margin-top:8px">Human decision recorded: '+esc(r.human)+'.</div>';
+    cards.push(['6. Control','Oversight',ctl]);
+    out=cards.map(c=>'<div class="box" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>'+c[0]+'</b>'+chip(c[1],c[1]==='AI step'?'good':(c[1]==='Oversight'?'warn':''))+'</div><div style="margin-top:6px">'+c[2]+'</div></div>').join('');
   }
-  if(o.acc<P.target-1e-9){feasible=false;notes.push('accuracy under '+Math.round(P.target*100)+'%');}
-  return{cost,feasible,notes};
+  const qs=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','Refund $900 for order O-3003.','I want a refund for the broken lamp.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '];
+  return '<div class="row">'+qs.map((q,i)=>btn('pick1',i,esc(q.trim().length>22?q.trim().slice(0,22)+'…':q.trim()),'ghost sm')).join('')+'</div>'+
+    '<textarea class="editor" id="req" data-act="req" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req)+'</textarea>'+
+    '<div class="row" style="margin-top:8px">'+tog('sys2','s1','System 1: one pass',!S.sys2)+tog('sys2','s2','System 2: retry when unsure',S.sys2)+'</div>'+
+    '<div class="row" style="margin-top:10px">'+btn('run1','','Run the product operator','',S.busy)+btn('resetorders','','Reset the orders','ghost')+'</div>'+out+
+    '<p class="small muted"><b>What to notice:</b> Sort and Act are the AI core (the centaur). Monitor and Control close the loop. Change the confidence bar from Level 3 and the same request can flip from acted on to escalated.</p>';
 }
-function planFactory(){
-  const F=S.f,P=factoryParams();
-  const opts=baseCurve(+F.drop).map(o=>({...o,...evalOption(o,F.t,F.Q,P)}));
-  const feas=opts.filter(o=>o.feasible);
-  const best=feas.length?feas.reduce((a,b)=>b.cost<a.cost-1e-9?b:a):null;
-  return{opts,best,P};
+function lvl1(){
+  const adv=(S.cfg.fromPeriod&&classOf(LLM.modelId)!==S.cfg.cls)?'<div class="status warn">Level 3 assigned a '+esc(S.cfg.cls)+' model, but a '+esc(classOf(LLM.modelId))+' model is loaded. Open Level 3 to load the assigned one.</div>':'';
+  return '<h2>Level 1: the product operator</h2><p class="small muted">Product operation. The lowest level handles each request as it arrives.</p>'+agentCard(1)+adv+
+    '<div class="row">'+tog('sub1','run','Run a request',S.sub1==='run')+tog('sub1','tool','Tool: inventory planner',S.sub1==='tool')+'</div><div style="margin-top:12px">'+(S.sub1==='run'?l1Run():invPanel())+'</div>';
 }
-async function calibrate(){
-  const res=[];
-  for(let i=0;i<CAL.length;i++){
-    S.f.calMsg='Calibrating '+(i+1)+' of '+CAL.length;draw();await sleep(0);
-    const c=await classify(CAL[i][0],'fast');
-    res.push({ok:c.letter===CAL[i][1],conf:c.conf});
-  }
-  const curve={};
-  [0.5,0.7,0.9].forEach(th=>{const auto=res.filter(r=>r.conf>=th);curve[th]=[auto.length/res.length,auto.length?auto.filter(r=>r.ok).length/auto.length:1];});
-  S.f.cal={model:LLM.modelId,n:res.length,curve,acc:res.filter(r=>r.ok).length/res.length};
-  S.f.calMsg='';
+function lvl2(){
+  const st=l2Stats();
+  const rows=Object.keys(st.cnt).map(k=>[k,st.cnt[k]]);
+  const share=[0.5,0.7,0.9].map(th=>[th.toFixed(1),Math.round(st.share(th)*100)+'%']);
+  const curTbl=['small','large'].map(m=>{const c=S.curves[m];return [m==='small'?'Small model':'Large model',c?('measured with '+c.model):'assumed',[0.5,0.7,0.9].map(th=>{const v=c?c.curve[th]:ASSUMED[m][th];return th.toFixed(1)+': '+Math.round(v[0]*100)+'% auto, '+(v[1]*100).toFixed(0)+'% accurate';}).join(' | ')];});
+  return '<h2>Level 2: the product designer</h2><p class="small muted">Product design = consolidated product operation. It turns many Level 1 decisions into one design record.</p>'+agentCard(2)+
+    '<h3>Consolidated from Level 1</h3>'+(st.n?table(['Decision','Count'],rows,280)+'<p class="small muted">Average confidence '+st.avg.toFixed(2)+' over '+st.n+' request'+(st.n===1?'':'s')+'. Retried with a deeper pass: '+st.retry+'. Human reviews: '+st.hApprove+' approved, '+st.hReject+' rejected.</p>'+
+      '<p class="small muted">Share of logged requests each bar would have automated:</p>'+table(['Confidence bar','Share automated'],share,280):'<p class="small muted">No requests yet. Run some at Level 1.</p>')+
+    '<div class="status '+(st.n<3?'warn':'ok')+'" style="margin-top:10px"><b>Design signal:</b> '+esc(designSignal(st))+'</div>'+
+    '<h3>Calibration for Level 3</h3><p class="small muted">Level 3 needs to know how many requests each bar would automate and how accurate they would be. This runs 12 labelled messages through the loaded model ('+esc(classOf(LLM.modelId))+' class) and stores the curve. Twelve messages are far too few to trust.</p>'+
+    '<div class="row">'+btn('cal2','','Measure the loaded model','',S.busy)+btn('memo2','','Write a design memo (optional)','ghost',S.busy||!st.n)+'</div>'+(S.l2msg?'<div class="status warn">'+esc(S.l2msg)+'</div>':'')+
+    table(['Class','Source','Curve by confidence bar'],curTbl,560)+
+    (S.memo?'<h3>Design memo from the model</h3><pre style="white-space:pre-wrap">'+esc(S.memo)+'</pre><p class="small muted">Narrative only. Nothing else uses it.</p>':'');
 }
-function lab4(){
+function lvl3(){
   const F=S.f,pl=planFactory(),P=pl.P,maxC=Math.max(...pl.opts.map(o=>o.cost));
   const rows=pl.opts.map(o=>{
     const best=pl.best&&o.m===pl.best.m&&o.th===pl.best.th;
     const bw=Math.round(o.cost/maxC*100);
-    return '<tr style="'+(best?'background:var(--good-bg)':'')+'"><td>'+(o.feasible?'✓':'✗')+'</td><td>'+(o.m==='small'?'Small':'Large')+' model, bar '+o.th.toFixed(1)+'</td><td>'+Math.round(o.a*100)+'%</td><td>'+(o.acc*100).toFixed(1)+'%</td><td><div style="background:'+(o.feasible?(best?'#2E7D5B':'#0E6F8E'):'#B9C4C9')+';height:12px;width:'+bw+'%;min-width:4px;border-radius:3px"></div><span class="small">'+Math.round(o.cost)+'</span></td><td class="small">'+esc(o.notes.join('; ')||(best?'best feasible plan':'feasible'))+'</td></tr>';
+    return '<tr style="'+(best?'background:var(--good-bg)':'')+'"><td>'+(o.feasible?'✓':'✗')+'</td><td>'+(o.m==='small'?'Small':'Large')+' model, bar '+o.th.toFixed(1)+'<br><span class="small muted">'+o.src+'</span></td><td>'+Math.round(o.a*100)+'%</td><td>'+(o.acc*100).toFixed(1)+'%</td><td><div style="background:'+(o.feasible?(best?'#2E7D5B':'#0E6F8E'):'#B9C4C9')+';height:12px;width:'+bw+'%;min-width:4px;border-radius:3px"></div><span class="small">'+Math.round(o.cost)+'</span></td><td class="small">'+esc(o.notes.join('; ')||(best?'best feasible plan':'feasible'))+'</td></tr>';
   }).join('');
   const hist=F.hist.length?table(['Period','Volume','Applied','Queue after','Cost'],F.hist.map(h=>[h.t+1,h.V,h.opt,h.Q.toFixed(0),Math.round(h.cost)]),460):'<p class="small muted">Nothing applied yet.</p>';
-  return '<h2>4. The factory: MPC as scenario simulation</h2><p class="small muted">The factory level. The factory chooses a configuration for the product: which model and which confidence bar. Each option is simulated over a short horizon, options that break a hard rule are dropped, and the cheapest of the rest wins.</p>'+
+  const adv=(S.cfg.fromPeriod&&classOf(LLM.modelId)!==S.cfg.cls)?'<div class="status warn">The assigned model class is '+esc(S.cfg.cls)+', but a '+esc(classOf(LLM.modelId))+' model is loaded. '+btn('loadassigned','','Load a '+esc(S.cfg.cls)+' model','sm')+'</div>':'';
+  return '<h2>Level 3: the factory operator</h2><p class="small muted">Factory operation = consolidated product design. It uses the product design from Level 2 to choose how the product runs.</p>'+agentCard(3)+
+    '<p class="small muted">MPC here is scenario simulation: simulate each option over a short horizon, drop any that break a hard rule, pick the cheapest of the rest, apply only the first period, then plan again.</p>'+
     '<div class="grid2"><div><label class="range" for="fpath">Volume path</label><select id="fpath" data-act="fpath">'+[['steady','Steady 60'],['spike','Spike to 160'],['ramp','Ramp up']].map(o=>'<option value="'+o[0]+'"'+(F.path===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
-    '<div><label class="range" for="fcap">People can review per period</label><select id="fcap" data-act="fcap">'+['20','30','50'].map(o=>'<option'+(F.cap===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
-    '<div><label class="range" for="fH">Horizon (periods)</label><select id="fH" data-act="fH">'+['1','2','3','4'].map(o=>'<option'+(F.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
-    '<div><label class="range" for="ftarget">Accuracy rule on automatic cases</label><select id="ftarget" data-act="ftarget">'+['90','95','98'].map(o=>'<option value="'+o+'"'+(F.target===o?' selected':'')+'>'+o+'%</option>').join('')+'</select></div></div>'+
-    '<label class="range" for="fdrop">Audit finding: the small model\'s accuracy drops by (points)</label><select id="fdrop" data-act="fdrop">'+['0','1','3','5'].map(o=>'<option'+(F.drop===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'+
-    '<p style="margin-top:12px">Now at period <b>'+(F.t+1)+'</b>. Volume '+P.path[Math.min(F.t,P.path.length-1)]+', queue '+F.Q.toFixed(0)+'.</p>'+
-    '<div class="scroll"><table style="min-width:640px"><thead><tr><th></th><th>Option</th><th>Automated</th><th>Accuracy</th><th>Cost over '+P.H+' period'+(P.H===1?'':'s')+'</th><th>Verdict</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    (pl.best?'<div class="status ok"><b>Best feasible plan:</b> '+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'. Apply only the first period, then re-measure.</div>':'<div class="status bad"><b>No feasible plan.</b> Every option breaks a hard rule, so the factory escalates to a person.</div>')+
-    '<div class="row" style="margin-top:10px">'+btn('apply4','','Apply the first period and advance','',!pl.best||F.t>=PATHS[F.path].length-1)+btn('reset4f','','Reset','ghost')+'</div>'+hist+
-    '<h3>Calibrate from the loaded model</h3><p class="small muted">The default numbers are assumed. This runs 12 labelled messages through the loaded model and replaces the small-model curve with what it measured. Twelve messages are far too few to trust.</p>'+
-    '<div class="row">'+btn('cal4','','Measure the loaded model','',S.busy)+'</div>'+(F.calMsg?'<div class="status warn">'+esc(F.calMsg)+'</div>':'')+
-    (F.cal?'<div class="status ok">Measured with '+esc(F.cal.model)+': overall accuracy '+Math.round(F.cal.acc*100)+'% on '+F.cal.n+' messages. The small-model rows now use this curve.</div>':'')+
-    '<p class="small muted"><b>What to notice:</b> raise the audit drop and the best plan changes with no change to the logic, as new evidence moves the numbers. Costs per request: small model 1, large model 5, human review 20, an error 100.</p>';
+    '<div><label class="range" for="fH">Horizon (periods)</label><select id="fH" data-act="fH">'+['1','2','3','4'].map(o=>'<option'+(F.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+
+    '<label class="range" for="fdrop">Evidence: an audit finds the small model\'s accuracy drops by (points)</label><select id="fdrop" data-act="fdrop">'+['0','1','3','5'].map(o=>'<option'+(F.drop===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'+
+    '<p style="margin-top:12px">Now at period <b>'+(F.t+1)+'</b>. Volume '+P.path[Math.min(F.t,P.path.length-1)]+', queue '+F.Q.toFixed(0)+'. Hard rules from Level 4: accuracy at least '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'.</p>'+
+    '<div class="scroll"><table style="min-width:660px"><thead><tr><th></th><th>Option</th><th>Automated</th><th>Accuracy</th><th>Cost over '+P.H+' period'+(P.H===1?'':'s')+'</th><th>Verdict</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    (pl.best?'<div class="status ok"><b>Best feasible plan:</b> '+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'. Apply only the first period, then plan again.</div>':'<div class="status bad"><b>No feasible plan.</b> Every option breaks a hard rule. Hand this period to people, or ask Level 4 for different limits.</div>')+
+    '<div class="row" style="margin-top:10px">'+btn('apply3','','Apply the first period and advance','',!pl.best||F.t>=PATHS[F.path].length-1)+(!pl.best?btn('hand3','','Hand this period to people','ghost',F.t>=PATHS[F.path].length-1):'')+btn('reset3','','Reset','ghost')+'</div>'+adv+hist+
+    '<p class="small muted"><b>What to notice:</b> applying a plan sets the confidence bar that Level 1 uses, so the factory decision changes how the product operator behaves. Costs per request: small model 1, large model 5, human review 20, an error 100.</p>';
 }
-/* ---------- lab 5: consolidation ---------- */
-function lab5(){
-  const L=S.log,n=L.length;
-  const cnt={};L.forEach(x=>{cnt[x.decision]=(cnt[x.decision]||0)+1;});
-  const esc_=L.filter(x=>/Escalate|Needs approval|Ask for more/.test(x.decision)).length,acc=L.filter(x=>x.decision==='Accept'||x.decision==='Completed').length;
-  const avg=n?L.reduce((a,x)=>a+(x.conf||0),0)/n:0;
-  let signal;
-  if(n<3)signal='Run at least three requests in labs 2 and 3 to have something to consolidate.';
-  else if(esc_/n>0.4)signal='Many requests need a person ('+Math.round(esc_/n*100)+'%). Improve the prompt, add examples, or use a larger model.';
-  else if(acc/n>0.8)signal='Almost everything is accepted ('+Math.round(acc/n*100)+'%). Audit a sample, then consider relaxing the confidence bar slightly.';
-  else signal='Keep the thresholds and keep auditing a sample.';
-  const pl=planFactory();
-  const H=S.f.hist,large=H.filter(h=>/Large/.test(h.opt)).length;
-  let design;
-  if(!H.length)design='Apply a few periods in lab 4 to give the factory some operation history.';
-  else if(large/H.length>0.5)design='The large model was chosen in '+Math.round(large/H.length*100)+'% of periods. Make it the default in the next design.';
-  else design='The small model handled most periods. Keep it as the default and review again after more audits.';
-  const box=(cls,title,sub,body)=>'<div class="box" style="margin-bottom:10px;border-left:6px solid '+cls+'"><b>'+title+'</b><br><span class="small muted">'+sub+'</span><div style="margin-top:6px">'+body+'</div></div>';
-  return '<h2>5. Consolidate up the levels</h2><p class="small muted">Two kinds of consolidation alternate: within a level, design is the consolidated operation. Up a level, operation is the consolidated design. The rules below are simple illustrations of a proposed principle, not a tested method.</p>'+
-    box('#0E6F8E','Product operation','The lowest level: per-request decisions from labs 2 and 3',n?table(['Decision','Count'],Object.keys(cnt).map(k=>[k,cnt[k]]),300)+'<p class="small muted">Average confidence '+avg.toFixed(2)+' over '+n+' request'+(n===1?'':'s')+'.</p>':'<p class="small muted">No requests yet.</p>')+
-    '<div style="text-align:center;color:#E3A21A">↑ consolidate (within a level)</div>'+
-    box('#0A566F','Product design = consolidated product operation','Thresholds and prompts chosen from many requests','Design signal: '+esc(signal))+
-    '<div style="text-align:center;color:#2E7D5B">↑ consolidate (up a level)</div>'+
-    box('#2B4A57','Factory operation = consolidated product design','Which configuration each product gets',pl.best?'The factory\'s current best plan for this product: <b>'+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'</b>, given the design signal above.':'No feasible configuration right now.')+
-    '<div style="text-align:center;color:#E3A21A">↑ consolidate (within a level)</div>'+
-    box('#0B2B36','Factory design = consolidated factory operation','Models, harness and release gate',esc(design))+
-    '<p class="small muted"><b>What to notice:</b> each step up replaces many decisions with one. The levels run from product operation up to factory design, and every rule here is an assumption you can argue with.</p>';
+function lvl4(){
+  const st=l4Stats(),props=l4Proposals();
+  return '<h2>Level 4: the factory designer</h2><p class="small muted">Factory design = consolidated factory operation. It turns the history of Level 3 decisions into limits and defaults.</p>'+agentCard(4)+
+    '<h3>Limits it sets (written by a human at the top)</h3><div class="grid2"><div><label class="range" for="ltarget">Accuracy rule on automatic cases</label><select id="ltarget" data-act="ltarget">'+['90','95','98'].map(o=>'<option value="'+o+'"'+(String(S.lim.target)===o?' selected':'')+'>'+o+'%</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="lcap">People can review per period</label><select id="lcap" data-act="lcap">'+['10','20','30','40','50','60'].map(o=>'<option'+(String(S.lim.cap)===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="lqmax">Largest allowed queue</label><select id="lqmax" data-act="lqmax">'+['5','10','20'].map(o=>'<option'+(String(S.lim.qmax)===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+
+    '<h3>Consolidated from Level 3</h3>'+(st.n?'<div class="tiles"><div class="tile"><b>'+st.n+'</b><span>periods applied</span></div><div class="tile"><b>'+st.large+' / '+st.small+'</b><span>large / small chosen</span></div><div class="tile"><b>'+st.people+'</b><span>periods handed to people</span></div><div class="tile"><b>'+Math.round(st.cost)+'</b><span>total cost</span></div></div>':'<p class="small muted">No periods yet. Apply some at Level 3.</p>')+
+    '<h3>Design proposals</h3>'+props.map(p=>'<div class="box" style="margin-bottom:8px"><p style="margin:0 0 6px">'+esc(p.text)+'</p>'+(p.id!=='none'?btn('adopt',p.id,'Adopt','sm'):'')+'</div>').join('')+
+    '<p class="small muted"><b>What to notice:</b> change a limit and go back to Level 3. The best plan can change, because the limits are hard rules there. Default model: <b>'+esc(S.defCls||'not set')+'</b>.</p>';
 }
-/* ---------- shell ---------- */
 function modelBox(){
-  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
-  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Labs 1 and 5 need no model. Labs 2 to 4 use it.</p></div>';
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+' ('+classOf(LLM.modelId)+' class)</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Level 1 and the optional Level 2 steps use the model. Levels 3 and 4 do not.</p></div>';
 }
 function render(){
-  const tabs=[['mpc','1 MPC'],['cen','2 Centaur'],['biz','3 Request'],['fac','4 Factory'],['con','5 Consolidate']];
-  const body={mpc:lab1,cen:lab2,biz:lab3,fac:lab4,con:lab5}[S.tab]();
-  return modelBox()+'<div class="tabs">'+tabs.map(t=>tog('tab',t[0],t[1],S.tab===t[0])).join('')+'</div>'+
-    (S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn">Running on your device...</div>':'')+
-    '<div style="margin-top:12px">'+body+'</div>'+qa(QA[S.tab]);
+  const body={1:lvl1,2:lvl2,3:lvl3,4:lvl4}[S.lvl]();
+  const tour='<div class="box" style="margin:12px 0"><b>Try this path</b><ol class="small" style="margin:6px 0 0 18px;padding:0"><li>Level 1: run three or four requests.</li><li>Level 2: see them consolidated, then measure the model.</li><li>Level 3: simulate the options and apply a plan. Go back to Level 1 and run the same request again.</li><li>Level 4: adopt a proposal or change a limit, then return to Level 3.</li></ol></div>';
+  return modelBox()+'<h3 style="margin-top:0">The hierarchy</h3>'+hierarchy()+tour+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn">Running on your device...</div>':'')+'<div style="margin-top:12px">'+body+'</div>'+qa(QA[S.lvl]);
 }
 async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;}
+const QUICK=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','Refund $900 for order O-3003.','I want a refund for the broken lamp.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '];
 const draw=app({
   render,
   act:{
-    tab:v=>{S.tab=v;S.err='';},
+    lvl:v=>{S.lvl=+v;S.err='';},
+    sub1:v=>{S.sub1=v;},
     model:()=>{S.showModel=!S.showModel;},
-    pick2:v=>{S.req2=['I want a refund of $480 for O-1001.','Where is order O-2002?','I want a refund for the broken lamp.','Refund $900 for order O-3003.','Please change my address on O-1001 to 3 Birch Ln, Austin TX.'][+v];S.r2=null;},
-    mode2:v=>{S.mode2=v;},
-    run2:()=>guard(async()=>{
-      const r=await runCentaur(S.req2,S.mode2==='s2');S.r2=r;
-      S.log.push({lab:'centaur',decision:r.ctl.action,conf:r.passes[r.passes.length-1].conf,label:r.passes[r.passes.length-1].label});
-    }),
-    human2:v=>{if(S.r2){S.r2.human=v==='approve'?'approved':'rejected';S.log.push({lab:'centaur',decision:'Human '+S.r2.human,conf:1});}},
-    pick3:v=>{S.req3=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '][+v];S.r3=null;},
-    run3:()=>guard(async()=>{
-      const r=await runBusiness(S.req3);S.r3=r;
-      S.log.push({lab:'business',decision:r.outcome.action==='Accept'?'Accept':r.outcome.action,conf:r.cls?r.cls.conf:0,label:r.cls?r.cls.label:''});
-    }),
-    approve3:()=>{
-      const r=S.r3;if(!r||!r.ctx.pending)return;
+    pick1:v=>{S.req=QUICK[+v];S.r1=null;},
+    sys2:v=>{S.sys2=v==='s2';},
+    run1:()=>guard(async()=>{const r=await runRequest(S.req,S.sys2);S.r1=r;if(r.outcome.action!=='Rejected')logOutcome(r);}),
+    resetorders:()=>{ORDERS=JSON.parse(JSON.stringify(ORDERS0));S.r1=null;},
+    approve1:()=>{
+      const r=S.r1;if(!r||!r.ctx.pending)return;
       const p=r.ctx.pending,o=ORDERS[p.order_id];o.refunded+=p.amount;
       r.approved='refund of '+p.amount+' processed on '+p.order_id;r.ctx.pending=null;r.ctx.refunded=p.amount;
-      S.log.push({lab:'business',decision:'Human approved',conf:1});
+      S.log.push({decision:'Human approved',conf:1,passes:1});
     },
-    reset3:()=>{ORDERS=JSON.parse(JSON.stringify(ORDERS0));S.r3=null;},
-    apply4:()=>{
+    reject1:()=>{const r=S.r1;if(!r)return;r.rejected=true;r.ctx.pending=null;S.log.push({decision:'Human rejected',conf:1,passes:1});},
+    human1:v=>{if(S.r1){S.r1.human=v==='approve'?'approved':'rejected';S.log.push({decision:'Human '+S.r1.human,conf:1,passes:1});}},
+    cal2:()=>guard(calibrate),
+    memo2:()=>guard(writeMemo),
+    apply3:()=>{
       const F=S.f,pl=planFactory();if(!pl.best)return;
       const P=pl.P,V=P.path[Math.min(F.t,P.path.length-1)],o=pl.best;
       const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
       F.Q=Math.max(F.Q+human-P.cap,0);
       const cost=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*F.Q;
       F.hist.push({t:F.t,V,opt:(o.m==='small'?'Small':'Large')+' @ '+o.th.toFixed(1),Q:F.Q,cost});
+      S.cfg={theta:o.th,cls:o.m,fromPeriod:F.t+1};
       F.t+=1;
     },
-    reset4f:()=>{S.f.t=0;S.f.Q=0;S.f.hist=[];},
-    cal4:()=>guard(calibrate),
+    hand3:()=>{
+      const F=S.f,P=factoryParams(),V=P.path[Math.min(F.t,P.path.length-1)];
+      F.Q=Math.max(F.Q+V-P.cap,0);
+      F.hist.push({t:F.t,V,opt:'All to people',Q:F.Q,cost:V*P.ch+P.cw*F.Q});
+      F.t+=1;
+    },
+    reset3:()=>{S.f.t=0;S.f.Q=0;S.f.hist=[];S.cfg={theta:0.7,cls:S.defCls||'large',fromPeriod:null};},
+    loadassigned:()=>{LLM.modelId=S.cfg.cls==='large'?MODELS[0][0]:MODELS[2][0];LLM.engine=null;LLM.state='idle';LLM.load();return false;},
+    adopt:v=>{
+      if(v==='cap')S.lim.cap=Math.min(60,S.lim.cap+10);
+      if(v==='defLarge'){S.defCls='large';if(!S.cfg.fromPeriod)S.cfg.cls='large';}
+      if(v==='defSmall'){S.defCls='small';if(!S.cfg.fromPeriod)S.cfg.cls='small';}
+    },
     ...LLM.act
   },
   change:{
     scn:t=>{S.inv.scn=t.value;},Lt:t=>{S.inv.L=t.value;},Hz:t=>{S.inv.H=t.value;},I0:t=>{S.inv.I0=t.value;},view:t=>{S.inv.view=t.value;},
-    fpath:t=>{S.f.path=t.value;S.f.t=0;S.f.Q=0;S.f.hist=[];},fcap:t=>{S.f.cap=t.value;},fH:t=>{S.f.H=t.value;},ftarget:t=>{S.f.target=t.value;},fdrop:t=>{S.f.drop=t.value;},
+    fpath:t=>{S.f.path=t.value;S.f.t=0;S.f.Q=0;S.f.hist=[];},fH:t=>{S.f.H=t.value;},fdrop:t=>{S.f.drop=t.value;},
+    ltarget:t=>{S.lim.target=+t.value;},lcap:t=>{S.lim.cap=+t.value;},lqmax:t=>{S.lim.qmax=+t.value;},
     ...LLM.change
   },
-  input:{req2:t=>{S.req2=t.value;},req3:t=>{S.req3=t.value;}},
+  input:{req:t=>{S.req=t.value;}},
   onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
 });
 LLM.draw=draw;
