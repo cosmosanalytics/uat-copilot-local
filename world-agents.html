@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A world run by agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Eight made-up countries, each led by an agent (a real on-device model)</span></div>
+  <header>
+    <h1>A world run by agents</h1>
+    <p class="lede">Each country in this made-up world is led by an agent that picks one priority a year. The world turns everyone&#x27;s choices into growth, emissions, trade, climate damage and stability. Watch what happens when each country does what is best for itself.</p>
+    <ol class="lede-items"><li><b>Country agents</b>: Eight made-up countries, each led by an agent with its own personality. Every year it picks one of five priorities.</li><li><b>The world</b>: Plain code. It combines the choices into growth, trade, emissions, temperature and stability, and adds a random event each year.</li><li><b>You</b>: Run the years, set the next event, or take over one country and play against the agents.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the countries, their numbers and the world model are made up and deliberately simple, so they say nothing about any real country. The language model only picks one letter a year for each country and, if you leave it on, writes a short news summary. The economy, trade, emissions, climate and events are plain code with assumptions I chose. Small models make mistakes, and a country that gets no valid letter falls back to its default policy and is flagged. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- the made-up world ---------- */
+const COUNTRIES=[
+  {id:'aur',name:'Aurelia',desc:'a wealthy, innovative services economy',persona:'a technocrat who trusts evidence and long-term plans',def:'B',gdp:120,emis:10,vuln:0.3,stab:80,res:0.5,kind:'tech'},
+  {id:'bor',name:'Borealis',desc:'a cold, resource-rich country with few people',persona:'a cautious leader who avoids risk',def:'A',gdp:40,emis:6,vuln:0.2,stab:75,res:0.5,kind:'energy'},
+  {id:'zhe',name:'Zhenhai',desc:'a manufacturing giant with a huge population',persona:'an export-driven planner',def:'C',gdp:150,emis:20,vuln:0.5,stab:65,res:0.4,kind:'mfg'},
+  {id:'dun',name:'Dunmere',desc:'an agricultural middle-income country',persona:'a pragmatic leader focused on food and jobs',def:'C',gdp:50,emis:5,vuln:0.7,stab:60,res:0.3,kind:'agri'},
+  {id:'eld',name:'Eldara',desc:'a large, young, developing country',persona:'a growth-first leader',def:'A',gdp:70,emis:8,vuln:0.8,stab:50,res:0.25,kind:'agri'},
+  {id:'sol',name:'Solmar',desc:'a low-lying island nation threatened by rising seas',persona:'a climate-focused leader',def:'B',gdp:8,emis:0.5,vuln:1.0,stab:70,res:0.2,kind:'island'},
+  {id:'kes',name:'Kestrel',desc:'an energy-exporting country',persona:'a populist who protects local industry',def:'D',gdp:60,emis:12,vuln:0.4,stab:55,res:0.35,kind:'energy'},
+  {id:'mar',name:'Marenta',desc:'a small, open financial and tech hub',persona:'an open-minded dealmaker',def:'C',gdp:25,emis:1.5,vuln:0.4,stab:85,res:0.55,kind:'tech'}
+];
+const POLICIES={
+  A:{short:'Growth',text:'Invest in growth: faster growth now, more emissions'},
+  B:{short:'Green',text:'Green transition: slower growth now, lower emissions and more climate resilience'},
+  C:{short:'Open trade',text:'Open trade: cut tariffs, which pays off when others do the same'},
+  D:{short:'Protect',text:'Protect the home economy: tariffs shield stability but hurt world trade'},
+  E:{short:'Aid',text:'Aid and cooperation: fund aid for vulnerable countries, slower growth'}
+};
+const EVENTS={calm:'a calm year',pandemic:'a pandemic spreads',energy:'an energy price spike',crop:'widespread crop failures',tech:'a tech breakthrough',finance:'a financial crisis',heat:'a record heatwave'};
+const EVENT_ORDER=['calm','calm','calm','pandemic','energy','crop','tech','finance','heat'];
+/* ---------- seeded randomness ---------- */
+function rng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+function eventFor(year){const r=rng(year*7919+11);return EVENT_ORDER[Math.floor(r()*EVENT_ORDER.length)];}
+/* ---------- the world model (plain code) ---------- */
+function newWorld(){
+  return{year:0,temp:1.2,T:0.5,hist:[],pol:[],news:'',ev:null,
+    C:COUNTRIES.map(c=>({id:c.id,gdp:c.gdp,emis:c.emis,vuln:c.vuln,stab:c.stab,res:c.res,kind:c.kind,int:c.emis/c.gdp,growth:0.02,dmg:0,last:null}))};
+}
+function stepWorld(W,choice,ev){
+  const C=W.C,r=rng((W.year+1)*977+3),total=C.reduce((a,c)=>a+c.gdp,0);
+  let shC=0,shD=0;
+  C.forEach(c=>{const x=choice[c.id];if(x==='C')shC+=c.gdp/total;if(x==='D')shD+=c.gdp/total;});
+  let T=0.5*W.T+0.5*Math.max(0,Math.min(1,0.5+0.8*(shC-shD)));
+  if(ev==='finance')T=Math.max(0,T-0.1);
+  let pool=0;C.forEach(c=>{if(choice[c.id]==='E')pool+=0.012*c.gdp;});
+  const need=C.reduce((a,c)=>a+(c.res<0.6?c.vuln*(1-c.res):0),0)||1;
+  C.forEach(c=>{
+    const x=choice[c.id],o=x==='C'?1:(x==='D'?0.1:0.5);
+    let g=0.025;
+    if(x==='A')g+=0.02;if(x==='B')g-=0.01;if(x==='E')g-=0.007;
+    g+=0.06*(T-0.5)*(0.5+0.5*o);
+    c.dmg=Math.max(0,W.temp-1.2)*0.02*c.vuln*(1-c.res);
+    g-=c.dmg;
+    let sd=0;
+    if(ev==='pandemic'){g-=0.03+0.01*o;sd-=5;}
+    if(ev==='energy')g+=c.kind==='energy'?0.03:-0.01;
+    if(ev==='crop'&&c.kind==='agri'){g-=0.025;sd-=6;}
+    if(ev==='tech')g+=(c.kind==='tech'||c.kind==='mfg')?0.02:0.005;
+    if(ev==='finance'){if(c.kind==='tech')g-=0.03;sd-=4;}
+    if(ev==='heat')g-=0.02*c.vuln*(1-c.res)*Math.max(0,W.temp-1);
+    g+=(r()-0.5)*0.01;
+    c.growth=g;c.gdp*=1+g;
+    c.int*=x==='B'?0.93:(x==='A'?1.01:0.99);
+    c.emis=c.gdp*c.int;
+    const rec=c.res<0.6?pool*(c.vuln*(1-c.res))/need:0,rf=rec/c.gdp;
+    c.res=Math.max(0,Math.min(1,c.res+(x==='B'?0.03:0)+Math.min(0.1,rf*3)));
+    c.stab=Math.max(0,Math.min(100,c.stab+0.05*(65-c.stab)+80*(g-0.015)+(x==='D'?1.5:0)+(x==='E'?1.5:0)+rf*100+sd+(r()-0.5)*2));
+    c.last=x;
+  });
+  const sumE=C.reduce((a,c)=>a+c.emis,0);
+  W.temp+=0.0004*sumE;W.T=T;W.year+=1;W.ev=ev;
+  W.hist.push({year:W.year,temp:W.temp,gdp:C.reduce((a,c)=>a+c.gdp,0),stab:C.reduce((a,c)=>a+c.stab,0)/C.length,T,ev,emis:sumE});
+  W.pol.push(Object.assign({},choice));
+}
+function benchmark(letter,years){
+  const W=newWorld();
+  for(let y=0;y<years;y++){const ch={};COUNTRIES.forEach(c=>{ch[c.id]=letter;});stepWorld(W,ch,eventFor(W.year+1));}
+  return W.hist;
+}
+/* ---------- state ---------- */
+const S={W:newWorld(),evOverride:'random',human:'',hChoice:'',narr:true,busy:false,err:'',showModel:false,prog:'',bench:null};
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
+async function chat(messages,max,lp){
+  need();
+  const req={messages,temperature:0,max_tokens:max||60};
+  if(lp){req.logprobs=true;req.top_logprobs=4;}
+  const r=await LLM.engine.chat.completions.create(req);
+  const ch=r.choices[0];
+  return{text:String((ch.message&&ch.message.content)||'').trim(),lp:(ch.logprobs&&ch.logprobs.content)||[]};
+}
+async function pickLetter(system,user){
+  const out=await chat([{role:'system',content:system},{role:'user',content:user}],6,true);
+  const m=out.text.toUpperCase().match(/(?:^|[^A-Z])([A-E])(?![A-Z])/);
+  const letter=m?m[1]:'';
+  let conf=0;
+  if(letter&&out.lp.length){
+    const at=out.lp.findIndex(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter);
+    if(at>=0&&typeof out.lp[at].logprob==='number')conf=Math.exp(out.lp[at].logprob);
+  }
+  return{letter,conf,raw:out.text};
+}
+async function say(system,user,max){const out=await chat([{role:'system',content:system},{role:'user',content:user}],max||100,false);return out.text.replace(/\s+/g,' ').trim();}
+/* ---------- running a year ---------- */
+function nextEvent(){return S.evOverride==='random'?eventFor(S.W.year+1):S.evOverride;}
+function lastChoicesText(){
+  const W=S.W;if(!W.pol.length)return 'No earlier choices yet.';
+  const p=W.pol[W.pol.length-1],cnt={};
+  Object.keys(p).forEach(k=>{cnt[p[k]]=(cnt[p[k]]||0)+1;});
+  return 'Last year the other countries chose: '+Object.keys(cnt).map(k=>cnt[k]+' x '+POLICIES[k].short).join(', ')+'.';
+}
+async function runYear(){
+  const W=S.W,ev=nextEvent(),year=W.year+1;
+  if(S.human&&!S.hChoice)throw new Error('Pick a priority for '+COUNTRIES.find(c=>c.id===S.human).name+' first, since you took it over.');
+  const menu=Object.keys(POLICIES).map(k=>k+') '+POLICIES[k].text).join('\n');
+  const choice={},meta={};
+  for(const c of COUNTRIES){
+    if(c.id===S.human){choice[c.id]=S.hChoice;meta[c.id]={conf:1,fallback:false,human:true};continue;}
+    S.prog='Year '+year+': '+c.name+' is choosing...';draw();await sleep(0);
+    const w=W.C.find(x=>x.id===c.id);
+    const user='Year '+year+'. Your country: GDP '+w.gdp.toFixed(0)+', growth last year '+(w.growth*100).toFixed(1)+'%, stability '+w.stab.toFixed(0)+' out of 100, climate resilience '+Math.round(w.res*100)+'%, emissions '+w.emis.toFixed(1)+'.\nWorld: temperature '+W.temp.toFixed(2)+' degrees above pre-industrial, world trade level '+Math.round(W.T*100)+'%. This year: '+EVENTS[ev]+'.\n'+lastChoicesText()+'\nChoose your priority for the year:\n'+menu+'\nReply with one letter.';
+    const p=await pickLetter('You lead the government of '+c.name+', '+c.desc+'. You are '+c.persona+'. Reply with one letter only.',user);
+    choice[c.id]=p.letter||c.def;meta[c.id]={conf:p.conf,fallback:!p.letter,human:false};
+  }
+  const before={temp:W.temp,gdp:W.C.reduce((a,c)=>a+c.gdp,0),stab:W.C.reduce((a,c)=>a+c.stab,0)/W.C.length};
+  stepWorld(W,choice,ev);
+  W.C.forEach(c=>{c.meta=meta[c.id];});
+  const h=W.hist[W.hist.length-1];
+  if(S.narr){
+    S.prog='The news editor is writing...';draw();await sleep(0);
+    const cnt={};Object.keys(choice).forEach(k=>{cnt[choice[k]]=(cnt[choice[k]]||0)+1;});
+    const worst=W.C.slice().sort((a,b)=>a.growth-b.growth)[0],best=W.C.slice().sort((a,b)=>b.growth-a.growth)[0];
+    const nm=id=>COUNTRIES.find(c=>c.id===id).name;
+    const facts='Event: '+EVENTS[ev]+'. Temperature '+before.temp.toFixed(2)+' to '+h.temp.toFixed(2)+'. World GDP '+before.gdp.toFixed(0)+' to '+h.gdp.toFixed(0)+'. Average stability '+before.stab.toFixed(0)+' to '+h.stab.toFixed(0)+'. Choices: '+Object.keys(cnt).map(k=>cnt[k]+' chose '+POLICIES[k].short).join(', ')+'. Fastest growth: '+nm(best.id)+' ('+(best.growth*100).toFixed(1)+'%). Slowest: '+nm(worst.id)+' ('+(worst.growth*100).toFixed(1)+'%).';
+    W.news=await say('You are a world news editor. Write three short plain sentences using only the facts given.',facts,100);
+  }else W.news='';
+  S.bench=null;
+}
+/* ---------- rendering ---------- */
+function chartSvg(series,opt){
+  const Wd=540,H=opt.h||170,L=38,R=10,T=10,B=22;
+  const all=series.flatMap(s=>s.values);if(!all.length)return '';
+  const lo=Math.min(...all),hi=Math.max(...all),n=Math.max(...series.map(s=>s.values.length));
+  const px=i=>L+(n<=1?0:i/(n-1))*(Wd-L-R),py=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B);
+  let s='<svg viewBox="0 0 '+Wd+' '+H+'" width="100%" role="img" aria-label="'+esc(opt.label)+'">';
+  s+='<text x="2" y="'+(T+8)+'" font-size="10" fill="currentColor" opacity=".7">'+(opt.fmt?opt.fmt(hi):Math.round(hi))+'</text><text x="2" y="'+(H-B)+'" font-size="10" fill="currentColor" opacity=".7">'+(opt.fmt?opt.fmt(lo):Math.round(lo))+'</text>';
+  series.forEach(se=>{
+    if(!se.values.length)return;
+    s+='<polyline points="'+se.values.map((v,i)=>px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ')+'" fill="none" stroke="'+se.color+'" stroke-width="'+(se.bold?3:1.8)+'"'+(se.dash?' stroke-dasharray="5 4"':'')+'/>';
+  });
+  for(let i=0;i<n;i+=Math.max(1,Math.round(n/6)))s+='<text x="'+px(i).toFixed(1)+'" y="'+(H-6)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+(i+1)+'</text>';
+  return s+'</svg>';
+}
+function legend(items){return '<div class="row small" style="gap:12px">'+items.map(i=>'<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+i[1]+';margin-right:4px"></span>'+esc(i[0])+'</span>').join('')+'</div>';}
+function bar(p,color){return '<div style="background:var(--line);border-radius:6px;height:8px;width:100%"><div style="background:'+color+';height:8px;border-radius:6px;width:'+Math.max(2,Math.round(Math.max(0,Math.min(1,p))*100))+'%"></div></div>';}
+function card(c){
+  const w=S.W.C.find(x=>x.id===c.id),m=w.meta;
+  const last=w.last?('<span class="chip good">'+w.last+' '+esc(POLICIES[w.last].short)+'</span>'+(m&&m.human?' <span class="chip warn">you</span>':'')+(m&&m.fallback?' <span class="chip warn">default</span>':'')+(m&&!m.human&&!m.fallback?' <span class="small muted">conf '+m.conf.toFixed(2)+'</span>':'')):'<span class="muted small">no choice yet</span>';
+  return '<div class="box"><div class="row" style="justify-content:space-between"><b>'+esc(c.name)+'</b>'+last+'</div><div class="small muted">'+esc(c.desc)+'. Led by '+esc(c.persona)+'.</div>'+
+    '<div class="small" style="margin-top:6px">GDP <b>'+w.gdp.toFixed(0)+'</b> ('+(w.growth>=0?'+':'')+(w.growth*100).toFixed(1)+'%) · emissions <b>'+w.emis.toFixed(1)+'</b> · climate damage '+(w.dmg*100).toFixed(1)+'%</div>'+
+    '<div class="small" style="margin-top:4px">Stability '+w.stab.toFixed(0)+'</div>'+bar(w.stab/100,w.stab>60?'#2E7D5B':(w.stab>35?'#E3A21A':'#B3412E'))+
+    '<div class="small" style="margin-top:4px">Climate resilience '+Math.round(w.res*100)+'%</div>'+bar(w.res,'#0E6F8E')+'</div>';
+}
+function dashboard(){
+  const W=S.W,h=W.hist.length?W.hist[W.hist.length-1]:null;
+  const gdp0=COUNTRIES.reduce((a,c)=>a+c.gdp,0);
+  const tiles='<div class="tiles"><div class="tile"><b>Year '+W.year+'</b><span>next: '+EVENTS[nextEvent()]+'</span></div><div class="tile"><b>+'+W.temp.toFixed(2)+'°</b><span>temperature above pre-industrial</span></div><div class="tile"><b>'+(h?h.gdp.toFixed(0):gdp0)+'</b><span>world GDP</span></div><div class="tile"><b>'+Math.round(W.T*100)+'%</b><span>world trade level</span></div><div class="tile"><b>'+(h?h.stab.toFixed(0):Math.round(COUNTRIES.reduce((a,c)=>a+c.stab,0)/COUNTRIES.length))+'</b><span>average stability</span></div></div>';
+  let charts='';
+  if(W.hist.length){
+    const n=Math.max(W.hist.length,1),horizon=Math.max(30,W.hist.length);
+    if(!S.bench||S.bench.horizon!==horizon)S.bench={horizon,A:benchmark('A',horizon),B:benchmark('B',horizon),C:benchmark('C',horizon),D:benchmark('D',horizon)};
+    const B=S.bench;
+    const tS=[{values:B.A.map(x=>x.temp),color:'#B3412E',dash:true},{values:B.B.map(x=>x.temp),color:'#2E7D5B',dash:true},{values:B.C.map(x=>x.temp),color:'#0E6F8E',dash:true},{values:B.D.map(x=>x.temp),color:'#8A98A0',dash:true},{values:W.hist.map(x=>x.temp),color:'#17262D',bold:true}];
+    const gS=[{values:B.A.map(x=>x.gdp),color:'#B3412E',dash:true},{values:B.B.map(x=>x.gdp),color:'#2E7D5B',dash:true},{values:B.C.map(x=>x.gdp),color:'#0E6F8E',dash:true},{values:B.D.map(x=>x.gdp),color:'#8A98A0',dash:true},{values:W.hist.map(x=>x.gdp),color:'#17262D',bold:true}];
+    const lg=legend([['The agents (bold)','#17262D'],['All growth','#B3412E'],['All green','#2E7D5B'],['All open trade','#0E6F8E'],['All protect','#8A98A0']]);
+    charts='<h3>How the agents compare with fixed policies</h3><p class="small muted">Dashed lines are what would happen over '+horizon+' years if every country always chose the same policy, with the same events. They are plain code.</p>'+lg+
+      '<p class="small" style="margin:8px 0 2px"><b>Temperature</b></p><div class="svgbox">'+chartSvg(tS,{label:'Temperature by year',fmt:v=>v.toFixed(1)})+'</div>'+
+      '<p class="small" style="margin:8px 0 2px"><b>World GDP</b></p><div class="svgbox">'+chartSvg(gS,{label:'World GDP by year'})+'</div>';
+  }
+  return tiles+charts;
+}
+function policyMatrix(){
+  const W=S.W;if(!W.pol.length)return '';
+  const years=W.pol.map((_,i)=>i+1).slice(-12),off=W.pol.length-years.length;
+  const col={A:'#B3412E',B:'#2E7D5B',C:'#0E6F8E',D:'#8A98A0',E:'#E3A21A'};
+  return '<h3>Who chose what</h3><div class="scroll"><table style="min-width:'+(120+years.length*34)+'px"><thead><tr><th>Country</th>'+years.map(y=>'<th>Y'+y+'</th>').join('')+'</tr></thead><tbody>'+
+    COUNTRIES.map(c=>'<tr><td>'+esc(c.name)+'</td>'+years.map((y,i)=>{const l=W.pol[off+i][c.id];return '<td style="color:'+col[l]+';font-weight:700">'+l+'</td>';}).join('')+'</tr>').join('')+'</tbody></table></div>'+
+    '<p class="small muted">A growth, B green, C open trade, D protect, E aid.</p>';
+}
+function controls(){
+  const evOpts=['random'].concat(Object.keys(EVENTS)).map(k=>'<option value="'+k+'"'+(S.evOverride===k?' selected':'')+'>'+(k==='random'?'Random (seeded)':EVENTS[k])+'</option>').join('');
+  const humOpts='<option value="">Nobody, the agents decide</option>'+COUNTRIES.map(c=>'<option value="'+c.id+'"'+(S.human===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  let hp='';
+  if(S.human){
+    hp='<div class="box" style="margin-top:10px"><b>You lead '+esc(COUNTRIES.find(c=>c.id===S.human).name)+'</b><p class="small muted" style="margin:4px 0 8px">Pick this year\'s priority. The other seven countries are still agents.</p><div class="row">'+Object.keys(POLICIES).map(k=>tog('hchoice',k,k+' '+esc(POLICIES[k].short),S.hChoice===k)).join('')+'</div></div>';
+  }
+  return '<div class="grid2"><div><label class="range" for="evsel">Next year\'s event</label><select id="evsel" data-act="evsel">'+evOpts+'</select></div>'+
+    '<div><label class="range" for="humsel">Take over a country</label><select id="humsel" data-act="humsel">'+humOpts+'</select></div></div>'+hp+
+    '<div class="row" style="margin-top:10px">'+tog('narr','','News summary written by the model (slower)',S.narr)+'</div>'+
+    '<div class="row" style="margin-top:12px">'+btn('run1','','Run 1 year','',S.busy)+btn('run5','','Run 5 years','',S.busy||!!S.human)+btn('reset','','Reset the world','ghost',S.busy)+'</div>';
+}
+const QA=[
+ ['Why do the agents often do worse together than apart?','Each country gains from investing in growth, but the emissions harm everyone through the shared climate. It is a tragedy of the commons: what is best for one country alone is not best for the world.'],
+ ['What do the agents actually decide?','Only one letter a year. The language model picks a priority from five, and plain code works out what that does to growth, emissions, trade and stability.'],
+ ['Why compare with fixed policies?','They show what the world would look like if nobody ever changed course. Where the agents land between the extremes tells you whether they cooperated.']
+];
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'</div>';
+}
+function render(){
+  const W=S.W;
+  const news=W.hist.length?('<h3>Year '+W.year+': '+esc(EVENTS[W.ev])+'</h3>'+(W.news?'<div class="status ok">'+esc(W.news)+'</div>':'<p class="small muted">News summary is off.</p>')):'';
+  return modelBox()+controls()+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Running on your device</b><br>'+esc(S.prog)+'</div>':'')+
+    '<h3>The world</h3>'+dashboard()+news+'<h3>The countries</h3><div class="grid2">'+COUNTRIES.map(card).join('')+'</div>'+policyMatrix()+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const draw=app({
+  render,
+  act:{
+    model:()=>{S.showModel=!S.showModel;},
+    narr:()=>{S.narr=!S.narr;},
+    hchoice:v=>{S.hChoice=v;},
+    run1:()=>guard(runYear),
+    run5:()=>guard(async()=>{for(let i=0;i<5;i++)await runYear();}),
+    reset:()=>{S.W=newWorld();S.bench=null;S.hChoice='';S.human='';S.evOverride='random';S.err='';},
+    ...LLM.act
+  },
+  change:{evsel:t=>{S.evOverride=t.value;},humsel:t=>{S.human=t.value;S.hChoice='';},...LLM.change},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>
