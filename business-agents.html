@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agent hierarchy: a business run by agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">A small online store run by a hierarchy of agents (a real on-device model)</span></div>
+  <header>
+    <h1>Agent hierarchy: a business run by agents</h1>
+    <p class="lede">You are the board of a small online store. Customers place purchase orders, and everything else follows from them. Give a directive and watch it flow down a hierarchy of agents, then watch the reports flow back up while the business console changes.</p>
+    <ol class="lede-items"><li><b>Customers</b>: Place the orders. They are the external input. Late orders and refunds come back as support tickets, which are the only thing in the support inbox.</li><li><b>Executive agent</b>: Reads your directive and sets the company stance, which fixes the limits below it.</li><li><b>Department managers</b>: Sales, Operations, Support and Finance each choose a plan within those limits.</li><li><b>Workers</b>: A pricing desk and an inventory planner (code), a ticket triager and reply drafter (model), and a refund processor (code) do the work and report up.</li><li><b>You</b>: The human at the top. You can override the stance.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the store, its customers, orders, tickets and numbers are made up, and the scoring is illustrative. The language model makes the executive and manager choices from short menus, sorts tickets, writes short replies and reports. Pricing, inventory planning and refunds are plain code. Small models make mistakes, and the limits flowing down from the executive are there to contain them. This is a teaching demo of delegation and reporting, not a business tool. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- the made-up business ---------- */
+const ITEMS0={
+  lamp:{label:'Table lamps',noun:'table lamp',D:8,L:2,price:60,cost:30,I:14,pipe:[8,8]},
+  desk:{label:'Standing desks',noun:'standing desk',D:3,L:1,price:480,cost:300,I:6,pipe:[3]},
+  jacket:{label:'Rain jackets',noun:'rain jacket',D:6,L:1,price:95,cost:45,I:9,pipe:[6]}
+};
+const STANCES={
+  A:{name:'Frugal',limit:60,budget:100,buffer:0,maxDiscount:0,tone:'brief and polite',blurb:'protect cash, spend little'},
+  B:{name:'Balanced',limit:120,budget:250,buffer:0.15,maxDiscount:0.10,tone:'polite and clear',blurb:'balance cost and customers'},
+  C:{name:'Customer-first',limit:300,budget:500,buffer:0.3,maxDiscount:0.15,tone:'warm and apologetic',blurb:'spend to protect customers'}
+};
+const SALES_PLANS={A:'Run a promotion at the largest discount allowed',B:'Keep prices as they are',C:'Raise prices by 10%'};
+const OPS_PLANS={A:'Reorder for the expected demand with a safety buffer',B:'Reorder for normal demand only',C:'Hold all orders'};
+const SUP_PLANS={A:'Triage and reply to every open ticket',B:'Triage all, reply to urgent tickets only',C:'Triage only, send no replies'};
+const FIN_PLANS={A:'Approve refunds up to the limit',B:'Approve only small refunds (half the limit)',C:'Approve no refunds'};
+const TKT_LABELS={A:'Delay',B:'Refund request',C:'Complaint',D:'Question'};
+const TEMPL={
+  A:['Where is my {n}? Order {o} was due days ago.','ORDER {o} STILL NOT HERE!! my {n} is late','{n} order {o} delayed again, any update?'],
+  B:['I want a refund of ${a} for {o}, the {n} arrived broken.','refund ${a} for order {o} please','Please refund ${a} on {o}; wrong size {n}.'],
+  C:['Your support never answers. I am very unhappy.','Terrible service, I will leave a bad review.','Why was I charged twice? This is unacceptable.'],
+  D:['Do you ship to Canada?','Can I change the colour on my {n} order {o}?','What is your return policy?']
+};
+const PRESETS=['Keep customers happy but watch the cash.','Cut costs this week.','Customers are angry about delays. Fix it.','Grow sales this week.'];
+/* ---------- seeded randomness ---------- */
+function rng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+/* ---------- the MPC planner used by the inventory worker ---------- */
+const MULT=[0.8,1,1.3],WGT=[0.25,0.5,0.25];
+function simBase(I,pipe,Sx,F,H,h,s){let cost=0;pipe=pipe.slice();for(let k=0;k<H;k++){if(k>0)I+=pipe.shift();const IP=I+pipe.reduce((a,b)=>a+b,0);const x=Math.max(0,Sx-IP);pipe.push(x);I-=F;cost+=h*Math.max(I,0)+s*Math.max(-I,0);}return cost;}
+function mpcDecide(I,pipe,F,H,h,s){let best=null;for(let Sx=0;Sx<=120;Sx+=1){let c=0;MULT.forEach((m,i)=>{c+=WGT[i]*simBase(I,pipe,Sx,F*m,H,h,s);});if(!best||c<best.cost-1e-9)best={S:Sx,cost:c};}const IP=I+pipe.reduce((a,b)=>a+b,0);return{S:best.S,x:Math.max(0,best.S-IP),IP};}
+/* ---------- state ---------- */
+let ORDERS,ITEMS,BACKLOG,INBOX,KPI,HIST,DAY,ORDER_SEQ,TICKET_SEQ,LAST;
+function mkOrder(item,qty,status,day,price){
+  const o={id:'O-'+(ORDER_SEQ++),item,qty,paid:Math.round((price||ITEMS[item].price)*qty),status,day,refunded:0};
+  ORDERS[o.id]=o;return o;
+}
+function mkTicket(label,o,rr){
+  const T=TEMPL[label],tpl=T[Math.floor(rr()*T.length)];
+  let a=null;
+  if(label==='B'&&o){a=Math.max(5,Math.round(o.paid*(rr()<0.5?1:0.5)));if(rr()<0.15)a=Math.round(o.paid*1.6);}
+  const text=tpl.replace(/\{o\}/g,o?o.id:'').replace(/\{n\}/g,o?ITEMS0[o.item].noun:'order').replace('{a}',a);
+  return{id:TICKET_SEQ++,text,label,urgent:label==='A'||label==='C',order:o?o.id:null,amount:label==='B'?a:null,status:'open',day:DAY};
+}
+function resetBusiness(){
+  ORDERS={};ITEMS=JSON.parse(JSON.stringify(ITEMS0));BACKLOG=[];INBOX=[];KPI={csat:70,cash:5000};HIST=[];DAY=1;ORDER_SEQ=1001;TICKET_SEQ=1;LAST=null;
+  const shipped=[mkOrder('lamp',1,'shipped',0),mkOrder('desk',1,'shipped',0),mkOrder('jacket',2,'shipped',0),mkOrder('jacket',1,'shipped',0)];
+  shipped.forEach(o=>{o.shipDay=0;});
+  const waiting=mkOrder('lamp',2,'backordered',0);BACKLOG.push(waiting);
+  const r=rng(5);
+  INBOX=[mkTicket('A',waiting,r),mkTicket('B',shipped[2],r),mkTicket('C',null,r),mkTicket('D',shipped[0],r)];
+}
+resetBusiness();
+const S={dir:PRESETS[0],stanceMode:'auto',plan:null,exec:null,busy:false,err:'',showModel:false,narr:true,prog:''};
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
+async function chat(messages,max,lp){
+  need();
+  const req={messages,temperature:0,max_tokens:max||60};
+  if(lp){req.logprobs=true;req.top_logprobs=4;}
+  const r=await LLM.engine.chat.completions.create(req);
+  const ch=r.choices[0];
+  return{text:String((ch.message&&ch.message.content)||'').trim(),lp:(ch.logprobs&&ch.logprobs.content)||[]};
+}
+async function pickLetter(system,user,letters){
+  const out=await chat([{role:'system',content:system},{role:'user',content:user}],6,true);
+  const m=out.text.toUpperCase().match(new RegExp('(?:^|[^A-Z])(['+letters+'])(?![A-Z])'));
+  const letter=m?m[1]:'';
+  let conf=0;
+  if(letter&&out.lp.length){
+    const at=out.lp.findIndex(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter);
+    if(at>=0&&typeof out.lp[at].logprob==='number')conf=Math.exp(out.lp[at].logprob);
+  }
+  return{letter,conf,raw:out.text};
+}
+async function say(system,user,max){const out=await chat([{role:'system',content:system},{role:'user',content:user}],max||50,false);return out.text.replace(/\s+/g,' ').trim();}
+/* ---------- the sales lever ---------- */
+function salesEffect(letter,st){
+  if(letter==='A'){if(st.maxDiscount===0)return{disc:0,priceMult:1,demandMult:1,note:'no promotion: the CEO\'s stance allows no discount'};return{disc:st.maxDiscount,priceMult:1-st.maxDiscount,demandMult:1+2.5*st.maxDiscount,note:'promotion: '+Math.round(st.maxDiscount*100)+'% off, demand up about '+Math.round(2.5*st.maxDiscount*100)+'%'};}
+  if(letter==='C')return{disc:-0.1,priceMult:1.1,demandMult:0.85,note:'prices up 10%, demand down about 15%'};
+  return{disc:0,priceMult:1,demandMult:1,note:'prices unchanged'};
+}
+/* ---------- levels 3 and 2: planning, directives flow down ---------- */
+function kpiLine(){return 'CSAT '+KPI.csat.toFixed(0)+', cash '+Math.round(KPI.cash)+', open tickets '+INBOX.filter(t=>t.status==='open').length+', orders waiting for stock '+BACKLOG.length;}
+async function planDay(){
+  const plan={dir:S.dir};
+  S.prog='The executive is choosing a stance...';draw();await sleep(0);
+  if(S.stanceMode==='auto'){
+    const p=await pickLetter('You are the CEO of a small online store. Reply with one letter only.','The board gives you this directive: "'+S.dir+'"\nToday: '+kpiLine()+'.\nChoose the company stance:\nA) Frugal: '+STANCES.A.blurb+'\nB) Balanced: '+STANCES.B.blurb+'\nC) Customer-first: '+STANCES.C.blurb+'\nReply with one letter.','ABC');
+    plan.exec={letter:p.letter||'B',conf:p.conf,fallback:!p.letter,human:false};
+  }else plan.exec={letter:S.stanceMode,conf:1,fallback:false,human:true};
+  const st=STANCES[plan.exec.letter];plan.stance=st;
+  const open=INBOX.filter(t=>t.status==='open').length;
+  const refundMentions=INBOX.filter(t=>t.status==='open'&&/refund/i.test(t.text)).length;
+  const common='Directive from the board: "'+S.dir+'"\nThe CEO chose the stance '+st.name+' ('+st.blurb+').\n';
+  const defs={sales:'B',ops:'B',sup:'B',fin:'B'};
+  const pick=async(key,name,info,plans)=>{
+    S.prog='The '+name+' manager is choosing a plan...';draw();await sleep(0);
+    const menu=Object.keys(plans).map(k=>k+') '+plans[k]).join('\n');
+    const p=await pickLetter('You are the '+name+' manager of a small online store. Reply with one letter only.',common+info+'\nChoose your plan:\n'+menu+'\nReply with one letter.',Object.keys(plans).join(''));
+    const letter=p.letter||defs[key];
+    plan[key]={letter,conf:p.conf,fallback:!p.letter,text:plans[letter]};
+  };
+  await pick('sales','Sales','We sell table lamps, standing desks and rain jackets. Maximum discount the CEO allows: '+Math.round(st.maxDiscount*100)+'%. Orders waiting for stock: '+BACKLOG.length+'.',SALES_PLANS);
+  const se=salesEffect(plan.sales.letter,st);plan.salesEffect=se;
+  const stock=Object.values(ITEMS).map(i=>i.label+' '+i.I+' on hand, normal demand '+i.D+' a day, lead '+i.L+' days').join('; ');
+  await pick('ops','Operations','Stock: '+stock+'. Sales plan today: '+SALES_PLANS[plan.sales.letter]+' ('+se.note+'). Order buffer allowed by the CEO: '+Math.round(st.buffer*100)+'%. Orders waiting for stock: '+BACKLOG.length+'.',OPS_PLANS);
+  await pick('sup','Support','Open tickets: '+open+'. Orders waiting for stock, which will create more delay tickets: '+BACKLOG.length+'.',SUP_PLANS);
+  await pick('fin','Finance','Refund limit per refund: '+st.limit+'. Daily refund budget: '+st.budget+'. Open tickets that mention a refund: '+refundMentions+'.',FIN_PLANS);
+  S.plan=plan;S.exec=null;
+}
+/* ---------- level 1: workers execute, reports flow up ---------- */
+async function executeDay(){
+  const P=S.plan,st=P.stance,R={workers:{},managers:{}};
+  const open=INBOX.filter(t=>t.status==='open');
+  const before={csat:KPI.csat,cash:KPI.cash};
+  // --- ticket triager (model)
+  const tri={n:0,ok:0};
+  for(const t of open){
+    S.prog='Ticket triager: ticket '+(tri.n+1)+' of '+open.length;draw();await sleep(0);
+    const p=await pickLetter('You classify online store support tickets. Reply with one letter only.','Ticket: '+t.text+'\nA) Delay\nB) Refund request\nC) Complaint\nD) Question\nReply with one letter.','ABCD');
+    t.pred=p.letter;t.predConf=p.conf;tri.n++;if(p.letter===t.label)tri.ok++;
+  }
+  R.workers.tri=tri;
+  // --- reply drafter (model), within the support plan
+  let toReply=[];
+  if(P.sup.letter==='A')toReply=open.filter(t=>t.pred!=='B');
+  else if(P.sup.letter==='B')toReply=open.filter(t=>t.pred==='A'||t.pred==='C');
+  toReply=toReply.slice(0,3);
+  for(const t of toReply){
+    S.prog='Reply drafter: ticket '+t.id;draw();await sleep(0);
+    t.reply=S.narr?(await say('You write one short reply for an online store. Tone: '+st.tone+'. Maximum 25 words. Mention the order id if there is one.','Ticket: '+t.text,50)):'Thanks for contacting us. We are looking into it.';
+    t.status='replied';
+  }
+  R.workers.dra={n:toReply.length};
+  // --- refund processor (policy code), within the finance plan and the CEO's limits
+  const fin={approved:0,amount:0,denied:0,human:0,left:st.budget};
+  const allow=P.fin.letter==='A'?st.limit:(P.fin.letter==='B'?st.limit/2:0);
+  open.filter(t=>t.pred==='B').forEach(t=>{
+    if(t.amount===null)return;
+    const o=ORDERS[t.order];
+    if(!o||t.amount>o.paid-o.refunded){t.status='denied';fin.denied++;return;}
+    if(t.amount<=allow&&t.amount<=fin.left){o.refunded+=t.amount;fin.left-=t.amount;fin.amount+=t.amount;fin.approved++;t.status='refunded';}
+    else if(allow===0){fin.denied++;t.status='denied';}
+    else fin.human++;
+  });
+  R.workers.ref=fin;
+  // --- pricing desk (code): applies the sales plan
+  const se=P.salesEffect;
+  R.workers.price={note:se.note};
+  // --- inventory planner (MPC code): receive stock, then reorder within the operations plan
+  const inv={units:0,cost:0,lines:[]};
+  Object.keys(ITEMS).forEach(k=>{
+    const it=ITEMS[k];
+    it.I+=it.pipe.shift();
+    let x=0;
+    if(P.ops.letter!=='C'){
+      const F=it.D*(P.ops.letter==='A'?se.demandMult:1);
+      const pl=mpcDecide(it.I,it.pipe,F,3,1,5);
+      x=Math.round(pl.x*(P.ops.letter==='A'?1+st.buffer:1));
+    }
+    it.pipe.push(x);inv.units+=x;inv.cost+=x*it.cost;inv.lines.push(it.label+' ordered '+x);
+  });
+  R.workers.inv=inv;
+  // --- customers place orders (the external input), then orders are fulfilled in order
+  const rr=rng(DAY*104729+7),placed=[];
+  Object.keys(ITEMS).forEach(k=>{
+    const it=ITEMS[k];
+    let dem=Math.max(0,Math.round(it.D*se.demandMult*(0.85+rr()*0.35)*(DAY===3?1.6:1)));
+    while(dem>0){const q=Math.min(dem,1+Math.floor(rr()*2));dem-=q;placed.push(mkOrder(k,q,'new',DAY,it.price*se.priceMult));}
+  });
+  const queue=BACKLOG.concat(placed);BACKLOG=[];
+  let revenue=0,shipped=0;
+  queue.forEach(o=>{
+    const it=ITEMS[o.item];
+    if(it.I>=o.qty){it.I-=o.qty;o.status='shipped';o.shipDay=DAY;revenue+=o.paid;shipped++;}
+    else{o.status='backordered';BACKLOG.push(o);}
+  });
+  const orderRev=placed.reduce((a,o)=>a+o.paid,0);
+  LAST={day:DAY,orders:placed,shipped,waiting:BACKLOG.length,revenue};
+  R.workers.orders={placed:placed.length,shipped,waiting:BACKLOG.length,revenue};
+  // --- consolidate the business numbers
+  const replies=toReply.length,pending=INBOX.filter(t=>t.status==='open').length;
+  KPI.cash+=revenue-inv.cost-fin.amount;
+  KPI.csat=Math.max(0,Math.min(100,KPI.csat+1.5*replies+4*fin.approved-3*(fin.denied+fin.human)-2*pending-2*BACKLOG.length+3));
+  const rec={day:DAY,stance:st.name,csat:KPI.csat,cash:KPI.cash,open:pending,waiting:BACKLOG.length,orders:placed.length};
+  // --- managers consolidate (reports up)
+  const nums={
+    sales:'Plan: '+se.note+'. Customers placed '+placed.length+' orders worth '+Math.round(orderRev)+'. Revenue shipped today: '+Math.round(revenue)+'.',
+    ops:'Ordered '+inv.units+' units for '+Math.round(inv.cost)+'. '+BACKLOG.length+' order'+(BACKLOG.length===1?' is':'s are')+' waiting for stock.',
+    sup:'Triaged '+tri.n+' tickets, '+tri.ok+' correctly. Sent '+replies+' replies. '+pending+' tickets remain open.',
+    fin:'Approved '+fin.approved+' refund'+(fin.approved===1?'':'s')+' totalling '+Math.round(fin.amount)+'. Denied '+fin.denied+'. '+fin.human+' need a human. Budget left '+Math.round(fin.left)+'.'
+  };
+  const depts=[['sales','Sales'],['ops','Operations'],['sup','Support'],['fin','Finance']];
+  for(const d of depts){
+    S.prog='The '+d[1]+' manager is writing a report...';draw();await sleep(0);
+    R.managers[d[0]]=S.narr?(await say('You are the '+d[1]+' manager reporting to the CEO. Write one plain sentence, maximum 25 words, using only the facts given.','Your plan was: '+P[d[0]].text+'. Facts: '+nums[d[0]],55)):nums[d[0]];
+    R.managers[d[0]+'Facts']=nums[d[0]];
+  }
+  // --- executive consolidates for the board
+  const delta='CSAT '+before.csat.toFixed(0)+' to '+KPI.csat.toFixed(0)+', cash '+Math.round(before.cash)+' to '+Math.round(KPI.cash);
+  S.prog='The executive is writing the briefing...';draw();await sleep(0);
+  const facts='Sales: '+R.managers.salesFacts+' Operations: '+R.managers.opsFacts+' Support: '+R.managers.supFacts+' Finance: '+R.managers.finFacts;
+  R.exec=S.narr?(await say('You are the CEO of a small online store writing to the board. Write three short plain sentences using only the facts given.','Directive: "'+S.dir+'". Stance: '+st.name+'. Results: '+delta+'. '+facts,110)):('Stance '+st.name+'. '+delta+'. '+facts);
+  HIST.push(rec);
+  // --- the world moves on: unresolved tickets stay, and today's orders create tomorrow's tickets
+  const carry=INBOX.filter(t=>t.status==='open');
+  const rt=rng(DAY*7919+13),fresh=[];
+  BACKLOG.forEach(o=>{if(rt()<0.7)fresh.push(mkTicket('A',o,rt));});
+  Object.values(ORDERS).filter(o=>o.shipDay===DAY).forEach(o=>{if(rt()<0.12)fresh.push(mkTicket('B',o,rt));else if(rt()<0.06)fresh.push(mkTicket('C',null,rt));});
+  const pool=Object.values(ORDERS).filter(o=>o.shipDay===DAY);
+  fresh.push(mkTicket('D',pool.length?pool[Math.floor(rt()*pool.length)]:null,rt));
+  DAY+=1;
+  fresh.forEach(t=>{t.day=DAY;});
+  INBOX=carry.concat(fresh).slice(0,8);
+  S.exec=R;S.plan.done=true;
+}
+/* ---------- rendering ---------- */
+function lineSvg(vals){
+  const W=520,H=150,L=34,R=10,T=10,B=22,n=vals.length;
+  const lo=Math.min(...vals,50),hi=Math.max(...vals,80);
+  const px=i=>L+(n<=1?0:i/(n-1))*(W-L-R),py=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Customer satisfaction by day">';
+  s+='<text x="2" y="'+(T+8)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(hi)+'</text><text x="2" y="'+(H-B)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(lo)+'</text>';
+  s+='<polyline points="'+vals.map((v,i)=>px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ')+'" fill="none" stroke="#0E6F8E" stroke-width="2.5"/>';
+  vals.forEach((v,i)=>{s+='<circle cx="'+px(i).toFixed(1)+'" cy="'+py(v).toFixed(1)+'" r="4" fill="#E3A21A"/><text x="'+px(i).toFixed(1)+'" y="'+(H-6)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+(i===0?'start':'D'+i)+'</text>';});
+  return s+'</svg>';
+}
+function node(title,sub,body,color,state){
+  return '<div style="border:1.5px solid '+color+';border-left:8px solid '+color+';border-radius:10px;padding:8px 10px;background:var(--chip)"><div class="row" style="justify-content:space-between"><b>'+esc(title)+'</b>'+(state?chip(state[0],state[1]):'')+'</div><div class="small muted">'+esc(sub)+'</div>'+(body?'<div class="small" style="margin-top:4px">'+body+'</div>':'')+'</div>';
+}
+function orgChart(){
+  const P=S.plan,E=S.exec,st=P?P.stance:null,W=E?E.workers:null;
+  const exec=node('Executive agent','Level 3. Sets the stance and the limits.',P?('Stance: <b>'+esc(st.name)+'</b>'+(P.exec.human?' (set by you)':' (confidence '+P.exec.conf.toFixed(2)+(P.exec.fallback?', default: no letter returned':'')+')')+'<br>Limits: refund up to '+st.limit+', budget '+st.budget+', order buffer '+Math.round(st.buffer*100)+'%, discount up to '+Math.round(st.maxDiscount*100)+'%'):'Waiting for a directive.','#0B2B36',P?['Planned','good']:['Idle','']);
+  const mg=(key,name)=>{const m=P&&P[key];return node(name+' manager','Level 2. Chooses a plan inside the limits.',m?('Plan '+m.letter+': '+esc(m.text)+(m.fallback?' <span class="chip warn">default</span>':' (confidence '+m.conf.toFixed(2)+')')):'Waiting for the executive.','#2B4A57',m?['Planned','good']:['Idle','']);};
+  const wk=(title,kind,body)=>node(title,kind,body,'#0E6F8E',W?['Done','good']:['Idle','']);
+  const grp=(m,ws)=>'<div>'+m+'<div style="margin:6px 0 0 14px;display:grid;gap:6px">'+ws.join('')+'</div></div>';
+  const sales=grp(mg('sales','Sales'),[wk('Pricing desk','Level 1. Code.',W?esc(W.price.note):'')]);
+  const ops=grp(mg('ops','Operations'),[wk('Inventory planner','Level 1. MPC code.',W?esc(W.inv.lines.join('; ')):'')]);
+  const sup=grp(mg('sup','Support'),[wk('Ticket triager','Level 1. Model.',W?('Sorted '+W.tri.n+' tickets, '+W.tri.ok+' correct'):''),wk('Reply drafter','Level 1. Model.',W?('Drafted '+W.dra.n+' replies'):'')]);
+  const fin=grp(mg('fin','Finance'),[wk('Refund processor','Level 1. Policy code.',W?('Approved '+W.ref.approved+' ('+Math.round(W.ref.amount)+'), denied '+W.ref.denied+', '+W.ref.human+' need a human'):'')]);
+  const cust=node('Customers','The external input. Nobody here controls them, except through price.',W?('Placed '+W.orders.placed+' orders, '+W.orders.shipped+' shipped, '+W.orders.waiting+' waiting for stock'):'They place the orders that drive everything.','#8A98A0',null);
+  return '<div style="display:grid;gap:8px">'+exec+'<div class="row small muted" style="justify-content:center;gap:28px"><span>↓ directives and limits</span><span>↑ reports</span></div>'+sales+ops+sup+fin+'<div class="row small muted" style="justify-content:center"><span>orders in ↑, tickets back ↓</span></div>'+cust+'</div>';
+}
+function console_(){
+  const open=INBOX.filter(t=>t.status==='open').length;
+  const tiles='<div class="tiles"><div class="tile"><b>Day '+DAY+'</b><span>the next day to run</span></div><div class="tile"><b>'+KPI.csat.toFixed(0)+'</b><span>customer satisfaction</span></div><div class="tile"><b>'+Math.round(KPI.cash)+'</b><span>cash</span></div><div class="tile"><b>'+open+'</b><span>open tickets</span></div><div class="tile"><b>'+BACKLOG.length+'</b><span>orders waiting for stock</span></div></div>';
+  const ord=LAST?('<p class="small muted">Day '+LAST.day+': customers placed '+LAST.orders.length+' orders, '+LAST.shipped+' shipped, '+LAST.waiting+' waiting for stock. Revenue shipped: '+Math.round(LAST.revenue)+'.</p>'+table(['Order','Item','Qty','Paid','Status'],LAST.orders.slice(0,10).map(o=>[o.id,ITEMS0[o.item].noun,o.qty,o.paid,o.status]),460)):'<p class="small muted">No orders yet. Run a day and customers will place some.</p>';
+  const inbox='<p class="small muted">A ticket is one customer message logged for follow-up. These come from earlier orders: late orders, refund requests, complaints and questions.</p>'+table(['#','Ticket','Order','Status'],INBOX.map(t=>[t.id,t.text.slice(0,64),t.order||'—',t.status+(t.pred?' ('+TKT_LABELS[t.pred]+')':'')]),480);
+  const inv=table(['Item','On hand','On the way','Normal demand/day','Lead'],Object.values(ITEMS).map(i=>[i.label,i.I,i.pipe.reduce((a,b)=>a+b,0),i.D,i.L+' d']),460);
+  const hist=HIST.length?table(['Day','Stance','Orders','CSAT','Cash','Open tickets','Waiting'],HIST.map(h=>[h.day,h.stance,h.orders,h.csat.toFixed(0),Math.round(h.cash),h.open,h.waiting]),520)+(HIST.length>1?'<div class="svgbox" style="margin-top:8px">'+lineSvg([70].concat(HIST.map(h=>h.csat)))+'</div>':''):'<p class="small muted">No days run yet.</p>';
+  return '<h3>The business console</h3>'+tiles+'<h3>Customer orders</h3>'+ord+'<h3>Support inbox</h3>'+inbox+'<h3>Inventory</h3>'+inv+'<h3>Day by day</h3>'+hist;
+}
+function reportsView(){
+  const E=S.exec;if(!E)return '';
+  const pr=t=>'<p style="margin:4px 0">'+esc(t)+'</p>';
+  return '<h3>Reports flowing up</h3><div class="box" style="margin-bottom:8px"><b>Workers to managers (the numbers)</b>'+pr(E.managers.salesFacts)+pr(E.managers.opsFacts)+pr(E.managers.supFacts)+pr(E.managers.finFacts)+'</div>'+
+    '<div class="box" style="margin-bottom:8px"><b>Managers to the executive</b>'+pr('Sales: '+E.managers.sales)+pr('Operations: '+E.managers.ops)+pr('Support: '+E.managers.sup)+pr('Finance: '+E.managers.fin)+'</div>'+
+    '<div class="box" style="margin-bottom:8px;border-color:var(--good)"><b>The executive\'s briefing to you</b>'+pr(E.exec)+'</div>';
+}
+const QA=[
+ ['Where do tickets come from?','From orders. Orders that wait for stock create delay tickets, and shipped orders sometimes create refund requests and complaints. A stockout in Operations or a promotion from Sales becomes a Support problem a day later.'],
+ ['Why do the agents choose from menus?','Small models are unreliable at free-form plans. A short menu with one letter gives a choice that code can check, and limits from above keep any choice safe.'],
+ ['What flows down and what flows up?','Down: your directive, then the stance and its limits, then each manager\'s plan. Up: worker numbers, then manager summaries, then the executive\'s briefing.']
+];
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'</div>';
+}
+function render(){
+  const stBtns=tog('stance','auto','Let the CEO decide',S.stanceMode==='auto')+['A','B','C'].map(k=>tog('stance',k,'Set '+STANCES[k].name,S.stanceMode===k)).join('');
+  const dir='<h3>Your directive</h3><div class="row">'+PRESETS.map((p,i)=>btn('preset',i,esc(p.length>26?p.slice(0,26)+'…':p),'ghost sm')).join('')+'</div>'+
+    '<textarea class="editor" id="dir" data-act="dir" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.dir)+'</textarea>'+
+    '<p class="small muted" style="margin:10px 0 4px">Stance (you are at the top, so you can override the CEO):</p><div class="row">'+stBtns+'</div>'+
+    '<div class="row" style="margin-top:10px">'+tog('narr','','Reports written by the model (slower)',S.narr)+'</div>'+
+    '<div class="row" style="margin-top:12px">'+btn('plan','','1. Plan the day','',S.busy)+btn('exec','','2. Execute the plan','',S.busy||!S.plan||S.plan.done)+btn('reset','','Reset the business','ghost',S.busy)+'</div>';
+  return modelBox()+dir+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Running on your device</b><br>'+esc(S.prog)+'</div>':'')+
+    '<h3>The hierarchy</h3>'+orgChart()+reportsView()+console_()+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const draw=app({
+  render,
+  act:{
+    model:()=>{S.showModel=!S.showModel;},
+    preset:v=>{S.dir=PRESETS[+v];},
+    stance:v=>{S.stanceMode=v;},
+    narr:()=>{S.narr=!S.narr;},
+    plan:()=>{const t=$('#dir');if(t)S.dir=t.value;return guard(planDay);},
+    exec:()=>guard(executeDay),
+    reset:()=>{resetBusiness();S.plan=null;S.exec=null;S.err='';},
+    ...LLM.act
+  },
+  change:{...LLM.change},
+  input:{dir:t=>{S.dir=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>
