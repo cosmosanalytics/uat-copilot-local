@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Business requests: one agent or a team?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">The same requests, handled by one working memory or by several (a real on-device model)</span></div>
+  <header>
+    <h1>Business requests: one agent or a team?</h1>
+    <p class="lede">A batch of customer requests is handled two ways. One agent does everything in a single working memory. Or a team does it with several working memories, each holding only what its job needs. Compare the results, what each agent saw, and what the checker caught.</p>
+    <ol class="lede-items"><li><b>Sorter agent</b>: Reads only the request and decides what kind it is.</li><li><b>Specialist agents</b>: An order-status agent and a refund agent. Each has only its own tools and rules, and its own working memory.</li><li><b>Checker agent</b>: Starts fresh. It sees the request, the answer and the facts the tools returned, not the specialist&#x27;s reasoning, and checks them against the rules.</li><li><b>Controller</b>: Policy in code. Large refunds wait for a person.</li><li><b>You</b>: Choose one agent or the team, how many requests run at once, and whether to inject a slip to see who catches it.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the orders, requests and policy are made up, and the batch is tiny, so the results are anecdotes, not measurements. Small models make mistakes, and the scripted agents never do, so use the language model to see real slips. The injected slip is a demonstration: it replaces an agent's answer with a refund claim that no tool made. The model is one on-device model on one GPU in one tab, so parallel runs may queue. Times are measured in your browser, and the scripted agents use timers. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- made-up data and policy ---------- */
+const ORDERS0={
+  'O-1001':{item:'Standing desk',paid:480,status:'delivered',refunded:0},
+  'O-2002':{item:'Table lamp',paid:60,status:'shipped',refunded:0},
+  'O-3003':{item:'Rain jacket',paid:95,status:'processing',refunded:0}
+};
+const BATCH=[
+  {text:'Where is order O-2002?',exp:'answer'},
+  {text:'I want a refund of $45 for O-3003.',exp:'refund'},
+  {text:'I want a refund of $480 for O-1001.',exp:'approve'},
+  {text:'Refund $300 on order O-3003 please.',exp:'person'},
+  {text:'I want a refund for the broken lamp.',exp:'ask'},
+  {text:'Your support never answers. I am very unhappy.',exp:'person'}
+];
+const DEC=['answer','refund','approve','ask','person'];
+const DEC_NAME={answer:'Answered',refund:'Refund made',approve:'Needs approval',ask:'Asked for more',person:'To a person'};
+const POLICY='Refunds up to 200 may be processed. Refunds above 200 need a person to approve. A refund may not exceed what was paid.';
+const SINGLE_SYS='You are a support agent for an online store. You handle every kind of customer request yourself.\nTools:\n- get_order_status(order_id)\n- request_refund(order_id, amount)\nPolicy: '+POLICY+'\nReply with ONE JSON object. To call a tool: {"tool":"name","args":{...}}. To finish: {"decision":"answer|refund|approve|ask|person","reply":"message to the customer"}.\nDecision meanings: answer = you gave the customer information; refund = a refund was processed by the tool; approve = the refund needs a person to approve; ask = you need more information from the customer; person = a person must handle it.\nNever say an action is done unless a tool result shows it.';
+const STATUS_SYS='You are the order-status agent. You can only look up orders.\nTool: get_order_status(order_id)\nIf the request has no order id, ask the customer for it. Never invent order details.\nReply with ONE JSON object. To call the tool: {"tool":"get_order_status","args":{"order_id":"..."}}. To finish: {"decision":"answer|ask|person","reply":"message to the customer"}.';
+const REFUND_SYS='You are the refund agent. You only handle refund requests.\nTools: get_order_status(order_id), request_refund(order_id, amount)\nLook up the order, then request the refund for the amount asked. If the order id or the amount is missing, ask the customer. If the tool says approval is needed, finish with "approve". If the tool says the amount is invalid, finish with "person". Say a refund was made only if the tool says it was processed.\nReply with ONE JSON object. To call a tool: {"tool":"name","args":{...}}. To finish: {"decision":"refund|approve|ask|person","reply":"message to the customer"}.';
+const S={mode:'sim',handling:'team',pool:1,slip:'off',text:BATCH.map(b=>b.text).join('\n'),runs:{single:null,team:null},show:'team',busy:false,err:'',prog:'',showModel:false};
+let SIMSCALE=1;
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top), or switch to scripted agents.');}
+const sleepMs=ms=>new Promise(r=>setTimeout(r,ms));
+function newCtx(){return{orders:JSON.parse(JSON.stringify(ORDERS0)),log:[],refundDone:0,pending:null,mem:{},calls:0,steps:[]};}
+async function ask(ctx,agent,messages,max,lp){
+  need();
+  const chars=messages.reduce((a,m)=>a+m.content.length,0);
+  ctx.mem[agent]=Math.max(ctx.mem[agent]||0,chars);ctx.calls++;
+  const req={messages,temperature:0,max_tokens:max||150};
+  if(lp){req.logprobs=true;req.top_logprobs=4;}
+  const r=await LLM.engine.chat.completions.create(req);
+  const ch=r.choices[0];
+  return{text:String((ch.message&&ch.message.content)||'').trim(),lp:(ch.logprobs&&ch.logprobs.content)||[]};
+}
+async function pickLetter(ctx,agent,system,user,letters){
+  const out=await ask(ctx,agent,[{role:'system',content:system},{role:'user',content:user}],6,true);
+  const m=out.text.toUpperCase().match(new RegExp('(?:^|[^A-Z])(['+letters+'])(?![A-Z])'));
+  const letter=m?m[1]:'';let conf=0;
+  if(letter&&out.lp.length){const at=out.lp.findIndex(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter);if(at>=0&&typeof out.lp[at].logprob==='number')conf=Math.exp(out.lp[at].logprob);}
+  return{letter,conf};
+}
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function parseAct(text,allowed){
+  for(const c of jsonCandidates(text)){
+    let o;try{o=JSON.parse(c);}catch(e){continue;}
+    if(!o||typeof o!=='object')continue;
+    if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};
+    if(typeof o.decision==='string'&&allowed.indexOf(o.decision.toLowerCase())>=0)return{decision:o.decision.toLowerCase(),reply:String(o.reply===undefined?'':(typeof o.reply==='string'?o.reply:JSON.stringify(o.reply)))};
+  }
+  return null;
+}
+/* ---------- tools (policy is enforced here, for every agent) ---------- */
+function makeTools(ctx){
+  return{
+    get_order_status:a=>{const o=ctx.orders[a.order_id];const r=o?JSON.stringify({order_id:a.order_id,item:o.item,status:o.status,paid:o.paid,refunded:o.refunded}):'No order with that id.';ctx.log.push({tool:'get_order_status',args:a,result:r,ok:!!o});return r;},
+    request_refund:a=>{
+      const o=ctx.orders[a.order_id],amt=Number(a.amount);let r,ok=false;
+      if(!o)r='No order with that id.';
+      else if(!(amt>0)||amt>o.paid-o.refunded)r='Invalid amount. Refundable: '+(o.paid-o.refunded)+'.';
+      else if(amt>200){ctx.pending={order_id:a.order_id,amount:amt};r='NOT EXECUTED: refunds above 200 need a person to approve.';}
+      else{o.refunded+=amt;ctx.refundDone+=amt;ok=true;r='Refund of '+amt+' processed on '+a.order_id+'.';}
+      ctx.log.push({tool:'request_refund',args:a,result:r,ok});return r;}
+  };
+}
+/* ---------- one acting agent with its own working memory ---------- */
+async function actAgent(ctx,agent,system,question,allowed,toolNames,max){
+  const tl=makeTools(ctx),msgs=[{role:'user',content:question}];
+  let final=null;
+  for(let c=1;c<=max&&!final;c++){
+    let out=await ask(ctx,agent,[{role:'system',content:system}].concat(msgs),160);
+    let act=parseAct(out.text,allowed);
+    if(!act){out=await ask(ctx,agent,[{role:'system',content:system}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),160);act=parseAct(out.text,allowed);}
+    if(!act)break;
+    if(act.decision){final=act;msgs.push({role:'assistant',content:JSON.stringify({decision:act.decision,reply:act.reply})});break;}
+    let res;
+    if(toolNames.indexOf(act.tool)<0)res='Error: you have no tool named '+act.tool;
+    else{try{res=tl[act.tool](act.args);}catch(e){res='Error: '+e.message;}}
+    ctx.steps.push({agent,text:'tool '+act.tool+' '+JSON.stringify(act.args)+' → '+res.slice(0,90)});
+    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT: '+res+'\nNow finish with the final JSON, or call another tool if you still need one.'});
+  }
+  if(!final&&ctx.log.length){
+    const out=await ask(ctx,agent,[{role:'system',content:system}].concat(msgs,[{role:'user',content:'You are out of steps. Finish now with the final JSON.'}]),160);
+    const act=parseAct(out.text,allowed);if(act&&act.decision){final=act;msgs.push({role:'assistant',content:JSON.stringify(act)});}
+  }
+  return{final,msgs,system};
+}
+/* ---------- scripted agents (no model): plain rules ---------- */
+function ids(text){return{oid:(text.match(/O-\d{4}/i)||[''])[0].toUpperCase(),amt:(function(){const m=text.match(/\$\s?(\d[\d,]*(?:\.\d+)?)/);return m?Number(m[1].replace(/,/g,'')):null;})()};}
+async function simDelay(ms){await sleepMs(ms*SIMSCALE);}
+async function simStatus(ctx,text){
+  await simDelay(500);const {oid}=ids(text),tl=makeTools(ctx);
+  if(!oid)return{decision:'ask',reply:'Could you share your order id?'};
+  const r=tl.get_order_status({order_id:oid});ctx.steps.push({agent:'Order-status agent',text:'tool get_order_status → '+r.slice(0,70)});
+  if(/^No order/.test(r))return{decision:'person',reply:'I could not find that order, so a person will help.'};
+  const o=JSON.parse(r);return{decision:'answer',reply:'Your '+o.item+' is '+o.status+'.'};
+}
+async function simRefund(ctx,text){
+  await simDelay(700);const {oid,amt}=ids(text),tl=makeTools(ctx);
+  if(!oid||amt===null)return{decision:'ask',reply:'Please tell me the order id and the amount you want refunded.'};
+  tl.get_order_status({order_id:oid});
+  const r=tl.request_refund({order_id:oid,amount:amt});ctx.steps.push({agent:'Refund agent',text:'tool request_refund → '+r.slice(0,70)});
+  if(/processed/.test(r))return{decision:'refund',reply:'Your refund of '+amt+' has been processed.'};
+  if(/NOT EXECUTED/.test(r))return{decision:'approve',reply:'A person needs to approve this refund. We will be in touch.'};
+  return{decision:'person',reply:'I could not process that refund, so a person will review it.'};
+}
+async function simSingle(ctx,text){
+  await simDelay(900);
+  if(/refund/i.test(text))return simRefund(ctx,text);
+  if(/where is|status|order/i.test(text))return simStatus(ctx,text);
+  return{decision:'person',reply:'A person will handle this.'};
+}
+/* ---------- the checks: rules in code, plus the checker's reading ---------- */
+function rulesCheck(ctx,fin){
+  const why=[];
+  const claims=/refund(?:ed)?\b.*\b(processed|issued|completed|done)|\b(processed|issued|completed)\b.*refund|has been refunded|i have refunded/i.test(fin.reply||'');
+  if(fin.decision==='refund'&&!ctx.refundDone)why.push('says a refund was made, but no refund was executed');
+  if(claims&&!ctx.refundDone&&why.length===0)why.push('claims a refund that no tool made');
+  if(fin.decision==='approve'&&!ctx.pending)why.push('says approval is needed, but no tool asked for it');
+  if(fin.decision==='answer'&&!ctx.log.some(l=>l.tool==='get_order_status'&&l.ok))why.push('gives order information without looking the order up');
+  return why;
+}
+const SLIP={decision:'refund',reply:'Your refund has been processed.'};
+/* ---------- the two ways of handling one request ---------- */
+async function handleSingle(ctx,text,slip){
+  let fin;
+  if(S.mode==='sim'){fin=await simSingle(ctx,text);if(slip){fin=Object.assign({},SLIP,{slipped:true});}return{fin,note:slip?'Injected slip: it claimed a refund no tool made. Scripted agents do not self-check.':''};}
+  const r=await actAgent(ctx,'One agent',SINGLE_SYS,text,DEC,['get_order_status','request_refund'],4);
+  fin=r.final||{decision:'person',reply:'(no valid answer)'};
+  if(slip){fin=Object.assign({},SLIP,{slipped:true});if(r.msgs.length&&r.msgs[r.msgs.length-1].role==='assistant')r.msgs[r.msgs.length-1].content=JSON.stringify(SLIP);else r.msgs.push({role:'assistant',content:JSON.stringify(SLIP)});}
+  let note=slip?'Injected slip. ':'';
+  if(r.final||slip){
+    const out=await ask(ctx,'One agent',[{role:'system',content:SINGLE_SYS}].concat(r.msgs,[{role:'user',content:'Check your answer against the tool results above. Reply with the same JSON, corrected if it is wrong.'}]),160);
+    const act=parseAct(out.text,DEC);
+    if(act&&act.decision){const changed=act.decision!==fin.decision;fin=Object.assign({},act,{slipped:fin.slipped&&!changed});note+=changed?'Its own self-check changed the answer.':'Its own self-check kept the answer.';}
+  }
+  return{fin,note};
+}
+async function handleTeam(ctx,text,slip){
+  // 1. the sorter sees only the request
+  let letter,conf=1;
+  if(S.mode==='sim'){await simDelay(300);letter=/refund/i.test(text)?'B':(/where is|status/i.test(text)?'A':'C');}
+  else{const p=await pickLetter(ctx,'Sorter','You sort customer requests for an online store. Reply with one letter only.','Request: '+text+'\nA) Order status question\nB) Refund request\nC) Anything else (complaint, address change, other)\nReply with one letter.','ABC');letter=p.letter||'C';conf=p.conf;}
+  ctx.steps.push({agent:'Sorter',text:'chose '+letter+' ('+({A:'order status',B:'refund',C:'other'}[letter])+')'+(S.mode==='model'?', confidence '+conf.toFixed(2):'')});
+  // 2. a specialist with its own tools and its own working memory
+  let fin,who;
+  if(letter==='C'){fin={decision:'person',reply:'This needs a person.'};who='none';}
+  else if(letter==='A'){who='Order-status agent';fin=S.mode==='sim'?await simStatus(ctx,text):((await actAgent(ctx,who,STATUS_SYS,text,['answer','ask','person'],['get_order_status'],3)).final||{decision:'person',reply:'(no valid answer)'});}
+  else{who='Refund agent';fin=S.mode==='sim'?await simRefund(ctx,text):((await actAgent(ctx,who,REFUND_SYS,text,['refund','approve','ask','person'],['get_order_status','request_refund'],4)).final||{decision:'person',reply:'(no valid answer)'});}
+  if(slip){fin=Object.assign({},SLIP,{slipped:true});}
+  // 3. the checker starts fresh: request, answer, facts and rules, never the specialist's reasoning
+  const why=rulesCheck(ctx,fin);
+  let cl='A',cconf=1;
+  if(S.mode==='model'&&who!=='none'){
+    const facts=ctx.log.length?ctx.log.map(l=>l.tool+' '+JSON.stringify(l.args)+' → '+l.result).join('\n'):'No tool was used.';
+    const p=await pickLetter(ctx,'Checker','You are the checker. You did not do the work. You see only the request, the answer given, and the facts the tools returned. Reply with one letter only.','Request: '+text+'\nAnswer given to the customer (decision: '+fin.decision+'): '+fin.reply+'\nFacts from the tools:\n'+facts+'\nRules: '+POLICY+'\nIs the answer consistent with the facts and rules?\nA) Yes, consistent\nB) No: it claims or does something the facts do not show\nC) Unsure: a person should look\nReply with one letter.','ABC');
+    cl=p.letter||'C';cconf=p.conf;
+  }else if(S.mode==='sim')await simDelay(300);
+  ctx.steps.push({agent:'Checker',text:(S.mode==='model'&&who!=='none'?'read the facts: '+({A:'consistent',B:'inconsistent',C:'unsure'}[cl])+' (confidence '+cconf.toFixed(2)+'). ':'')+'Rules check: '+(why.length?why.join('; '):'passed')});
+  let note='',caughtBy='';
+  if(why.length||cl!=='A'){
+    caughtBy=why.length&&cl!=='A'?'both':(why.length?'rules':'checker');
+    note=(fin.slipped?'Injected slip. ':'')+'Held back by the checker ('+caughtBy+'). Passed to a person.';
+    fin={decision:'person',reply:'Passed to a person for review.',held:true,was:fin};
+  }else if(fin.slipped)note='Injected slip got through the checker.';
+  return{fin,note,caughtBy};
+}
+/* ---------- run a batch, up to "pool" requests at once ---------- */
+function parseRequests(){
+  return S.text.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,8).map(t=>{const g=BATCH.find(b=>b.text===t);return{text:t,exp:g?g.exp:null};});
+}
+async function runBatch(handling,pool){
+  if(S.mode==='model')need();
+  const reqs=parseRequests();if(!reqs.length)throw new Error('Add at least one request.');
+  const t0=performance.now(),now=()=>performance.now()-t0;
+  const recs=reqs.map((r,i)=>({i,text:r.text,exp:r.exp,ctx:newCtx(),start:null,end:null,slot:null,fin:null,note:'',caughtBy:'',slip:S.slip===String(i)}));
+  let free=Array.from({length:pool},(_,k)=>k+1),next=0,running=0,failed=null;
+  await new Promise(resolve=>{
+    const tick=()=>{
+      if(failed||next>=recs.length){if(running===0)resolve();return;}
+      while(free.length&&next<recs.length&&!failed){
+        const rec=recs[next++],slot=free.shift();rec.slot=slot;rec.start=now();running++;
+        S.prog=(handling==='single'?'One agent':'Team')+': request '+(rec.i+1)+' of '+recs.length;draw();
+        (handling==='single'?handleSingle(rec.ctx,rec.text,rec.slip):handleTeam(rec.ctx,rec.text,rec.slip)).then(r=>{rec.fin=r.fin;rec.note=r.note||'';rec.caughtBy=r.caughtBy||'';rec.end=now();},e=>{failed=failed||e;rec.end=now();}).then(()=>{running--;free.push(slot);free.sort();tick();});
+      }
+    };
+    tick();
+  });
+  if(failed)throw failed;
+  recs.forEach(r=>{r.unsupported=rulesCheck(r.ctx,r.fin).length>0;r.match=r.exp?r.fin.decision===r.exp:null;});
+  return{handling,pool,recs,wall:now(),mode:S.mode,label:(handling==='single'?'One agent':'Team of agents')+(pool>1?', '+pool+' at once':'')};
+}
+/* ---------- rendering ---------- */
+const sec=ms=>(ms/1000).toFixed(1)+' s';
+function memBars(runs){
+  const rows=[];
+  runs.forEach(run=>{
+    const agg={};run.recs.forEach(r=>{Object.keys(r.ctx.mem).forEach(k=>{(agg[k]=agg[k]||[]).push(r.ctx.mem[k]);});});
+    Object.keys(agg).forEach(k=>rows.push({run:run.handling,agent:k,avg:agg[k].reduce((a,b)=>a+b,0)/agg[k].length}));
+  });
+  if(!rows.length)return '<p class="small muted">Working-memory sizes are measured with the language model. The scripted agents send no text to a model.</p>';
+  const mx=Math.max(...rows.map(r=>r.avg));
+  return rows.map(r=>'<div class="small" style="margin-top:6px">'+esc(r.agent)+' <span class="muted">('+(r.run==='single'?'one agent':'team')+')</span>: about '+Math.round(r.avg)+' characters</div><div style="background:var(--line);border-radius:6px;height:10px"><div style="background:'+(r.run==='single'?'#B3412E':'#0E6F8E')+';height:10px;border-radius:6px;width:'+Math.max(3,Math.round(r.avg/mx*100))+'%"></div></div>').join('');
+}
+function gantt(run,tmax){
+  const Wd=560,L=48,R=10,T=10,rowH=20,lanes=run.pool,H=T+lanes*rowH+26,px=t=>L+(t/tmax)*(Wd-L-R);
+  let s='<svg viewBox="0 0 '+Wd+' '+H+'" width="100%" role="img" aria-label="Timeline of '+esc(run.label)+'">';
+  for(let a=1;a<=lanes;a++)s+='<text x="4" y="'+(T+(a-1)*rowH+14)+'" font-size="10" fill="currentColor" opacity=".8">Slot '+a+'</text>';
+  run.recs.forEach(r=>{
+    const x=px(r.start),w=Math.max(3,px(r.end)-px(r.start)),y=T+(r.slot-1)*rowH+2,col=r.match===null?'#8A98A0':(r.match?'#2E7D5B':'#B3412E');
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y+'" width="'+w.toFixed(1)+'" height="'+(rowH-4)+'" rx="3" fill="'+col+'"/>';
+    if(w>14)s+='<text x="'+(x+w/2).toFixed(1)+'" y="'+(y+(rowH-4)/2+3.5)+'" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">R'+(r.i+1)+'</text>';
+  });
+  const ay=T+lanes*rowH+6;
+  s+='<line x1="'+L+'" y1="'+ay+'" x2="'+(Wd-R)+'" y2="'+ay+'" stroke="currentColor" opacity=".35"/>';
+  for(let k=0;k<=4;k++){const tv=tmax*k/4;s+='<text x="'+px(tv).toFixed(1)+'" y="'+(ay+13)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+(tv/1000).toFixed(1)+' s</text>';}
+  return s+'</svg>';
+}
+function summary(run){
+  const n=run.recs.length,gt=run.recs.filter(r=>r.exp),ok=gt.filter(r=>r.match).length,uns=run.recs.filter(r=>r.unsupported).length,held=run.recs.filter(r=>r.fin.held).length;
+  return '<div class="tiles"><div class="tile"><b>'+ok+' of '+gt.length+'</b><span>handled as expected</span></div><div class="tile"><b>'+uns+'</b><span>unsupported claims sent to customers</span></div><div class="tile"><b>'+held+'</b><span>held back by the checker</span></div><div class="tile"><b>'+sec(run.wall)+'</b><span>total time</span></div></div>';
+}
+function requestCard(r){
+  const exp=r.exp?DEC_NAME[r.exp]:'(no expected answer)',got=DEC_NAME[r.fin.decision]||r.fin.decision;
+  const chip_=r.match===null?chip('no reference',''):(r.match?chip('as expected','good'):chip('differs from expected','bad'));
+  const mem=Object.keys(r.ctx.mem).map(k=>k+' '+r.ctx.mem[k]).join(', ');
+  return '<div class="box" style="margin-bottom:8px"><b>R'+(r.i+1)+'.</b> '+esc(r.text)+'<div class="small" style="margin-top:4px">Expected: <b>'+esc(exp)+'</b> · Got: <b>'+esc(got)+'</b> '+chip_+(r.unsupported?' '+chip('unsupported claim sent','bad'):'')+'</div>'+
+    '<div class="small" style="margin-top:4px">Reply: '+esc(r.fin.reply||'')+'</div>'+(r.note?'<div class="small" style="margin-top:2px"><b>'+esc(r.note)+'</b></div>':'')+
+    '<div class="small muted" style="margin-top:4px">'+r.ctx.steps.map(s=>esc(s.agent+': '+s.text)).join('<br>')+(mem?'<br>Working memory (characters): '+esc(mem):'')+'</div></div>';
+}
+function resultsView(){
+  const a=S.runs.single,b=S.runs.team,runs=[a,b].filter(Boolean);
+  if(!runs.length)return '';
+  const run=S.runs[S.show]||runs[0];
+  const tmax=Math.max(...runs.map(r=>r.wall))*1.02;
+  let h='<h3>Results</h3>';
+  if(a&&b)h+='<div class="row"><span class="small muted">Show</span>'+tog('show','single','One agent',S.show==='single')+tog('show','team','Team',S.show==='team')+'</div>';
+  h+=summary(run);
+  if(a&&b){
+    const f=r=>r.recs.filter(x=>x.exp&&x.match).length+' of '+r.recs.filter(x=>x.exp).length;
+    h+='<div class="status ok"><b>Side by side.</b> One agent: '+f(a)+' as expected, '+a.recs.filter(r=>r.unsupported).length+' unsupported claims sent, '+sec(a.wall)+'. Team: '+f(b)+' as expected, '+b.recs.filter(r=>r.unsupported).length+' unsupported claims sent, '+b.recs.filter(r=>r.fin.held).length+' held back, '+sec(b.wall)+'.</div>';
+  }
+  h+='<h3>What each agent saw</h3><p class="small muted">The size of each agent\'s working memory, averaged over the requests it handled. One agent keeps everything in one place. Each team agent holds only what its job needs.</p>'+memBars(runs);
+  h+='<h3>When each request ran</h3><p class="small muted">Green is handled as expected, red differs, grey has no reference.</p><div class="svgbox">'+gantt(run,tmax)+'</div>';
+  h+='<h3>Request by request ('+esc(run.label)+')</h3>'+run.recs.map(requestCard).join('');
+  return h;
+}
+const QA=[
+ ['Why can the checker not see the specialist\'s reasoning?','If it did, its working memory would hold the same reasoning and it would tend to agree. With only the request, the answer, the facts and the rules, it has a different view and can catch what the specialist missed.'],
+ ['Is the team always better?','No. It costs more calls, and it only helps when the checker has something the actor did not. With scripted agents, which never slip, the team finds nothing. With a model, results on six requests are anecdotes.'],
+ ['Why does the team show smaller working memories?','Each agent is given only its own tools, rules and facts, so its context stays small and focused. One agent has to carry every tool, rule and step in one space.'],
+ ['What does the injected slip show?','It replaces an answer with a refund claim that no tool made. One agent can only check itself in the same working memory. The team has an independent checker, so you can see whether it holds the claim back.']
+];
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Not needed for the scripted agents.</p></div>';
+}
+function render(){
+  const reqs=parseRequests();
+  const slipOpts='<option value="off"'+(S.slip==='off'?' selected':'')+'>No slip</option>'+reqs.map((r,i)=>'<option value="'+i+'"'+(S.slip===String(i)?' selected':'')+'>Slip on request '+(i+1)+'</option>').join('');
+  const controls='<div class="row">'+tog('mode','sim','Agents: scripted (no model, instant)',S.mode==='sim')+tog('mode','model','Agents: language model',S.mode==='model')+'</div>'+
+    '<h3>The requests</h3><p class="small muted">One per line. The first six are a prepared batch with expected outcomes.</p><textarea class="editor" id="reqs" data-act="reqs" rows="6" spellcheck="false">'+esc(S.text)+'</textarea>'+
+    '<div class="grid2"><div><label class="range" for="pool">Requests handled at once</label><select id="pool" data-act="pool">'+['1','2','3'].map(v=>'<option'+(String(S.pool)===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="slip">Inject a slip (demonstration)</label><select id="slip" data-act="slip">'+slipOpts+'</select></div></div>'+
+    '<div class="row" style="margin-top:12px">'+btn('single','','Run one agent','',S.busy)+btn('team','','Run the team','',S.busy)+btn('both','','Run both and compare','ghost',S.busy)+btn('reset','','Reset','ghost',S.busy)+'</div>';
+  return modelBox()+controls+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Working on your device</b><br>'+esc(S.prog)+'</div>':'')+resultsView()+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const draw=app({
+  render,
+  act:{
+    model:()=>{S.showModel=!S.showModel;},
+    mode:v=>{S.mode=v;S.runs={single:null,team:null};},
+    show:v=>{S.show=v;},
+    single:()=>guard(async()=>{S.runs.single=await runBatch('single',S.pool);S.show='single';}),
+    team:()=>guard(async()=>{S.runs.team=await runBatch('team',S.pool);S.show='team';}),
+    both:()=>guard(async()=>{S.runs.single=await runBatch('single',S.pool);S.runs.team=await runBatch('team',S.pool);S.show='team';}),
+    reset:()=>{S.runs={single:null,team:null};S.err='';},
+    ...LLM.act
+  },
+  change:{pool:t=>{S.pool=+t.value;},slip:t=>{S.slip=t.value;},...LLM.change},
+  input:{reqs:t=>{S.text=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>
