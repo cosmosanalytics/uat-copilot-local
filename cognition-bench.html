@@ -316,7 +316,10 @@ const LLM={
 PYSTATE.needsPy=false;
 /* ---------- the made-up policy and a calendar ---------- */
 const POLICY='Refund policy. Rule 1: a refund is allowed only within 30 days of delivery. Rule 2: an item reported damaged on arrival can be refunded within 60 days of delivery. Rule 3: a final-sale item cannot be refunded, unless it arrived damaged. Rule 4: a refund above 200 in total needs a person to approve. Count the days from the delivery date to the date of the request.';
-const MENU='A) Refund allowed\nB) Refund needs a person to approve\nC) Not eligible\nReply with one letter.';
+const LABELS={A:'Refund allowed',B:'Refund needs a person to approve',C:'Not eligible'};
+const PERMS=[['A','B','C'],['A','C','B'],['B','A','C'],['B','C','A'],['C','A','B'],['C','B','A']];
+function menuFor(c,tail){return c.order.map((k,i)=>'ABC'[i]+') '+LABELS[k]).join('\n')+'\n'+(tail||'Reply with one letter.');}
+function decode(l,c){const i='ABC'.indexOf(l);return i<0?'':c.order[i];}
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 function fmtDate(d){return MONTHS[d.getMonth()]+' '+d.getDate();}
 function parseDate(s){
@@ -349,6 +352,7 @@ function genCases(n,seed){
     const start=new Date(2026,2,1+Math.floor(r()*20)),req=new Date(start.getTime()+days*86400000);
     const c={i,type,item:it[0],price:it[1],qty,damaged,final,days,delivered:fmtDate(start),requested:fmtDate(req)};
     c.truth=truthOf(c);
+    c.order=PERMS[(i*5+Math.floor(i/6)*2+seed)%6];
     const many=qty>1;
     c.text='Customer message: I bought '+qty+' '+c.item+(many?'s':'')+' at $'+c.price+' each. '+(many?'They were':'It was')+' delivered on '+c.delivered+'. I am writing on '+c.requested+' to ask for a refund. '+(damaged?(many?'They arrived damaged.':'It arrived damaged.'):(many?'They work fine, but I changed my mind.':'It works fine, but I changed my mind.'))+' '+(final?'The order page says this item is final sale.':'The order page does not say final sale.');
     out.push(c);
@@ -369,7 +373,9 @@ async function ask(ctx,messages,max,temp){
   need();
   ctx.calls++;ctx.chars+=messages.reduce((a,m)=>a+m.content.length,0);
   const r=await LLM.engine.chat.completions.create({messages,temperature:temp||0,max_tokens:max||8});
-  return String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  if(ctx.trace)ctx.trace.push({sys:String(messages[0].content).slice(0,70),user:String(messages[messages.length-1].content).slice(-150),out:text.slice(0,240)});
+  return text;
 }
 function letterOf(text){const m=String(text).toUpperCase().match(/(?:^|[^A-Z])([ABC])(?![A-Z])/);return m?m[1]:'';}
 function answerOf(text){const all=[...String(text).matchAll(/ANSWER:\s*\(?([ABC])/gi)];return all.length?all[all.length-1][1].toUpperCase():letterOf(String(text).slice(-12));}
@@ -389,39 +395,39 @@ function jsonCandidates(t){
   return out;
 }
 function firstJson(text,pred){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&(!pred||pred(o)))return o;}catch(e){}}return null;}
-const userCase=(c)=>POLICY+'\n'+c.text+'\n'+MENU;
+const userCase=(c)=>POLICY+'\n'+c.text+'\n'+menuFor(c);
 async function runOne(ctx,c){
   const SYS='You apply a refund policy to a customer message. Reply with one letter only.';
   const q=userCase(c);
-  return letterOf(await ask(ctx,[{role:'system',content:SYS},{role:'user',content:q}],6,0));
+  return decode(letterOf(await ask(ctx,[{role:'system',content:SYS},{role:'user',content:q}],6,0)),c);
 }
 async function runThink(ctx,c){
   const sys='You apply a refund policy carefully. Think step by step, then finish with "Answer: X" where X is A, B or C.';
-  const u=POLICY+'\n'+c.text+'\n'+MENU.replace('Reply with one letter.','Work out the days between delivery and the request, and the total amount, then apply each rule in order. End with "Answer: X".');
+  const u=POLICY+'\n'+c.text+'\n'+menuFor(c,'Work out the days between delivery and the request, and the total amount, then apply each rule in order. End with "Answer: X".');
   const msgs=[{role:'system',content:sys},{role:'user',content:u}];
   const first=await ask(ctx,msgs,220,0);
-  const a1=answerOf(first);
+  const a1=decode(answerOf(first),c);
   const second=await ask(ctx,msgs.concat([{role:'assistant',content:first},{role:'user',content:'Check your reasoning once more. If you find a mistake, correct it. End with "Answer: X".'}]),160,0);
-  const a2=answerOf(second);
+  const a2=decode(answerOf(second),c);
   return a2||a1;
 }
 async function runVote(ctx,c){
   const SYS='You apply a refund policy to a customer message. Reply with one letter only.';
   const votes=[];
-  for(let k=0;k<3;k++){const l=letterOf(await ask(ctx,[{role:'system',content:SYS},{role:'user',content:userCase(c)}],6,0.8));if(l)votes.push(l);}
+  for(let k=0;k<3;k++){const l=decode(letterOf(await ask(ctx,[{role:'system',content:SYS},{role:'user',content:userCase(c)}],6,0.8)),c);if(l)votes.push(l);}
   if(!votes.length)return '';
   const cnt={};votes.forEach(v=>{cnt[v]=(cnt[v]||0)+1;});
   return Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||votes.indexOf(a)-votes.indexOf(b))[0];
 }
 async function runTool(ctx,c){
-  const sys='You apply a refund policy. You have tools for arithmetic.\nTools: days_between(start, end) gives the number of days between two dates such as "March 3"; multiply(a, b) multiplies two numbers.\nPolicy: '+POLICY+'\nUse the tools to get the days and the total, then apply the rules. Reply with ONE JSON object: a tool call {"tool":"name","args":{...}} or the final {"answer":"A|B|C"} where A = refund allowed, B = refund needs a person to approve, C = not eligible.';
+  const sys='You apply a refund policy. You have tools for arithmetic.\nTools: days_between(start, end) gives the number of days between two dates such as "March 3"; multiply(a, b) multiplies two numbers.\nPolicy: '+POLICY+'\nUse the tools to get the days and the total, then apply the rules. Reply with ONE JSON object: a tool call {"tool":"name","args":{...}} or the final {"answer":"A|B|C"} where '+c.order.map((k,i)=>'ABC'[i]+' = '+LABELS[k].toLowerCase()).join(', ')+'.';
   const msgs=[{role:'user',content:c.text}];
   for(let k=0;k<5;k++){
     let out=await ask(ctx,[{role:'system',content:sys}].concat(msgs),120,0);
     let o=firstJson(out,x=>x.tool||x.answer);
     if(!o){out=await ask(ctx,[{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out},{role:'user',content:'Reply with ONE valid JSON object only.'}]),120,0);o=firstJson(out,x=>x.tool||x.answer);}
     if(!o)return '';
-    if(o.answer)return letterOf(String(o.answer));
+    if(o.answer)return decode(letterOf(String(o.answer)),c);
     let res;const a=o.args||{};
     if(o.tool==='days_between'){const d=daysBetween(a.start,a.end);res=d===null?'Error: dates must look like "March 3"':String(d);}
     else if(o.tool==='multiply'){const p=Number(a.a)*Number(a.b);res=isFinite(p)?String(p):'Error: not numbers';}
@@ -462,13 +468,17 @@ async function runTeam(ctx,c){
   info.facts='days '+days+', total '+total+', final sale '+(facts.final?'yes':'no')+', damaged '+(facts.damaged?'yes':'no');
   const fs='Facts, computed by a calculator: days from delivery to request: '+days+'. Total amount: '+total+'. Final sale: '+(facts.final?'yes':'no')+'. Damaged on arrival: '+(facts.damaged?'yes':'no')+'.';
   // 3. judge: sees the policy and the computed facts, not the message
-  const judge=letterOf(await ask(ctx,[{role:'system',content:'You apply a refund policy to computed facts. Reply with one letter only.'},{role:'user',content:POLICY+'\n'+fs+'\n'+MENU}],6,0));
+  let judge=decode(answerOf(await ask(ctx,[{role:'system',content:'You apply a refund policy to computed facts. Check each rule against the facts, briefly, then finish with "Answer: X" where X is the letter.'},{role:'user',content:POLICY+'\n'+fs+'\n'+menuFor(c,'Check each rule against the facts, then end with "Answer: X".')}],150,0)),c);
+  if(!judge)judge=decode(letterOf(await ask(ctx,[{role:'system',content:'You apply a refund policy to computed facts. Reply with the single letter A, B or C and nothing else.'},{role:'user',content:POLICY+'\n'+fs+'\n'+menuFor(c)}],6,0)),c);
   info.judge=judge||'(none)';
   // 4. checker: a fresh working memory that sees only the original message
   let check;
-  if(S.chk==='quick')check=letterOf(await ask(ctx,[{role:'system',content:'You are an independent checker. You have not seen anyone else\'s work. Reply with one letter only.'},{role:'user',content:userCase(c)}],6,0));
-  else check=await runTool(ctx,c);
-  info.checker=check||'(none)';
+  if(S.chk==='quick')check=decode(letterOf(await ask(ctx,[{role:'system',content:'You are an independent checker. You have not seen anyone else\'s work. Reply with one letter only.'},{role:'user',content:userCase(c)}],6,0)),c);
+  else{
+    check=await runTool(ctx,c);
+    if(!check){info.checkerFallback=true;check=decode(letterOf(await ask(ctx,[{role:'system',content:'You are an independent checker. You have not seen anyone else\'s work. Reply with one letter only.'},{role:'user',content:userCase(c)}],6,0)),c);}
+  }
+  info.checker=(check||'(none)')+(info.checkerFallback?' (quick read, the calculator checker gave no answer)':'');
   if(!judge){info.stage='judge';info.reason='the judge gave no letter';return{letter:'E',info};}
   if(!check){info.stage='checker';info.reason='the checker gave no letter';return{letter:'E',info};}
   if(judge!==check){info.stage='disagree';info.reason='judge '+judge+' and checker '+check+' disagreed';return{letter:'E',info};}
@@ -482,9 +492,10 @@ async function runCondition(id){
   for(let i=0;i<cases.length;i++){
     if(S.stop)break;
     S.prog=CONDS.find(x=>x.id===id).name+': case '+(i+1)+' of '+cases.length;draw();await new Promise(r=>setTimeout(r,0));
-    const ctx={calls:0,chars:0},t0=performance.now();
+    const ctx={calls:0,chars:0,trace:id==='team'?[]:null},t0=performance.now();
     let letter='',info=null;
     try{const o=await RUNNERS[id](ctx,cases[i]);if(typeof o==='string')letter=o;else{letter=o.letter;info=o.info;}}catch(e){if(/Load the model/.test(String(e.message)))throw e;letter='';}
+    if(info&&ctx.trace)info.trace=ctx.trace;
     res.push({letter,info,calls:ctx.calls,chars:ctx.chars,ms:performance.now()-t0});
   }
 }
@@ -546,7 +557,7 @@ function resultsView(){
   // grid
   const maxN=Math.max(...done.map(c=>S.res[c.id].length));
   const grid=S.cases.slice(0,maxN).map((c,i)=>'<tr><td class="small">'+(i+1)+' '+esc(c.type)+'</td><td>'+c.truth+'</td>'+done.map(d=>{const x=S.res[d.id][i];if(!x)return '<td>-</td>';const ok=x.letter===c.truth,e=x.letter==='E';return '<td style="text-align:center;font-weight:700;color:#fff;background:'+(e?'#E3A21A':(ok?'#2E7D5B':'#B3412E'))+'">'+(e?'E':(ok?'✓':(x.letter||'?')))+'</td>';}).join('')+'</tr>').join('');
-  h+='<h3>Every case</h3><p class="small muted">Green is correct, red is wrong (the letter it chose), amber is escalated. The right answer is shown in the second column.</p><div class="scroll"><table style="min-width:420px"><thead><tr><th>Case</th><th>Truth</th>'+done.map(d=>'<th>'+esc(d.short)+'</th>').join('')+'</tr></thead><tbody>'+grid+'</tbody></table></div>';
+  h+='<h3>Every case</h3><p class="small muted">Green is correct, red is wrong (the answer it chose), amber is escalated. In this grid A means refund allowed, B needs a person to approve, and C not eligible. The right answer is in the second column.</p><div class="scroll"><table style="min-width:420px"><thead><tr><th>Case</th><th>Truth</th>'+done.map(d=>'<th>'+esc(d.short)+'</th>').join('')+'</tr></thead><tbody>'+grid+'</tbody></table></div>';
   if(S.res.team&&S.res.team.length)h+=teamDiag();
   h+=readView(done);
   h+='<div class="row" style="margin-top:12px">'+btn('exportbtn','','Show results as text (to copy)','ghost sm')+'</div>';
@@ -563,6 +574,8 @@ function teamDiag(){
   let h='<h3>What happened inside the team</h3><p class="small muted">Why each case was decided or escalated. If most cases fail at one stage, that stage is the bottleneck, not the idea of a team.</p>'+table(['Outcome','Cases'],Object.keys(cnt).map(k=>[names[k]||k,cnt[k]]),320);
   const bad=r.map((x,i)=>({x,i})).filter(o=>o.x.info&&(o.x.info.stage==='extractor'||o.x.info.stage==='judge'||o.x.info.stage==='checker')).slice(0,3);
   if(bad.length)h+='<p class="small" style="margin-top:8px"><b>First failures</b></p>'+bad.map(o=>'<div class="box small" style="margin-bottom:6px"><b>Case '+(o.i+1)+':</b> '+esc(o.x.info.reason)+(o.x.info.extractor?'<br>Extractor said: '+esc(o.x.info.extractor):'')+'</div>').join('');
+  h+='<p class="small" style="margin-top:10px"><b>What each agent was asked and said (first '+Math.min(2,r.length)+' cases)</b></p>';
+  r.slice(0,2).forEach((x,i)=>{if(x.info&&x.info.trace)h+='<div class="box small" style="margin-bottom:8px"><b>Case '+(i+1)+'</b> (right answer '+S.cases[i].truth+')'+x.info.trace.map(t=>'<div style="margin-top:6px"><span class="muted">'+esc(t.sys)+'...</span><br>Asked, ending: '+esc(t.user)+'<br><b>Said:</b> '+esc(t.out||'(nothing)')+'</div>').join('')+'</div>';});
   const rows=r.map((x,i)=>[i+1,S.cases[i].truth,x.info&&x.info.facts?x.info.facts:'(none)',x.info?x.info.judge||'-':'-',x.info?x.info.checker||'-':'-',x.letter==='E'?'escalated':(x.letter===S.cases[i].truth?'correct':'wrong')]);
   return h+table(['Case','Truth','Facts the calculator used','Judge','Checker','Outcome'],rows,640);
 }
@@ -595,7 +608,7 @@ function render(){
     '<div class="row">'+CONDS.map(c=>tog('cond',c.id,c.short,S.sel[c.id])).join('')+'</div>'+
     '<p class="small muted" style="margin:10px 0 4px">The team\'s checker:</p><div class="row">'+tog('chk','tool','With its own calculator (about 3 calls)',S.chk==='tool')+tog('chk','quick','Quick read (1 call)',S.chk==='quick')+'</div>'+
     '<div class="row" style="margin-top:12px">'+btn('run','','Run the selected conditions','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+btn('reset','','Reset','ghost',S.busy)+'</div>';
-  const sample=cases?'<details style="margin-top:10px"><summary class="small">See a sample case</summary><div class="box small" style="margin-top:6px">'+esc(cases[0].text)+'<br><b>Right answer:</b> '+cases[0].truth+' ('+(cases[0].days)+' days, total '+(cases[0].price*cases[0].qty)+')</div></details>':'';
+  const sample=cases?'<details style="margin-top:10px"><summary class="small">See a sample case</summary><div class="box small" style="margin-top:6px">'+esc(cases[0].text)+'<br><b>Right answer:</b> '+LABELS[cases[0].truth]+' ('+(cases[0].days)+' days, total '+(cases[0].price*cases[0].qty)+'). The options are shown to the model in a shuffled order for each case, so it cannot win by favoring the first letter.</div></details>':'';
   return modelBox()+'<div class="box small" style="margin-bottom:10px"><b>The refund policy the agents apply</b><br>'+esc(POLICY)+'</div>'+controls+sample+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Running on your device</b><br>'+esc(S.prog)+'<br><span class="small">Keep the screen on. This can take a while.</span></div>':'')+resultsView()+qa(QA);
 }
 async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
