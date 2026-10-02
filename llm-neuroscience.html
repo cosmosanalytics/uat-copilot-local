@@ -457,7 +457,7 @@ async function gpuSelfTest(g){
   return mx;
 }
 /* ---------- the model ---------- */
-const S={repo:'distilgpt2',custom:'',base:'',status:'idle',prog:'',err:'',M:null,bpe:null,prompt:'The Eiffel Tower is located in the city of',run:null,tab:'activity',layer:0,head:0,pos:-1,metric:'norm',targetText:'',altText:'',lesionMode:'zero',lesion:null,trace:null,tracePair:0,traceA:'When Mary and John went to the store, John gave a drink to',traceB:'When Mary and John went to the store, Mary gave a drink to',gen:null,genLayer:0,genHead:0,genKind:'head',busy:false,stop:false,checks:null,layerStep:1,surp:null,n400:null,unitLayer:1,unitN:null,unitScan:null,induct:null,steer:{pos:' I love this',neg:' I hate this',layer:2,alpha:4},steered:null};
+const S={repo:'distilgpt2',custom:'',base:'',status:'idle',prog:'',err:'',M:null,bpe:null,prompt:'The Eiffel Tower is located in the city of',run:null,tab:'activity',layer:0,head:0,pos:-1,metric:'norm',targetText:'',altText:'',lesionMode:'zero',lesion:null,trace:null,tracePair:0,traceA:'When Mary and John went to the store, John gave a drink to',traceB:'When Mary and John went to the store, Mary gave a drink to',twA:' Mary',twB:' John',gen:null,genLayer:0,genHead:0,genKind:'head',busy:false,stop:false,checks:null,layerStep:1,surp:null,n400:null,unitLayer:1,unitN:null,unitScan:null,induct:null,steer:{pos:' I love this',neg:' I hate this',layer:2,alpha:4},steered:null};
 try{const q=new URLSearchParams(location.search).get('base');if(q)S.base=q;}catch(e){}
 function baseUrl(){return S.base||('https://huggingface.co/'+(S.custom||S.repo)+'/resolve/main/');}
 async function fetchBuf(url,onProg){
@@ -659,10 +659,16 @@ function meansFrom(M,rec,T){
   return{z,attn,mlp};
 }
 /* ---------- recording ---------- */
+function wordToken(t){
+  t=String(t);const a=S.bpe.encode(t.startsWith(' ')?t:' '+t.trim());
+  if(a.length===1)return a[0];
+  const b=S.bpe.encode(t.trim());if(b.length===1)return b[0];
+  return a.length?a[0]:null;
+}
 function targetIds(R){
-  const M=S.M,enc=t=>{const e=S.bpe.encode(t);return e.length?e[0]:null;};
-  let t=S.targetText.trim()?enc(S.targetText.startsWith(' ')?S.targetText:' '+S.targetText.trim()):null;
-  let a=S.altText.trim()?enc(S.altText.startsWith(' ')?S.altText:' '+S.altText.trim()):null;
+  const M=S.M;
+  let t=S.targetText.trim()?wordToken(S.targetText):null;
+  let a=S.altText.trim()?wordToken(S.altText):null;
   if(t===null){t=topk(R.logits,1)[0];}
   return{t,a:(a===t?null:a)};
 }
@@ -802,9 +808,11 @@ async function runTrace(){
   const idsA=S.bpe.encode(S.traceA),idsB=S.bpe.encode(S.traceB);
   if(!idsA.length||idsA.length!==idsB.length)throw new Error('The two prompts must have the same number of tokens. They have '+idsA.length+' and '+idsB.length+'.');
   const A=await forward(M,idsA,{record:true,logits:true}),B=await forward(M,idsB,{record:true,logits:true});
-  const tA=topk(A.logits,1)[0],tB=topk(B.logits,1)[0];
-  if(tA===tB)throw new Error('Both prompts give the same top prediction ('+tokLab(tA)+'), so there is nothing to trace. Pick prompts with different answers.');
+  let tA,tB;
+  if(S.twA.trim()&&S.twB.trim()){tA=wordToken(S.twA);tB=wordToken(S.twB);}else{tA=topk(A.logits,1)[0];tB=topk(B.logits,1)[0];}
+  if(tA===null||tB===null||tA===tB)throw new Error('The two answer words must be different words that the model knows. Leave both blank to use each prompt\'s own top prediction.');
   const u=uVec(M,tA,tB),mA=readMetric(M,A.xLast,u),mB=readMetric(M,B.xLast,u),T=idsA.length;
+  if(!(mA-mB>0.05))throw new Error('This model does not separate the two prompts. Score of "'+tokLab(tA)+'" over "'+tokLab(tB)+'" is '+mA.toFixed(2)+' on prompt A and '+mB.toFixed(2)+' on prompt B, so there is no gap to trace. Small models often cannot do this task. Try prompt B with an answer the model really prefers, or a stronger model such as GPT-2 small or SmolLM2.');
   const layers=[];for(let l=0;l<M.L;l+=step)layers.push(l);
   const vals=[];let done=0;const total=layers.length*T;
   for(let k=0;k<layers.length&&!S.stop;k++){
@@ -815,7 +823,7 @@ async function runTrace(){
       vals[k][p]=(f.metric-mB)/(mA-mB);done++;S.prog='Patch '+done+' of '+total;if(done%3===0){draw();await yieldUI();}
     }
   }
-  S.trace={vals,layers,idsA,idsB,tA,tB,mA,mB,partial:S.stop};
+  S.trace={vals,layers,idsA,idsB,tA,tB,mA,mB,partial:S.stop,warn:(mA-mB<1)};
 }
 async function runGenerate(){
   const M=S.M,R=S.run;let ids0=R.ids.slice(),N=14;
@@ -946,7 +954,7 @@ function tabSurprise(R){
 function tabLesion(R){
   const M=S.M,L=S.lesion;
   let h='<p class="small muted">A lesion study: knock out one head, or one layer\'s MLP, and see how much the model\'s preference for '+esc(tokLab(R.t))+' drops. Red means the answer gets worse. Blue means it gets better. This runs the model many times.</p>'+
-    '<div class="row">'+tog('lmode','zero','Switch it off (zero)',S.lesionMode==='zero')+tog('lmode','mean','Replace with its average',S.lesionMode==='mean')+'</div>'+'<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':v+'th layer')+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+
+    '<div class="row">'+tog('lmode','zero','Switch it off (zero)',S.lesionMode==='zero')+tog('lmode','mean','Replace with its average',S.lesionMode==='mean')+'</div>'+'<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':(v===2?'2nd layer':(v===3?'3rd layer':v+'th layer')))+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+
     '<div class="row" style="margin-top:10px">'+btn('lesion','','Run the lesion map','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
   if(L){
     const cols=Array.from({length:M.H},(_,i)=>'H'+i).concat(['MLP']);
@@ -964,9 +972,10 @@ function tabTrace(R){
     '<div class="row">'+presets.map((p,i)=>btn('tpreset',i,p[0],'ghost sm')).join('')+'</div>'+
     '<label class="range" for="ta">Prompt A (the source)</label><textarea class="editor" id="ta" data-act="ta" rows="2">'+esc(S.traceA)+'</textarea>'+
     '<label class="range" for="tb">Prompt B (the one we change)</label><textarea class="editor" id="tb" data-act="tb" rows="2">'+esc(S.traceB)+'</textarea>'+
-    '<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':v+'th layer')+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+'<div class="row" style="margin-top:10px">'+btn('trace','','Run the tracing map','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
+    '<div class="grid2"><div><label class="range" for="twa">A\'s answer word (blank = A\'s top guess)</label><input class="editor" style="min-height:0;height:40px" id="twa" data-act="twa" value="'+esc(S.twA)+'"></div><div><label class="range" for="twb">B\'s answer word (blank = B\'s top guess)</label><input class="editor" style="min-height:0;height:40px" id="twb" data-act="twb" value="'+esc(S.twB)+'"></div></div>'+
+    '<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':(v===2?'2nd layer':(v===3?'3rd layer':v+'th layer')))+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+'<div class="row" style="margin-top:10px">'+btn('trace','','Run the tracing map','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
   if(T){
-    h+='<h3>Where is the answer carried?'+(T.partial?' (stopped early)':'')+'</h3><p class="small muted">Prompt A predicts '+esc(tokLab(T.tA))+' and prompt B predicts '+esc(tokLab(T.tB))+'. Each cell shows how much of the difference comes back when that layer and token are patched (1 means fully).</p>'+
+    h+='<h3>Where is the answer carried?'+(T.partial?' (stopped early)':'')+'</h3><p class="small muted">Prompt A predicts '+esc(tokLab(T.tA))+' and prompt B predicts '+esc(tokLab(T.tB))+'. Each cell shows how much of the difference comes back when that layer and token are patched (1 means fully). Score of A\'s answer over B\'s: '+T.mA.toFixed(2)+' on prompt A, '+T.mB.toFixed(2)+' on prompt B.'+(T.warn?' The gap is small, so the map may be noisy.':'')+'</p>'+
       heat(T.vals,T.layers.map(l=>'L'+l+' in'),T.idsA.map((id,i)=>i+':'+tokLab(id)),{cw:46,max:1,nums:true,fmt:v=>v.toFixed(1)})+
       '<p class="small muted">Row "L0 in" patches the embeddings, and later rows patch what the model holds before that layer.</p>';
   }
@@ -1026,13 +1035,12 @@ function render(){
     '<div class="row" style="margin-top:10px">'+btn('load','',ready?'Reload the model':'Load the model','',S.status==='loading')+(ready?chip(S.M.gpu?'WebGPU':'CPU',S.M.gpu?'good':'warn')+' '+chip(S.M.L+' layers, '+S.M.H+' heads, width '+S.M.D):'')+'</div>'+
     (S.status==='loading'?'<div class="status warn"><b>Loading</b><br>'+esc(S.prog)+'</div>':'')+
     (ready?'<p class="small muted" style="margin-top:6px">'+esc(S.M.gpuNote)+'</p>':'<p class="small muted" style="margin-top:6px">The weights download from huggingface.co once and are kept in your browser. Nothing you type leaves your device. Sizes are approximate, and models over about 500 MB need a desktop browser with plenty of free memory. Models are slower on a CPU, so deep ones take minutes for the lesion and tracing maps.</p>')+'</div>';
-  if(S.err)h+='<div class="status bad">'+esc(S.err)+'</div>';
+  if(S.err&&!ready)h+='<div class="status bad">'+esc(S.err)+'</div>';
   if(!ready)return h+qa(QA);
   const R=S.run;
   h+='<h3>The prompt</h3><textarea class="editor" id="prompt" data-act="prompt" rows="2">'+esc(S.prompt)+'</textarea>'+
     '<div class="row" style="margin-top:6px">'+btn('example',0,'Eiffel Tower','ghost sm')+btn('example',1,'Who gets the drink','ghost sm')+btn('example',2,'Counting','ghost sm')+'</div>'+
     '<div class="row" style="margin-top:10px">'+btn('record','','Record the model reading this','',S.busy)+'</div>';
-  if(S.busy)h+='<div class="status warn"><b>Working</b><br>'+esc(S.prog)+'</div>';
   if(R){
     h+='<h3>What it read, and what it predicts</h3>'+tokenChips(R)+'<p class="small" style="margin-top:8px">Top predictions for the next word: '+topk(R.logits,5).map(i=>'<b>'+esc(tokLab(i))+'</b> '+(softmax(R.logits)[i]*100).toFixed(0)+'%').join(' · ')+'</p>'+
       '<details style="margin-top:10px"><summary class="small">How this maps to neuroscience, and where it does not</summary>'+table(['In the brain','Here','Tab','How far the analogy goes'],MAPROWS,620)+'</details>'+
@@ -1040,7 +1048,13 @@ function render(){
     const pages={activity:tabActivity,lens:tabLens,attn:tabAttn,dla:tabDla,unit:tabUnit,surp:tabSurprise,lesion:tabLesion,trace:tabTrace,gen:tabGen};
     h+='<div style="margin-top:10px">'+(S.tab==='checks'?tabChecks():pages[S.tab](R))+'</div>';
   }
-  return h+qa(QA);
+  return h+qa(QA)+toast();
+}
+function toast(){
+  const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
+  if(S.err&&S.status==='ready')return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A"><b>Working</b> <span class="small">'+esc(S.prog||'')+'</span><div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
+  return '';
 }
 async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
 const EXAMPLES=['The Eiffel Tower is located in the city of','When Mary and John went to the store, John gave a drink to','1, 2, 3, 4, 5, 6,'];
@@ -1067,10 +1081,11 @@ const draw=app({
     induct:()=>guard(runInduction),
     steer:()=>guard(runSteer),
     spreset:v=>{const p=[[' I love this',' I hate this'],[' The wedding was joyful',' The funeral was sorrowful']][+v];S.steer.pos=p[0];S.steer.neg=p[1];S.steered=null;},
-    tpreset:v=>{const p=[['When Mary and John went to the store, John gave a drink to','When Mary and John went to the store, Mary gave a drink to'],['The capital of France is','The capital of Italy is']][+v];S.traceA=p[0];S.traceB=p[1];S.trace=null;}
+    tpreset:v=>{const p=[['When Mary and John went to the store, John gave a drink to','When Mary and John went to the store, Mary gave a drink to',' Mary',' John'],['The capital of France is','The capital of Italy is',' Paris',' Rome']][+v];S.traceA=p[0];S.traceB=p[1];S.twA=p[2];S.twB=p[3];S.trace=null;},
+    dismiss:()=>{S.err='';}
   },
   change:{lstep:t=>{S.layerStep=+t.value;S.lesion=null;S.trace=null;},ulayer:t=>{S.unitLayer=+t.value;},unitn:t=>{const v=parseInt(t.value,10);S.unitN=isNaN(v)?null:v;},slayer:t=>{S.steer.layer=+t.value;S.steered=null;},salpha:t=>{S.steer.alpha=+t.value;S.steered=null;},repo:t=>{S.repo=t.value;},custom:t=>{S.custom=t.value.trim();return false;},pos:t=>{S.pos=+t.value;},layer:t=>{S.layer=+t.value;},head:t=>{S.head=+t.value;},glayer:t=>{S.genLayer=+t.value;S.gen=null;},ghead:t=>{S.genHead=+t.value;S.gen=null;},target:t=>{S.targetText=t.value;return false;},alt:t=>{S.altText=t.value;return false;}},
-  input:{spos:t=>{S.steer.pos=t.value;},sneg:t=>{S.steer.neg=t.value;},prompt:t=>{S.prompt=t.value;},ta:t=>{S.traceA=t.value;},tb:t=>{S.traceB=t.value;},custom:t=>{S.custom=t.value.trim();},target:t=>{S.targetText=t.value;},alt:t=>{S.altText=t.value;}},
+  input:{twa:t=>{S.twA=t.value;},twb:t=>{S.twB=t.value;},spos:t=>{S.steer.pos=t.value;},sneg:t=>{S.steer.neg=t.value;},prompt:t=>{S.prompt=t.value;},ta:t=>{S.traceA=t.value;},tb:t=>{S.traceB=t.value;},custom:t=>{S.custom=t.value.trim();},target:t=>{S.targetText=t.value;},alt:t=>{S.altText=t.value;}},
   onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
 });
 setStatus('');
