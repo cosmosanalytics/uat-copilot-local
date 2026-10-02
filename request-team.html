@@ -536,7 +536,14 @@ async function runBatch(handling,pool){
   if(failed)throw failed;
   recs.forEach(r=>{
     if(r.fin.held)r.ctx.proposal=null;
-    r.unsupported=rulesCheck(r.ctx,r.fin,r.text).length>0;r.match=r.exp?r.fin.decision===r.exp:null;
+    r.unsupported=rulesCheck(r.ctx,r.fin,r.text).length>0;
+    const same=x=>x==='approve'?'person':x;
+    if(!r.exp)r.cls=null;
+    else if(r.unsupported)r.cls='wrong';
+    else if(same(r.fin.decision)===same(r.exp))r.cls='right';
+    else if(['ask','person','approve'].indexOf(r.fin.decision)>=0)r.cls='safe';
+    else r.cls='wrong';
+    r.match=r.cls===null?null:r.cls==='right';
     if(r.fin.held)r.heldReal=r.exp?!(r.fin.was.decision===r.exp&&!r.fin.wasRules.length):null;
   });
   return{handling,pool,recs,wall:now(),mode:S.mode,label:(handling==='single'?'One agent':'Team of agents')+(pool>1?', '+pool+' at once':'')};
@@ -558,7 +565,7 @@ function gantt(run,tmax){
   let s='<svg viewBox="0 0 '+Wd+' '+H+'" width="100%" role="img" aria-label="Timeline of '+esc(run.label)+'">';
   for(let a=1;a<=lanes;a++)s+='<text x="4" y="'+(T+(a-1)*rowH+14)+'" font-size="10" fill="currentColor" opacity=".8">Slot '+a+'</text>';
   run.recs.forEach(r=>{
-    const x=px(r.start),w=Math.max(3,px(r.end)-px(r.start)),y=T+(r.slot-1)*rowH+2,col=r.match===null?'#8A98A0':(r.match?'#2E7D5B':'#B3412E');
+    const x=px(r.start),w=Math.max(3,px(r.end)-px(r.start)),y=T+(r.slot-1)*rowH+2,col=r.cls===null?'#8A98A0':(r.cls==='right'?'#2E7D5B':(r.cls==='safe'?'#E3A21A':'#B3412E'));
     s+='<rect x="'+x.toFixed(1)+'" y="'+y+'" width="'+w.toFixed(1)+'" height="'+(rowH-4)+'" rx="3" fill="'+col+'"/>';
     if(w>14)s+='<text x="'+(x+w/2).toFixed(1)+'" y="'+(y+(rowH-4)/2+3.5)+'" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">R'+(r.i+1)+'</text>';
   });
@@ -567,16 +574,19 @@ function gantt(run,tmax){
   for(let k=0;k<=4;k++){const tv=tmax*k/4;s+='<text x="'+px(tv).toFixed(1)+'" y="'+(ay+13)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+(tv/1000).toFixed(1)+' s</text>';}
   return s+'</svg>';
 }
+function counts(run){const gt=run.recs.filter(r=>r.cls);const c=k=>gt.filter(r=>r.cls===k).length;return{n:gt.length,right:c('right'),safe:c('safe'),wrong:c('wrong'),held:run.recs.filter(r=>r.fin.held).length,real:run.recs.filter(r=>r.fin.held&&r.heldReal).length,fa:run.recs.filter(r=>r.fin.held&&r.heldReal===false).length};}
 function summary(run){
-  const n=run.recs.length,gt=run.recs.filter(r=>r.exp),ok=gt.filter(r=>r.match).length,uns=run.recs.filter(r=>r.unsupported).length,held=run.recs.filter(r=>r.fin.held).length;
-  const good=gt.filter(r=>r.match&&!r.unsupported).length,real=run.recs.filter(r=>r.fin.held&&r.heldReal).length,fa=run.recs.filter(r=>r.fin.held&&r.heldReal===false).length;
-  return '<div class="tiles"><div class="tile"><b>'+good+' of '+gt.length+'</b><span>correct and supported</span></div><div class="tile"><b>'+ok+' of '+gt.length+'</b><span>decision as expected (an escalation counts as a miss)</span></div><div class="tile"><b>'+uns+'</b><span>unsupported claims or wrong refunds sent</span></div><div class="tile"><b>'+held+'</b><span>held back'+(held?' ('+real+' real problems, '+fa+' false alarms)':'')+'</span></div><div class="tile"><b>'+sec(run.wall)+'</b><span>total time</span></div></div>';
+  const k=counts(run);
+  return '<div class="tiles"><div class="tile"><b>'+k.right+' of '+k.n+'</b><span>right and supported</span></div><div class="tile"><b>'+k.safe+'</b><span>different, but safe (a person or the customer follows up)</span></div><div class="tile"><b>'+k.wrong+'</b><span>wrong or unsupported, and sent</span></div><div class="tile"><b>'+sec(run.wall)+'</b><span>total time</span></div></div>'+
+    (k.held?'<p class="small muted">The checker held back '+k.held+' request'+(k.held===1?'':'s')+': '+k.real+' caught a real problem and '+k.fa+' were false alarms.</p>':'');
 }
 function requestCard(r){
-  const exp=r.exp?DEC_NAME[r.exp]:'(no expected answer)',got=DEC_NAME[r.fin.decision]||r.fin.decision;
-  const chip_=r.match===null?chip('no reference',''):(r.match?chip('as expected','good'):chip('differs from expected','bad'));
+  const exp=r.exp?DEC_NAME[r.exp]:'(no expected outcome)',got=DEC_NAME[r.fin.decision]||r.fin.decision;
+  const chip_=r.cls===null?chip('no reference',''):(r.cls==='right'?chip('right and supported','good'):(r.cls==='safe'?chip('different, but safe','warn'):chip('wrong or unsupported, and sent','bad')));
+  const why=r.cls==='safe'?(r.fin.held?(r.heldReal?'The checker caught a real problem.':'The checker held back a fine answer (a false alarm).'):'The agent asked or escalated instead of the expected outcome.'):(r.cls==='wrong'?(r.unsupported?'It states something no tool result supports, or the refund does not match the request.':'It sent an answer or refund that differs from the expected outcome.'):(r.fin.held&&r.heldReal?'The checker caught a real problem.':''));
   const mem=Object.keys(r.ctx.mem).map(k=>k+' '+r.ctx.mem[k]).join(', ');
-  return '<div class="box" style="margin-bottom:8px"><b>R'+(r.i+1)+'.</b> '+esc(r.text)+'<div class="small" style="margin-top:4px">Expected: <b>'+esc(exp)+'</b> · Got: <b>'+esc(got)+'</b> '+chip_+(r.unsupported?' '+chip('unsupported claim or wrong refund sent','bad'):'')+(r.fin.held?' '+(r.heldReal===true?chip('held back: real problem','good'):(r.heldReal===false?chip('held back: false alarm','warn'):chip('held back','warn'))):'')+'</div>'+
+  return '<div class="box" style="margin-bottom:8px"><b>R'+(r.i+1)+'.</b> '+esc(r.text)+'<div class="small" style="margin-top:4px">Expected: <b>'+esc(exp)+'</b> · Got: <b>'+esc(got)+'</b> '+chip_+'</div>'+
+    (why?'<div class="small muted" style="margin-top:2px">'+esc(why)+'</div>':'')+
     '<div class="small" style="margin-top:4px">Reply: '+esc(r.fin.reply||'')+'</div>'+(r.note?'<div class="small" style="margin-top:2px"><b>'+esc(r.note)+'</b></div>':'')+
     '<div class="small muted" style="margin-top:4px">'+r.ctx.steps.map(s=>esc(s.agent+': '+s.text)).join('<br>')+(mem?'<br>Working memory (characters): '+esc(mem):'')+'</div></div>';
 }
@@ -589,19 +599,19 @@ function resultsView(){
   if(a&&b)h+='<div class="row"><span class="small muted">Show</span>'+tog('show','single','One agent',S.show==='single')+tog('show','team','Team',S.show==='team')+'</div>';
   h+=summary(run);
   if(a&&b){
-    const f=r=>r.recs.filter(x=>x.exp&&x.match).length+' of '+r.recs.filter(x=>x.exp).length;
-    const g=r=>r.recs.filter(x=>x.exp&&x.match&&!x.unsupported).length+' of '+r.recs.filter(x=>x.exp).length;
-    h+='<div class="status ok"><b>Side by side.</b> One agent: '+g(a)+' correct and supported, '+a.recs.filter(r=>r.unsupported).length+' unsupported claims or wrong refunds sent, '+sec(a.wall)+'. Team: '+g(b)+' correct and supported, '+b.recs.filter(r=>r.unsupported).length+' unsupported sent, '+b.recs.filter(r=>r.fin.held).length+' held back ('+b.recs.filter(r=>r.fin.held&&r.heldReal).length+' real problems, '+b.recs.filter(r=>r.fin.held&&r.heldReal===false).length+' false alarms), '+sec(b.wall)+'.</div><p class="small muted">A held-back request is not an error, but it costs a person\'s time. A real problem means the specialist\'s answer was wrong or unsupported. A false alarm means it was fine.</p>';
+    const row=r=>{const k=counts(r);return [r.handling==='single'?'One agent':'Team',k.right+' of '+k.n,k.safe,k.wrong,r.handling==='team'?k.held+' ('+k.real+' real, '+k.fa+' false alarms)':'-',sec(r.wall)];};
+    h+='<h3>Side by side</h3>'+table(['','Right and supported','Different, but safe','Wrong or unsupported, sent','Held back by the checker','Time'],[row(a),row(b)],560)+
+      '<p class="small muted"><b>Right:</b> the expected outcome, with every claim supported. <b>Different, but safe:</b> it asked the customer or passed the request to a person instead. <b>Wrong:</b> it sent an unsupported claim, or an answer or refund that was wrong. The costly column is the last one. Needing approval and going to a person count as the same outcome, because a person decides either way.</p>';
   }
   h+='<h3>What each agent saw</h3><p class="small muted">The size of each agent\'s working memory, averaged over the requests it handled. One agent keeps everything in one place. Each team agent holds only what its job needs.</p>'+memBars(runs);
-  h+='<h3>When each request ran</h3><p class="small muted">Green is handled as expected, red differs, grey has no reference.</p><div class="svgbox">'+gantt(run,tmax)+'</div>';
+  h+='<h3>When each request ran</h3><p class="small muted">Green is right and supported, amber is different but safe, red is wrong or unsupported, grey has no reference.</p><div class="svgbox">'+gantt(run,tmax)+'</div>';
   h+='<h3>Request by request ('+esc(run.label)+')</h3>'+run.recs.map(requestCard).join('');
   return h;
 }
 const QA=[
  ['Why can the checker not see the specialist\'s reasoning?','If it did, its working memory would hold the same reasoning and it would tend to agree. With only the request, the answer, the facts and the rules, it has a different view and can catch what the specialist missed.'],
  ['Is the team always better?','No. It costs more calls, and it only helps when the checker has something the actor did not. With scripted agents, which never slip, the team finds nothing. With a model, results on six requests are anecdotes.'],
- ['Why can the team look less accurate?','Accuracy here counts an escalation as a miss, and a weak checker can hold back correct answers. The page now separates real problems caught from false alarms. A team trades some extra reviews for fewer wrong or unsupported answers sent, and it only pays off when the checker\'s alarms are mostly real.'],
+ ['Why can the team look worse?','Matching the expected label rewards a confident answer even when it was made up without using a tool. The team escalates more, and a weak checker can hold back fine answers. Judge by the last column, wrong or unsupported answers sent, and by how many of the safe-but-different cases were false alarms.'],
  ['Why does the team only propose refunds?','So that a refund is executed only after the checker has passed it. In the first version the specialist executed the refund first, so a wrong amount was already paid before anyone checked.'],
  ['Why does the team show smaller working memories?','Each agent is given only its own tools, rules and facts, so its context stays small and focused. One agent has to carry every tool, rule and step in one space.'],
  ['What does the injected slip show?','It replaces an answer with a refund claim that no tool made. One agent can only check itself in the same working memory. The team has an independent checker, so you can see whether it holds the claim back.']
