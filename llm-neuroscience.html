@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neuroscience for an LLM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Record, lesion and stimulate an open-weights language model, the way we study a brain</span></div>
+  <header>
+    <h1>Neuroscience for an LLM</h1>
+    <p class="lede">Load a small open-weights model into your browser (GPT-2, Pythia, SmolLM2 or Qwen2.5) and open it up the way neuroscientists open up a brain. Record its activity, read out what it is thinking at each layer, probe single neurons, measure its surprise, find induction circuits, lesion parts to see what breaks, and stimulate or steer it. The math runs on your device, on WebGPU when it works.</p>
+    <ol class="lede-items"><li><b>Recording</b>: Activity of every layer at every token, like an fMRI scan, plus a depth profile of what each layer does.</li><li><b>Logit lens</b>: Read out what the model would predict at each stage of its depth.</li><li><b>Connectivity</b>: Which token each attention head looks at, and a test that finds induction heads.</li><li><b>Contribution</b>: Which heads and layers push the model toward its answer.</li><li><b>Single unit</b>: Record one MLP neuron across texts, like a single-cell recording.</li><li><b>Surprise</b>: Token-by-token surprisal, the model&#x27;s version of the N400 brain response.</li><li><b>Lesions, stimulation and steering</b>: Knock parts out, patch activity between prompts, or add a direction to the activity and watch the behavior change.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: this is a small open-weights model (GPT-2, Pythia, SmolLM2 or Qwen2.5) running through code written for this page, because the engines that run chat models in the browser do not expose their insides. The weights download from huggingface.co when you load the model, and nothing you type leaves your device. Matrix math runs on WebGPU only after it passes a self-test against plain code, otherwise it runs on the CPU. The architectures were checked against reference code on small synthetic models, not against the real downloaded weights, so run the Checks tab after loading. Interpretability methods have known limits: a lesion can break a model in ways that have nothing to do with the function you wanted to test, the logit lens is a rough guide, single neurons in GPT-2 are mostly polysemantic, and what you find in one prompt may not hold in another. Sparse autoencoders, which need separately trained weights, are not included. Treat results as hypotheses.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- tokenizer: GPT-2 byte-level BPE ---------- */
+function bytesToUnicode(){
+  const bs=[];for(let i=33;i<=126;i++)bs.push(i);for(let i=161;i<=172;i++)bs.push(i);for(let i=174;i<=255;i++)bs.push(i);
+  const cs=bs.slice();let n=0;for(let b=0;b<256;b++){if(bs.indexOf(b)<0){bs.push(b);cs.push(256+n);n++;}}
+  const enc={},dec={};bs.forEach((b,i)=>{enc[b]=String.fromCharCode(cs[i]);dec[String.fromCharCode(cs[i])]=b;});
+  return{enc,dec};
+}
+class BPE{
+  constructor(vocab,merges,pre,norm){
+    this.vocab=vocab;this.ids=[];Object.keys(vocab).forEach(k=>{this.ids[vocab[k]]=k;});
+    this.ranks=new Map();
+    merges.forEach(m=>{if(!m||(typeof m==='string'&&m.startsWith('#version')))return;this.ranks.set(Array.isArray(m)?m.join(' '):m,this.ranks.size);});
+    const bu=bytesToUnicode();this.b2u=bu.enc;this.u2b=bu.dec;this.cache=new Map();
+    this.nfc=norm==='NFC';
+    this.stages=pre?BPE.stages(pre):[BPE.gpt2Split];
+  }
+  static gpt2Split(pieces){
+    const re=/'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu,out=[];
+    pieces.forEach(p=>{for(const m of p.matchAll(re))out.push(m[0]);});return out;
+  }
+  static stages(pre){
+    const t=pre.type;
+    if(t==='Sequence')return pre.pretokenizers.flatMap(x=>BPE.stages(x));
+    if(t==='ByteLevel'){const a=pre.add_prefix_space?[ps=>{if(ps.length&&ps[0][0]!==' ')ps[0]=' '+ps[0];return ps;}]:[];return pre.use_regex===false?a:a.concat([BPE.gpt2Split]);}
+    if(t==='Digits'){const re=pre.individual_digits?/(\p{N})/u:/(\p{N}+)/u;return[ps=>ps.flatMap(p=>p.split(re).filter(Boolean))];}
+    if(t==='Split'){
+      let src=pre.pattern&&pre.pattern.Regex;
+      if(!src)throw new Error('This tokenizer splits text with a plain string, which this page does not support.');
+      if(pre.behavior&&pre.behavior!=='Isolated')throw new Error('Unsupported tokenizer split behavior: '+pre.behavior);
+      let flags='gu';if(src.indexOf('(?i:')>=0){src=src.split('(?i:').join('(?:');flags='giu';}
+      const re=new RegExp(src,flags);
+      return[ps=>{const out=[];ps.forEach(p=>{let last=0;for(const m of p.matchAll(re)){if(!m[0].length)continue;if(m.index>last)out.push(p.slice(last,m.index));out.push(m[0]);last=m.index+m[0].length;}if(last<p.length)out.push(p.slice(last));});return out;}];
+    }
+    throw new Error('Unsupported tokenizer step: '+t);
+  }
+  bpe(token){
+    if(this.cache.has(token))return this.cache.get(token);
+    let word=Array.from(token);
+    if(word.length<2){this.cache.set(token,word);return word;}
+    while(true){
+      let best=null,br=Infinity;
+      for(let i=0;i<word.length-1;i++){const r=this.ranks.get(word[i]+' '+word[i+1]);if(r!==undefined&&r<br){br=r;best=[word[i],word[i+1]];}}
+      if(!best)break;
+      const nw=[];let i=0;
+      while(i<word.length){if(i<word.length-1&&word[i]===best[0]&&word[i+1]===best[1]){nw.push(best[0]+best[1]);i+=2;}else{nw.push(word[i]);i+=1;}}
+      word=nw;if(word.length===1)break;
+    }
+    this.cache.set(token,word);return word;
+  }
+  encode(text){
+    let s=String(text);if(this.nfc)s=s.normalize('NFC');
+    let pieces=[s];for(const st of this.stages)pieces=st(pieces);
+    const out=[];
+    pieces.forEach(p=>{const bytes=new TextEncoder().encode(p),tok=Array.from(bytes).map(b=>this.b2u[b]).join('');this.bpe(tok).forEach(q=>{const id=this.vocab[q];if(id!==undefined)out.push(id);});});
+    return out;
+  }
+  piece(id){
+    const s=this.ids[id];if(s===undefined)return '?';
+    const bytes=Array.from(s).map(ch=>this.u2b[ch]);
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  }
+  decode(ids){const bytes=[];ids.forEach(i=>{const s=this.ids[i];if(s===undefined)return;Array.from(s).forEach(ch=>bytes.push(this.u2b[ch]));});return new TextDecoder().decode(new Uint8Array(bytes));}
+}
+function vis(s){return String(s).replace(/ /g,'\u2423').replace(/\n/g,'\u21b5');}
+/* ---------- safetensors ---------- */
+function f16(h){const s=(h&0x8000)?-1:1,e=(h>>10)&0x1f,f=h&0x3ff;if(e===0)return s*Math.pow(2,-14)*(f/1024);if(e===31)return f?NaN:s*Infinity;return s*Math.pow(2,e-15)*(1+f/1024);}
+function parseSafetensors(buf){
+  const dv=new DataView(buf),hl=dv.getUint32(0,true)+dv.getUint32(4,true)*4294967296;
+  const header=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,8,hl))),base=8+hl;
+  return{
+    has:n=>!!header[n],
+    get(n){
+      const t=header[n];if(!t)throw new Error('Missing weight: '+n);
+      const cnt=t.shape.reduce((a,b)=>a*b,1),off=base+t.data_offsets[0];
+      if(t.dtype==='F32')return(off%4===0)?new Float32Array(buf,off,cnt):new Float32Array(buf.slice(off,off+cnt*4));
+      const u=new Uint16Array(buf.slice(off,off+cnt*2)),o=new Float32Array(cnt);
+      if(t.dtype==='F16'){for(let i=0;i<cnt;i++)o[i]=f16(u[i]);return o;}
+      if(t.dtype==='BF16'){const b=new Uint32Array(1),fv=new Float32Array(b.buffer);for(let i=0;i<cnt;i++){b[0]=u[i]<<16;o[i]=fv[0];}return o;}
+      throw new Error('Unsupported weight type '+t.dtype);
+    }
+  };
+}
+/* ---------- WebGPU matrix multiply, used only after a self-test ---------- */
+const WGSL=`
+struct Dims{M:u32,K:u32,N:u32,pad:u32};
+@group(0) @binding(0) var<storage,read> A:array<f32>;
+@group(0) @binding(1) var<storage,read> W:array<f32>;
+@group(0) @binding(2) var<storage,read> Bv:array<f32>;
+@group(0) @binding(3) var<storage,read_write> C:array<f32>;
+@group(0) @binding(4) var<uniform> dims:Dims;
+@compute @workgroup_size(16,16)
+fn main(@builtin(global_invocation_id) gid:vec3<u32>){
+  let col=gid.x;let row=gid.y;
+  if(row>=dims.M||col>=dims.N){return;}
+  var acc:f32=Bv[col];
+  for(var k:u32=0u;k<dims.K;k=k+1u){acc=acc+A[row*dims.K+k]*W[k*dims.N+col];}
+  C[row*dims.N+col]=acc;
+}`;
+const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(what+' did not respond in '+(ms/1000)+' s')),ms))]);
+async function initGPU(){
+  if(typeof navigator==='undefined'||!navigator.gpu)return{why:'WebGPU is not available in this browser'};
+  try{
+    const adapter=await navigator.gpu.requestAdapter();if(!adapter)return{why:'no WebGPU adapter'};
+    const device=await adapter.requestDevice();
+    device.pushErrorScope('validation');
+    const module=device.createShaderModule({code:WGSL});
+    const pipeline=device.createComputePipeline({layout:'auto',compute:{module,entryPoint:'main'}});
+    const err=await device.popErrorScope();if(err)return{why:'shader error: '+err.message};
+    return{device,pipeline};
+  }catch(e){return{why:String(e&&e.message||e)};}
+}
+function gpuWeight(g,W,B){
+  const mk=(arr)=>{const b=g.device.createBuffer({size:arr.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});g.device.queue.writeBuffer(b,0,arr);return b;};
+  return{W:mk(W),B:mk(B)};
+}
+async function gpuMatmul(g,A,M,K,N,wb){
+  const dev=g.device,bytes=M*N*4;
+  const aBuf=dev.createBuffer({size:A.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});dev.queue.writeBuffer(aBuf,0,A);
+  const cBuf=dev.createBuffer({size:bytes,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC});
+  const sBuf=dev.createBuffer({size:bytes,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});
+  const uBuf=dev.createBuffer({size:16,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});dev.queue.writeBuffer(uBuf,0,new Uint32Array([M,K,N,0]));
+  const bg=dev.createBindGroup({layout:g.pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:aBuf}},{binding:1,resource:{buffer:wb.W}},{binding:2,resource:{buffer:wb.B}},{binding:3,resource:{buffer:cBuf}},{binding:4,resource:{buffer:uBuf}}]});
+  const enc=dev.createCommandEncoder(),pass=enc.beginComputePass();
+  pass.setPipeline(g.pipeline);pass.setBindGroup(0,bg);pass.dispatchWorkgroups(Math.ceil(N/16),Math.ceil(M/16));pass.end();
+  enc.copyBufferToBuffer(cBuf,0,sBuf,0,bytes);dev.queue.submit([enc.finish()]);
+  await sBuf.mapAsync(GPUMapMode.READ);
+  const out=new Float32Array(sBuf.getMappedRange().slice(0));sBuf.unmap();
+  aBuf.destroy();cBuf.destroy();sBuf.destroy();uBuf.destroy();
+  return out;
+}
+function cpuLin(x,T,w){
+  const{W,B,K,N}=w,out=new Float32Array(T*N);
+  for(let t=0;t<T;t++){const o=t*N,xo=t*K;for(let j=0;j<N;j++)out[o+j]=B[j];for(let k=0;k<K;k++){const a=x[xo+k];if(a===0)continue;const wo=k*N;for(let j=0;j<N;j++)out[o+j]+=a*W[wo+j];}}
+  return out;
+}
+async function gpuSelfTest(g){
+  const M=7,K=64,N=48,A=new Float32Array(M*K),W=new Float32Array(K*N),B=new Float32Array(N);
+  for(let i=0;i<A.length;i++)A[i]=Math.sin(i*0.37);for(let i=0;i<W.length;i++)W[i]=Math.cos(i*0.11)*0.2;for(let i=0;i<N;i++)B[i]=i*0.01;
+  const w={W,B,K,N},ref=cpuLin(A,M,w),got=await gpuMatmul(g,A,M,K,N,gpuWeight(g,W,B));
+  let mx=0;for(let i=0;i<ref.length;i++)mx=Math.max(mx,Math.abs(ref[i]-got[i]));
+  return mx;
+}
+/* ---------- the model ---------- */
+const S={repo:'distilgpt2',custom:'',base:'',status:'idle',prog:'',err:'',M:null,bpe:null,prompt:'The Eiffel Tower is located in the city of',run:null,tab:'activity',layer:0,head:0,pos:-1,metric:'norm',targetText:'',altText:'',lesionMode:'zero',lesion:null,trace:null,tracePair:0,traceA:'When Mary and John went to the store, John gave a drink to',traceB:'When Mary and John went to the store, Mary gave a drink to',gen:null,genLayer:0,genHead:0,genKind:'head',busy:false,stop:false,checks:null,layerStep:1,surp:null,n400:null,unitLayer:1,unitN:null,unitScan:null,induct:null,steer:{pos:' I love this',neg:' I hate this',layer:2,alpha:4},steered:null};
+try{const q=new URLSearchParams(location.search).get('base');if(q)S.base=q;}catch(e){}
+function baseUrl(){return S.base||('https://huggingface.co/'+(S.custom||S.repo)+'/resolve/main/');}
+async function fetchBuf(url,onProg){
+  let cache=null;
+  try{if(typeof caches!=='undefined'){cache=await caches.open('llm-neuro-v1');const hit=await cache.match(url);if(hit){onProg&&onProg(1,'from your browser cache');return await hit.arrayBuffer();}}}catch(e){cache=null;}
+  const r=await fetch(url);if(!r.ok)throw new Error('Could not download '+url+' ('+r.status+')');
+  const len=+(r.headers.get('content-length')||0);
+  let saved=Promise.resolve();
+  try{if(cache&&r.clone)saved=cache.put(url,r.clone()).catch(()=>{});}catch(e){}
+  if(r.body&&r.body.getReader&&len){
+    const buf=new Uint8Array(len),rd=r.body.getReader();let got=0;
+    while(true){const{done,value}=await rd.read();if(done)break;buf.set(value,got);got+=value.length;onProg&&onProg(got/len,(got/1048576).toFixed(0)+' of '+(len/1048576).toFixed(0)+' MB');}
+    await saved;
+    return buf.buffer;
+  }
+  const ab=await r.arrayBuffer();onProg&&onProg(1,'');return ab;
+}
+const MODEL_LIST=[['distilgpt2','DistilGPT-2: 6 layers, about 350 MB'],['gpt2','GPT-2 small: 12 layers, about 550 MB'],['EleutherAI/pythia-70m','Pythia-70M: 6 layers, about 160 MB'],['EleutherAI/pythia-160m','Pythia-160M: 12 layers, about 330 MB'],['HuggingFaceTB/SmolLM2-135M','SmolLM2-135M: 30 layers, about 270 MB'],['HuggingFaceTB/SmolLM2-360M','SmolLM2-360M: 32 layers, about 720 MB'],['Qwen/Qwen2.5-0.5B','Qwen2.5-0.5B: 24 layers, about 1 GB, desktop only']];
+const T2=(W,rows,cols)=>{const o=new Float32Array(rows*cols);for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)o[c*rows+r]=W[r*cols+c];return o;};
+const zeros=n=>new Float32Array(n);
+async function getJson(url){const r=await fetch(url);if(!r.ok)throw new Error('Could not download '+url+' ('+r.status+')');return r.json();}
+function buildGpt2(st,cfg,M){
+  const nm=n=>st.has(n)?n:('transformer.'+n),D=M.D,L=M.L;
+  M.wte=st.get(nm('wte.weight'));M.wpe=st.get(nm('wpe.weight'));M.lnfg=st.get(nm('ln_f.weight'));M.lnfb=st.get(nm('ln_f.bias'));M.wu=M.wte;
+  const lw=(i,p,K,N)=>({W:st.get(nm('h.'+i+'.'+p+'.weight')),B:st.get(nm('h.'+i+'.'+p+'.bias')),K,N});
+  for(let i=0;i<L;i++)M.layers.push({ln1g:st.get(nm('h.'+i+'.ln_1.weight')),ln1b:st.get(nm('h.'+i+'.ln_1.bias')),ln2g:st.get(nm('h.'+i+'.ln_2.weight')),ln2b:st.get(nm('h.'+i+'.ln_2.bias')),qkv:lw(i,'attn.c_attn',D,3*D),o:lw(i,'attn.c_proj',D,D),fc:lw(i,'mlp.c_fc',D,4*D),proj:lw(i,'mlp.c_proj',4*D,D)});
+}
+function buildNeox(st,cfg,M){
+  const D=M.D,L=M.L,H=M.H,dh=M.dh,F=M.F;
+  M.wte=st.get('gpt_neox.embed_in.weight');M.wpe=null;M.lnfg=st.get('gpt_neox.final_layer_norm.weight');M.lnfb=st.get('gpt_neox.final_layer_norm.bias');
+  M.wu=st.has('embed_out.weight')?st.get('embed_out.weight'):M.wte;
+  for(let i=0;i<L;i++){
+    const p='gpt_neox.layers.'+i+'.',qw=st.get(p+'attention.query_key_value.weight'),qb=st.get(p+'attention.query_key_value.bias');
+    const W=new Float32Array(D*3*D),B=new Float32Array(3*D);
+    for(let h=0;h<H;h++)for(let part=0;part<3;part++)for(let j=0;j<dh;j++){
+      const src=h*3*dh+part*dh+j,dst=part*D+h*dh+j;B[dst]=qb[src];
+      for(let r=0;r<D;r++)W[r*3*D+dst]=qw[src*D+r];
+    }
+    M.layers.push({ln1g:st.get(p+'input_layernorm.weight'),ln1b:st.get(p+'input_layernorm.bias'),ln2g:st.get(p+'post_attention_layernorm.weight'),ln2b:st.get(p+'post_attention_layernorm.bias'),
+      qkv:{W,B,K:D,N:3*D},o:{W:T2(st.get(p+'attention.dense.weight'),D,D),B:st.get(p+'attention.dense.bias'),K:D,N:D},
+      fc:{W:T2(st.get(p+'mlp.dense_h_to_4h.weight'),F,D),B:st.get(p+'mlp.dense_h_to_4h.bias'),K:D,N:F},proj:{W:T2(st.get(p+'mlp.dense_4h_to_h.weight'),D,F),B:st.get(p+'mlp.dense_4h_to_h.bias'),K:F,N:D}});
+  }
+}
+function buildLlama(st,cfg,M){
+  const D=M.D,L=M.L,Dkv=M.Dkv,F=M.F,qkvW=M.qkvW;
+  M.wte=st.get('model.embed_tokens.weight');M.wpe=null;M.lnfg=st.get('model.norm.weight');M.lnfb=null;
+  M.wu=(st.has('lm_head.weight')&&!cfg.tie_word_embeddings)?st.get('lm_head.weight'):M.wte;
+  for(let i=0;i<L;i++){
+    const p='model.layers.'+i+'.',q=T2(st.get(p+'self_attn.q_proj.weight'),D,D),k=T2(st.get(p+'self_attn.k_proj.weight'),Dkv,D),v=T2(st.get(p+'self_attn.v_proj.weight'),Dkv,D);
+    const W=new Float32Array(D*qkvW);
+    for(let r=0;r<D;r++){W.set(q.subarray(r*D,(r+1)*D),r*qkvW);W.set(k.subarray(r*Dkv,(r+1)*Dkv),r*qkvW+D);W.set(v.subarray(r*Dkv,(r+1)*Dkv),r*qkvW+D+Dkv);}
+    const B=new Float32Array(qkvW);
+    if(st.has(p+'self_attn.q_proj.bias')){B.set(st.get(p+'self_attn.q_proj.bias'),0);B.set(st.get(p+'self_attn.k_proj.bias'),D);B.set(st.get(p+'self_attn.v_proj.bias'),D+Dkv);}
+    const g=T2(st.get(p+'mlp.gate_proj.weight'),F,D),u=T2(st.get(p+'mlp.up_proj.weight'),F,D),GU=new Float32Array(D*2*F);
+    for(let r=0;r<D;r++){GU.set(g.subarray(r*F,(r+1)*F),r*2*F);GU.set(u.subarray(r*F,(r+1)*F),r*2*F+F);}
+    M.layers.push({ln1g:st.get(p+'input_layernorm.weight'),ln1b:zeros(D),ln2g:st.get(p+'post_attention_layernorm.weight'),ln2b:zeros(D),
+      qkv:{W,B,K:D,N:qkvW},o:{W:T2(st.get(p+'self_attn.o_proj.weight'),D,D),B:zeros(D),K:D,N:D},fc:{W:GU,B:zeros(2*F),K:D,N:2*F},proj:{W:T2(st.get(p+'mlp.down_proj.weight'),D,F),B:zeros(D),K:F,N:D}});
+  }
+}
+async function loadModel(){
+  S.status='loading';S.err='';S.M=null;S.run=null;S.lesion=null;S.trace=null;S.gen=null;S.checks=null;S.surp=null;S.n400=null;S.unitScan=null;S.induct=null;S.steered=null;
+  const base=baseUrl();
+  const step=(t)=>{S.prog=t;draw();return new Promise(r=>setTimeout(r,0));};
+  await step('Reading the model configuration...');
+  const cfg=await getJson(base+'config.json'),mt=cfg.model_type;
+  const arch=mt==='gpt2'?'gpt2':(mt==='gpt_neox'?'neox':((mt==='llama'||mt==='qwen2')?'llama':null));
+  if(!arch)throw new Error('This page supports GPT-2, GPT-NeoX (Pythia), Llama and Qwen2 style models. This one is "'+mt+'".');
+  await step('Downloading the tokenizer...');
+  let vocab,merges,pre=null,nrm=null;
+  if(arch==='gpt2'){vocab=await getJson(base+'vocab.json');merges=(await (await fetch(base+'merges.txt')).text()).split('\n');}
+  else{const tj=await getJson(base+'tokenizer.json');if(tj.model.type&&tj.model.type!=='BPE')throw new Error('This tokenizer is not byte-level BPE.');vocab=tj.model.vocab;merges=tj.model.merges;pre=tj.pre_tokenizer;nrm=tj.normalizer&&tj.normalizer.type;}
+  const bpe=new BPE(vocab,merges,pre,nrm);
+  let buf=await fetchBuf(base+'model.safetensors',(f,t)=>{S.prog='Downloading the weights: '+t;if(Math.random()<0.2)draw();});
+  await step('Reading the weights...');
+  let st=parseSafetensors(buf);
+  const D=cfg.hidden_size||cfg.n_embd,H=cfg.num_attention_heads||cfg.n_head,L=cfg.num_hidden_layers||cfg.n_layer;
+  if(D%H)throw new Error('The hidden size is not a multiple of the number of heads.');
+  const dh=D/H;
+  if(cfg.head_dim&&cfg.head_dim!==dh)throw new Error('This model uses a head size different from hidden size divided by heads, which this page does not support.');
+  const Hkv=arch==='llama'?(cfg.num_key_value_heads||H):H,Dkv=Hkv*dh;
+  const M={arch,L,H,Hkv,D,dh,Dkv,qkvW:D+2*Dkv,eps:1e-5,norm:'ln',act:'gelu_new',parallel:false,rd:0,theta:10000,layers:[],gpu:null,gpuNote:''};
+  if(arch==='gpt2'){M.F=4*D;M.eps=cfg.layer_norm_epsilon||1e-5;M.ctx=cfg.n_positions||1024;}
+  else if(arch==='neox'){M.F=cfg.intermediate_size||4*D;M.eps=cfg.layer_norm_eps||1e-5;M.act=cfg.hidden_act==='gelu_new'?'gelu_new':'gelu';M.parallel=cfg.use_parallel_residual!==false;
+    let rd=Math.floor(dh*(cfg.rotary_pct!==undefined?cfg.rotary_pct:(cfg.partial_rotary_factor!==undefined?cfg.partial_rotary_factor:0.25)));rd-=rd%2;M.rd=rd;M.theta=cfg.rotary_emb_base||cfg.rope_theta||10000;M.ctx=cfg.max_position_embeddings||2048;}
+  else{M.F=cfg.intermediate_size;M.eps=cfg.rms_norm_eps||1e-6;M.norm='rms';M.act='swiglu';M.rd=dh;M.theta=cfg.rope_theta||10000;M.ctx=cfg.max_position_embeddings||2048;}
+  NORM=M.norm;
+  if(arch==='gpt2')buildGpt2(st,cfg,M);else if(arch==='neox')buildNeox(st,cfg,M);else buildLlama(st,cfg,M);
+  M.V=M.wte.length/D;
+  st=null;buf=null;
+  M.meanW=new Float32Array(D);for(let v=0;v<M.V;v++){const o=v*D;for(let d=0;d<D;d++)M.meanW[d]+=M.wu[o+d];}for(let d=0;d<D;d++)M.meanW[d]/=M.V;
+  await step('Testing WebGPU...');
+  let g;try{g=await withTimeout(initGPU(),8000,'WebGPU');}catch(e){g={why:String(e.message||e)};}
+  if(g.device){
+    try{
+      const err=await withTimeout(gpuSelfTest(g),8000,'The WebGPU self-test');
+      if(err<1e-3){M.layers.forEach(l=>{['qkv','o','fc','proj'].forEach(k=>{l[k].gb=gpuWeight(g,l[k].W,l[k].B);});});M.gpu=g;M.gpuNote='WebGPU, verified (largest difference from plain code '+err.toExponential(1)+')';}
+      else M.gpuNote='CPU: the WebGPU self-test did not match (difference '+err.toExponential(1)+')';
+    }catch(e){M.gpuNote='CPU: WebGPU failed ('+String(e&&e.message||e).slice(0,80)+')';}
+  }else M.gpuNote='CPU: '+g.why;
+  S.M=M;S.bpe=bpe;S.status='ready';S.prog='';S.unitLayer=Math.min(1,L-1);S.steer.layer=Math.floor(L/2);S.layerStep=Math.max(1,Math.ceil(L/12));S.genLayer=0;S.genHead=0;S.layer=0;S.head=0;
+  setStatus(chip(M.gpu?'WebGPU':'CPU',M.gpu?'good':'warn'));
+  await recordRun();
+}
+async function lin(M,x,T,w){return(M.gpu&&w.gb)?gpuMatmul(M.gpu,x,T,w.K,w.N,w.gb):cpuLin(x,T,w);}
+let NORM='ln';
+function layerNorm(x,T,D,g,b,eps){
+  const out=new Float32Array(T*D);
+  if(NORM==='rms'){
+    for(let t=0;t<T;t++){const o=t*D;let ms=0;for(let d=0;d<D;d++)ms+=x[o+d]*x[o+d];ms/=D;const s=1/Math.sqrt(ms+eps);for(let d=0;d<D;d++)out[o+d]=x[o+d]*s*g[d];}
+    return out;
+  }
+  for(let t=0;t<T;t++){const o=t*D;let m=0;for(let d=0;d<D;d++)m+=x[o+d];m/=D;let v=0;for(let d=0;d<D;d++){const c=x[o+d]-m;v+=c*c;}v/=D;const s=1/Math.sqrt(v+eps);for(let d=0;d<D;d++)out[o+d]=(x[o+d]-m)*s*g[d]+b[d];}
+  return out;
+}
+const gelu=x=>0.5*x*(1+Math.tanh(0.7978845608028654*(x+0.044715*x*x*x)));
+function erf(x){const z=Math.abs(x),t=1/(1+0.5*z),r=t*Math.exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+t*(-0.18628806+t*(0.27886807+t*(-1.13520398+t*(1.48851587+t*(-0.82215223+t*0.17087277)))))))));return x>=0?1-r:r-1;}
+const geluExact=x=>0.5*x*(1+erf(x*0.7071067811865476));
+function ropeApply(qkv,T,M){
+  const{D,Dkv,H,Hkv,dh,rd,theta,qkvW}=M,half=rd/2,cos=new Float32Array(T*half),sin=new Float32Array(T*half);
+  for(let t=0;t<T;t++)for(let i=0;i<half;i++){const a=t*Math.pow(theta,-2*i/rd);cos[t*half+i]=Math.cos(a);sin[t*half+i]=Math.sin(a);}
+  const rot=(o,t)=>{for(let i=0;i<half;i++){const c=cos[t*half+i],s=sin[t*half+i],x1=qkv[o+i],x2=qkv[o+i+half];qkv[o+i]=x1*c-x2*s;qkv[o+i+half]=x2*c+x1*s;}};
+  for(let t=0;t<T;t++){const b=t*qkvW;for(let h=0;h<H;h++)rot(b+h*dh,t);for(let g=0;g<Hkv;g++)rot(b+D+g*dh,t);}
+}
+/* One pass through the model. Options: record, start {layer,x}, ablate (one or a list), means, patch {layer,pos,vec}, steer {layer,vec,alpha}, stop (run only this many layers). */
+async function forward(M,ids,opt){
+  opt=opt||{};
+  const T=ids.length,D=M.D,H=M.H,dh=M.dh,L=M.L,F=M.F,Dkv=M.Dkv,qkvW=M.qkvW,nrep=H/M.Hkv;
+  let x,start=0;
+  if(opt.start){start=opt.start.layer;x=Float32Array.from(opt.start.x);}
+  else{x=new Float32Array(T*D);for(let t=0;t<T;t++){const a=ids[t]*D,b=t*D;for(let d=0;d<D;d++)x[b+d]=M.wte[a+d]+(M.wpe?M.wpe[b+d]:0);}}
+  const rec=opt.record?{resid:[],mid:[],patterns:[],z:[],attnOut:[],mlpOut:[],hid:[]}:null;
+  const abl=opt.ablate?(Array.isArray(opt.ablate)?opt.ablate:[opt.ablate]):[],means=opt.means||null;
+  const findAb=(kind,l,h)=>abl.find(a=>a.kind===kind&&a.layer===l&&(h===undefined||a.head===h));
+  const endL=opt.stop!==undefined?Math.min(opt.stop,L):L;
+  for(let l=start;l<endL;l++){
+    const Ly=M.layers[l];
+    if(opt.patch&&opt.patch.layer===l){const p=opt.patch.pos*D;for(let d=0;d<D;d++)x[p+d]=opt.patch.vec[d];}
+    if(opt.steer&&opt.steer.layer===l){for(let t=0;t<T;t++)for(let d=0;d<D;d++)x[t*D+d]+=opt.steer.alpha*opt.steer.vec[d];}
+    if(rec)rec.resid[l]=Float32Array.from(x);
+    const xPre=M.parallel?Float32Array.from(x):null;
+    const h1=layerNorm(x,T,D,Ly.ln1g,Ly.ln1b,M.eps),qkv=await lin(M,h1,T,Ly.qkv);
+    if(M.rd>0)ropeApply(qkv,T,M);
+    const z=new Float32Array(T*D),pats=rec?[]:null,sc=1/Math.sqrt(dh),row=new Float32Array(T);
+    for(let h=0;h<H;h++){
+      const P=rec?new Float32Array(T*T):null,g=Math.floor(h/nrep);
+      for(let i=0;i<T;i++){
+        let mx=-Infinity;const qo=i*qkvW+h*dh;
+        for(let j=0;j<=i;j++){const ko=j*qkvW+D+g*dh;let s=0;for(let d=0;d<dh;d++)s+=qkv[qo+d]*qkv[ko+d];s*=sc;row[j]=s;if(s>mx)mx=s;}
+        let sum=0;for(let j=0;j<=i;j++){row[j]=Math.exp(row[j]-mx);sum+=row[j];}
+        const zo=i*D+h*dh;
+        for(let j=0;j<=i;j++){const p=row[j]/sum;if(P)P[i*T+j]=p;const vo=j*qkvW+D+Dkv+g*dh;for(let d=0;d<dh;d++)z[zo+d]+=p*qkv[vo+d];}
+      }
+      if(pats)pats.push(P);
+      const ah=findAb('head',l,h);
+      if(ah){const mv=(ah.mode==='mean'&&means)?means.z[l][h]:null;for(let i=0;i<T;i++)for(let d=0;d<dh;d++)z[i*D+h*dh+d]=mv?mv[d]:0;}
+    }
+    let ao=await lin(M,z,T,Ly.o);
+    const aa=findAb('attn',l);
+    if(aa){const mv=(aa.mode==='mean'&&means)?means.attn[l]:null;for(let i=0;i<T;i++)for(let d=0;d<D;d++)ao[i*D+d]=mv?mv[d]:0;}
+    if(rec){rec.patterns[l]=pats;rec.z[l]=z;rec.attnOut[l]=Float32Array.from(ao);}
+    for(let i=0;i<T*D;i++)x[i]+=ao[i];
+    if(rec)rec.mid[l]=Float32Array.from(x);
+    const h2=layerNorm(M.parallel?xPre:x,T,D,Ly.ln2g,Ly.ln2b,M.eps);
+    let hid;
+    if(M.act==='swiglu'){
+      const gu=await lin(M,h2,T,Ly.fc);hid=new Float32Array(T*F);
+      for(let t=0;t<T;t++){const o=t*2*F;for(let i=0;i<F;i++){const g=gu[o+i];hid[t*F+i]=(g/(1+Math.exp(-g)))*gu[o+F+i];}}
+    }else{
+      hid=await lin(M,h2,T,Ly.fc);const f=M.act==='gelu'?geluExact:gelu;
+      for(let i=0;i<hid.length;i++)hid[i]=f(hid[i]);
+    }
+    if(rec)rec.hid[l]=Float32Array.from(hid);
+    let mo=await lin(M,hid,T,Ly.proj);
+    const am=findAb('mlp',l);
+    if(am){const mv=(am.mode==='mean'&&means)?means.mlp[l]:null;for(let i=0;i<T;i++)for(let d=0;d<D;d++)mo[i*D+d]=mv?mv[d]:0;}
+    if(rec)rec.mlpOut[l]=Float32Array.from(mo);
+    for(let i=0;i<T*D;i++)x[i]+=mo[i];
+  }
+  if(rec)rec.resid[endL]=Float32Array.from(x);
+  const last=Float32Array.from(x.subarray((T-1)*D,T*D));
+  const out={rec,xLast:last,x};
+  if(endL<L)return out;
+  if(opt.u){const y=layerNorm(last,1,D,M.lnfg,M.lnfb,M.eps);let s=0;for(let d=0;d<D;d++)s+=y[d]*opt.u[d];out.metric=s;}
+  if(opt.logits){out.logits=unembed(M,layerNorm(last,1,D,M.lnfg,M.lnfb,M.eps));}
+  return out;
+}
+function unembed(M,y){
+  const{V,D}=M,wu=M.wu,out=new Float32Array(V);
+  for(let v=0;v<V;v++){const o=v*D;let s=0;for(let d=0;d<D;d++)s+=y[d]*wu[o+d];out[v]=s;}
+  return out;
+}
+function softmax(a){let mx=-Infinity;for(const v of a)if(v>mx)mx=v;const e=new Float32Array(a.length);let s=0;for(let i=0;i<a.length;i++){e[i]=Math.exp(a[i]-mx);s+=e[i];}for(let i=0;i<e.length;i++)e[i]/=s;return e;}
+function topk(a,k){const idx=[];for(let i=0;i<a.length;i++){if(idx.length<k||a[i]>a[idx[idx.length-1]]){let j=idx.length;idx.push(i);while(j>0&&a[idx[j-1]]<a[i]){idx[j]=idx[j-1];j--;}idx[j]=i;if(idx.length>k)idx.pop();}}return idx;}
+function uVec(M,t,alt){const u=new Float32Array(M.D);for(let d=0;d<M.D;d++)u[d]=M.wu[t*M.D+d]-(alt!==null&&alt!==undefined?M.wu[alt*M.D+d]:M.meanW[d]);return u;}
+function meansFrom(M,rec,T){
+  const D=M.D,dh=M.dh,mean=(arr,off,len)=>{const m=new Float32Array(len);for(let i=0;i<T;i++)for(let d=0;d<len;d++)m[d]+=arr[i*D+off+d];for(let d=0;d<len;d++)m[d]/=T;return m;};
+  const z=[],attn=[],mlp=[];
+  for(let l=0;l<M.L;l++){z[l]=[];for(let h=0;h<M.H;h++)z[l][h]=mean(rec.z[l],h*dh,dh);attn[l]=mean(rec.attnOut[l],0,D);mlp[l]=mean(rec.mlpOut[l],0,D);}
+  return{z,attn,mlp};
+}
+/* ---------- recording ---------- */
+function targetIds(R){
+  const M=S.M,enc=t=>{const e=S.bpe.encode(t);return e.length?e[0]:null;};
+  let t=S.targetText.trim()?enc(S.targetText.startsWith(' ')?S.targetText:' '+S.targetText.trim()):null;
+  let a=S.altText.trim()?enc(S.altText.startsWith(' ')?S.altText:' '+S.altText.trim()):null;
+  if(t===null){t=topk(R.logits,1)[0];}
+  return{t,a:(a===t?null:a)};
+}
+async function recordRun(){
+  const M=S.M;let ids=S.bpe.encode(S.prompt);
+  if(!ids.length)throw new Error('Type a prompt first.');
+  if(ids.length>40)ids=ids.slice(0,40);
+  const f=await forward(M,ids,{record:true,logits:true});
+  const R={ids,T:ids.length,rec:f.rec,logits:f.logits,means:null};
+  R.means=meansFrom(M,R.rec,R.T);
+  S.run=R;S.lesion=null;S.trace=null;S.gen=null;S.surp=null;S.unitN=null;
+  const tg=targetIds(R);R.t=tg.t;R.a=tg.a;R.u=uVec(M,tg.t,tg.a);
+  R.metric=readMetric(M,f.xLast,R.u);
+  S.pos=-1;if(S.layer>=M.L)S.layer=0;if(S.head>=M.H)S.head=0;
+}
+function readMetric(M,xLast,u){const y=layerNorm(xLast,1,M.D,M.lnfg,M.lnfb,M.eps);let s=0;for(let d=0;d<M.D;d++)s+=y[d]*u[d];return s;}
+const tokLab=id=>vis(S.bpe.piece(id));
+/* ---------- instruments ---------- */
+function lensRows(R,pos){
+  const M=S.M,out=[];
+  for(let l=0;l<=M.L;l++){
+    const y=layerNorm(R.rec.resid[l].subarray(pos*M.D,(pos+1)*M.D),1,M.D,M.lnfg,M.lnfb,M.eps);
+    const lg=unembed(M,y),p=softmax(lg),top=topk(lg,3);
+    out.push({layer:l,top:top.map(i=>({id:i,p:p[i]})),pt:p[R.t]});
+  }
+  return out;
+}
+function dla(R){
+  const M=S.M,T=R.T,p=T-1,D=M.D,dh=M.dh,rec=R.rec,u=R.u;
+  const x=rec.resid[M.L].subarray(p*D,(p+1)*D);
+  const rms=M.norm==='rms';let mean=0;if(!rms){for(let d=0;d<D;d++)mean+=x[d];mean/=D;}let v=0;for(let d=0;d<D;d++)v+=(x[d]-mean)*(x[d]-mean);v/=D;const inv=1/Math.sqrt(v+M.eps);
+  const proj=(o)=>{let m=0;if(!rms){for(let d=0;d<D;d++)m+=o[d];m/=D;}let s=0;for(let d=0;d<D;d++)s+=(o[d]-m)*inv*M.lnfg[d]*u[d];return s;};
+  const comps=[],emb=new Float32Array(D);for(let d=0;d<D;d++)emb[d]=M.wte[R.ids[p]*D+d]+(M.wpe?M.wpe[p*D+d]:0);
+  comps.push({name:'Embedding',layer:-1,kind:'embed',val:proj(emb)});
+  for(let l=0;l<M.L;l++){
+    const Wo=M.layers[l].o.W,Bo=M.layers[l].o.B;
+    for(let h=0;h<M.H;h++){
+      const o=new Float32Array(D);for(let j=0;j<dh;j++){const zz=rec.z[l][p*D+h*dh+j];if(zz===0)continue;const wo=(h*dh+j)*D;for(let d=0;d<D;d++)o[d]+=zz*Wo[wo+d];}
+      comps.push({name:'L'+(l+1)+' head '+h,layer:l,head:h,kind:'head',val:proj(o)});
+    }
+    comps.push({name:'L'+(l+1)+' attention bias',layer:l,kind:'abias',val:proj(Bo)});
+    comps.push({name:'L'+(l+1)+' MLP',layer:l,kind:'mlp',val:proj(rec.mlpOut[l].subarray(p*D,(p+1)*D))});
+  }
+  let bias=0;if(M.lnfb)for(let d=0;d<D;d++)bias+=M.lnfb[d]*u[d];
+  const sum=comps.reduce((a,c)=>a+c.val,0)+bias;
+  return{comps,bias,sum,actual:R.metric};
+}
+function headProfile(R,l){
+  const T=R.T,out=[];
+  for(let h=0;h<S.M.H;h++){
+    const P=R.rec.patterns[l][h];let prev=0,first=0,ent=0,n=0;
+    for(let i=1;i<T;i++){prev+=P[i*T+i-1];first+=P[i*T];let e=0;for(let j=0;j<=i;j++){const q=P[i*T+j];if(q>1e-9)e-=q*Math.log(q);}ent+=e;n++;}
+    out.push({h,prev:n?prev/n:0,first:n?first/n:0,ent:n?ent/n:0});
+  }
+  return out;
+}
+async function yieldUI(){await new Promise(r=>setTimeout(r,0));}
+/* surprisal and entropy at every position: the model's version of the N400 */
+function surprisalFrom(M,x,ids){
+  const T=ids.length,D=M.D,sur=[],ent=[];
+  for(let i=0;i<T-1;i++){
+    const y=layerNorm(x.subarray(i*D,(i+1)*D),1,D,M.lnfg,M.lnfb,M.eps),lg=unembed(M,y);
+    let mx=-Infinity;for(let k=0;k<lg.length;k++)if(lg[k]>mx)mx=lg[k];let s=0;for(let k=0;k<lg.length;k++)s+=Math.exp(lg[k]-mx);const lse=mx+Math.log(s);
+    let e=0;for(let k=0;k<lg.length;k++){const lp=lg[k]-lse;e-=Math.exp(lp)*lp;}
+    sur.push(lse-lg[ids[i+1]]);ent.push(e);
+  }
+  return{sur,ent};
+}
+async function measureSurprise(text){
+  const M=S.M;let ids=S.bpe.encode(text);if(ids.length<2)throw new Error('Type at least two tokens.');if(ids.length>40)ids=ids.slice(0,40);
+  const f=await forward(M,ids,{});const r=surprisalFrom(M,f.x,ids);return{ids,sur:r.sur,ent:r.ent};
+}
+function driftAt(R,pos){
+  const M=S.M,D=M.D,out=[];
+  for(let l=0;l<M.L;l++){
+    const a=R.rec.resid[l].subarray(pos*D,(pos+1)*D),b=R.rec.resid[l+1].subarray(pos*D,(pos+1)*D);
+    let dot=0,na=0,nb=0,dn=0;for(let d=0;d<D;d++){dot+=a[d]*b[d];na+=a[d]*a[d];nb+=b[d]*b[d];const q=b[d]-a[d];dn+=q*q;}
+    out.push({layer:l,drift:1-dot/Math.sqrt(na*nb),rel:Math.sqrt(dn)/Math.sqrt(na)});
+  }
+  return out;
+}
+const CORPUS=['The red sports car sped down the highway.','My grandmother baked cookies for the whole family.','The Eiffel Tower is in Paris, France.','She plays the piano every evening after dinner.','The stock market fell sharply on Monday.','He scored a goal in the final minute of the match.','Water boils at one hundred degrees Celsius.','The cat slept on the warm windowsill.','Please send me the report by Friday afternoon.','The new phone has a faster processor and a better camera.','In 1969, astronauts landed on the moon.','The doctor said the patient should rest.','def add(a, b): return a + b','Once upon a time, a dragon lived in a cave.','The senator voted against the new tax bill.','I love hiking in the mountains during the summer.'];
+async function scanUnits(layer){
+  const M=S.M,sents=[];
+  for(let k=0;k<CORPUS.length&&!S.stop;k++){
+    const ids=S.bpe.encode(CORPUS[k]).slice(0,32),f=await forward(M,ids,{record:true,stop:layer+1});
+    sents.push({ids,hid:f.rec.hid[layer]});S.prog='Reading text '+(k+1)+' of '+CORPUS.length;draw();await yieldUI();
+  }
+  S.unitScan={layer,sents};
+}
+function unitContexts(n){
+  const M=S.M,H4=M.F,sc=S.unitScan,all=[];
+  sc.sents.forEach((s,si)=>{for(let t=0;t<s.ids.length;t++)all.push({si,t,a:s.hid[t*H4+n]});});
+  all.sort((a,b)=>b.a-a.a);
+  return all.slice(0,12).map(c=>{const ids=sc.sents[c.si].ids;return{a:c.a,si:c.si,left:S.bpe.decode(ids.slice(Math.max(0,c.t-4),c.t)),tok:S.bpe.decode([ids[c.t]]),right:S.bpe.decode(ids.slice(c.t+1,c.t+3))};});
+}
+function randomSeq(M,N){const seq=[];let s=12345;for(let i=0;i<N;i++){s=(Math.imul(s,1103515245)+12345)>>>0;seq.push(1+((s>>>8)%(M.V-2)));}return seq;}
+async function runInduction(){
+  const M=S.M,N=Math.min(16,Math.floor(M.ctx/2)),seq=randomSeq(M,N),ids=seq.concat(seq),T=ids.length;
+  const f=await forward(M,ids,{record:true}),scores=[];
+  for(let l=0;l<M.L;l++){scores[l]=[];for(let h=0;h<M.H;h++){const P=f.rec.patterns[l][h];let s=0,n=0;for(let i=N;i<=2*N-2;i++){s+=P[i*T+(i-N+1)];n++;}scores[l][h]=s/n;}}
+  const flat=[];scores.forEach((r,l)=>r.forEach((v,h)=>flat.push({l,h,v})));flat.sort((a,b)=>b.v-a.v);
+  const loss=async(ab)=>{const g=await forward(M,ids,{ablate:ab});const r=surprisalFrom(M,g.x,ids);let s=0,n=0;for(let i=N-1;i<=2*N-2;i++){s+=r.sur[i];n++;}return s/n;};
+  const top=flat.slice(0,3),ctrl=flat[flat.length-1];
+  const rows=[['Intact model',await loss(null)]];S.prog='Testing the top induction head...';draw();await yieldUI();
+  rows.push(['Switch off the top candidate (layer '+(top[0].l+1)+' head '+top[0].h+')',await loss({kind:'head',layer:top[0].l,head:top[0].h,mode:'zero'})]);
+  rows.push(['Switch off the top three candidates',await loss(top.map(t=>({kind:'head',layer:t.l,head:t.h,mode:'zero'})))]);
+  rows.push(['Control: switch off the head with the lowest induction score (layer '+(ctrl.l+1)+' head '+ctrl.h+')',await loss({kind:'head',layer:ctrl.l,head:ctrl.h,mode:'zero'})]);
+  S.induct={scores,top,rows,N,text:S.bpe.decode(seq)};
+}
+async function runSteer(){
+  const M=S.M,R=S.run,st=S.steer,N=12;
+  const a=S.bpe.encode(st.pos),b=S.bpe.encode(st.neg);if(!a.length||!b.length)throw new Error('Type both steering prompts.');
+  const fa=await forward(M,a,{record:true}),fb=await forward(M,b,{record:true});
+  const vec=new Float32Array(M.D);for(let d=0;d<M.D;d++)vec[d]=fa.rec.resid[st.layer][(a.length-1)*M.D+d]-fb.rec.resid[st.layer][(b.length-1)*M.D+d];
+  const gen=async(label,steer)=>{let ids=R.ids.slice(),out=[];for(let i=0;i<N&&!S.stop;i++){const f=await forward(M,ids,{logits:true,steer});const t=topk(f.logits,1)[0];out.push(t);ids.push(t);S.prog=label+': token '+(i+1)+' of '+N;if(i%2===0){draw();await yieldUI();}}return S.bpe.decode(out);};
+  const normal=await gen('Intact',null),up=await gen('Steered toward A',{layer:st.layer,vec,alpha:st.alpha}),down=await gen('Steered toward B',{layer:st.layer,vec,alpha:-st.alpha});
+  S.steered={normal,up,down,layer:st.layer,alpha:st.alpha,norm:Math.sqrt(vec.reduce((s,v)=>s+v*v,0))};
+}
+async function runLesions(){
+  const M=S.M,R=S.run,T=R.T,step=S.layerStep||1;
+  const layers=[];for(let l=0;l<M.L;l+=step)layers.push(l);
+  const cols=M.H+1,vals=[],total=layers.length*cols;let done=0;
+  for(let k=0;k<layers.length&&!S.stop;k++){
+    const l=layers[k];vals[k]=[];
+    for(let c=0;c<cols&&!S.stop;c++){
+      const ab=c<M.H?{kind:'head',layer:l,head:c,mode:S.lesionMode}:{kind:'mlp',layer:l,mode:S.lesionMode};
+      const f=await forward(M,R.ids,{start:{layer:l,x:R.rec.resid[l]},ablate:ab,means:R.means,u:R.u});
+      vals[k][c]=R.metric-f.metric;done++;
+      S.prog='Lesion '+done+' of '+total;if(done%3===0){draw();await yieldUI();}
+    }
+  }
+  S.lesion={vals,layers,mode:S.lesionMode,partial:S.stop,metric:R.metric};
+}
+async function runTrace(){
+  const M=S.M,step=S.layerStep||1;
+  const idsA=S.bpe.encode(S.traceA),idsB=S.bpe.encode(S.traceB);
+  if(!idsA.length||idsA.length!==idsB.length)throw new Error('The two prompts must have the same number of tokens. They have '+idsA.length+' and '+idsB.length+'.');
+  const A=await forward(M,idsA,{record:true,logits:true}),B=await forward(M,idsB,{record:true,logits:true});
+  const tA=topk(A.logits,1)[0],tB=topk(B.logits,1)[0];
+  if(tA===tB)throw new Error('Both prompts give the same top prediction ('+tokLab(tA)+'), so there is nothing to trace. Pick prompts with different answers.');
+  const u=uVec(M,tA,tB),mA=readMetric(M,A.xLast,u),mB=readMetric(M,B.xLast,u),T=idsA.length;
+  const layers=[];for(let l=0;l<M.L;l+=step)layers.push(l);
+  const vals=[];let done=0;const total=layers.length*T;
+  for(let k=0;k<layers.length&&!S.stop;k++){
+    const l=layers[k];vals[k]=[];
+    for(let p=0;p<T&&!S.stop;p++){
+      const vec=A.rec.resid[l].subarray(p*M.D,(p+1)*M.D);
+      const f=await forward(M,idsB,{start:{layer:l,x:B.rec.resid[l]},patch:{layer:l,pos:p,vec},u});
+      vals[k][p]=(f.metric-mB)/(mA-mB);done++;S.prog='Patch '+done+' of '+total;if(done%3===0){draw();await yieldUI();}
+    }
+  }
+  S.trace={vals,layers,idsA,idsB,tA,tB,mA,mB,partial:S.stop};
+}
+async function runGenerate(){
+  const M=S.M,R=S.run;let ids0=R.ids.slice(),N=14;
+  const gen=async(ab)=>{let ids=ids0.slice(),out=[];for(let i=0;i<N&&!S.stop;i++){const f=await forward(M,ids,{logits:true,ablate:ab,means:R.means});const t=topk(f.logits,1)[0];out.push(t);ids.push(t);S.prog=(ab?'Lesioned':'Normal')+' model: token '+(i+1)+' of '+N;if(i%2===0){draw();await yieldUI();}}return out;};
+  const ab=S.genKind==='head'?{kind:'head',layer:S.genLayer,head:S.genHead,mode:S.lesionMode}:{kind:S.genKind,layer:S.genLayer,mode:S.lesionMode};
+  const normal=await gen(null),les=await gen(ab);
+  S.gen={normal:S.bpe.decode(normal),lesioned:S.bpe.decode(les),ab};
+}
+/* ---------- small graphics ---------- */
+function heat(vals,rowL,colL,opt){
+  opt=opt||{};const signed=!!opt.signed;
+  let mx=1e-9;vals.forEach(r=>r.forEach(v=>{if(isFinite(v)&&Math.abs(v)>mx)mx=Math.abs(v);}));if(opt.max)mx=opt.max;
+  const color=v=>{if(!isFinite(v))return '#eee';const a=Math.min(1,Math.abs(v)/mx);if(signed)return v>=0?'rgba(179,65,46,'+(0.08+0.85*a).toFixed(2)+')':'rgba(14,111,142,'+(0.08+0.85*a).toFixed(2)+')';return 'rgba(14,111,142,'+(0.05+0.9*a).toFixed(2)+')';};
+  let h='<div class="scroll"><table style="border-collapse:collapse;font-size:11px;min-width:'+(60+colL.length*(opt.cw||34))+'px"><thead><tr><th></th>'+colL.map(c=>'<th style="padding:2px 3px;font-weight:600;white-space:nowrap">'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
+  vals.forEach((r,i)=>{h+='<tr><th style="padding:2px 6px;text-align:right;white-space:nowrap">'+esc(rowL[i])+'</th>'+r.map(v=>'<td title="'+(isFinite(v)?v.toFixed(3):'')+'" style="background:'+color(v)+';text-align:center;padding:3px 2px;border:1px solid #fff;'+(((v!==undefined)&&Math.abs(v)/mx>0.55)?'color:#fff':'')+'">'+(opt.nums&&isFinite(v)?(opt.fmt?opt.fmt(v):v.toFixed(2)):'')+'</td>').join('')+'</tr>';});
+  return h+'</tbody></table></div>';
+}
+function bars(items,opt){
+  opt=opt||{};const mx=Math.max(1e-9,...items.map(i=>Math.abs(i.val)));
+  return items.map(i=>{const w=Math.abs(i.val)/mx*50;return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><div class="small" style="width:'+(opt.lw||120)+'px;flex:none">'+esc(i.name)+'</div><div style="flex:1;position:relative;height:14px;background:var(--line);border-radius:7px"><div style="position:absolute;left:50%;'+(i.val>=0?'':'right:50%;')+'width:'+w+'%;height:14px;background:'+(i.val>=0?'#B3412E':'#0E6F8E')+';'+(i.val>=0?'border-radius:0 7px 7px 0':'border-radius:7px 0 0 7px')+'"></div></div><div class="small" style="width:46px;flex:none;text-align:right">'+i.val.toFixed(2)+'</div></div>';}).join('');
+}
+function lineChart(ys,labels,color){
+  const W=420,H=150,pl=34,pb=24,pt=8,pr=8,mx=Math.max(1e-9,...ys),n=ys.length;
+  const x=i=>pl+(W-pl-pr)*(n>1?i/(n-1):0),y=v=>pt+(H-pt-pb)*(1-v/mx);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img"><line x1="'+pl+'" y1="'+(H-pb)+'" x2="'+(W-pr)+'" y2="'+(H-pb)+'" stroke="#8A98A0"/><line x1="'+pl+'" y1="'+pt+'" x2="'+pl+'" y2="'+(H-pb)+'" stroke="#8A98A0"/>';
+  s+='<polyline fill="none" stroke="'+color+'" stroke-width="2.5" points="'+ys.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ')+'"/>'+ys.map((v,i)=>'<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="3.2" fill="'+color+'"/>').join('');
+  s+='<text x="4" y="'+(pt+8)+'" font-size="10" fill="#5A6B73">'+mx.toFixed(2)+'</text><text x="4" y="'+(H-pb)+'" font-size="10" fill="#5A6B73">0</text>';
+  labels.forEach((l,i)=>{if(n<=8||i%2===0)s+='<text x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" text-anchor="middle" fill="#5A6B73">'+esc(l)+'</text>';});
+  return s+'</svg>';
+}
+/* ---------- the pages ---------- */
+function tokenChips(R){return '<div class="row" style="gap:4px;flex-wrap:wrap">'+R.ids.map((id,i)=>'<span class="chip" title="position '+i+'">'+i+' '+esc(tokLab(id))+'</span>').join('')+'</div>';}
+function tabActivity(R){
+  const M=S.M,T=R.T,rowL=[],vals=[];
+  const metrics={norm:['Residual stream strength','how strongly each token is represented after each layer'],mlp:['MLP output','how much each layer\'s MLP writes at each token'],attn:['Attention output','how much each layer\'s attention writes at each token']};
+  for(let l=0;l<M.L;l++){
+    const src=S.metric==='norm'?R.rec.resid[l+1]:(S.metric==='mlp'?R.rec.mlpOut[l]:R.rec.attnOut[l]),r=[];
+    for(let t=0;t<T;t++){let s=0;for(let d=0;d<M.D;d++){const v=src[t*M.D+d];s+=v*v;}r.push(Math.log(1+Math.sqrt(s)));}
+    vals.push(r);rowL.push('L'+(l+1));
+  }
+  return '<p class="small muted">Like an fMRI scan: each cell is how active a layer is at one token (on a log scale). The first token often lights up strongly in GPT-2 models because it acts as an attention sink.</p>'+
+    '<div class="row">'+Object.keys(metrics).map(k=>tog('metric',k,metrics[k][0],S.metric===k)).join('')+'</div>'+
+    heat(vals,rowL,R.ids.map((id,i)=>i+':'+tokLab(id)),{cw:46,nums:false})+depthProfile(R);
+}
+function depthProfile(R){
+  const M=S.M,p=R.T-1,D=M.D,dr=driftAt(R,p),d=dla(R);
+  const nrm=a=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*a[i];return Math.sqrt(s);};
+  const rows=dr.map(x=>{const l=x.layer,push=d.comps.filter(c=>c.layer===l&&c.kind!=='embed').reduce((a,c)=>a+c.val,0);return['Layer '+(l+1),nrm(R.rec.attnOut[l].subarray(p*D,(p+1)*D)).toFixed(1),nrm(R.rec.mlpOut[l].subarray(p*D,(p+1)*D)).toFixed(1),x.drift.toFixed(3),push.toFixed(2)];});
+  return '<h3>Depth profile at the last token</h3><p class="small muted">A common story is that early layers handle surface form, middle layers store facts and late layers decide the answer. This table lets you check that story against your own prompt. Drift is how much the layer rotates the representation, and the last column is how much it pushes toward '+esc(tokLab(R.t))+'.</p>'+
+    table(['Depth','Attention writes','MLP writes','Drift (1 minus cosine)','Push toward the answer'],rows,520)+
+    '<h3>Residual drift across depth</h3>'+lineChart(dr.map(x=>x.drift),dr.map(x=>String(x.layer+1)),'#E3A21A');
+}
+function tabLens(R){
+  const M=S.M,pos=S.pos<0?R.T-1:S.pos,rows=lensRows(R,pos);
+  const names=l=>l===0?'Embedding':(l===M.L?'Layer '+l+' (final)':'Layer '+l);
+  return '<p class="small muted">Reading out one region at a time: at each depth we ask what the model would predict if it stopped there. Position '+pos+' ('+esc(tokLab(R.ids[pos]))+').</p>'+
+    '<div class="row"><span class="small muted">Position</span><select data-act="pos">'+R.ids.map((id,i)=>'<option value="'+i+'"'+(i===pos?' selected':'')+'>'+i+' '+esc(tokLab(id))+'</option>').join('')+'</select></div>'+
+    '<h3>When does the answer form?</h3><p class="small muted">Probability of '+esc(tokLab(R.t))+' at each depth.</p>'+lineChart(rows.map(r=>r.pt),rows.map(r=>r.layer===0?'emb':String(r.layer)),'#0E6F8E')+
+    table(['Depth','Top 1','Top 2','Top 3','P('+tokLab(R.t)+')'],rows.map(r=>[names(r.layer)].concat(r.top.map(t=>tokLab(t.id)+' '+(t.p*100).toFixed(0)+'%')).concat([(r.pt*100).toFixed(1)+'%'])),520);
+}
+function tabAttn(R){
+  const M=S.M,l=S.layer,h=S.head,T=R.T,P=R.rec.patterns[l][h],prof=headProfile(R,l);
+  const vals=[];for(let i=0;i<T;i++){const r=[];for(let j=0;j<T;j++)r.push(j<=i?P[i*T+j]:NaN);vals.push(r);}
+  const lab=hd=>hd.prev>0.5?'previous-token head':(hd.first>0.7?'looks at the first token':(hd.ent>1.5?'spread out':''));
+  return '<p class="small muted">Connectivity: each row is a token, each column the token it looks back at. Darker means more attention.</p>'+
+    '<div class="row"><span class="small muted">Layer</span><select data-act="layer">'+Array.from({length:M.L},(_,i)=>'<option value="'+i+'"'+(i===l?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select><span class="small muted">Head</span><select data-act="head">'+Array.from({length:M.H},(_,i)=>'<option value="'+i+'"'+(i===h?' selected':'')+'>'+i+'</option>').join('')+'</select></div>'+
+    heat(vals,R.ids.map((id,i)=>i+':'+tokLab(id)),R.ids.map((id,i)=>i+':'+tokLab(id)),{max:1,cw:40})+
+    '<h3>All heads in layer '+(l+1)+'</h3>'+table(['Head','On the previous token','On the first token','Spread (entropy)','Looks like'],prof.map(p=>[p.h,pcx(p.prev),pcx(p.first),p.ent.toFixed(2),lab(p)]),520)+inductionView();
+}
+function inductionView(){
+  const M=S.M,I=S.induct;
+  let h='<h3>Find induction heads</h3><p class="small muted">Induction heads let a model copy what it has already seen. We feed a random sequence twice. A head that, in the second copy, looks at the token right after the earlier occurrence is an induction head. Then we switch it off and see whether copying gets worse.</p><div class="row">'+btn('induct','','Find induction heads','',S.busy)+'</div>';
+  if(I){
+    const base=I.rows[0][1];
+    h+='<p class="small muted" style="margin-top:8px">Random sequence, repeated: '+esc(I.text.slice(0,120))+'</p>'+heat(I.scores,I.scores.map((r,i)=>'L'+(i+1)),Array.from({length:M.H},(_,i)=>'H'+i),{max:1,cw:34,nums:true,fmt:v=>v.toFixed(1)})+
+      '<p class="small muted">Each cell is how much that head looks at the token after the earlier occurrence (1 is perfect).</p>'+
+      table(['Condition','Surprise on the second copy (nats, lower is better)','Change'],I.rows.map(r=>[r[0],r[1].toFixed(2),(r[1]-base>=0?'+':'')+(r[1]-base).toFixed(2)]),520)+
+      '<p class="small muted">If switching off the top candidates makes copying clearly worse, and the control does not, those heads carry the copying. Small models may spread this over several heads.</p>';
+  }
+  return h;
+}
+const pcx=v=>Math.round(v*100)+'%';
+function tabDla(R){
+  const M=S.M,d=dla(R),by=[];
+  for(let l=0;l<M.L;l++){by.push({name:'Layer '+(l+1)+' attention',val:d.comps.filter(c=>c.layer===l&&(c.kind==='head'||c.kind==='abias')).reduce((a,c)=>a+c.val,0)});by.push({name:'Layer '+(l+1)+' MLP',val:d.comps.find(c=>c.layer===l&&c.kind==='mlp').val});}
+  const heads=d.comps.filter(c=>c.kind==='head').sort((a,b)=>Math.abs(b.val)-Math.abs(a.val)).slice(0,10);
+  const what=R.a!==null?'the logit difference '+tokLab(R.t)+' minus '+tokLab(R.a):'the logit of '+tokLab(R.t)+' relative to the average word';
+  return '<p class="small muted">Which parts push the model toward its answer? Each bar is how much a component adds to '+esc(what)+'. Red pushes toward '+esc(tokLab(R.t))+', blue pushes away.</p>'+
+    '<div class="grid2"><div><label class="range">Target word (blank = the model\'s own top prediction)</label><input class="editor" style="min-height:0;height:40px" id="target" data-act="target" value="'+esc(S.targetText)+'" placeholder="'+esc(tokLab(topk(R.logits,1)[0]))+'"></div><div><label class="range">Compare against (optional)</label><input class="editor" style="min-height:0;height:40px" id="alt" data-act="alt" value="'+esc(S.altText)+'" placeholder="none"></div></div>'+
+    '<div class="row" style="margin-top:8px">'+btn('retarget','','Use these words','ghost sm')+'</div>'+
+    '<h3>By layer</h3>'+bars([{name:'Embedding',val:d.comps[0].val}].concat(by),{lw:130})+
+    '<h3>The ten strongest heads</h3>'+bars(heads.map(h=>({name:h.name,val:h.val})),{lw:110})+
+    '<div class="status '+(Math.abs(d.sum-d.actual)<0.05?'ok':'warn')+'"><b>Decomposition check.</b> The components plus the final bias add up to '+d.sum.toFixed(3)+', and the model\'s actual value is '+d.actual.toFixed(3)+'. '+(Math.abs(d.sum-d.actual)<0.05?'They match.':'They differ, so treat these bars with care.')+'</div>';
+}
+function tabUnit(R){
+  const M=S.M,H4=M.F,l=Math.min(S.unitLayer,M.L-1),p=S.pos<0?R.T-1:S.pos,hid=R.rec.hid[l];
+  let h='<p class="small muted">Single-cell recording: one MLP neuron is one unit. First see which units are most active for a token of your prompt, then follow one across sample texts to see what it responds to. In GPT-2 most units respond to several unrelated things, which is why researchers train sparse autoencoders (not included here).</p>'+
+    '<div class="row"><span class="small muted">Layer</span><select data-act="ulayer">'+Array.from({length:M.L},(_,i)=>'<option value="'+i+'"'+(i===l?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select><span class="small muted">Token</span><select data-act="pos">'+R.ids.map((id,i)=>'<option value="'+i+'"'+(i===p?' selected':'')+'>'+i+' '+esc(tokLab(id))+'</option>').join('')+'</select></div>';
+  const idx=[];for(let n=0;n<H4;n++)idx.push(n);idx.sort((a,b)=>hid[p*H4+b]-hid[p*H4+a]);
+  h+='<h3>Most active units at token '+p+' ('+esc(tokLab(R.ids[p]))+')</h3><div class="row" style="gap:6px;flex-wrap:wrap">'+idx.slice(0,8).map(n=>btn('neuron',n,'#'+n+': '+hid[p*H4+n].toFixed(1),'ghost sm')).join('')+'</div>'+
+    '<div class="grid2" style="margin-top:8px"><div><label class="range">Or type a unit number (0 to '+(H4-1)+')</label><input class="editor" style="min-height:0;height:40px" data-act="unitn" value="'+(S.unitN===null?'':S.unitN)+'" placeholder="for example 1234"></div></div>';
+  const n=S.unitN;
+  if(n!==null&&n>=0&&n<H4){
+    h+='<h3>Unit '+n+' at layer '+(l+1)+', across your prompt</h3>'+bars(R.ids.map((id,i)=>({name:i+':'+tokLab(id),val:hid[i*H4+n]})),{lw:90});
+    h+='<div class="row" style="margin-top:10px">'+btn('scan','','Scan the sample texts for layer '+(l+1),'',S.busy)+'</div>';
+    if(S.unitScan&&S.unitScan.layer===l){
+      const ctx=unitContexts(n),topics=new Set(ctx.map(c=>c.si)).size;
+      h+='<h3>What unit '+n+' responds to most</h3><p class="small muted">Its strongest responses across '+CORPUS.length+' short sample texts. The top twelve come from '+topics+' different texts'+(topics>=5?', so this unit looks polysemantic: it responds to several unrelated things.':'.')+'</p>'+
+        table(['Activation','Context'],ctx.map(c=>[c.a.toFixed(2),c.left+'  [ '+c.tok+' ]  '+c.right]),460);
+    }
+  }
+  return h;
+}
+function surpriseList(r){
+  const mean=r.sur.reduce((a,b)=>a+b,0)/r.sur.length,sd=Math.sqrt(r.sur.reduce((a,b)=>a+(b-mean)*(b-mean),0)/r.sur.length),mx=Math.max(1e-9,...r.sur);
+  return r.sur.map((v,i)=>{const hot=v>Math.max(mean+1.5*sd,3);return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><div class="small" style="width:96px;flex:none">'+esc(tokLab(r.ids[i+1]))+'</div><div style="flex:1;background:var(--line);border-radius:7px;height:14px"><div style="width:'+(v/mx*100)+'%;height:14px;border-radius:7px;background:'+(hot?'#B3412E':'#0E6F8E')+'"></div></div><div class="small" style="width:104px;flex:none;text-align:right;white-space:nowrap">'+v.toFixed(1)+' · H '+r.ent[i].toFixed(1)+'</div></div>';}).join('');
+}
+function tabSurprise(R){
+  let h='<p class="small muted">The brain\'s N400 response grows when a word is unexpected. Language-model surprisal, how unlikely the model found each word given what came before, has been found to track it. Each bar is the surprisal of that token in nats. H is the entropy of the model\'s guess just before it, how undecided it was. Red marks a clear spike.</p>'+
+    '<div class="row">'+btn('surprise','','Measure the surprise in my prompt','',S.busy)+btn('coffee','','Run the coffee test','ghost',S.busy)+'</div>';
+  if(S.surp)h+='<h3>Your prompt</h3>'+surpriseList(S.surp);
+  if(S.n400){
+    const a=S.n400.a,b=S.n400.b;
+    h+='<h3>"He took his coffee with milk and sugar."</h3>'+surpriseList(a)+'<h3>"He took his coffee with milk and dog."</h3>'+surpriseList(b)+'<div class="status ok"><b>The last word.</b> "sugar" has surprisal '+a.sur[a.sur.length-1].toFixed(1)+' and "dog" has '+b.sur[b.sur.length-1].toFixed(1)+', a jump of '+(b.sur[b.sur.length-1]-a.sur[a.sur.length-1]).toFixed(1)+' nats at the word that breaks the meaning.</div>';
+  }
+  return h+'<p class="small muted">Entropy and surprisal are different: entropy is how uncertain the model was before the word, and surprisal is how unlikely the word that came turned out to be.</p>';
+}
+function tabLesion(R){
+  const M=S.M,L=S.lesion;
+  let h='<p class="small muted">A lesion study: knock out one head, or one layer\'s MLP, and see how much the model\'s preference for '+esc(tokLab(R.t))+' drops. Red means the answer gets worse. Blue means it gets better. This runs the model many times.</p>'+
+    '<div class="row">'+tog('lmode','zero','Switch it off (zero)',S.lesionMode==='zero')+tog('lmode','mean','Replace with its average',S.lesionMode==='mean')+'</div>'+'<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':v+'th layer')+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+
+    '<div class="row" style="margin-top:10px">'+btn('lesion','','Run the lesion map','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
+  if(L){
+    const cols=Array.from({length:M.H},(_,i)=>'H'+i).concat(['MLP']);
+    h+='<h3>Effect of each lesion'+(L.partial?' (stopped early)':'')+'</h3><p class="small muted">Change in the model\'s score for the answer when this part is removed ('+(L.mode==='zero'?'zeroed':'mean-replaced')+'). The intact model scores '+L.metric.toFixed(2)+'.</p>'+heat(L.vals,L.layers.map(l=>'L'+(l+1)),cols,{signed:true,cw:34});
+    const flat=[];L.vals.forEach((r,k)=>r.forEach((v,c)=>flat.push({l:L.layers[k],c,v})));flat.sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+    h+='<h3>The biggest effects</h3>'+table(['Part','Change in score'],flat.slice(0,8).map(f=>['Layer '+(f.l+1)+(f.c<M.H?' head '+f.c:' MLP'),f.v.toFixed(3)]),320)+
+      '<p class="small muted">Many small models are redundant: removing one part often changes little because others compensate, and a lesion can also push the model off its normal behavior.</p>';
+  }
+  return h;
+}
+function tabTrace(R){
+  const M=S.M,T=S.trace;
+  const presets=[['Indirect object','When Mary and John went to the store, John gave a drink to','When Mary and John went to the store, Mary gave a drink to'],['Capital city','The capital of France is','The capital of Italy is']];
+  let h='<p class="small muted">Stimulation: run prompt B, but at one layer and one token replace its activity with the activity from prompt A. If the answer of A comes back, that place carries the information. The two prompts must have the same number of tokens and different answers.</p>'+
+    '<div class="row">'+presets.map((p,i)=>btn('tpreset',i,p[0],'ghost sm')).join('')+'</div>'+
+    '<label class="range" for="ta">Prompt A (the source)</label><textarea class="editor" id="ta" data-act="ta" rows="2">'+esc(S.traceA)+'</textarea>'+
+    '<label class="range" for="tb">Prompt B (the one we change)</label><textarea class="editor" id="tb" data-act="tb" rows="2">'+esc(S.traceB)+'</textarea>'+
+    '<div class="row" style="margin-top:8px"><span class="small muted">Test every</span><select data-act="lstep">'+[1,2,3,4,6].map(v=>'<option value="'+v+'"'+(S.layerStep===v?' selected':'')+'>'+(v===1?'layer':v+'th layer')+'</option>').join('')+'</select><span class="small muted">(fewer runs on deep models)</span></div>'+'<div class="row" style="margin-top:10px">'+btn('trace','','Run the tracing map','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
+  if(T){
+    h+='<h3>Where is the answer carried?'+(T.partial?' (stopped early)':'')+'</h3><p class="small muted">Prompt A predicts '+esc(tokLab(T.tA))+' and prompt B predicts '+esc(tokLab(T.tB))+'. Each cell shows how much of the difference comes back when that layer and token are patched (1 means fully).</p>'+
+      heat(T.vals,T.layers.map(l=>'L'+l+' in'),T.idsA.map((id,i)=>i+':'+tokLab(id)),{cw:46,max:1,nums:true,fmt:v=>v.toFixed(1)})+
+      '<p class="small muted">Row "L0 in" patches the embeddings, and later rows patch what the model holds before that layer.</p>';
+  }
+  return h;
+}
+function tabGen(R){
+  const M=S.M,G=S.gen;
+  let h='<p class="small muted">Behavior under lesion: generate text from your prompt with the model intact, and again with one part knocked out.</p>'+
+    '<div class="row">'+tog('gkind','head','A head',S.genKind==='head')+tog('gkind','mlp','An MLP layer',S.genKind==='mlp')+tog('gkind','attn','A whole attention layer',S.genKind==='attn')+'</div>'+
+    '<div class="row" style="margin-top:8px"><span class="small muted">Layer</span><select data-act="glayer">'+Array.from({length:M.L},(_,i)=>'<option value="'+i+'"'+(i===S.genLayer?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select>'+(S.genKind==='head'?'<span class="small muted">Head</span><select data-act="ghead">'+Array.from({length:M.H},(_,i)=>'<option value="'+i+'"'+(i===S.genHead?' selected':'')+'>'+i+'</option>').join('')+'</select>':'')+'</div>'+
+    '<div class="row" style="margin-top:10px">'+btn('gen','','Generate both','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>';
+  if(G)h+='<h3>Intact</h3><div class="box">'+esc(S.prompt)+'<b>'+esc(G.normal)+'</b></div><h3>Lesioned ('+(G.ab.kind==='head'?'layer '+(G.ab.layer+1)+' head '+G.ab.head:(G.ab.kind==='mlp'?'layer '+(G.ab.layer+1)+' MLP':'layer '+(G.ab.layer+1)+' attention'))+')</h3><div class="box">'+esc(S.prompt)+'<b>'+esc(G.lesioned)+'</b></div>'+(G.normal===G.lesioned?'<p class="small muted">No visible change in these tokens.</p>':'');
+  h+=steerView(R);
+  return h;
+}
+function steerView(R){
+  const M=S.M,st=S.steer,V=S.steered;
+  let h='<h3>Steering</h3><p class="small muted">Representation engineering: take the difference between the activity for prompt A and prompt B at one layer, and add it to the model\'s activity while it writes. If it works, the text leans toward A. In a small model the effect can be weak or odd.</p>'+
+    '<div class="row">'+btn('spreset',0,'Love and hate','ghost sm')+btn('spreset',1,'Wedding and funeral','ghost sm')+'</div>'+
+    '<label class="range" for="spos">Prompt A</label><input class="editor" style="min-height:0;height:40px" id="spos" data-act="spos" value="'+esc(st.pos)+'"><label class="range" for="sneg">Prompt B</label><input class="editor" style="min-height:0;height:40px" id="sneg" data-act="sneg" value="'+esc(st.neg)+'">'+
+    '<div class="row" style="margin-top:8px"><span class="small muted">Layer</span><select data-act="slayer">'+Array.from({length:M.L},(_,i)=>'<option value="'+i+'"'+(i===st.layer?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select><span class="small muted">Strength</span><select data-act="salpha">'+[1,2,4,8,16].map(v=>'<option'+(st.alpha===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+    '<div class="row" style="margin-top:10px">'+btn('steer','','Generate three versions','',S.busy)+'</div>';
+  if(V)h+='<h3>Intact</h3><div class="box">'+esc(S.prompt)+'<b>'+esc(V.normal)+'</b></div><h3>Steered toward A</h3><div class="box">'+esc(S.prompt)+'<b>'+esc(V.up)+'</b></div><h3>Steered toward B</h3><div class="box">'+esc(S.prompt)+'<b>'+esc(V.down)+'</b></div><p class="small muted">The steering vector has length '+V.norm.toFixed(1)+' and was added at layer '+(V.layer+1)+' with strength '+V.alpha+'.</p>';
+  return h;
+}
+function tabChecks(){
+  const c=S.checks;
+  let h='<p class="small muted">Checks that the code is reading this model correctly. If a check fails, do not trust the other tabs.</p><div class="row">'+btn('check','','Run the checks','',S.busy)+'</div>';
+  if(c)h+=table(['Check','Result'],c.map(x=>[x[0],x[1]]),420);
+  return h;
+}
+async function runChecks(){
+  const M=S.M,R=S.run,rows=[];
+  rows.push(['Compute',M.gpuNote]);
+  const hw=S.bpe.encode('Hello world');rows.push(['Tokenizer: "Hello world"',hw.join(', ')+(S.M.arch==='gpt2'&&!S.custom&&!S.base?(hw.join(',')==='15496,995'?'  (expected 15496, 995: ok)':'  (expected 15496, 995: MISMATCH)'):'')]);
+  rows.push(['Tokenizer round trip',S.bpe.decode(S.bpe.encode(S.prompt))===S.prompt?'ok':'MISMATCH']);
+  const d=dla(R);rows.push(['Contributions add up to the model\'s output',Math.abs(d.sum-d.actual)<0.05?'ok (difference '+Math.abs(d.sum-d.actual).toExponential(1)+')':'MISMATCH ('+Math.abs(d.sum-d.actual).toFixed(3)+')']);
+  const p=softmax(R.logits),s=p.reduce((a,b)=>a+b,0);rows.push(['Probabilities sum to 1',Math.abs(s-1)<1e-3?'ok':'MISMATCH']);
+  const f=await forward(M,R.ids,{start:{layer:0,x:R.rec.resid[0]},u:R.u});rows.push(['Re-running from the layer-0 activity reproduces the output',Math.abs(f.metric-R.metric)<1e-3?'ok':'MISMATCH']);
+  const f2=await forward(M,R.ids,{start:{layer:2<M.L?2:0,x:R.rec.resid[2<M.L?2:0]},u:R.u});rows.push(['Re-running from a middle layer reproduces the output',Math.abs(f2.metric-R.metric)<1e-3?'ok':'MISMATCH']);
+  const g=await forward(M,S.bpe.encode('The quick brown fox'),{logits:true});rows.push(['Next word after "The quick brown fox"',tokLab(topk(g.logits,1)[0])]);
+  S.checks=rows;
+}
+const QA=[
+ ['Why not use a chat model engine?','Engines such as WebLLM compile the model for speed and only return the words. They do not let you read the activity inside, so this page runs a small open GPT-2 model with its own code.'],
+ ['What is a lesion here?','Setting one head or one MLP layer to zero, or to its average, while the model reads the prompt. If the answer changes a lot, that part mattered for this prompt.'],
+ ['What does stimulation show?','If putting activity from prompt A into prompt B at one layer and token brings back A\'s answer, then that place carried the information the answer depends on.'],
+ ['What are the limits?','The model is small, the prompts are few, parts of a network often back each other up, and every method here changes the model in some unnatural way. Results are leads to test, not conclusions.']
+];
+const TABS=[['activity','Recording'],['lens','Logit lens'],['attn','Connectivity'],['dla','Contribution'],['unit','Single unit'],['surp','Surprise'],['lesion','Lesions'],['trace','Stimulation'],['gen','Behavior'],['checks','Checks']];
+const MAPROWS=[['Functional localization of brain areas','Depth profile and logit lens','Recording, Logit lens','A loose analogy. Which layers do what depends on the model, and a 6-layer model has no room for four named stages.'],['fMRI and PET activity maps','Activity and attention maps','Recording, Connectivity','A close match: both show where activity is.'],['Single-neuron recording, place cells','Single MLP units','Single unit','Most GPT-2 units are polysemantic. Clean features need sparse autoencoders, which are not included.'],['Lesions, TMS, Phineas Gage','Ablation and activation patching','Lesions, Stimulation, Behavior','Closer to experiments than any brain study, because every part can be switched off exactly.'],['Reading out a thought before speech','Logit lens','Logit lens','A rough guide that works better in some models than others. Tuned lenses are not included.'],['The N400 surprise response','Token surprisal and entropy','Surprise','Surprisal tracks N400 size in published studies, but a model is not a brain.'],['Brain stimulation','Steering vectors','Behavior','Effects in a small model can be weak.']];
+function render(){
+  let h='';
+  const ready=S.status==='ready';
+  h+='<div class="box" style="margin-bottom:12px"><div class="row"><span class="small muted">Model</span><select data-act="repo">'+MODEL_LIST.map(m=>'<option value="'+m[0]+'"'+(S.repo===m[0]?' selected':'')+'>'+m[1]+'</option>').join('')+'</select></div>'+
+    '<details style="margin-top:6px"><summary class="small">Use another model (GPT-2, Pythia, Llama or Qwen2 style)</summary><input class="editor" style="min-height:0;height:40px;margin-top:6px" data-act="custom" value="'+esc(S.custom)+'" placeholder="Hugging Face repo, such as gpt2-medium"></details>'+
+    '<div class="row" style="margin-top:10px">'+btn('load','',ready?'Reload the model':'Load the model','',S.status==='loading')+(ready?chip(S.M.gpu?'WebGPU':'CPU',S.M.gpu?'good':'warn')+' '+chip(S.M.L+' layers, '+S.M.H+' heads, width '+S.M.D):'')+'</div>'+
+    (S.status==='loading'?'<div class="status warn"><b>Loading</b><br>'+esc(S.prog)+'</div>':'')+
+    (ready?'<p class="small muted" style="margin-top:6px">'+esc(S.M.gpuNote)+'</p>':'<p class="small muted" style="margin-top:6px">The weights download from huggingface.co once and are kept in your browser. Nothing you type leaves your device. Sizes are approximate, and models over about 500 MB need a desktop browser with plenty of free memory. Models are slower on a CPU, so deep ones take minutes for the lesion and tracing maps.</p>')+'</div>';
+  if(S.err)h+='<div class="status bad">'+esc(S.err)+'</div>';
+  if(!ready)return h+qa(QA);
+  const R=S.run;
+  h+='<h3>The prompt</h3><textarea class="editor" id="prompt" data-act="prompt" rows="2">'+esc(S.prompt)+'</textarea>'+
+    '<div class="row" style="margin-top:6px">'+btn('example',0,'Eiffel Tower','ghost sm')+btn('example',1,'Who gets the drink','ghost sm')+btn('example',2,'Counting','ghost sm')+'</div>'+
+    '<div class="row" style="margin-top:10px">'+btn('record','','Record the model reading this','',S.busy)+'</div>';
+  if(S.busy)h+='<div class="status warn"><b>Working</b><br>'+esc(S.prog)+'</div>';
+  if(R){
+    h+='<h3>What it read, and what it predicts</h3>'+tokenChips(R)+'<p class="small" style="margin-top:8px">Top predictions for the next word: '+topk(R.logits,5).map(i=>'<b>'+esc(tokLab(i))+'</b> '+(softmax(R.logits)[i]*100).toFixed(0)+'%').join(' · ')+'</p>'+
+      '<details style="margin-top:10px"><summary class="small">How this maps to neuroscience, and where it does not</summary>'+table(['In the brain','Here','Tab','How far the analogy goes'],MAPROWS,620)+'</details>'+
+      '<div class="row" style="margin-top:8px">'+TABS.map(t=>tog('tab',t[0],t[1],S.tab===t[0])).join('')+'</div>';
+    const pages={activity:tabActivity,lens:tabLens,attn:tabAttn,dla:tabDla,unit:tabUnit,surp:tabSurprise,lesion:tabLesion,trace:tabTrace,gen:tabGen};
+    h+='<div style="margin-top:10px">'+(S.tab==='checks'?tabChecks():pages[S.tab](R))+'</div>';
+  }
+  return h+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const EXAMPLES=['The Eiffel Tower is located in the city of','When Mary and John went to the store, John gave a drink to','1, 2, 3, 4, 5, 6,'];
+const draw=app({
+  render,
+  act:{
+    load:()=>{loadModel().then(()=>draw()).catch(e=>{S.status='idle';const m=String((e&&e.message)||e);S.err=(e&&e.name==='RangeError'||/memory|allocation/i.test(m))?'The browser ran out of memory loading this model. Try a smaller model, or use a desktop browser. ('+m+')':m;draw();});return true;},
+    tab:v=>{S.tab=v;},
+    metric:v=>{S.metric=v;},
+    lmode:v=>{S.lesionMode=v;S.lesion=null;},
+    gkind:v=>{S.genKind=v;S.gen=null;},
+    example:v=>{S.prompt=EXAMPLES[+v];return guard(recordRun);},
+    record:()=>guard(recordRun),
+    retarget:()=>guard(async()=>{const R=S.run,tg=targetIds(R);R.t=tg.t;R.a=tg.a;R.u=uVec(S.M,tg.t,tg.a);R.metric=readMetric(S.M,R.rec.resid[S.M.L].subarray((R.T-1)*S.M.D,R.T*S.M.D),R.u);S.lesion=null;}),
+    lesion:()=>guard(runLesions),
+    trace:()=>guard(runTrace),
+    gen:()=>guard(runGenerate),
+    check:()=>guard(runChecks),
+    stop:()=>{S.stop=true;},
+    surprise:()=>guard(async()=>{S.surp=await measureSurprise(S.prompt);}),
+    coffee:()=>guard(async()=>{S.n400={a:await measureSurprise('He took his coffee with milk and sugar.'),b:await measureSurprise('He took his coffee with milk and dog.')};}),
+    scan:()=>guard(()=>scanUnits(Math.min(S.unitLayer,S.M.L-1))),
+    neuron:v=>{S.unitN=+v;},
+    induct:()=>guard(runInduction),
+    steer:()=>guard(runSteer),
+    spreset:v=>{const p=[[' I love this',' I hate this'],[' The wedding was joyful',' The funeral was sorrowful']][+v];S.steer.pos=p[0];S.steer.neg=p[1];S.steered=null;},
+    tpreset:v=>{const p=[['When Mary and John went to the store, John gave a drink to','When Mary and John went to the store, Mary gave a drink to'],['The capital of France is','The capital of Italy is']][+v];S.traceA=p[0];S.traceB=p[1];S.trace=null;}
+  },
+  change:{lstep:t=>{S.layerStep=+t.value;S.lesion=null;S.trace=null;},ulayer:t=>{S.unitLayer=+t.value;},unitn:t=>{const v=parseInt(t.value,10);S.unitN=isNaN(v)?null:v;},slayer:t=>{S.steer.layer=+t.value;S.steered=null;},salpha:t=>{S.steer.alpha=+t.value;S.steered=null;},repo:t=>{S.repo=t.value;},custom:t=>{S.custom=t.value.trim();return false;},pos:t=>{S.pos=+t.value;},layer:t=>{S.layer=+t.value;},head:t=>{S.head=+t.value;},glayer:t=>{S.genLayer=+t.value;S.gen=null;},ghead:t=>{S.genHead=+t.value;S.gen=null;},target:t=>{S.targetText=t.value;return false;},alt:t=>{S.altText=t.value;return false;}},
+  input:{spos:t=>{S.steer.pos=t.value;},sneg:t=>{S.steer.neg=t.value;},prompt:t=>{S.prompt=t.value;},ta:t=>{S.traceA=t.value;},tb:t=>{S.traceB=t.value;},custom:t=>{S.custom=t.value.trim();},target:t=>{S.targetText=t.value;},alt:t=>{S.altText=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+setStatus('');
+draw();
+</script>
+</body>
+</html>
