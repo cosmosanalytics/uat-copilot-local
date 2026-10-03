@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APC to Applied AI: Controller Migration Studio</title>
+<style>
+:root{
+  --bg:#ECEFF2; --panel:#FFFFFF; --ink:#16222D; --muted:#536474; --line:#CBD6E0;
+  --accent:#006A80; --accent-ink:#FFFFFF; --chip:#E2E8EE;
+  --warn:#8C5900; --warn-bg:#FFF1D6; --bad:#A82B2B; --bad-bg:#FCE4E2; --good:#186E46; --good-bg:#DCF3E7;
+  --apc-blue:#19537E; --ai-teal:#02778A;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0F171F;--panel:#17222B;--ink:#E5EEF5;--muted:#99AAB9;--line:#2A3A49;--accent:#4FC3E8;--accent-ink:#041F28;--chip:#213140;
+    --warn:#F0BA43;--warn-bg:#3A2D0E;--bad:#FF968F;--bad-bg:#3D1D1C;--good:#70DBA0;--good-bg:#153728;
+    --apc-blue:#6BB5E8;--ai-teal:#52D1E0;}
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1040px;margin:0 auto;padding:24px 16px 56px;}
+h1{font:700 clamp(1.6rem,4vw,2.3rem)/1.15 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.25rem/1.2 var(--display);margin:0 0 10px;}
+h3{font:600 1rem/1.3 var(--display);margin:14px 0 6px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:74ch;font-size:1.02rem;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:34px;padding:4px 12px;font-size:.85rem;}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.status{padding:10px 14px;border-radius:8px;background:var(--chip);margin:10px 0;font-size:.9rem;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.76rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea{resize:vertical;min-height:85px;}
+select{max-width:440px;min-height:42px;}
+progress{width:100%;height:10px;accent-color:var(--accent);}
+
+/* Comparison Table & Mapping */
+.map-table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.88rem;}
+.map-table th,.map-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+.map-table th{background:var(--chip);font-weight:600;}
+.map-table .col-apc{width:46%;color:var(--apc-blue);font-weight:500;}
+.map-table .col-ai{width:46%;color:var(--ai-teal);font-weight:500;}
+.map-arrow{text-align:center;color:var(--muted);width:8%;}
+
+/* Stepper Stage Tracker */
+.ladder-bar{display:flex;gap:6px;margin:12px 0 18px;overflow-x:auto;padding-bottom:4px;}
+.ladder-step{flex:1;min-width:140px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:.82rem;}
+.ladder-step.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);background:var(--chip);}
+.ladder-step .num{font-weight:700;color:var(--accent);font-size:.75rem;margin-bottom:2px;}
+.ladder-step .apc{font-weight:600;display:block;}
+.ladder-step .ai{color:var(--muted);font-size:.78rem;margin-top:2px;display:block;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);}
+.card.best{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent-msg{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.87rem;}
+.agent-msg b{min-width:170px;color:var(--ink);}
+.agent-msg span{color:var(--muted);word-break:break-word;}
+canvas#cvsSim{width:100%;border-radius:10px;background:#0E151D;display:block;}
+.foot{margin-top:28px;color:var(--muted);font-size:.84rem;max-width:76ch;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="small muted" style="margin-bottom:8px">Executive Brief Interactive Workbench · From Process Control to Applied AI Engineering</div>
+    <h1>APC to Applied AI: Controller Migration Studio</h1>
+    <p class="lede">Transition your Advanced Process Control (APC) plants and habits into safe, resilient Applied AI agent architectures. An LLM is not a physical plant: it varies run-to-run and can be prompt-injected. This specialized agent team brings closed-loop MPC thinking, soft sensors, independent protection layers (IPL), and commissioning ladders to your AI projects.</p>
+    
+    <div class="ladder-bar" aria-label="Commissioning Ladder">
+      <div class="ladder-step" id="step1"><span class="num">STAGE 1</span><span class="apc">Step Test</span><span class="ai">Offline Evals (Harness)</span></div>
+      <div class="ladder-step" id="step2"><span class="num">STAGE 2</span><span class="apc">Advisory Mode</span><span class="ai">Shadow Mode (Parallel)</span></div>
+      <div class="ladder-step" id="step3"><span class="num">STAGE 3</span><span class="apc">Closed Loop w/ Limits</span><span class="ai">Advisory to Human</span></div>
+      <div class="ladder-step" id="step4"><span class="num">STAGE 4</span><span class="apc">Operator Supervised</span><span class="ai">Supervised Autonomy</span></div>
+    </div>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+
+  <main id="main" aria-live="polite"></main>
+
+  <section class="panel" id="chartpanel" aria-label="Controller Telemetry Simulation">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+      <h2>Telemetry & Closed-Loop Control: Propose, Check, Act, Replan</h2>
+      <span class="chip good" id="simBadge">Loop Active</span>
+    </div>
+    <canvas id="cvsSim" width="980" height="260" aria-label="MPC vs Agent State Response Simulation"></canvas>
+    <div class="row" style="margin-top:8px;font-size:.82rem;color:var(--muted);" id="simLegend">
+      <span><i style="display:inline-block;width:10px;height:10px;background:#5CC0DE;border-radius:2px;margin-right:4px;"></i>Controlled Variable (Plant/Agent State)</span>
+      <span style="margin-left:14px;"><i style="display:inline-block;width:10px;height:10px;background:#FFD166;border-radius:2px;margin-right:4px;"></i>Setpoint / Target</span>
+      <span style="margin-left:14px;"><i style="display:inline-block;width:10px;height:10px;background:#FF6B6B;border-radius:2px;margin-right:4px;"></i>Hard Constraints / Guardrails</span>
+      <span style="margin-left:14px;"><i style="display:inline-block;width:10px;height:10px;background:#7AD6A8;border-radius:2px;margin-right:4px;"></i>Manipulated Variable (Action Moves)</span>
+    </div>
+  </section>
+
+  <p class="foot">Run client-side on WebGPU via WebLLM or pure rule-based fallback. Preserves industrial safety habits: independent protection layers (IPL), approval gates, step-testing sensitivity matrix, and false-alarm rate telemetry.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(x){const e=$('#status');if(e)e.innerHTML=x||'';}
+
+/* ================= 1. APC to Applied AI Comparison Matrix ================= */
+const APC_MAPPING=[
+  {apc:'The plant, and model mismatch',ai:'The agent system, and what the model gets wrong',detail:'Disturbances and unmodelled dynamics match LLM nondeterminism & distribution shift.'},
+  {apc:'Soft sensors, state estimation',ai:'Tool-checked facts and answer probabilities',detail:'Using secondary measurements (tools, web searches, DB lookups) to verify unobserved state.'},
+  {apc:'MPC: plan, apply one move, replan',ai:'Propose, check, act, replan (Agentic loop)',detail:'Receding horizon: generate plan, run 1 step with safety check, observe feedback, recalculate.'},
+  {apc:'Constraints and limits',ai:'Guardrails, permissions, approval limits',detail:'Hard boundaries on valve positions match hard bounds on spending, API write access, and token budgets.'},
+  {apc:'Step tests and the gain matrix',ai:'Prompt and fact swaps, who-moves-whom matrix',detail:'Bumping setpoints to observe delta-Y matches systematically perturbation-testing prompts.'},
+  {apc:'Independent protection layers (IPL)',ai:'Independent checkers with different information',detail:'SIS/relief valves do not share controller hardware; guardrail LLMs use different contexts.'},
+  {apc:'Performance monitoring, alarms',ai:'Telemetry, escalation and false-alarm rates',detail:'Tracking tracking-error variance and controller saturation matches monitoring hallucination rates.'}
+];
+
+const PRESETS=[
+  {title:'Distillation Column Optimization -> Customer Support Agent',
+   brief:'A crude distillation column MPC controller is transitioning to an autonomous enterprise customer-refund & plan-modification agent. The original system had pressure/temp constraints; the new agent can grant refunds, update records, and cancel accounts.'},
+  {title:'Chemical Reactor Temperature Control -> Financial Trading Agent',
+   brief:'Exothermic batch reactor temperature control with runaway reaction risk transitioning to an automated equity/derivatives execution agent. Hard limits on cooling water valves transition to maximum drawdown and daily order execution limits.'},
+  {title:'Refinery Hydrogen Network -> Autonomous DevOps & Infrastructure Agent',
+   brief:'Multi-unit refinery hydrogen distribution with compressor trip trip-protection transitioning to an agent that auto-remediates AWS production outages, restarts clusters, and mutates VPC firewall rules.'}
+];
+
+/* ================= WebLLM Engine ================= */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (~1.8 GB, Recommended)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (~1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (~0.9 GB)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (Fastest)']
+];
+
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],note:'',
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU (Rules mode ready)','bad');
+    if(this.state==='ready')return chip('On-Device Model Active','good');
+    if(this.state==='loading')return chip('Loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model Load Error','bad');
+    return chip('Model Standby');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">WebGPU unavailable. The studio will run the complete APC-AI rule-based migration engine offline.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label style="font-weight:600;display:block;margin-bottom:6px" for="modelsel">Select On-Device LLM (WebGPU)</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:6px">Runs 100% in your browser. Downloaded once into local browser cache.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your GPU ('+esc(this.modelId)+').'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{if(this.state==='error')h+='<div class="status bad">Load failed: '+esc(this.text)+'</div>';h+=btn('loadmodel','','Initialize On-Device Model');}
+    return h;
+  },
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(LLM.chip()+(S.busy?chip('Running Migration: '+S.prog,'warn'):''));},
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Initializing WebGPU';this.note='';draw();
+    let lastErr='',lib=null;
+    try{lib=await import('https://esm.run/@mlc-ai/web-llm');}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];this.modelId=m[0];this.pct=0;this.text='Loading '+m[1];this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});
+        this.state='ready';draw();this.paint();return;
+      }catch(err){lastErr=String((err&&err.message)||err);this.engine=null;}
+    }
+    this.state='error';this.text=lastErr||'Could not load model';draw();this.paint();
+  }
+};
+
+/* ================= 2. Agent Team Definition ================= */
+const S={
+  brief:PRESETS[0].brief,
+  useModel:true,busy:false,stop:false,err:'',prog:'',log:[],
+  stage:1, // 1: Offline evals, 2: Shadow mode, 3: Advisory to person, 4: Supervised autonomy
+  results:null,n:0,total:5
+};
+
+function note(a,t){S.log.push({agent:a,text:t});}
+
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,es=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(es)es=false;else if(c==='\\')es=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+
+async function askAgent(agentName,sys,user,temp=0.3,max=300){
+  S.n++;S.prog=agentName;draw();LLM.paint();await sleep(10);
+  if(!S.useModel||!LLM.ready()){
+    note(agentName,'[Rules Fallback Activated]');
+    return null;
+  }
+  const r=await LLM.engine.chat.completions.create({
+    messages:[{role:'system',content:sys},{role:'user',content:user}],
+    temperature:temp,max_tokens:max
+  });
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  note(agentName,text.slice(0,350));
+  return firstJson(text);
+}
+
+/* Fallback generator maintaining full APC rigour */
+function generateFallbackResults(brief, stage){
+  return {
+    stateEstimation:{
+      softSensors:['Fact-checker tool against canonical database','Probability-confidence score estimator on LLM output tokens'],
+      mismatchHandling:'Bayesian Kalman filter proxy: reconcile model uncertainty against retrieved ground truth before state update.'
+    },
+    mpcLoop:{
+      propose:'Agent drafts candidate actuation command (e.g., refund <= $50, database migration step).',
+      check:'Run offline policy engine: verify non-violation of business & security bounds.',
+      act:'Execute 1 step in current horizon; store transaction lock.',
+      replan:'Measure plant telemetry (API return codes, user sentiment); recalculate next control vector.'
+    },
+    constraintsIPL:{
+      hardLimits:['Max transaction value ceiling $200','Strict regex on SQL/API parameters to prevent injection'],
+      independentLayers:['Separate deterministic Python validation proxy (not an LLM)','Second smaller guardrail model with redacted system prompt']
+    },
+    gainMatrix:{
+      sensitivity:'Prompt perturbation testing: Swap 3 distinct user prompt framings to measure variance in action choices (Who-Moves-Whom Matrix).'
+    },
+    commissioningLadder:{
+      currentStage:stage,
+      status:stage===1?'Offline Evals: Run 100 test cases through harness':stage===2?'Shadow Mode: Log recommendations alongside human operator without actuation':stage===3?'Advisory to Human: Propose move for 1-click human confirmation':'Supervised Autonomy: Automated action with telemetry rate alarm thresholds',
+      readyToAdvance:stage<4?'Yes, residual error variance is within safe limits':'Fully commissioned at Supervised Autonomy'
+    }
+  };
+}
+
+async function runMigrationPipeline(){
+  if(S.busy)return;
+  S.busy=true;S.err='';S.log=[];S.n=0;
+  draw();
+  try{
+    // Agent 1: Model Identification & Soft Sensor Architect
+    const a1=await askAgent('Model ID & Soft Sensor Architect',
+      'You are an APC Process Control Engineer transitioning to Applied AI. Formulate soft sensors (state estimation) and model mismatch mitigations for the proposed agent system. Reply with ONE JSON object only.',
+      'Brief: '+S.brief+'\nReturn: {"softSensors":["tool 1","tool 2"],"mismatchHandling":"one sentence explanation"}'
+    );
+
+    // Agent 2: MPC Loop Designer (Propose-Check-Act-Replan)
+    const a2=await askAgent('MPC Loop Designer',
+      'You design the receding horizon Propose-Check-Act-Replan loop. Map manipulated variables (MV) and controlled variables (CV). Reply with ONE JSON object only.',
+      'Brief: '+S.brief+'\nReturn: {"propose":"how agent plans","check":"safety check before act","act":"1-step execution","replan":"measurement & next horizon"}'
+    );
+
+    // Agent 3: Constraints & IPL Safety Engineer
+    const a3=await askAgent('Safety & Protection Layer (IPL) Engineer',
+      'You establish Hard Constraints and Independent Protection Layers (IPL) to prevent prompt injection and hazardous actions. Reply with ONE JSON object only.',
+      'Brief: '+S.brief+'\nReturn: {"hardLimits":["limit 1","limit 2"],"independentLayers":["independent checker 1","checker 2"]}'
+    );
+
+    // Agent 4: Commissioning & Trust Director
+    const a4=await askAgent('Commissioning Director',
+      'Assess trust progression across the 4 stages: Offline Evals -> Shadow Mode -> Advisory -> Supervised Autonomy. Reply with ONE JSON object only.',
+      'Brief: '+S.brief+'\nCurrent Stage: '+S.stage+'\nReturn: {"status":"current stage criteria","readyToAdvance":"verdict"}'
+    );
+
+    const fb=generateFallbackResults(S.brief, S.stage);
+    S.results={
+      stateEstimation:a1||fb.stateEstimation,
+      mpcLoop:a2||fb.mpcLoop,
+      constraintsIPL:a3||fb.constraintsIPL,
+      gainMatrix:fb.gainMatrix,
+      commissioningLadder:a4?{currentStage:S.stage,status:a4.status,readyToAdvance:a4.readyToAdvance}:fb.commissioningLadder
+    };
+  }catch(e){
+    S.err=String(e&&e.message||e);
+  }
+  S.busy=false;
+  draw();
+  updateLadderUI();
+}
+
+function updateLadderUI(){
+  for(let i=1;i<=4;i++){
+    const el=$('#step'+i);
+    if(el){
+      if(i===S.stage)el.classList.add('active');
+      else el.classList.remove('active');
+    }
+  }
+}
+
+/* ================= 3. Telemetry Canvas Simulation ================= */
+let simT=0;
+function drawSimulation(){
+  const cv=$('#cvsSim');if(!cv)return;
+  const g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  g.fillStyle='#0E151D';g.fillRect(0,0,W,H);
+
+  // Grid lines
+  g.strokeStyle='#1E2A38';g.lineWidth=1;
+  for(let y=30;y<H;y+=40){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+  for(let x=40;x<W;x+=80){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();}
+
+  // Constraint Upper Bound (Red dashed)
+  g.strokeStyle='#FF6B6B';g.setLineDash([6,4]);g.lineWidth=2;
+  const upperY=45;
+  g.beginPath();g.moveTo(0,upperY);g.lineTo(W,upperY);g.stroke();
+  g.fillStyle='#FF6B6B';g.font='11px sans-serif';g.fillText('UPPER GUARDRAIL LIMIT (IPL)',10,upperY-8);
+
+  // Setpoint line (Yellow dashed)
+  g.strokeStyle='#FFD166';g.setLineDash([4,4]);
+  const spY=120;
+  g.beginPath();g.moveTo(0,spY);g.lineTo(W,spY);g.stroke();
+  g.fillStyle='#FFD166';g.fillText('TARGET SETPOINT',W-120,spY-6);
+
+  // Controlled Variable (Process / Agent Output trajectory)
+  g.setLineDash([]);
+  g.strokeStyle='#5CC0DE';g.lineWidth=2.5;
+  g.beginPath();
+  const pts=60;
+  for(let i=0;i<pts;i++){
+    const px=(i/(pts-1))*W;
+    const t=(simT+i*0.12);
+    // Dynamic simulated response with step response + disturbance
+    let val=spY + 50*Math.exp(-i*0.06)*Math.sin(t*0.8) + (Math.sin(t*2.4)*4);
+    if(val<upperY+6)val=upperY+6; // Hard constraint clamping!
+    if(i===0)g.moveTo(px,val);else g.lineTo(px,val);
+  }
+  g.stroke();
+
+  // Manipulated Variable (Bottom sub-actuation bar)
+  g.strokeStyle='#7AD6A8';g.lineWidth=1.8;
+  g.beginPath();
+  for(let i=0;i<pts;i++){
+    const px=(i/(pts-1))*W;
+    const t=(simT+i*0.12);
+    const mvY=220 + Math.sin(t*0.8)*20;
+    if(i===0)g.moveTo(px,mvY);else g.lineTo(px,mvY);
+  }
+  g.stroke();
+  g.fillStyle='#7AD6A8';g.font='11px sans-serif';g.fillText('MANIPULATED VARIABLE (AGENT ACTIONS)',10,210);
+
+  simT+=0.04;
+  requestAnimationFrame(drawSimulation);
+}
+
+/* ================= 4. UI Rendering ================= */
+function render(){
+  let h='<section class="panel"><h2>1. Applied AI Execution Engine</h2>'+LLM.ui()+'</section>';
+
+  h+='<section class="panel"><h2>2. Process Control to Agent System Specification</h2>';
+  h+='<label style="font-weight:600;display:block;margin-bottom:6px" for="brief">Plant Description & AI Transition Mission</label>';
+  h+='<textarea id="brief" maxlength="600">'+esc(S.brief)+'</textarea>';
+  h+='<div class="row" style="margin:10px 0 14px">'+PRESETS.map((p,i)=>btn('preset',i,p.title.split('->')[0].trim()+'…','ghost sm')).join('')+'</div>';
+  
+  h+='<h3>Select Commissioning Stage for Trust Architecture:</h3>';
+  h+='<div class="row" style="margin-bottom:14px;">';
+  h+=btn('setstage',1,'Stage 1: Offline Evals',S.stage===1?'':'ghost sm');
+  h+=btn('setstage',2,'Stage 2: Shadow Mode',S.stage===2?'':'ghost sm');
+  h+=btn('setstage',3,'Stage 3: Advisory to Person',S.stage===3?'':'ghost sm');
+  h+=btn('setstage',4,'Stage 4: Supervised Autonomy',S.stage===4?'':'ghost sm');
+  h+='</div>';
+
+  h+='<div class="row">'+btn('run','','Synthesize Agent Control Architecture',null,S.busy)+btn('runrules','','Run Pure APC-Rules Mapping','ghost',S.busy)+'</div>';
+  h+='</section>';
+
+  // Mapping Table Section
+  h+='<section class="panel"><h2>3. The Same Ideas, A New Plant (Executive Mapping)</h2>';
+  h+='<table class="map-table"><thead><tr><th class="col-apc">Advanced Process Control (Plant)</th><th></th><th class="col-ai">Applied AI Engineering (Agent Teams)</th><th>Engineering Rationale</th></tr></thead><tbody>';
+  APC_MAPPING.forEach(m=>{
+    h+='<tr><td class="col-apc">'+esc(m.apc)+'</td><td class="map-arrow">➔</td><td class="col-ai">'+esc(m.ai)+'</td><td class="small muted">'+esc(m.detail)+'</td></tr>';
+  });
+  h+='</tbody></table></section>';
+
+  if(S.busy||S.err||S.log.length){
+    h+='<section class="panel"><h2>4. Agent Engineering Pipeline</h2>';
+    if(S.busy)h+='<div class="status warn">Processing: '+esc(S.prog)+' (Step '+S.n+' of '+S.total+')</div>';
+    if(S.err)h+='<div class="status bad">'+esc(S.err)+'</div>';
+    if(S.log.length)h+='<details><summary>Agent Telemetry & Transcripts ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+
+  if(S.results){
+    const r=S.results;
+    h+='<section class="panel"><h2>5. Commissioned Agent Controller Specification</h2><div class="cards">';
+    
+    // Card 1
+    h+='<div class="card best"><h3>1. Soft Sensors & Model Mismatch</h3>';
+    h+='<p class="small"><b>Tool-Checked Soft Sensors:</b><br>• '+r.stateEstimation.softSensors.map(esc).join('<br>• ')+'</p>';
+    h+='<p class="small muted"><b>Mismatch Handling:</b> '+esc(r.stateEstimation.mismatchHandling)+'</p></div>';
+
+    // Card 2
+    h+='<div class="card best"><h3>2. Propose-Check-Act-Replan (MPC)</h3>';
+    h+='<p class="small"><b>Propose:</b> '+esc(r.mpcLoop.propose)+'</p>';
+    h+='<p class="small"><b>Check:</b> '+esc(r.mpcLoop.check)+'</p>';
+    h+='<p class="small"><b>Act:</b> '+esc(r.mpcLoop.act)+'</p>';
+    h+='<p class="small"><b>Replan:</b> '+esc(r.mpcLoop.replan)+'</p></div>';
+
+    // Card 3
+    h+='<div class="card best"><h3>3. Constraints & Independent Protection (IPL)</h3>';
+    h+='<p class="small"><b>Hard Approval Limits:</b><br>• '+r.constraintsIPL.hardLimits.map(esc).join('<br>• ')+'</p>';
+    h+='<p class="small"><b>Independent Checkers:</b><br>• '+r.constraintsIPL.independentLayers.map(esc).join('<br>• ')+'</p></div>';
+
+    // Card 4
+    h+='<div class="card best"><h3>4. Commissioning Status & Trust</h3>';
+    h+='<p class="small"><b>Current Stage:</b> '+chip('Stage '+r.commissioningLadder.currentStage,'good')+'</p>';
+    h+='<p class="small">'+esc(r.commissioningLadder.status)+'</p>';
+    h+='<p class="small muted"><b>Gate Review:</b> '+esc(r.commissioningLadder.readyToAdvance)+'</p>';
+    if(S.stage<4){
+      h+=btn('advancestage','','Advance to Next Trust Stage','sm');
+    }
+    h+='</div>';
+
+    h+='</div></section>';
+  }
+
+  return h;
+}
+
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='brief'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#brief');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Synthesizing','warn'):''));
+}
+
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act]');if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;
+  const v=t.dataset.val,act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='preset'){S.brief=PRESETS[+v].brief;draw();return;}
+  if(act==='setstage'){S.stage=+v;draw();updateLadderUI();return;}
+  if(act==='advancestage'){if(S.stage<4){S.stage++;draw();updateLadderUI();runMigrationPipeline();}return;}
+  if(act==='run'){S.useModel=true;runMigrationPipeline();return;}
+  if(act==='runrules'){S.useModel=false;runMigrationPipeline();return;}
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}
+});
+document.addEventListener('input',e=>{if(e.target.id==='brief')S.brief=e.target.value;});
+
+draw();
+updateLadderUI();
+drawSimulation();
+</script>
+</body>
+</html>
