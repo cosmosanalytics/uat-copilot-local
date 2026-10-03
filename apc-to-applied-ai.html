@@ -205,18 +205,26 @@ function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){
 function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
 
 async function askAgent(agentName,sys,user,temp=0.3,max=300){
-  S.n++;S.prog=agentName;draw();LLM.paint();await sleep(10);
+  S.n++;S.prog=agentName;draw();LLM.paint();await sleep(20);
   if(!S.useModel||!LLM.ready()){
     note(agentName,'[Rules Fallback Activated]');
     return null;
   }
-  const r=await LLM.engine.chat.completions.create({
-    messages:[{role:'system',content:sys},{role:'user',content:user}],
-    temperature:temp,max_tokens:max
-  });
-  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
-  note(agentName,text.slice(0,350));
-  return firstJson(text);
+  try {
+    // 35s timeout to prevent mobile WebGPU / driver lockup
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Agent call timed out on device')), 35000));
+    const completionPromise = LLM.engine.chat.completions.create({
+      messages:[{role:'system',content:sys},{role:'user',content:user}],
+      temperature:temp,max_tokens:max
+    });
+    const r = await Promise.race([completionPromise, timeoutPromise]);
+    const text = String((r && r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)||'').trim();
+    note(agentName, text.slice(0,350) || '(empty response)');
+    return firstJson(text);
+  } catch(err) {
+    note(agentName, '[Fallback due to: ' + String((err&&err.message)||err).slice(0,60) + ']');
+    return null;
+  }
 }
 
 /* Fallback generator maintaining full APC rigour */
@@ -249,7 +257,7 @@ function generateFallbackResults(brief, stage){
 
 async function runMigrationPipeline(){
   if(S.busy)return;
-  S.busy=true;S.err='';S.log=[];S.n=0;
+  S.busy=true;S.err='';S.log=[];S.n=0;S.total=4;
   draw();
   try{
     // Agent 1: Model Identification & Soft Sensor Architect
@@ -277,17 +285,32 @@ async function runMigrationPipeline(){
     );
 
     const fb=generateFallbackResults(S.brief, S.stage);
+    const fbSensors = (a1 && a1.softSensors && Array.isArray(a1.softSensors)) ? a1.softSensors : fb.stateEstimation.softSensors;
+    const fbMismatch = (a1 && a1.mismatchHandling) ? a1.mismatchHandling : fb.stateEstimation.mismatchHandling;
+    const fbHardLimits = (a3 && a3.hardLimits && Array.isArray(a3.hardLimits)) ? a3.hardLimits : fb.constraintsIPL.hardLimits;
+    const fbIPL = (a3 && a3.independentLayers && Array.isArray(a3.independentLayers)) ? a3.independentLayers : fb.constraintsIPL.independentLayers;
+
     S.results={
-      stateEstimation:a1||fb.stateEstimation,
-      mpcLoop:a2||fb.mpcLoop,
-      constraintsIPL:a3||fb.constraintsIPL,
+      stateEstimation:{ softSensors: fbSensors, mismatchHandling: fbMismatch },
+      mpcLoop:{
+        propose: (a2 && a2.propose) || fb.mpcLoop.propose,
+        check: (a2 && a2.check) || fb.mpcLoop.check,
+        act: (a2 && a2.act) || fb.mpcLoop.act,
+        replan: (a2 && a2.replan) || fb.mpcLoop.replan
+      },
+      constraintsIPL:{ hardLimits: fbHardLimits, independentLayers: fbIPL },
       gainMatrix:fb.gainMatrix,
-      commissioningLadder:a4?{currentStage:S.stage,status:a4.status,readyToAdvance:a4.readyToAdvance}:fb.commissioningLadder
+      commissioningLadder:{
+        currentStage:S.stage,
+        status:(a4 && a4.status) || fb.commissioningLadder.status,
+        readyToAdvance:(a4 && a4.readyToAdvance) || fb.commissioningLadder.readyToAdvance
+      }
     };
   }catch(e){
     S.err=String(e&&e.message||e);
   }
   S.busy=false;
+  S.prog='';
   draw();
   updateLadderUI();
 }
@@ -374,7 +397,7 @@ function render(){
   h+=btn('setstage',4,'Stage 4: Supervised Autonomy',S.stage===4?'':'ghost sm');
   h+='</div>';
 
-  h+='<div class="row">'+btn('run','','Synthesize Agent Control Architecture',null,S.busy)+btn('runrules','','Run Pure APC-Rules Mapping','ghost',S.busy)+'</div>';
+  h+='<div class="row">'+btn('run','','Synthesize Agent Control Architecture',null,S.busy)+btn('runrules','','Run Pure APC-Rules Mapping','ghost',S.busy)+(S.busy?btn('stop','','Stop & Use Fallback','ghost'):'')+'</div>';
   h+='</section>';
 
   // Mapping Table Section
@@ -385,11 +408,12 @@ function render(){
   });
   h+='</tbody></table></section>';
 
-  if(S.busy||S.err||S.log.length){
+  if(S.busy||S.err||S.log.length||S.results){
     h+='<section class="panel"><h2>4. Agent Engineering Pipeline</h2>';
     if(S.busy)h+='<div class="status warn">Processing: '+esc(S.prog)+' (Step '+S.n+' of '+S.total+')</div>';
+    else if(!S.err&&S.results)h+='<div class="status ok">Pipeline Complete (All 4 stages synthesized)</div>';
     if(S.err)h+='<div class="status bad">'+esc(S.err)+'</div>';
-    if(S.log.length)h+='<details><summary>Agent Telemetry & Transcripts ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    if(S.log.length)h+='<details open><summary>Agent Telemetry & Transcripts ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
     h+='</section>';
   }
 
@@ -446,6 +470,11 @@ document.addEventListener('click',async e=>{
   if(act==='advancestage'){if(S.stage<4){S.stage++;draw();updateLadderUI();runMigrationPipeline();}return;}
   if(act==='run'){S.useModel=true;runMigrationPipeline();return;}
   if(act==='runrules'){S.useModel=false;runMigrationPipeline();return;}
+  if(act==='stop'){
+    S.busy=false;S.prog='';
+    if(!S.results)S.results=generateFallbackResults(S.brief,S.stage);
+    draw();updateLadderUI();return;
+  }
 });
 
 document.addEventListener('change',e=>{
