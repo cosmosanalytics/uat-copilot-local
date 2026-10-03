@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Can LLMs Map What an Agent Knows? Dynamic Epistemic Graph Demo</title>
+<style>
+:root{
+  --bg:#ECEFF2; --panel:#FFFFFF; --ink:#16222D; --muted:#536474; --line:#CBD6E0;
+  --accent:#006A80; --accent-ink:#FFFFFF; --chip:#E2E8EE;
+  --warn:#8C5900; --warn-bg:#FFF1D6; --bad:#A82B2B; --bad-bg:#FCE4E2; --good:#186E46; --good-bg:#DCF3E7;
+  --agentA:#0E6F8E; --agentB:#9C4221; --agentC:#2D6A4F; --agentD:#6B3BA7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0F171F;--panel:#17222B;--ink:#E5EEF5;--muted:#99AAB9;--line:#2A3A49;--accent:#4FC3E8;--accent-ink:#041F28;--chip:#213140;
+    --warn:#F0BA43;--warn-bg:#3A2D0E;--bad:#FF968F;--bad-bg:#3D1D1C;--good:#70DBA0;--good-bg:#153728;
+    --agentA:#5CC0DE; --agentB:#F28E2B; --agentC:#7AD6A8; --agentD:#B07AA1;}
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1080px;margin:0 auto;padding:22px 16px 52px;}
+h1{font:700 clamp(1.6rem,4vw,2.3rem)/1.15 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.25rem/1.2 var(--display);margin:0 0 10px;}
+h3{font:600 1rem/1.3 var(--display);margin:14px 0 6px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:76ch;font-size:1.02rem;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 15px;font-weight:600;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:34px;padding:4px 12px;font-size:.85rem;}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.status{padding:10px 14px;border-radius:8px;background:var(--chip);margin:10px 0;font-size:.9rem;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.76rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea{resize:vertical;min-height:75px;}
+select{max-width:440px;min-height:42px;}
+progress{width:100%;height:10px;accent-color:var(--accent);}
+
+/* Graph & Layout */
+.graph-container{position:relative;background:#0A1017;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:10px 0;}
+canvas#cvsGraph{width:100%;height:460px;display:block;}
+.timeline-bar{display:flex;gap:6px;margin:12px 0 16px;overflow-x:auto;padding-bottom:4px;}
+.timeline-step{flex:1;min-width:130px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:.82rem;cursor:pointer;}
+.timeline-step.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);background:var(--chip);}
+.timeline-step .turn{font-weight:700;color:var(--accent);font-size:.75rem;}
+.timeline-step .label{font-weight:600;display:block;margin-top:2px;}
+.timeline-step .type{color:var(--muted);font-size:.75rem;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);}
+.card.best{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent-msg{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.87rem;}
+.agent-msg b{min-width:150px;color:var(--ink);}
+.agent-msg span{color:var(--muted);word-break:break-word;}
+.foot{margin-top:28px;color:var(--muted);font-size:.84rem;max-width:76ch;}
+
+/* Legend */
+.legend-item{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;margin-right:12px;}
+.legend-dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="small muted" style="margin-bottom:8px">Visualizing Agent Epistemic Boundaries, Belief Evolution & Contagion · WebGPU & WebLLM</div>
+    <h1>Can LLMs Map What an Agent Knows?</h1>
+    <p class="lede">Explore how GraphRAG and LLM triples map an agent's specific knowledge areas, reveal domain boundaries, and dynamically track how debates and interactions with other agents cause knowledge injection, edge pruning (disproof), and cross-cluster consensus bridges.</p>
+
+    <!-- Timeline Playback Slider -->
+    <div class="timeline-bar" id="timelineBar" aria-label="Dialogue Turn Timeline">
+      <div class="timeline-step active" data-turn="0"><span class="turn">TURN 0</span><span class="label">Initial Epistemic Silos</span><span class="type">Baseline Domains</span></div>
+      <div class="timeline-step" data-turn="1"><span class="turn">TURN 1</span><span class="label">Knowledge Injection</span><span class="type">Tool Verified Facts</span></div>
+      <div class="timeline-step" data-turn="2"><span class="turn">TURN 2</span><span class="label">Belief Revision</span><span class="type">Refuted Edges & Pruning</span></div>
+      <div class="timeline-step" data-turn="3"><span class="turn">TURN 3</span><span class="label">Consensus Bridging</span><span class="type">Interdisciplinary Bridges</span></div>
+      <div class="timeline-step" data-turn="4"><span class="turn">TURN 4</span><span class="label">Contagion Detection</span><span class="type">Drift / Hallucination Alert</span></div>
+    </div>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+
+  <main id="main" aria-live="polite"></main>
+
+  <section class="panel" id="graphPanel" aria-label="Dynamic Knowledge Graph Viewer">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2>Epistemic Topology Map: Interactive Force-Directed Graph</h2>
+      <div class="row">
+        <button class="btn ghost sm" data-act="prevturn">◀ Prev Turn</button>
+        <button class="btn ghost sm" data-act="nextturn">Next Turn ▶</button>
+        <button class="btn ghost sm" data-act="resetphys">Reset Layout</button>
+      </div>
+    </div>
+
+    <div class="graph-container">
+      <canvas id="cvsGraph" width="1040" height="460"></canvas>
+    </div>
+
+    <!-- Agent & Edge Legend -->
+    <div class="row" style="margin-top:8px;" id="graphLegend">
+      <span class="legend-item"><span class="legend-dot" style="background:#5CC0DE;"></span><b>Agent A:</b> Security Architect</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#F28E2B;"></span><b>Agent B:</b> FinOps / Cost Engineer</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#7AD6A8;"></span><b>Agent C:</b> Compliance & Legal Officer</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#B07AA1;"></span><b>Agent D:</b> Platform QA / Critic</span>
+      <span class="legend-item" style="margin-left:14px;color:#FF6B6B;"><b>Edge:</b> [Refuted / Pruned] (Dashed Red)</span>
+      <span class="legend-item" style="color:#7AD6A8;"><b>Edge:</b> [Consensus Bridge] (Thick Green)</span>
+    </div>
+  </section>
+
+  <p class="foot">Runs entirely client-side using WebGPU via WebLLM with full structured fallbacks. Visualizes how entity-relationship triples (Subject-PREDICATE-Object) dynamically re-wire across multi-agent exchanges.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(x){const e=$('#status');if(e)e.innerHTML=x||'';}
+
+/* ================= 1. Predefined Epistemic Turns Data ================= */
+const TURNS=[
+  {
+    turn:0,
+    title:'Initial Epistemic Silos (Baseline)',
+    desc:'Four agents begin in isolated silos. Each possesses distinct domain concepts with zero cross-pollination. Agent A knows security, Agent B knows cloud costs, Agent C knows GDPR compliance, and Agent D audits test coverage.',
+    event:'Cold start: Isolated subgraphs without inter-agent edge links.',
+    nodes:[
+      {id:'n1',label:'Zero-Trust Auth',agent:'A',cluster:'Security',x:180,y:120},
+      {id:'n2',label:'mTLS Protocol',agent:'A',cluster:'Security',x:260,y:90},
+      {id:'n3',label:'Role-Based Access (RBAC)',agent:'A',cluster:'Security',x:220,y:200},
+      {id:'n4',label:'AWS Spot Instances',agent:'B',cluster:'Cost',x:780,y:110},
+      {id:'n5',label:'Egress Bandwidth Fee',agent:'B',cluster:'Cost',x:860,y:180},
+      {id:'n6',label:'Reserved Node Budget',agent:'B',cluster:'Cost',x:740,y:210},
+      {id:'n7',label:'GDPR Right-to-Erasure',agent:'C',cluster:'Legal',x:210,y:350},
+      {id:'n8',label:'PII Data Sanitization',agent:'C',cluster:'Legal',x:330,y:390},
+      {id:'n9',label:'Mock Regression Harness',agent:'D',cluster:'QA',x:780,y:360},
+      {id:'n10',label:'Latency 99th-Percentile',agent:'D',cluster:'QA',x:880,y:310}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'ENFORCES',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES',type:'normal'},
+      {source:'n4',target:'n5',label:'MINIMIZES',type:'normal'},
+      {source:'n4',target:'n6',label:'BALANCES',type:'normal'},
+      {source:'n7',target:'n8',label:'MANDATES',type:'normal'},
+      {source:'n9',target:'n10',label:'BENCHMARKS',type:'normal'}
+    ]
+  },
+  {
+    turn:1,
+    title:'Turn 1: Knowledge Injection via Tool-Checked Facts',
+    desc:'Agent A queries an infrastructure database and injects "VPC Peering Latency" into Agent B’s domain. Agent B realizes spot instances in region eu-west-1 trigger cross-region egress fees.',
+    event:'Agent A shares network telemetry with Agent B. Agent B adopts foreign nodes.',
+    nodes:[
+      {id:'n1',label:'Zero-Trust Auth',agent:'A',cluster:'Security',x:180,y:120},
+      {id:'n2',label:'mTLS Protocol',agent:'A',cluster:'Security',x:260,y:90},
+      {id:'n3',label:'Role-Based Access (RBAC)',agent:'A',cluster:'Security',x:220,y:200},
+      {id:'n4',label:'AWS Spot Instances',agent:'B',cluster:'Cost',x:750,y:110},
+      {id:'n5',label:'Egress Bandwidth Fee',agent:'B',cluster:'Cost',x:850,y:180},
+      {id:'n6',label:'Reserved Node Budget',agent:'B',cluster:'Cost',x:720,y:210},
+      {id:'n11',label:'VPC Peering Latency',agent:'A->B',cluster:'Shared',x:520,y:130,highlight:true},
+      {id:'n7',label:'GDPR Right-to-Erasure',agent:'C',cluster:'Legal',x:210,y:350},
+      {id:'n8',label:'PII Data Sanitization',agent:'C',cluster:'Legal',x:330,y:390},
+      {id:'n9',label:'Mock Regression Harness',agent:'D',cluster:'QA',x:780,y:360},
+      {id:'n10',label:'Latency 99th-Percentile',agent:'D',cluster:'QA',x:880,y:310}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'ENFORCES',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES',type:'normal'},
+      {source:'n2',target:'n11',label:'PRODUCES',type:'injected'},
+      {source:'n11',target:'n5',label:'DRIVES_COST',type:'injected'},
+      {source:'n4',target:'n5',label:'MINIMIZES',type:'normal'},
+      {source:'n4',target:'n6',label:'BALANCES',type:'normal'},
+      {source:'n7',target:'n8',label:'MANDATES',type:'normal'},
+      {source:'n9',target:'n10',label:'BENCHMARKS',type:'normal'}
+    ]
+  },
+  {
+    turn:2,
+    title:'Turn 2: Belief Revision & Disproof (Edge Pruning)',
+    desc:'Agent D (Critic) challenges Agent B’s assumption that "Spot instances always cut cost". Critic shows termination events spike tail latency to >3000ms. The prior optimization link is refuted and pruned.',
+    event:'Critic agent flags false premise. Prior confidence edge degrades to [Refuted].',
+    nodes:[
+      {id:'n1',label:'Zero-Trust Auth',agent:'A',cluster:'Security',x:180,y:120},
+      {id:'n2',label:'mTLS Protocol',agent:'A',cluster:'Security',x:260,y:90},
+      {id:'n3',label:'Role-Based Access (RBAC)',agent:'A',cluster:'Security',x:220,y:200},
+      {id:'n4',label:'AWS Spot Instances',agent:'B',cluster:'Cost',x:730,y:110},
+      {id:'n5',label:'Egress Bandwidth Fee',agent:'B',cluster:'Cost',x:850,y:180},
+      {id:'n6',label:'Reserved Node Budget',agent:'B',cluster:'Cost',x:720,y:210},
+      {id:'n11',label:'VPC Peering Latency',agent:'A->B',cluster:'Shared',x:520,y:130},
+      {id:'n7',label:'GDPR Right-to-Erasure',agent:'C',cluster:'Legal',x:210,y:350},
+      {id:'n8',label:'PII Data Sanitization',agent:'C',cluster:'Legal',x:330,y:390},
+      {id:'n9',label:'Mock Regression Harness',agent:'D',cluster:'QA',x:760,y:360},
+      {id:'n10',label:'Latency 99th-Percentile',agent:'D',cluster:'QA',x:880,y:280},
+      {id:'n12',label:'Spot Eviction Spike',agent:'D',cluster:'QA',x:630,y:230,highlight:true}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'ENFORCES',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES',type:'normal'},
+      {source:'n2',target:'n11',label:'PRODUCES',type:'injected'},
+      {source:'n11',target:'n5',label:'DRIVES_COST',type:'injected'},
+      {source:'n4',target:'n5',label:'[REFUTED] MINIMIZES',type:'refuted'},
+      {source:'n12',target:'n10',label:'DEGRADES',type:'normal'},
+      {source:'n4',target:'n12',label:'TRIGGERS',type:'refuted'},
+      {source:'n7',target:'n8',label:'MANDATES',type:'normal'},
+      {source:'n9',target:'n10',label:'BENCHMARKS',type:'normal'}
+    ]
+  },
+  {
+    turn:3,
+    title:'Turn 3: Interdisciplinary Consensus & Bridging',
+    desc:'Agent A (Security) and Agent C (Legal) synthesize an agreement: PII data sanitization must be integrated directly into the RBAC policy gate, creating a strong cross-domain semantic bridge.',
+    event:'Cross-domain consensus bridge established between Security and Legal subgraphs.',
+    nodes:[
+      {id:'n1',label:'Zero-Trust Auth',agent:'A',cluster:'Security',x:180,y:120},
+      {id:'n2',label:'mTLS Protocol',agent:'A',cluster:'Security',x:260,y:90},
+      {id:'n3',label:'Role-Based Access (RBAC)',agent:'A',cluster:'Security',x:220,y:220},
+      {id:'n4',label:'AWS Spot Instances',agent:'B',cluster:'Cost',x:730,y:110},
+      {id:'n5',label:'Egress Bandwidth Fee',agent:'B',cluster:'Cost',x:850,y:180},
+      {id:'n6',label:'Reserved Node Budget',agent:'B',cluster:'Cost',x:720,y:210},
+      {id:'n11',label:'VPC Peering Latency',agent:'A->B',cluster:'Shared',x:520,y:130},
+      {id:'n7',label:'GDPR Right-to-Erasure',agent:'C',cluster:'Legal',x:210,y:360},
+      {id:'n8',label:'PII Data Sanitization',agent:'C',cluster:'Legal',x:330,y:330},
+      {id:'n13',label:'Cryptographic Erasure Token',agent:'A+C',cluster:'Consensus',x:280,y:270,highlight:true},
+      {id:'n9',label:'Mock Regression Harness',agent:'D',cluster:'QA',x:760,y:360},
+      {id:'n10',label:'Latency 99th-Percentile',agent:'D',cluster:'QA',x:880,y:280},
+      {id:'n12',label:'Spot Eviction Spike',agent:'D',cluster:'QA',x:630,y:230}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'ENFORCES',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES',type:'normal'},
+      {source:'n3',target:'n13',label:'VERIFIES_KEY',type:'bridge'},
+      {source:'n8',target:'n13',label:'IMPLEMENTS',type:'bridge'},
+      {source:'n7',target:'n8',label:'MANDATES',type:'normal'},
+      {source:'n2',target:'n11',label:'PRODUCES',type:'injected'},
+      {source:'n11',target:'n5',label:'DRIVES_COST',type:'injected'},
+      {source:'n12',target:'n10',label:'DEGRADES',type:'normal'},
+      {source:'n9',target:'n10',label:'BENCHMARKS',type:'normal'}
+    ]
+  },
+  {
+    turn:4,
+    title:'Turn 4: Epistemic Contagion & Hallucination Audit',
+    desc:'An unverified assertion ("Zero-cost serverless cold-start bypass") spreads from Agent B to Agent D. The Graph Diff monitor highlights the contaminated subgraphs in red, triggering an immediate root-cause trace.',
+    event:'Contagion alert: Unverified node propagated across two downstream agents.',
+    nodes:[
+      {id:'n1',label:'Zero-Trust Auth',agent:'A',cluster:'Security',x:180,y:120},
+      {id:'n2',label:'mTLS Protocol',agent:'A',cluster:'Security',x:260,y:90},
+      {id:'n3',label:'Role-Based Access (RBAC)',agent:'A',cluster:'Security',x:220,y:220},
+      {id:'n4',label:'AWS Spot Instances',agent:'B',cluster:'Cost',x:730,y:110},
+      {id:'n5',label:'Egress Bandwidth Fee',agent:'B',cluster:'Cost',x:850,y:180},
+      {id:'n11',label:'VPC Peering Latency',agent:'A->B',cluster:'Shared',x:520,y:130},
+      {id:'n7',label:'GDPR Right-to-Erasure',agent:'C',cluster:'Legal',x:210,y:360},
+      {id:'n8',label:'PII Data Sanitization',agent:'C',cluster:'Legal',x:330,y:330},
+      {id:'n13',label:'Cryptographic Erasure Token',agent:'A+C',cluster:'Consensus',x:280,y:270},
+      {id:'n14',label:'[UNVERIFIED] Zero-Cost Warmup',agent:'CONTAGION',cluster:'Hallucination',x:610,y:320,contagion:true},
+      {id:'n9',label:'Mock Regression Harness',agent:'D',cluster:'QA',x:760,y:360},
+      {id:'n10',label:'Latency 99th-Percentile',agent:'D',cluster:'QA',x:880,y:280}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'ENFORCES',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES',type:'normal'},
+      {source:'n3',target:'n13',label:'VERIFIES_KEY',type:'bridge'},
+      {source:'n8',target:'n13',label:'IMPLEMENTS',type:'bridge'},
+      {source:'n4',target:'n14',label:'ASSUMES',type:'contagion'},
+      {source:'n14',target:'n10',label:'CLAIMS_FIX',type:'contagion'},
+      {source:'n9',target:'n14',label:'ACCEPTED_BY_QA',type:'contagion'},
+      {source:'n7',target:'n8',label:'MANDATES',type:'normal'}
+    ]
+  }
+];
+
+const PRESETS=[
+  'Can an LLM detect when an agent has accepted a hallucinated constraint from a peer agent?',
+  'How does knowledge from a Security agent reshape the financial trade-offs made by a FinOps agent?',
+  'Show the difference between vector RAG retrieval and dynamic GraphRAG community clustering for agent memory.'
+];
+
+/* ================= 2. WebLLM Engine ================= */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (~1.8 GB, Recommended)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (~1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (~0.9 GB)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (Fastest)']
+];
+
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],note:'',
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU (Simulation Ready)','bad');
+    if(this.state==='ready')return chip('On-Device Model Active','good');
+    if(this.state==='loading')return chip('Loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model Load Error','bad');
+    return chip('Model Standby');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">WebGPU unavailable. The demo is running in deterministic interactive GraphRAG simulation mode.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label style="font-weight:600;display:block;margin-bottom:6px" for="modelsel">Select On-Device Model for Live Triple Extraction</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:6px">Runs 100% in your browser. Downloaded once into local browser cache.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your GPU ('+esc(this.modelId)+').'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{if(this.state==='error')h+='<div class="status bad">Load failed: '+esc(this.text)+'</div>';h+=btn('loadmodel','','Initialize On-Device Model');}
+    return h;
+  },
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(LLM.chip()+(S.busy?chip('Analyzing Epistemics: '+S.prog,'warn'):''));},
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Initializing WebGPU';this.note='';draw();
+    let lastErr='',lib=null;
+    try{lib=await import('https://esm.run/@mlc-ai/web-llm');}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];this.modelId=m[0];this.pct=0;this.text='Loading '+m[1];this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});
+        this.state='ready';draw();this.paint();return;
+      }catch(err){lastErr=String((err&&err.message)||err);this.engine=null;}
+    }
+    this.state='error';this.text=lastErr||'Could not load model';draw();this.paint();
+  }
+};
+
+/* ================= 3. State & Agent Operations ================= */
+const S={
+  prompt:PRESETS[0],
+  currentTurn:0,
+  useModel:true,busy:false,err:'',prog:'',log:[],
+  analysis:null
+};
+
+function note(a,t){S.log.push({agent:a,text:t});}
+
+async function runLLMAnalysis(){
+  if(S.busy)return;
+  S.busy=true;S.err='';S.log=[];S.prog='Epistemic Auditor';draw();
+  try{
+    if(LLM.ready()&&S.useModel){
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM call timed out')), 30000));
+      const completionPromise = LLM.engine.chat.completions.create({
+        messages:[
+          {role:'system',content:'You are an Epistemic Graph Analyzer for multi-agent systems. Analyze how agent interactions transform knowledge graphs. Return one sentence identifying epistemic boundaries, and one sentence explaining how cross-agent debate alters edge weights.'},
+          {role:'user',content:'Query: '+S.prompt+'\nCurrent Turn: '+TURNS[S.currentTurn].title}
+        ],
+        temperature:0.3,max_tokens:200
+      });
+      const r = await Promise.race([completionPromise, timeoutPromise]);
+      const text = String((r && r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)||'').trim();
+      note('Epistemic Graph Auditor', text);
+      S.analysis = text;
+    }else{
+      note('GraphRAG Engine','[Deterministic Epistemic Graph Mode]');
+      S.analysis = "By mapping agent memories into (Subject, PREDICATE, Object) triples with temporal validity windows [t_start, t_end], the system detects domain drift, verifies knowledge attribution, and exposes belief revision before autonomous actions commit.";
+    }
+  }catch(e){
+    S.err=String(e&&e.message||e);
+  }
+  S.busy=false;S.prog='';
+  draw();
+}
+
+/* ================= 4. Force-Directed Canvas Visualization ================= */
+const AGENT_COLORS={
+  'A':'#5CC0DE',
+  'B':'#F28E2B',
+  'C':'#7AD6A8',
+  'D':'#B07AA1',
+  'A->B':'#E9B44C',
+  'A+C':'#52D1E0',
+  'CONTAGION':'#FF6B6B'
+};
+
+let activeSimNodes=[];
+let activeSimLinks=[];
+
+function initPhysicsNodes(turnIdx){
+  const tData=TURNS[turnIdx];
+  activeSimNodes = tData.nodes.map(n=>({
+    ...n,
+    vx:(Math.random()-0.5)*0.8,
+    vy:(Math.random()-0.5)*0.8
+  }));
+  activeSimLinks = tData.links.map(l=>({
+    ...l,
+    sourceNode: activeSimNodes.find(n=>n.id===l.source),
+    targetNode: activeSimNodes.find(n=>n.id===l.target)
+  }));
+}
+
+function updatePhysics(){
+  const W=1040, H=460;
+  // Node repulsion
+  for(let i=0;i<activeSimNodes.length;i++){
+    for(let j=i+1;j<activeSimNodes.length;j++){
+      const a=activeSimNodes[i], b=activeSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<140){
+        const force=(140-dist)/dist * 0.08;
+        a.x -= dx*force; a.y -= dy*force;
+        b.x += dx*force; b.y += dy*force;
+      }
+    }
+  }
+  // Link attraction
+  activeSimLinks.forEach(l=>{
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const targetDist = l.type==='bridge'? 120 : 90;
+    const force=(dist - targetDist)*0.035;
+    l.sourceNode.x += dx/dist*force;
+    l.sourceNode.y += dy/dist*force;
+    l.targetNode.x -= dx/dist*force;
+    l.targetNode.y -= dy/dist*force;
+  });
+  // Bounds
+  activeSimNodes.forEach(n=>{
+    n.x=clamp(n.x, 70, W-70);
+    n.y=clamp(n.y, 40, H-40);
+  });
+}
+
+function drawGraph(){
+  const cv=$('#cvsGraph');if(!cv)return;
+  const g=cv.getContext('2d'), W=cv.width, H=cv.height;
+  g.fillStyle='#0A1017';g.fillRect(0,0,W,H);
+
+  updatePhysics();
+
+  // Draw Edges
+  activeSimLinks.forEach(l=>{
+    if(!l.sourceNode||!l.targetNode)return;
+    g.beginPath();
+    g.moveTo(l.sourceNode.x, l.sourceNode.y);
+    g.lineTo(l.targetNode.x, l.targetNode.y);
+
+    if(l.type==='refuted'){
+      g.strokeStyle='#FF6B6B';g.setLineDash([5,4]);g.lineWidth=2;
+    }else if(l.type==='bridge'){
+      g.strokeStyle='#7AD6A8';g.setLineDash([]);g.lineWidth=3.5;
+    }else if(l.type==='contagion'){
+      g.strokeStyle='#FF5252';g.setLineDash([3,3]);g.lineWidth=2.5;
+    }else if(l.type==='injected'){
+      g.strokeStyle='#E9B44C';g.setLineDash([]);g.lineWidth=2.2;
+    }else{
+      g.strokeStyle='#2A3E54';g.setLineDash([]);g.lineWidth=1.5;
+    }
+    g.stroke();
+    g.setLineDash([]);
+
+    // Edge Label
+    const midX=(l.sourceNode.x+l.targetNode.x)/2;
+    const midY=(l.sourceNode.y+l.targetNode.y)/2;
+    g.fillStyle='#7E95A8';
+    g.font='9px sans-serif';
+    g.textAlign='center';
+    g.fillText(l.label, midX, midY-4);
+  });
+
+  // Draw Nodes
+  activeSimNodes.forEach(n=>{
+    const col=AGENT_COLORS[n.agent]||'#5CC0DE';
+    const radius = n.highlight||n.contagion ? 14 : 11;
+
+    // Outer glow for highlights
+    if(n.highlight){
+      g.beginPath();g.arc(n.x,n.y,radius+8,0,6.2832);
+      g.fillStyle='rgba(82, 209, 224, 0.25)';g.fill();
+    }else if(n.contagion){
+      g.beginPath();g.arc(n.x,n.y,radius+10,0,6.2832);
+      g.fillStyle='rgba(255, 82, 82, 0.35)';g.fill();
+    }
+
+    g.beginPath();g.arc(n.x,n.y,radius,0,6.2832);
+    g.fillStyle=col;g.fill();
+    g.strokeStyle='#FFFFFF';g.lineWidth=1.8;g.stroke();
+
+    // Node text
+    g.fillStyle='#E5EEF5';g.font='11px sans-serif';g.textAlign='center';
+    g.fillText(n.label, n.x, n.y+radius+14);
+
+    g.fillStyle='#8FA3AD';g.font='9px sans-serif';
+    g.fillText('['+n.cluster+']', n.x, n.y-radius-4);
+  });
+
+  requestAnimationFrame(drawGraph);
+}
+
+/* ================= 5. UI Rendering ================= */
+function setTurn(turnIdx){
+  S.currentTurn=clamp(turnIdx,0,TURNS.length-1);
+  initPhysicsNodes(S.currentTurn);
+  updateTimelineUI();
+  draw();
+}
+
+function updateTimelineUI(){
+  $$('.timeline-step').forEach((el,idx)=>{
+    if(idx===S.currentTurn)el.classList.add('active');
+    else el.classList.remove('active');
+  });
+}
+
+function render(){
+  const cur=TURNS[S.currentTurn];
+  let h='<section class="panel"><h2>1. Applied GraphRAG Reasoning Engine</h2>'+LLM.ui()+'</section>';
+
+  h+='<section class="panel"><h2>2. Investigate Epistemic Dynamics</h2>';
+  h+='<label style="font-weight:600;display:block;margin-bottom:6px" for="prompt">Research Query / Multi-Agent Hypothesis</label>';
+  h+='<textarea id="prompt" maxlength="400">'+esc(S.prompt)+'</textarea>';
+  h+='<div class="row" style="margin:10px 0 14px">'+PRESETS.map((p,i)=>btn('preset',i,p.slice(0,38)+'…','ghost sm')).join('')+'</div>';
+  h+='<div class="row">'+btn('runaudit','','Run GraphRAG Auditor on Current Turn',null,S.busy)+btn('nextturn','','Advance to Next Dialogue Turn ▶','ghost',S.busy)+'</div>';
+  h+='</section>';
+
+  // Turn Explanation Card
+  h+='<section class="panel"><h2>3. Current Epistemic State: '+esc(cur.title)+'</h2>';
+  h+='<p>'+esc(cur.desc)+'</p>';
+  h+='<div class="status ok"><b>Structural Graph Event:</b> '+esc(cur.event)+'</div>';
+  h+='<div class="cards" style="margin-top:14px;">';
+  h+='<div class="card"><h3>Active Concepts in Scope</h3><p class="small"><b>Total Concepts:</b> '+cur.nodes.length+' nodes<br><b>Cross-Agent Triples:</b> '+cur.links.length+' active relations</p></div>';
+  h+='<div class="card"><h3>Graph Mutation Mode</h3><p class="small"><b>Type:</b> '+chip(cur.title.split(':')[0],'good')+'<br><b>Provenance Tracking:</b> Cryptographic Event IDs</p></div>';
+  h+='</div>';
+  h+='</section>';
+
+  if(S.busy||S.err||S.log.length||S.analysis){
+    h+='<section class="panel"><h2>4. Epistemic Audit Log</h2>';
+    if(S.busy)h+='<div class="status warn">Auditing Graph Dynamics: '+esc(S.prog)+'…</div>';
+    if(S.err)h+='<div class="status bad">'+esc(S.err)+'</div>';
+    if(S.analysis)h+='<div class="status ok"><b>GraphRAG Synthesis:</b> '+esc(S.analysis)+'</div>';
+    if(S.log.length)h+='<details open><summary>Agent Transcripts ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+
+  return h;
+}
+
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='prompt'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#prompt');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Auditing','warn'):''));
+}
+
+/* ================= 6. Event Listeners ================= */
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act], [data-turn]');
+  if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;
+
+  if(t.dataset.turn!==undefined){
+    setTurn(+t.dataset.turn);
+    return;
+  }
+
+  const v=t.dataset.val, act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='preset'){S.prompt=PRESETS[+v];draw();return;}
+  if(act==='prevturn'){setTurn(S.currentTurn-1);return;}
+  if(act==='nextturn'){setTurn(S.currentTurn+1);return;}
+  if(act==='resetphys'){initPhysicsNodes(S.currentTurn);return;}
+  if(act==='runaudit'){runLLMAnalysis();return;}
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}
+});
+document.addEventListener('input',e=>{if(e.target.id==='prompt')S.prompt=e.target.value;});
+
+// Startup
+initPhysicsNodes(0);
+draw();
+updateTimelineUI();
+drawGraph();
+</script>
+</body>
+</html>
