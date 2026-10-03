@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Symphony Composer Team: AI agents that help write a symphony</title>
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#10171D;--panel:#18222B;--ink:#E6EDF2;--muted:#9FADB9;--line:#2D3B47;--accent:#5CC0DE;--accent-ink:#06222C;--chip:#223140;
+    --warn:#F0B84A;--warn-bg:#3A2D10;--bad:#FF9A90;--bad-bg:#3D1E1B;--good:#7AD6A8;--good-bg:#16342A;}
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:980px;margin:0 auto;padding:20px 16px 48px;}
+h1{font:700 clamp(1.6rem,4vw,2.4rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.25rem/1.2 var(--display);margin:0 0 8px;}
+h3{font:600 1rem/1.3 var(--display);margin:14px 0 5px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:72ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 12px;}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 13px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:10px 0;font-size:.9rem;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea{resize:vertical;min-height:80px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;height:12px;accent-color:var(--accent);}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);}
+.card.pick{border:2px solid var(--accent);}
+.card.best{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent-msg{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.87rem;}
+.agent-msg b{min-width:160px;}
+.agent-msg span{color:var(--muted);word-break:break-word;}
+details{border-top:1px solid var(--line);padding:8px 0;}
+summary{cursor:pointer;font-weight:600;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;font-size:.88rem;}
+th,td{padding:5px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+canvas#stage{width:100%;border-radius:12px;background:#12161c;display:block;}
+.bar{height:8px;background:var(--chip);border-radius:4px;overflow:hidden;margin:8px 0;}
+.bar i{display:block;height:100%;width:0;background:var(--accent);}
+ol.lede-items{color:var(--muted);max-width:72ch;margin:8px 0 12px 20px;padding:0;}
+ol.lede-items li{margin:4px 0;}
+ol.lede-items b{color:var(--ink);}
+.foot{margin-top:24px;color:var(--muted);font-size:.85rem;max-width:76ch;}
+.mov-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="small muted" style="margin-bottom:8px">A team of AI agents collaborates with you to compose an original symphony — themes, harmonies, orchestration — synthesized live in your browser (WebLLM + Web Audio, one HTML file)</div>
+    <h1>Symphony Composer Team: from brief to original symphony</h1>
+    <p class="lede">Describe the symphony you want to hear — a mood, a story, an emotion. A team of specialist AI agents turns your words into an original three-movement work: they pick the key and scale, invent melodic themes for each movement, plan the harmonies, and three orchestrators realize it in chamber, romantic, and baroque style. You hear all three versions, pick your favourite, and download the WAV.</p>
+    <ol class="lede-items">
+      <li><b>Musical director</b>: Reads your brief and decides the key, mode (major/minor/dorian), overall emotional arc, and tempo feel.</li>
+      <li><b>Thematic composer</b>: Invents a melodic character for each of the three movements — the shape, rhythm, and register of the main theme.</li>
+      <li><b>Harmonic planner</b>: Chooses the chord language for each movement — triumphant, stormy, lyrical, flowing or melancholy.</li>
+      <li><b>Three orchestrators</b>: Chamber, Romantic, and Baroque — each realises the same musical material with different instruments, dynamics and articulation.</li>
+      <li><b>Sound critic, fixes and curator</b>: Each take is measured, critiqued, fixed and ranked. You choose which interpretation to keep.</li>
+    </ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" aria-live="polite"></main>
+  <section class="panel" id="stagepanel" aria-label="Score and piano roll">
+    <h2 id="stagetitle">The score</h2>
+    <canvas id="stage" width="940" height="420" aria-label="Piano roll and movement map"></canvas>
+    <div class="bar" aria-hidden="true"><i id="prog"></i></div>
+    <div class="row" id="stagebtns"><span class="muted small">Compose a symphony, then press Listen on a take.</span></div>
+  </section>
+  <p class="foot">Honest label: the agents are a small on-device chat model, so some replies may be unusable — the page falls back to structured rules and says so. The musical material is generated procedurally from the agents' semantic choices (key, contour, rhythm, harmony style): the code turns those into actual notes, synthesizes them with Web Audio, and renders offline. Nothing you type leaves your device.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const pct=v=>Math.round(v*100)+'%';
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function tog(act,val,label,on,dis){return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(x){const e=$('#status');if(e)e.innerHTML=x||'';}
+
+/* ========== music theory ========== */
+const PC={C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+const NNAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const MODES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10]};
+const BASE_TEMPOS=[108,62,132]; // Allegro, Andante, Vivace
+const BASE_BARS=[2,4,3]; // beats per bass/perc unit per movement
+const MOV_NAMES=['I. Allegro','II. Andante','III. Vivace'];
+const MOV_REPS=[4,3,4];
+
+function buildScale(k,m){
+  const r=PC[k]||0,ivs=MODES[m]||MODES.major,ns=[];
+  for(let o=3;o<=6;o++)ivs.forEach(iv=>{const n=12*(o+1)+(r+iv)%12;if(n>=46&&n<=88)ns.push(n);});
+  return[...new Set(ns)].sort((a,b)=>a-b);
+}
+
+function roman2chord(roman,key,mode){
+  const degs={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10]};
+  const d=degs[mode]||degs.major;
+  const NUM={I:0,II:1,III:2,IV:3,V:4,VI:5,VII:6,i:0,ii:1,iii:2,iv:3,v:4,vi:5,vii:6};
+  const isMin=roman===roman.toLowerCase();
+  const deg=NUM[roman.toUpperCase()];
+  if(deg===undefined||deg>=d.length)return key;
+  const root=(PC[key]+d[deg])%12;
+  return NNAMES[root]+(isMin?'m':'');
+}
+
+const CHORD_TMPL={
+  major:{
+    triumphant:[['I',2],['V',2],['IV',2],['I',2]],
+    heroic:[['I',2],['V',2],['I',2],['IV',2],['V',2],['I',2]],
+    flowing:[['I',4],['IV',2],['V',2],['vi',4],['IV',2],['V',2]],
+    dramatic:[['I',2],['vi',2],['IV',2],['V',2],['I',4],['V',4]],
+    tender:[['I',4],['vi',4],['IV',4],['V',4]],
+  },
+  minor:{
+    stormy:[['i',2],['VI',2],['III',2],['VII',2],['i',2],['iv',2],['V',2],['i',2]],
+    heroic:[['i',2],['iv',2],['V',4],['i',2],['VI',2],['VII',2],['i',2]],
+    melancholy:[['i',4],['VI',4],['III',4],['VII',4]],
+    lyrical:[['i',4],['III',4],['VI',4],['VII',4]],
+    dramatic:[['i',2],['VI',2],['VII',4],['i',4]],
+  }
+};
+const ALL_TMPL_KEYS=Object.keys(CHORD_TMPL.major); // same for both
+
+function buildChordStr(templateKey,key,mode){
+  const modeKey=mode==='dorian'?'minor':mode==='mixolydian'?'major':mode;
+  const set=CHORD_TMPL[modeKey]||CHORD_TMPL.major;
+  const tmpl=set[templateKey]||set[Object.keys(set)[0]];
+  return tmpl.map(([r,d])=>roman2chord(r,key,mode)+':'+d).join(' ');
+}
+
+function chordInfo(name){
+  const m=/^([A-G][#b]?)(m7|m|7)?$/.exec(name);
+  if(!m)return{root:0,pcs:[0,4,7]};
+  const pv=PC[m[1]];const root=(pv!==undefined?pv:0);
+  const q=m[2]||'';const iv=q==='m'?[0,3,7]:q==='7'?[0,4,7,10]:q==='m7'?[0,3,7,10]:[0,4,7];
+  return{root,pcs:iv.map(i=>(root+i)%12)};
+}
+function parseChords(str){let t=0;const list=[];str.trim().split(/\s+/).forEach(tok=>{const p=tok.split(':'),d=parseFloat(p[1]);if(isNaN(d))return;const c=chordInfo(p[0]);list.push({b:t,d,name:p[0],root:c.root,pcs:c.pcs});t+=d;});return{list,len:t};}
+function chordAt(ch,b){for(const c of ch.list)if(b>=c.b-1e-6&&b<c.b+c.d-1e-6)return c;return ch.list[ch.list.length-1];}
+function nearestCT(chord,target){let best=target,bd=1e9;for(let x=target-12;x<=target+12;x++){if(chord.pcs.indexOf(((x%12)+12)%12)<0)continue;const d=Math.abs(x-target);if(d<bd){bd=d;best=x;}}return best;}
+
+const RHYTHM_PATS={
+  even:[1,1,1,1,1,1,1,1],
+  march:[1,1,0.5,0.5,1,1,0.5,0.5],
+  flowing:[1.5,0.5,1,1,1.5,0.5,1],
+  dramatic:[2,0.5,0.5,1,2,0.5,0.5,1],
+  waltz:[1,0.5,0.5,1,0.5,0.5,1,0.5,0.5],
+};
+
+function generateTheme(contour,rhythm,register,scale){
+  const durs=RHYTHM_PATS[rhythm]||RHYTHM_PATS.even;
+  const n=durs.length;
+  const rf=register==='high'?0.6:register==='low'?0.15:0.35;
+  let pos=Math.floor(rf*(scale.length-1));
+  const notes=[];
+  const beatPos=[];let t=0;durs.forEach(d=>{beatPos.push(t);t+=d;});
+  for(let i=0;i<n;i++){
+    const frac=i/Math.max(1,n-1);
+    let target=pos;
+    if(contour==='ascending')target=Math.floor(rf*scale.length+frac*scale.length*0.35);
+    else if(contour==='descending')target=Math.floor((rf+0.35)*scale.length-frac*scale.length*0.35);
+    else if(contour==='arch')target=Math.floor(rf*scale.length+Math.sin(Math.PI*frac)*scale.length*0.28);
+    else if(contour==='valley')target=Math.floor((rf+0.2)*scale.length-Math.sin(Math.PI*frac)*scale.length*0.28);
+    else if(contour==='zigzag')target=pos+(i%2===0?3:-2);
+    target=clamp(Math.round(target),0,scale.length-1);
+    notes.push({midi:scale[target],dur:durs[i]});
+    pos=target;
+  }
+  return{notes,beatPos,len:durs.reduce((s,d)=>s+d,0)};
+}
+
+/* ========== instruments (same as orchestra-team) ========== */
+const INST={
+  violin:{name:'Violin',kind:'bow',cut:3600,gain:0.95,slow:1,rel:0.14,pan:-0.5,sec:'Strings',x:.28,y:.78},
+  violin2:{name:'2nd violin',kind:'bow',cut:3200,gain:0.8,slow:1.1,rel:0.14,pan:-0.2,sec:'Strings',x:.4,y:.88},
+  viola:{name:'Viola',kind:'bow',cut:2200,gain:0.85,slow:1.2,rel:0.16,pan:0.2,sec:'Strings',x:.6,y:.88},
+  cello:{name:'Cello',kind:'bow',cut:1500,gain:1.0,slow:1.3,rel:0.18,pan:0.5,sec:'Strings',x:.72,y:.78},
+  bass:{name:'Double bass',kind:'bow',cut:800,gain:1.0,slow:1.5,rel:0.2,pan:0.65,sec:'Strings',x:.86,y:.68},
+  flute:{name:'Flute',kind:'air',gain:0.8,slow:1.4,rel:0.1,pan:-0.12,sec:'Woodwinds',x:.4,y:.55},
+  oboe:{name:'Oboe',kind:'reed',sub:'oboe',gain:0.8,slow:1.2,rel:0.08,pan:0.0,sec:'Woodwinds',x:.5,y:.55},
+  clarinet:{name:'Clarinet',kind:'reed',sub:'clar',gain:0.85,slow:1.2,rel:0.08,pan:0.14,sec:'Woodwinds',x:.6,y:.55},
+  horn:{name:'Horn',kind:'brass',cut:1100,gain:0.8,slow:1.8,rel:0.18,pan:0.3,sec:'Brass',x:.7,y:.42},
+  trumpet:{name:'Trumpet',kind:'brass',cut:3200,gain:0.7,slow:1.1,rel:0.1,pan:0.4,sec:'Brass',x:.8,y:.4},
+  harp:{name:'Harp',kind:'pluck',sub:'harp',gain:0.85,decay:1.3,pan:-0.7,sec:'Keys',x:.12,y:.6},
+  piano:{name:'Piano',kind:'pluck',sub:'piano',gain:0.9,decay:1.7,pan:-0.05,sec:'Keys',x:.2,y:.5},
+  harpsichord:{name:'Harpsichord',kind:'pluck',sub:'harpsichord',gain:0.8,decay:0.55,pan:-0.3,sec:'Keys',x:.18,y:.55},
+  timpani:{name:'Timpani',kind:'drum',gain:1.0,pan:0.7,sec:'Perc',x:.9,y:.3}
+};
+const SEC_COLOR={'Strings':'#E9B44C','Woodwinds':'#5CC0DE','Brass':'#E8744F','Keys':'#9C7BE0','Perc':'#8FA3AD'};
+const ROLE_COLOR={melody:'#FFD166',double:'#FFE9A8',counter:'#5CC0DE',inner:'#7AD6A8',pad:'#9C7BE0',bass:'#E8744F',perc:'#8FA3AD'};
+const ROLE_VOL={melody:1,double:0.48,counter:0.6,inner:0.48,pad:0.34,bass:0.85,perc:0.8};
+const ARTIC={legato:{a:0.07,hold:1.04},detached:{a:0.03,hold:0.86},staccato:{a:0.012,hold:0.44}};
+
+/* ========== orchestration lenses ========== */
+const ORCH_LENSES=[
+  {id:'chamber',name:'Chamber ensemble',desc:'intimate strings with flute and oboe, transparent texture',
+   def:{melody:'violin',counter:'flute',inner:'piano',pad:'viola',bass:'cello',perc:false,double:false,
+        articulation:'detached',expression:0.4,warmth:0.5,reverb:0.35,tempoScale:1.0,loudness:3}},
+  {id:'romantic',name:'Full romantic orchestra',desc:'lush orchestra with rich strings, woodwinds, brass and harp',
+   def:{melody:'violin',counter:'oboe',inner:'harp',pad:'horn',bass:'cello',perc:true,double:true,
+        articulation:'legato',expression:0.82,warmth:0.82,reverb:0.65,tempoScale:0.88,loudness:4}},
+  {id:'baroque',name:'Baroque ensemble',desc:'crisp period style, harpsichord continuo and flute lead',
+   def:{melody:'flute',counter:'violin',inner:'harpsichord',pad:'viola',bass:'cello',perc:false,double:false,
+        articulation:'staccato',expression:0.18,warmth:0.22,reverb:0.2,tempoScale:1.14,loudness:3}},
+];
+
+function buildMovement(movIdx,thematic,chordStr,plan,orch){
+  const scale=buildScale(plan.key,plan.mode);
+  const ch=parseChords(chordStr);
+  const {notes:theme,beatPos,len:themeLen}=generateTheme(thematic.contour,thematic.rhythm,thematic.register,scale);
+  const REPS=MOV_REPS[movIdx];
+  const BPM=BASE_TEMPOS[movIdx]*plan.tempoScale;
+  const spb=60/BPM;
+  const BAR=BASE_BARS[movIdx];
+  const bv=clamp(0.25+0.07*plan.loudness,0.15,0.65);
+  const events=[];
+
+  function addEv(role,inst,midi,beat,dur,vel){
+    if(!inst||!INST[inst])return;
+    midi=clamp(Math.round(midi),24,100);
+    const art=ARTIC[plan.articulation]||ARTIC.detached;
+    const t=beat*spb,d=Math.max(0.06,dur*spb*art.hold),v=clamp(vel,0.04,0.94);
+    events.push({role,inst,t,d,midi,vel:v,b:beat});
+  }
+
+  for(let rep=0;rep<REPS;rep++){
+    const off=rep*themeLen;
+    const dyn=0.72+0.28*(rep/(Math.max(1,REPS-1)));
+    // octave shift: melody goes up an octave on the penultimate rep for climax
+    const oct=(rep===REPS-2)?12:0;
+
+    theme.forEach((n,ni)=>{
+      const b=off+beatPos[ni];
+      addEv('melody',orch.melody,n.midi+oct,b,n.dur,bv*dyn*ROLE_VOL.melody);
+      if(orch.double&&rep===REPS-1)addEv('double',orch.double,n.midi+12,b,n.dur,bv*0.45);
+      // counter: chord tone a third below melody, with slight offset
+      const co=chordAt(ch,(b+themeLen*0.25)%ch.len);
+      const cMidi=nearestCT(co,n.midi-4);
+      if(b+0.25<themeLen*REPS)addEv('counter',orch.counter,cMidi,b+0.25,n.dur*0.8,bv*dyn*ROLE_VOL.counter);
+    });
+
+    // bass
+    for(let b=0;b<themeLen;b+=BAR){
+      const c=chordAt(ch,(off+b)%ch.len);
+      addEv('bass',orch.bass,36+c.root,off+b,BAR*0.86,bv*dyn*ROLE_VOL.bass);
+      if(BAR===3&&b+1<themeLen){addEv('bass',orch.bass,43+c.root,off+b+1,0.85,bv*dyn*0.7);}
+    }
+
+    // inner arpeggios
+    for(let b=0;b<themeLen;b+=0.5){
+      const c=chordAt(ch,(off+b)%ch.len);
+      const targets=[60,64,67];
+      const mi=Math.floor(b*2)%targets.length;
+      addEv('inner',orch.inner,nearestCT(c,targets[mi]),off+b,0.44,bv*dyn*ROLE_VOL.inner);
+    }
+
+    // pad (slow chord tones)
+    for(let b=0;b<themeLen;b+=2){
+      const c=chordAt(ch,(off+b)%ch.len);
+      const targets=[52,55,59];
+      targets.forEach(t=>addEv('pad',orch.pad,nearestCT(c,t),off+b,1.85,bv*dyn*ROLE_VOL.pad));
+    }
+
+    // perc
+    if(orch.perc){
+      for(let b=0;b<themeLen;b+=BAR){
+        const c=chordAt(ch,(off+b)%ch.len);
+        addEv('perc','timpani',36+c.root,off+b,0.85,bv*dyn*ROLE_VOL.perc);
+      }
+    }
+  }
+
+  events.sort((a,b)=>a.t-b.t);
+  const total=events.reduce((m,e)=>Math.max(m,e.t+e.d),0)+0.9;
+  return{events,total,themeLen,REPS,BPM};
+}
+
+/* ========== synthesizer (same as orchestra-team) ========== */
+function makeNoise(ctx){const n=ctx.sampleRate*0.3,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;return b;}
+function makeImpulse(ctx,secs){const n=Math.floor(ctx.sampleRate*secs),b=ctx.createBuffer(2,n,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.4);}return b;}
+function graph(ctx,plan,mode){
+  const master=ctx.createGain();master.gain.value=plan.mix.master;const nodes={};
+  if(mode==='stem'){
+    const merger=ctx.createChannelMerger(2);master.connect(merger);
+    const bm=ctx.createGain(),ba=ctx.createGain();bm.connect(merger,0,0);ba.connect(merger,0,1);merger.connect(ctx.destination);
+    bm.gain.value=plan.mix.master*plan.mix.melody;ba.gain.value=plan.mix.master*plan.mix.acc;
+    return{out:(role)=>(role==='melody'||role==='double')?bm:ba};
+  }
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=3;master.connect(comp);comp.connect(ctx.destination);
+  if(plan.reverb>0.02){const cv=ctx.createConvolver();cv.buffer=makeImpulse(ctx,0.8+plan.reverb*2.6);const wet=ctx.createGain();wet.gain.value=plan.reverb*0.52;cv.connect(wet);wet.connect(master);nodes.rev=cv;}
+  return{out:(role,inst)=>{const k=role+inst;if(nodes[k])return nodes[k];const g=ctx.createGain();g.gain.value=(role==='melody'||role==='double')?plan.mix.melody:plan.mix.acc;const p=ctx.createStereoPanner();p.pan.value=INST[inst].pan;g.connect(p);p.connect(master);if(nodes.rev)p.connect(nodes.rev);return nodes[k]=g;}};
+}
+function playNote(ctx,out,e,plan,noise){
+  const I=INST[e.inst],art=ARTIC[plan.articulation]||ARTIC.detached,f=440*Math.pow(2,(e.midi-69)/12),t=e.t+0.05;
+  const warm=0.55+0.95*(1-plan.warmth),long=!(I.kind==='pluck'||I.kind==='drum');
+  const d=Math.max(0.07,e.d*(long?art.hold:1)),peak=Math.min(0.5,e.vel*I.gain*0.2),a=Math.max(0.012,art.a*(I.slow||1));
+  const osc=(type,fr,end)=>{const o=ctx.createOscillator();o.type=type;o.frequency.value=fr;o.start(t);o.stop(end);return o;};
+  const env=(g,end,rel)=>{const p=g.gain,aa=Math.min(a,Math.max(0.012,(end-t)*0.6));p.setValueAtTime(0.0001,t);p.linearRampToValueAtTime(peak,t+aa);p.setValueAtTime(peak*0.9,Math.max(t+aa,end-0.01));p.linearRampToValueAtTime(0.0001,end+rel);};
+  const vib=(o1,end,depth,hz)=>{if(end-t<0.3)return;const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=hz;lg.gain.value=depth;l.connect(lg);o1.forEach(o=>lg.connect(o.frequency));l.start(t+0.12);l.stop(end);};
+  const g=ctx.createGain();g.connect(out);
+  if(I.kind==='bow'){const end=t+d,fin=end+I.rel+0.05,lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=Math.min(9000,I.cut*warm*(0.7+0.6*e.vel+(e.midi>76?0.2:0)));lp.Q.value=0.6;lp.connect(g);const o1=osc('sawtooth',f,fin),o2=osc('sawtooth',f*1.005,fin);o1.connect(lp);o2.connect(lp);vib([o1,o2],fin,f*0.006,5.3);env(g,end,I.rel);}
+  else if(I.kind==='air'){const end=t+d,fin=end+I.rel+0.05;const o1=osc('sine',f,fin),o2=osc('sine',f*2,fin),o3=osc('sine',f*3,fin),g2=ctx.createGain(),g3=ctx.createGain();g2.gain.value=0.22*(1.3-plan.warmth*0.6);g3.gain.value=0.07;o1.connect(g);o2.connect(g2);g2.connect(g);o3.connect(g3);g3.connect(g);vib([o1,o2,o3],fin,f*0.005,5);env(g,end,I.rel);}
+  else if(I.kind==='reed'){const end=t+d,fin=end+I.rel+0.05,f1=ctx.createBiquadFilter();if(I.sub==='oboe'){f1.type='bandpass';f1.frequency.value=1250*warm;f1.Q.value=1.1;const o=osc('sawtooth',f,fin);o.connect(f1);vib([o],fin,f*0.004,5.2);}else{f1.type='lowpass';f1.frequency.value=1700*warm;f1.Q.value=0.8;const o=osc('square',f,fin);o.connect(f1);vib([o],fin,f*0.003,5);}f1.connect(g);env(g,end,I.rel);}
+  else if(I.kind==='brass'){const end=t+d,fin=end+I.rel+0.05,lp=ctx.createBiquadFilter();lp.type='lowpass';lp.Q.value=1.5;lp.frequency.setValueAtTime(I.cut*0.3,t);lp.frequency.linearRampToValueAtTime(I.cut*warm*(0.6+0.7*e.vel),t+0.14);lp.connect(g);const o1=osc('sawtooth',f,fin),o2=osc('sawtooth',f*0.997,fin);o1.connect(lp);o2.connect(lp);env(g,end,I.rel);}
+  else if(I.kind==='pluck'){const dec=Math.min(2.6,I.decay+Math.min(0.8,e.d*0.4)),fin=t+dec+0.1;g.gain.setValueAtTime(Math.min(0.5,peak*1.4),t);g.gain.exponentialRampToValueAtTime(0.0001,t+dec);if(I.sub==='harpsichord'){const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3800*warm;lp.connect(g);const o=osc('sawtooth',f,fin);o.connect(lp);}else{const parts=I.sub==='piano'?[[1,1],[2,.55],[3,.3],[4,.16],[5,.08]]:[[1,1],[2,.35],[3,.12]];parts.forEach(p=>{if(f*p[0]>9000)return;const o=osc('sine',f*p[0],fin),pg=ctx.createGain();pg.gain.value=p[1]*(p[0]>1?(0.4+0.8*(1-plan.warmth)):1);o.connect(pg);pg.connect(g);});}}
+  else if(I.kind==='drum'){const fin=t+1.4;g.gain.setValueAtTime(Math.min(0.6,peak*2.2),t);g.gain.exponentialRampToValueAtTime(0.0001,t+1.2);const o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(f*2.1,t);o.frequency.exponentialRampToValueAtTime(f,t+0.14);o.connect(g);o.start(t);o.stop(fin);const ns=ctx.createBufferSource();ns.buffer=noise;const nf=ctx.createBiquadFilter();nf.type='lowpass';nf.frequency.value=500;const ng=ctx.createGain();ng.gain.setValueAtTime(peak*1.2,t);ng.gain.exponentialRampToValueAtTime(0.0001,t+0.1);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.12);}
+}
+async function renderOffline(perf,plan,mode,sr){const n=Math.ceil((perf.total+(mode==='mix'?3:1.3))*sr),ctx=new OfflineAudioContext(2,n,sr),g=graph(ctx,plan,mode),nz=makeNoise(ctx);perf.events.forEach(e=>playNote(ctx,g.out(e.role,e.inst),e,plan,nz));return ctx.startRendering();}
+function wavBlob(buf){const n=buf.length,data=new DataView(new ArrayBuffer(44+n*4)),L=buf.getChannelData(0),R=buf.getChannelData(1);const ws=(o,s)=>{for(let i=0;i<s.length;i++)data.setUint8(o+i,s.charCodeAt(i));};ws(0,'RIFF');data.setUint32(4,36+n*4,true);ws(8,'WAVEfmt ');data.setUint32(16,16,true);data.setUint16(20,1,true);data.setUint16(22,2,true);data.setUint32(24,buf.sampleRate,true);data.setUint32(28,buf.sampleRate*4,true);data.setUint16(32,4,true);data.setUint16(34,16,true);ws(36,'data');data.setUint32(40,n*4,true);let o=44;for(let i=0;i<n;i++){data.setInt16(o,clamp(L[i],-1,1)*32767,true);data.setInt16(o+2,clamp(R[i],-1,1)*32767,true);o+=4;}return new Blob([data],{type:'audio/wav'});}
+
+/* ========== measurement ========== */
+const db=x=>20*Math.log10(Math.max(x,1e-6));
+async function measureTake(perf,plan){
+  const sr=22050,buf=await renderOffline(perf,plan,'stem',sr),L=buf.getChannelData(0),R=buf.getChannelData(1),W=Math.floor(sr*0.5),nw=Math.floor(L.length/W);
+  const mel=[],acc=[],mix=[];let peak=0,d2=0,e2=0;
+  for(let w=0;w<nw;w++){let sl=0,sr_=0,sm=0;for(let i=w*W;i<(w+1)*W;i++){const l=L[i],r=R[i],m=l+r;sl+=l*l;sr_+=r*r;sm+=m*m;const av=Math.abs(m);if(av>peak)peak=av;if(i>0){const dm=m-(L[i-1]+R[i-1]);d2+=dm*dm;e2+=m*m;}}const rl=Math.sqrt(sl/W),rr=Math.sqrt(sr_/W),rm=Math.sqrt(sm/W);if(rl>0.004)mel.push(db(rl));if(rr>0.004)acc.push(db(rr));if(rm>0.004)mix.push(db(rm));}
+  mix.sort((a,b)=>a-b);const q=p=>mix.length?mix[Math.min(mix.length-1,Math.floor(p*mix.length))]:0;
+  const m={balance:mean(mel)-mean(acc),peak,range:q(0.9)-q(0.1),bright:e2>0?Math.sqrt(d2/e2):0,tempoRatio:plan.tempoScale};
+  const TH={buriedDb:-0.5,thinDb:9,clip:0.92,quiet:0.2,flat:3.5,harsh:0.55,goodLo:1.5,goodHi:6,rangeLo:5,rangeHi:13};
+  const issues=[];
+  if(m.balance<TH.buriedDb)issues.push({code:'buried',fix:'Lift melody, pull back accompaniment.'});
+  if(m.balance>TH.thinDb)issues.push({code:'thin',fix:'Bring the accompaniment up.'});
+  if(m.peak>TH.clip)issues.push({code:'clip',fix:'Lower master level.'});
+  if(m.peak<TH.quiet)issues.push({code:'quiet',fix:'Raise master level.'});
+  if(m.range<TH.flat)issues.push({code:'flat',fix:'Add expression and dynamics.'});
+  if(m.bright>TH.harsh)issues.push({code:'harsh',fix:'Warm up the tone.'});
+  const closeTo=(v,lo,hi,soft)=>v>=lo&&v<=hi?1:clamp(1-(v<lo?lo-v:v-hi)/soft,0,1);
+  const score=mean([closeTo(m.balance,TH.goodLo,TH.goodHi,8),closeTo(m.peak,0.45,0.9,0.4),closeTo(m.range,TH.rangeLo,TH.rangeHi,6),clamp(1-Math.max(0,m.bright-TH.harsh*0.7)/(TH.harsh*0.6),0,1)]);
+  return{metrics:m,issues,score};
+}
+function applyFixes(plan,issues){const p=JSON.parse(JSON.stringify(plan)),c=issues.map(i=>i.code);if(c.includes('buried')){p.mix.melody=Math.min(2.5,p.mix.melody*1.4);p.mix.acc=Math.max(0.3,p.mix.acc*0.75);}if(c.includes('thin')){p.mix.acc=Math.min(2,p.mix.acc*1.35);}if(c.includes('clip')){p.mix.master=Math.max(0.2,p.mix.master*0.8);}if(c.includes('quiet')){p.mix.master=Math.min(2.5,p.mix.master*1.7);}if(c.includes('flat')){p.expression=Math.min(1,p.expression+0.3);}if(c.includes('harsh')){p.warmth=Math.min(1,p.warmth+0.3);}return p;}
+
+/* ========== WebLLM ========== */
+const MODELS=[['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, ~1.8 GB)'],['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (~1 GB)'],['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (~0.9 GB)'],['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small)'],['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest)']];
+const LLM={state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],note:'',
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){if(!HAS_GPU)return chip('No WebGPU','bad');if(this.state==='ready')return chip('Model ready','good');if(this.state==='loading')return chip('Loading '+this.pct+'%','warn');if(this.state==='error')return chip('Model failed','bad');return chip('Model not loaded');},
+  ui(){if(!HAS_GPU)return '<div class="status warn">No WebGPU — rules-only mode is still fully functional.</div>';const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');let h='<label style="font-weight:500;display:block;margin-bottom:4px" for="modelsel">On-device model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select><p class="small muted" style="margin-top:8px">Cached in your browser after first download. Nothing leaves your device.</p>';if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';else if(this.state==='ready')h+='<div class="status ok">Model ready ('+esc(this.modelId)+').'+(this.note?'<br>'+esc(this.note):'')+' </div>';else{if(this.state==='error')h+='<div class="status bad">Could not load: '+esc(this.text)+'</div>';h+=btn('loadmodel','','Load model');}return h;},
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(LLM.chip()+(S.busy?chip('Composing: '+S.prog,'warn'):''));},
+  async load(){const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);this.state='loading';this.pct=0;this.text='Starting';this.note='';draw();let lastErr='',lib=null;try{lib=await import('https://esm.run/@mlc-ai/web-llm');}catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);draw();this.paint();return;}for(let i=0;i<order.length;i++){const m=order[i];this.modelId=m[0];this.pct=0;this.text=(i?'Trying smaller: ':'Loading ')+m[1];this.paint();try{this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});this.state='ready';this.note=i?'Fell back to '+m[1]:'' ;draw();this.paint();return;}catch(err){lastErr=String((err&&err.message)||err);this.engine=null;}}this.state='error';this.text=lastErr||'No model loaded.';draw();this.paint();}
+};
+
+/* ========== agents ========== */
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,es=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(es)es=false;else if(c==='\\')es=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+const fstr=(v,d,max=200)=>v&&typeof v==='string'&&v.trim().length>2?String(v).trim().slice(0,max):d;
+const fnum=(v,a,b,d)=>{if(v===null||v===undefined||v==='')return d;v=Number(v);return isFinite(v)?clamp(v,a,b):d;};
+
+const PRESETS=['A dark, stormy symphony in D minor that builds to a triumphant finale','A pastoral, gentle symphony in F major inspired by a quiet countryside morning','A heroic symphony in C minor in the spirit of Beethoven, starting with a powerful motif','A mysterious, nocturnal symphony in B minor that drifts between tension and calm','A joyful, light symphony in G major for a celebration'];
+const S={brief:PRESETS[0],useModel:true,busy:false,stop:false,err:'',prog:'',log:[],direction:null,movements:[],takes:[],curator:null,pick:-1,n:0,total:0};
+
+function note(a,t){S.log.push({agent:a,text:t});}
+async function ask(agent,sys,user,temp,max){S.n++;S.prog=agent;draw();LLM.paint();await sleep(0);const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,max_tokens:max||200});const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();note(agent,text.slice(0,300));return text;}
+async function agentJ(name,sys,user,temp,max){if(!S.useModel){note(name,'(rules-only)');return null;}if(!LLM.ready())throw new Error('Load the model first, or use rules-only.');return firstJson(await ask(name,sys,user,temp,max));}
+
+/* fallbacks */
+function fbDirector(brief){const b=brief.toLowerCase();let key='C',mode='major';if(/minor|dark|storm|night|mourn|tragic|sad/.test(b)){mode='minor';key=/d\s*minor|d minor/.test(b)?'D':/c minor|beethoven/.test(b)?'C':/b minor/.test(b)?'B':'A';}else if(/major|joyful|triumph|pastoral|bright|joy|celebr/.test(b)){mode='major';key=/f major/.test(b)?'F':/g major/.test(b)?'G':/d major/.test(b)?'D':'C';}return{title:'Symphony in '+key+' '+mode,key,mode,arc:mode==='minor'?'darkness to triumph':'from opening to climax',source:'fallback'};}
+function fbThematic(arc,movIdx){const ARC=arc.toLowerCase();const contours=['arch','ascending','ascending'];const rhythms=['march','flowing','dramatic'];const regs=['middle','high','middle'];const stormyContours=['zigzag','descending','ascending'];if(/storm|dark|tragic/.test(ARC))return{contour:stormyContours[movIdx],rhythm:rhythms[movIdx],register:regs[movIdx]};if(/pastoral|gentle|quiet/.test(ARC))return{contour:movIdx===0?'arch':'valley',rhythm:'flowing',register:'high'};return{contour:contours[movIdx],rhythm:rhythms[movIdx],register:regs[movIdx]};}
+function fbHarmonic(mode,movIdx){const maj=['heroic','tender','triumphant'];const min=['stormy','melancholy','heroic'];const modeKey=mode==='dorian'?'minor':mode==='mixolydian'?'major':mode;return(modeKey==='minor'?min:maj)[movIdx];}
+function fbOrchestrator(lensIdx,dir){const D=ORCH_LENSES[lensIdx].def;return{...D};}
+
+async function runDirector(){
+  const o=await agentJ('Musical director','You are a musical director. Read the brief and choose the key, mode and arc. Reply with ONE JSON object only.',
+    'Brief: '+S.brief+'\nReturn: {"title":"short title","key":"one of C D E F G A B","mode":"major or minor or dorian","arc":"two words describing the emotional arc"}',0.3,120);
+  const fb=fbDirector(S.brief);
+  const valid_keys=['C','D','E','F','G','A','B'];
+  S.direction=o&&o.key&&valid_keys.includes(o.key)&&o.mode&&MODES[o.mode]?{title:fstr(o.title,'Symphony',60),key:o.key,mode:o.mode,arc:fstr(o.arc,'emotional journey',40),source:'model'}:fb;
+  if(o&&!MODES[o.mode]&&S.useModel)note('Musical director','(reply not usable, using fallback)');
+}
+async function runThematicComposer(){
+  S.movements=[];
+  const D=S.direction;
+  const CONTOURS=['ascending','descending','arch','valley','zigzag'];
+  const RHYTHMS=['even','march','flowing','dramatic','waltz'];
+  const REGS=['high','middle','low'];
+  const o=await agentJ('Thematic composer','You are a thematic composer. Design the main melodic theme for each of the three movements. Reply with ONE JSON object only.',
+    'Symphony: '+D.title+', '+D.key+' '+D.mode+', arc: '+D.arc+'\nMovements: I Allegro (energetic), II Andante (lyrical slow), III Vivace (fast dance-like finale).\nReturn: {"mov0":{"contour":"one of ascending descending arch valley zigzag","rhythm":"one of even march flowing dramatic waltz","register":"high or middle or low"},"mov1":{...},"mov2":{...}}',0.6,200);
+  for(let mi=0;mi<3;mi++){
+    const mk='mov'+mi;
+    const mo=o&&o[mk];
+    const fb=fbThematic(D.arc,mi);
+    const contour=mo&&CONTOURS.includes(mo.contour)?mo.contour:fb.contour;
+    const rhythm=mo&&RHYTHMS.includes(mo.rhythm)?mo.rhythm:fb.rhythm;
+    const register=mo&&REGS.includes(mo.register)?mo.register:fb.register;
+    S.movements.push({contour,rhythm,register});
+  }
+}
+async function runHarmonicPlanner(){
+  S.harmonics=[];
+  const D=S.direction;
+  const modeKey=D.mode==='dorian'?'minor':D.mode==='mixolydian'?'major':D.mode;
+  const VALID=Object.keys(CHORD_TMPL[modeKey]||CHORD_TMPL.major);
+  const o=await agentJ('Harmonic planner','You are a harmonic planner. Choose a chord language for each movement. Reply with ONE JSON object only.',
+    'Symphony: '+D.title+', mode: '+D.mode+'. Chord styles for '+D.mode+': '+VALID.join(', ')+'.\nReturn: {"mov0":"style","mov1":"style","mov2":"style"}',0.5,80);
+  for(let mi=0;mi<3;mi++){
+    const mk='mov'+mi;
+    const style=o&&o[mk]&&VALID.includes(o[mk])?o[mk]:fbHarmonic(D.mode,mi);
+    S.harmonics.push(style);
+  }
+}
+async function runOrchestrator(lensIdx){
+  const lens=ORCH_LENSES[lensIdx];
+  const D=S.direction,E=lens.def;
+  const instOpts='violin,violin2,viola,cello,flute,oboe,clarinet,horn,trumpet,harp,piano,harpsichord';
+  const o=await agentJ(lens.name,'You are an orchestrator with a '+lens.desc+' style. Adjust the instrumentation and interpretation. Reply with ONE JSON object only.',
+    'Symphony: '+D.title+', '+D.key+' '+D.mode+', style: '+lens.desc+'.\nInstruments: '+instOpts+'.\nReturn: {"melody":"instrument","counter":"instrument","articulation":"legato or detached or staccato","expression":0-1,"warmth":0-1,"reverb":0-1,"tempoScale":0.75-1.25}',0.6,150);
+  const instList=Object.keys(INST);
+  const orch={...E};
+  if(o){
+    if(o.melody&&instList.includes(o.melody))orch.melody=o.melody;
+    if(o.counter&&instList.includes(o.counter)&&o.counter!==orch.melody)orch.counter=o.counter;
+    if(o.articulation&&ARTIC[o.articulation])orch.articulation=o.articulation;
+    orch.expression=fnum(o.expression,0,1,E.expression);
+    orch.warmth=fnum(o.warmth,0,1,E.warmth);
+    orch.reverb=fnum(o.reverb,0,1,E.reverb);
+    orch.tempoScale=fnum(o.tempoScale,0.75,1.25,E.tempoScale);
+  }
+  return orch;
+}
+function verdictFallback(r){return r.issues.length?r.issues.map(i=>i.fix).join(' '):'Balance and dynamics are healthy across all three movements.';}
+async function runCritic(take,movIdx,r){
+  const m=r.metrics;
+  const nums='melody/acc '+m.balance.toFixed(1)+' dB, peak '+m.peak.toFixed(2)+', dynamic range '+m.range.toFixed(1)+' dB, brightness '+m.bright.toFixed(2);
+  const o=await agentJ('Sound critic ('+take.lens.name.split(' ')[0]+')',
+    'You are a sound critic. You see only measurements. Reply with ONE JSON object only.',
+    'Mvt '+(movIdx+1)+' numbers: '+nums+'. Issues: '+(r.issues.map(i=>i.code).join(', ')||'none')+'.\nReturn: {"verdict":"one sentence"}',0.3,80);
+  return o&&typeof o.verdict==='string'&&o.verdict.length>8?o.verdict.slice(0,200):verdictFallback(r);
+}
+async function runCurator(){
+  const done=S.takes.filter(t=>t.score!==undefined);
+  const o=await agentJ('Curator','You are the curator of a concert. You see only measured scores. Reply with ONE JSON object only.',
+    'Takes: '+done.map(t=>t.lens.name+' '+t.score.toFixed(2)).join('; ')+'.\nReturn: {"note":"one sentence recommending which to hear first"}',0.3,80);
+  const ranked=[...S.takes].sort((a,b)=>(b.score||0)-(a.score||0));
+  S.curator={order:ranked.map(t=>S.takes.indexOf(t)),note:o&&o.note&&o.note.length>8?o.note.slice(0,220):'Hear the '+ranked[0].lens.name.toLowerCase()+' take first — it has the highest measured score ('+ranked[0].score.toFixed(2)+').'};
+}
+
+function makePlan(dir,orch){return{key:dir.key,mode:dir.mode,tempoScale:orch.tempoScale,loudness:orch.loudness,expression:orch.expression,warmth:orch.warmth,reverb:orch.reverb,articulation:orch.articulation,mix:{melody:1,acc:1,master:1}};}
+
+async function run(){
+  if(S.busy)return;
+  S.err='';S.log=[];S.takes=[];S.curator=null;S.pick=-1;S.stop=false;S.n=0;S.busy=true;
+  S.total=4+ORCH_LENSES.length*(3*2+1)+1;
+  stopPlay();
+  try{
+    S.prog='Musical director';draw();LLM.paint();
+    await runDirector();
+    await runThematicComposer();
+    await runHarmonicPlanner();
+    draw();
+
+    for(let li=0;li<ORCH_LENSES.length;li++){
+      if(S.stop)throw new Error('STOPPED');
+      const lens=ORCH_LENSES[li];
+      const orch=await runOrchestrator(li);
+      const take={lens,orch,movPerfs:[],score:0};
+      S.takes.push(take);
+      // Build and measure each movement
+      for(let mi=0;mi<3;mi++){
+        if(S.stop)throw new Error('STOPPED');
+        S.prog='Recording movement '+(mi+1)+' — '+lens.name;draw();LLM.paint();await sleep(20);
+        const plan=makePlan(S.direction,orch);
+        const chordStr=buildChordStr(S.harmonics[mi],S.direction.key,S.direction.mode);
+        let perf=buildMovement(mi,S.movements[mi],chordStr,plan,orch);
+        let r=await measureTake(perf,plan);
+        if(r.issues.length){
+          const fp=applyFixes(plan,r.issues);
+          const fperf=buildMovement(mi,S.movements[mi],chordStr,fp,orch);
+          const fr=await measureTake(fperf,fp);
+          if(fr.score>r.score){perf=fperf;r=fr;r.plan=fp;}else{r.plan=plan;}
+        }else{r.plan=plan;}
+        r.verdict=await runCritic(take,mi,r);
+        take.movPerfs.push({perf,result:r});
+        take.score=take.movPerfs.reduce((s,m)=>s+m.result.score,0)/take.movPerfs.length;
+        draw();
+      }
+    }
+    await runCurator();S.prog='';
+  }catch(err){
+    if(err.message!=='STOPPED')S.err=String(err.message||err);
+    else S.err='Stopped. Completed takes are shown below.';
+  }
+  S.busy=false;
+  if(S.takes.some(t=>t.movPerfs.length)&&!S.curator){try{await runCurator();}catch(e){}}
+  draw();LLM.paint();
+}
+
+/* ========== playback ========== */
+let live=null;
+function stopPlay(){if(live){try{live.ctx.close();}catch(e){}cancelAnimationFrame(live.raf);live=null;}drawStage(0,null,null);$('#stagebtns').innerHTML=S.pick>=0?playBtns():'<span class="muted small">Compose a symphony, then press Listen on a take.</span>';$('#prog').style.width='0';}
+function playBtns(){return btn('listenfull',S.pick,'Listen to full symphony','sm')+btn('stopplay','','Stop','ghost sm')+btn('wav',S.pick,'Download WAV','ghost sm');}
+
+function concatMovements(takeIdx){
+  const take=S.takes[takeIdx];if(!take||!take.movPerfs.length)return null;
+  let offset=0;const allEvents=[];const segs=[];
+  take.movPerfs.forEach((mp,mi)=>{
+    segs.push({start:offset,len:mp.perf.total,mi});
+    mp.perf.events.forEach(e=>allEvents.push({...e,t:e.t+offset,movIdx:mi}));
+    offset+=mp.perf.total+1.4; // ~1.4s pause between movements
+  });
+  allEvents.sort((a,b)=>a.t-b.t);
+  return{events:allEvents,total:offset,segs};
+}
+
+function listenFull(takeIdx){
+  const take=S.takes[takeIdx];if(!take||!take.movPerfs.length)return;
+  stopPlay();S.pick=takeIdx;
+  const concat=concatMovements(takeIdx);
+  const plan=makePlan(S.direction,take.orch);
+  const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC(),g=graph(ctx,plan,'mix'),nz=makeNoise(ctx),t0=ctx.currentTime+0.3;
+  concat.events.forEach(e=>playNote(ctx,g.out(e.role,e.inst),{...e,t:e.t+t0},plan,nz));
+  live={ctx,t0,perf:concat,total:concat.total,raf:0,segs:concat.segs};
+  $('#stagetitle').textContent='Now playing: '+S.direction.title+' — '+take.lens.name;
+  $('#stagebtns').innerHTML=playBtns();draw();
+  const loop=()=>{if(!live)return;const t=ctx.currentTime-t0;const curSeg=live.segs.find(s=>t>=s.start&&t<s.start+s.len+1.4);drawStage(Math.max(0,t),concat,take);$('#prog').style.width=clamp(t/live.total*100,0,100)+'%';if(t>=live.total+0.5){stopPlay();return;}live.raf=requestAnimationFrame(loop);};
+  live.raf=requestAnimationFrame(loop);
+  $('#stagepanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function downloadWav(takeIdx){
+  const take=S.takes[takeIdx];if(!take)return;
+  $('#stagebtns').innerHTML='<span class="muted small">Rendering WAV (this may take a moment)…</span>';await sleep(30);
+  const concat=concatMovements(takeIdx);const plan=makePlan(S.direction,take.orch);
+  const buf=await renderOffline(concat,plan,'mix',32000),blob=wavBlob(buf),a=document.createElement('a');
+  const fname=(S.direction.title+' '+take.lens.id).toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.wav';
+  a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+  $('#stagebtns').innerHTML=live?playBtns():S.pick>=0?playBtns():'';
+}
+
+/* ========== canvas ========== */
+function drawStage(t,concat,take){
+  const cv=$('#stage'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const stageH=Math.floor(H*0.42),rollTop=stageH+6,rollH=H-rollTop-6;
+  g.fillStyle='#12161c';g.fillRect(0,0,W,H);
+
+  // Stage area: instrument positions
+  g.fillStyle='#1b2430';g.beginPath();g.ellipse(W/2,stageH*1.1,W*0.46,stageH*0.9,0,Math.PI,2*Math.PI);g.fill();
+
+  if(!concat||!take){
+    g.fillStyle='#8FA3AD';g.font='15px sans-serif';g.textAlign='center';g.fillText('Compose a symphony and press Listen to see the stage and score.',W/2,stageH/2);
+    // Empty roll
+    g.fillStyle='#0d1015';g.fillRect(0,rollTop,W,rollH);
+    return;
+  }
+  const active={};concat.events.forEach(e=>{if(t>=e.t&&t<e.t+Math.max(e.d,0.12))active[e.inst]=Math.max(active[e.inst]||0,e.vel);});
+  const used={};concat.events.forEach(e=>{used[e.inst]=true;});
+  g.textAlign='center';
+  Object.keys(used).forEach(k=>{
+    const I=INST[k],x=W*(0.08+0.84*I.x),y=stageH*(0.1+0.82*I.y),a=active[k]||0,r=17+a*26;
+    g.fillStyle=SEC_COLOR[I.sec];g.globalAlpha=0.15+0.85*Math.min(1,a*2.2);
+    g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();g.globalAlpha=1;g.strokeStyle=SEC_COLOR[I.sec];g.lineWidth=2;g.beginPath();g.arc(x,y,17,0,6.2832);g.stroke();
+    g.fillStyle='#E6EDF2';g.font='11px sans-serif';g.fillText(I.name,x,y+r+14);
+  });
+  // Movement section markers above roll
+  if(concat.segs){
+    concat.segs.forEach(s=>{
+      const x1=clamp(s.start/concat.total*W,0,W),x2=clamp((s.start+s.len)/concat.total*W,0,W);
+      const isActive=t>=s.start&&t<s.start+s.len+1.4;
+      g.fillStyle=isActive?'rgba(30,100,150,0.35)':'rgba(30,60,90,0.2)';
+      g.fillRect(x1,rollTop,x2-x1,16);
+      g.fillStyle='#9FADB9';g.font='10px sans-serif';g.textAlign='left';
+      g.fillText(MOV_NAMES[s.mi],x1+4,rollTop+11);
+    });
+  }
+  // Piano roll
+  const rTop=rollTop+18,rH=rollH-18;
+  g.fillStyle='#0d1015';g.fillRect(0,rTop,W,rH);
+  const win=16,x0=t-win*0.28,sx=W/win;
+  let lo=127,hi=0;concat.events.forEach(e=>{if(e.midi<lo)lo=e.midi;if(e.midi>hi)hi=e.midi;});
+  const ny=rH/(hi-lo+2);
+  concat.events.filter(e=>e.t+e.d>x0&&e.t<x0+win).forEach(e=>{
+    const x=(e.t-x0)*sx,w=Math.max(2,e.d*sx-1),y=rTop+rH-(e.midi-lo+1)*ny;
+    g.fillStyle=ROLE_COLOR[e.role];g.globalAlpha=e.role==='pad'?0.35:0.88;
+    g.fillRect(x,y,w,Math.max(2,ny*0.8));
+  });
+  g.globalAlpha=1;g.fillStyle='#fff';g.fillRect((t-x0)*sx-1,rTop,2,rH);
+  g.textAlign='left';g.fillStyle='#8FA3AD';g.font='10px sans-serif';let lx=8;
+  Object.keys(ROLE_COLOR).forEach(r=>{g.fillStyle=ROLE_COLOR[r];g.fillRect(lx,rTop+3,9,9);g.fillStyle='#8FA3AD';g.fillText(r,lx+13,rTop+11);lx+=13+g.measureText(r).width+12;});
+  g.textAlign='right';g.fillStyle='#8FA3AD';g.fillText(t.toFixed(0)+' / '+concat.total.toFixed(0)+' s',W-8,16);
+}
+
+/* ========== render UI ========== */
+function metricsRow(m){return '<tr><td>Melody/accompaniment</td><td>'+m.balance.toFixed(1)+' dB</td></tr><tr><td>Peak</td><td>'+m.peak.toFixed(2)+'</td></tr><tr><td>Dynamic range</td><td>'+m.range.toFixed(1)+' dB</td></tr><tr><td>Brightness</td><td>'+m.bright.toFixed(2)+'</td></tr>';}
+
+function takeCard(take,i){
+  const ready=take.movPerfs.length===3;
+  const top=S.curator&&S.curator.order[0]===i;
+  let h='<div class="card'+(S.pick===i?' pick':'')+(top?' best':'')+'"><h3>'+esc(take.lens.name)+(top?' '+chip('Top ranked','good'):'')+' '+chip(ready?'score '+take.score.toFixed(2):'building…','')+'</h3>';
+  if(S.direction)h+='<p class="small muted">'+esc(S.direction.key)+' '+esc(S.direction.mode)+' · '+esc(take.orch.articulation)+' · melody: '+esc(INST[take.orch.melody]&&INST[take.orch.melody].name||take.orch.melody)+'</p>';
+  if(ready){
+    h+='<div class="mov-chips">';
+    take.movPerfs.forEach((mp,mi)=>h+='<span class="chip">Mvt '+(mi+1)+': '+mp.result.score.toFixed(2)+'</span>');
+    h+='</div>';
+    h+='<details><summary class="small">Movements detail</summary>'+take.movPerfs.map((mp,mi)=>'<p class="small"><b>'+MOV_NAMES[mi]+'</b> — <span class="muted">'+esc(mp.result.verdict)+'</span></p><div class="scroll"><table>'+metricsRow(mp.result.metrics)+'</table></div>').join('')+'</details>';
+    h+='<div class="row" style="margin-top:10px">'+btn('listenfull',i,'Listen')+btn('wav',i,'Download WAV','ghost')+'</div>';
+  }else if(take.movPerfs.length){
+    h+='<div class="status warn small">Building movement '+(take.movPerfs.length+1)+' of 3…</div>';
+  }
+  h+='</div>';return h;
+}
+
+function render(){
+  let h='<section class="panel"><h2>1. The team\'s brain</h2>'+LLM.ui()+'</section>';
+  h+='<section class="panel"><h2>2. Your symphony brief</h2><label style="font-weight:500;display:block;margin-bottom:6px" for="brief">Describe the symphony you want to hear</label><textarea id="brief" maxlength="400">'+esc(S.brief)+'</textarea>';
+  h+='<h3>Presets</h3><div class="row">'+PRESETS.map((p,i)=>btn('preset',i,p.slice(0,34)+'…','ghost sm')).join('')+'</div>';
+  h+='<div class="row" style="margin-top:14px">'+btn('run','','Compose with full agent team',null,S.busy||(!LLM.ready()&&S.useModel))+btn('runrules','','Compose with rules only (no model)','ghost',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+' </div>';
+  if(!LLM.ready()&&!S.busy)h+='<p class="small muted" style="margin-top:8px">Load the model for AI-written themes, harmonies and orchestration. Rules-only still composes a full original symphony using structured fallbacks.</p>';
+  h+='</section>';
+  if(S.direction){
+    h+='<section class="panel"><h2>3. The programme</h2>';
+    h+='<p><b>'+esc(S.direction.title)+'</b> · '+esc(S.direction.key)+' '+esc(S.direction.mode)+' · arc: '+esc(S.direction.arc)+' '+chip(S.direction.source)+'</p>';
+    if(S.movements.length){
+      h+='<table class="scroll"><thead><tr><th>Movement</th><th>Contour</th><th>Rhythm</th><th>Register</th><th>Harmony</th></tr></thead><tbody>';
+      S.movements.forEach((m,mi)=>h+='<tr><td>'+MOV_NAMES[mi]+'</td><td>'+esc(m.contour||'—')+'</td><td>'+esc(m.rhythm||'—')+'</td><td>'+esc(m.register||'—')+'</td><td>'+esc(S.harmonics&&S.harmonics[mi]||'—')+'</td></tr>');
+      h+='</tbody></table>';
+    }
+    h+='</section>';
+  }
+  if(S.busy||S.err||S.log.length){
+    h+='<section class="panel"><h2>4. The team at work</h2>';
+    if(S.busy)h+='<div class="status warn">'+esc(S.prog)+' (step '+S.n+')</div>';
+    if(S.err)h+='<div class="status '+(S.err.startsWith('Stopped')?'warn':'bad')+'">'+esc(S.err)+'</div>';
+    if(S.log.length)h+='<details><summary>Agent messages ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+  if(S.takes.length){
+    h+='<section class="panel"><h2>5. The three orchestrations</h2>';
+    if(S.curator)h+='<div class="status ok"><b>Curator:</b> '+esc(S.curator.note)+'</div>';
+    h+='<p class="small muted">All three orchestrations use the same themes and harmonies. Press Listen to hear the full three-movement symphony in each style.</p>';
+    h+='<div class="cards">'+(S.curator?S.curator.order.filter(i=>S.takes[i]).map(i=>takeCard(S.takes[i],i)):S.takes.map((t,i)=>takeCard(t,i))).join('')+'</div></section>';
+  }
+  return h;
+}
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='brief'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#brief');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Composing','warn'):''));
+}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act]');if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;
+  const v=t.dataset.val,act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='preset'){S.brief=PRESETS[+v];draw();return;}
+  if(act==='run'){S.useModel=true;run();return;}
+  if(act==='runrules'){S.useModel=false;run();return;}
+  if(act==='stop'){S.stop=true;return;}
+  if(act==='listenfull'){listenFull(+v);return;}
+  if(act==='stopplay'){stopPlay();return;}
+  if(act==='wav'){downloadWav(+v);return;}
+});
+document.addEventListener('change',e=>{if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}});
+document.addEventListener('input',e=>{if(e.target.id==='brief')S.brief=e.target.value;});
+draw();drawStage(0,null,null);
+</script>
+</body>
+</html>
