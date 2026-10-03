@@ -9,14 +9,16 @@
   --bg:#ECEFF2; --panel:#FFFFFF; --ink:#16222D; --muted:#536474; --line:#CBD6E0;
   --accent:#006A80; --accent-ink:#FFFFFF; --chip:#E2E8EE;
   --warn:#8C5900; --warn-bg:#FFF1D6; --bad:#A82B2B; --bad-bg:#FCE4E2; --good:#186E46; --good-bg:#DCF3E7;
-  --agentA:#0E6F8E; --agentB:#9C4221; --agentC:#2D6A4F; --agentD:#6B3BA7;
+  --graph-bg:#F8FAFC; --graph-border:#CBD5E1; --graph-edge:#94A3B8; --graph-node-txt:#1E293B;
+  --agentA:#0E6F8E; --agentB:#C05621; --agentC:#2D6A4F; --agentD:#6B3BA7;
   --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
   --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
 }
-@media (prefers-color-scheme:dark){
-  :root{--bg:#0F171F;--panel:#17222B;--ink:#E5EEF5;--muted:#99AAB9;--line:#2A3A49;--accent:#4FC3E8;--accent-ink:#041F28;--chip:#213140;
-    --warn:#F0BA43;--warn-bg:#3A2D0E;--bad:#FF968F;--bad-bg:#3D1D1C;--good:#70DBA0;--good-bg:#153728;
-    --agentA:#5CC0DE; --agentB:#F28E2B; --agentC:#7AD6A8; --agentD:#B07AA1;}
+html[data-theme="dark"]{
+  --bg:#0F171F;--panel:#17222B;--ink:#E5EEF5;--muted:#99AAB9;--line:#2A3A49;--accent:#4FC3E8;--accent-ink:#041F28;--chip:#213140;
+  --warn:#F0BA43;--warn-bg:#3A2D0E;--bad:#FF968F;--bad-bg:#3D1D1C;--good:#70DBA0;--good-bg:#153728;
+  --graph-bg:#0A1017; --graph-border:#2A3A49; --graph-edge:#2A3E54; --graph-node-txt:#E5EEF5;
+  --agentA:#5CC0DE; --agentB:#F28E2B; --agentC:#7AD6A8; --agentD:#B07AA1;
 }
 *,*::before,*::after{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body);-webkit-text-size-adjust:100%;}
@@ -52,7 +54,7 @@ select{max-width:440px;min-height:42px;}
 progress{width:100%;height:10px;accent-color:var(--accent);}
 
 /* Graph & Layout */
-.graph-container{position:relative;background:#0A1017;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:10px 0;}
+.graph-container{position:relative;background:var(--graph-bg);border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:10px 0;}
 canvas#cvsGraph{width:100%;height:460px;display:block;}
 .timeline-bar{display:flex;gap:6px;margin:12px 0 16px;overflow-x:auto;padding-bottom:4px;}
 .timeline-step{flex:1;min-width:130px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:.82rem;cursor:pointer;}
@@ -78,7 +80,10 @@ canvas#cvsGraph{width:100%;height:460px;display:block;}
 <body>
 <div class="shell">
   <header>
-    <div class="small muted" style="margin-bottom:8px">Visualizing Agent Epistemic Boundaries, Belief Evolution & Contagion · WebGPU & WebLLM</div>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="small muted">Visualizing Agent Epistemic Boundaries, Belief Evolution & Contagion · WebGPU & WebLLM</div>
+      <button class="btn ghost sm" data-act="toggletheme" id="themeBtn">☀️ Light Mode</button>
+    </div>
     <h1>Can LLMs Map What an Agent Knows?</h1>
     <p class="lede">Explore how GraphRAG and LLM triples map an agent's specific knowledge areas, reveal domain boundaries, and dynamically track how debates and interactions with other agents cause knowledge injection, edge pruning (disproof), and cross-cluster consensus bridges.</p>
 
@@ -355,38 +360,50 @@ async function runLLMAnalysis(){
   S.busy=true;S.err='';S.log=[];S.prog='Epistemic Auditor';draw();
   try{
     if(LLM.ready()&&S.useModel){
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM call timed out')), 30000));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Device LLM inference exceeded 25s threshold')), 25000));
       const completionPromise = LLM.engine.chat.completions.create({
         messages:[
           {role:'system',content:'You are an Epistemic Graph Analyzer for multi-agent systems. Analyze how agent interactions transform knowledge graphs. Return one sentence identifying epistemic boundaries, and one sentence explaining how cross-agent debate alters edge weights.'},
           {role:'user',content:'Query: '+S.prompt+'\nCurrent Turn: '+TURNS[S.currentTurn].title}
         ],
-        temperature:0.3,max_tokens:200
+        temperature:0.3,max_tokens:180
       });
       const r = await Promise.race([completionPromise, timeoutPromise]);
       const text = String((r && r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)||'').trim();
-      note('Epistemic Graph Auditor', text);
+      note('Epistemic Graph Auditor', text || '(empty synthesis)');
       S.analysis = text;
     }else{
       note('GraphRAG Engine','[Deterministic Epistemic Graph Mode]');
-      S.analysis = "By mapping agent memories into (Subject, PREDICATE, Object) triples with temporal validity windows [t_start, t_end], the system detects domain drift, verifies knowledge attribution, and exposes belief revision before autonomous actions commit.";
+      S.analysis = getFallbackAnalysis(S.currentTurn);
     }
   }catch(e){
-    S.err=String(e&&e.message||e);
+    note('GraphRAG Engine', '[Using GraphRAG deterministic synthesis: ' + String(e&&e.message||e).slice(0,50) + ']');
+    S.analysis = getFallbackAnalysis(S.currentTurn);
   }
   S.busy=false;S.prog='';
   draw();
 }
 
+function getFallbackAnalysis(turnIdx){
+  const analyses=[
+    "Baseline Epistemic Silos: Agent A (Security), B (FinOps), C (Legal), and D (QA) operate with zero cross-domain relation edges, confirming strict initial specialty boundaries.",
+    "Knowledge Injection Verified: Agent A shared network peering latency; Agent B incorporated the foreign node, establishing causal cost dependency across domains.",
+    "Belief Revision Active: Critic Agent D successfully refuted the unconstrained Spot Instance premise, causing confidence degradation and edge pruning.",
+    "Interdisciplinary Consensus: Security and Legal aligned to establish a cryptographic token bridge, binding compliance rules directly into access controls.",
+    "Epistemic Contagion Detected: An unverified latency bypass assumption cascaded from Agent B to Agent D, triggering an immediate root-cause graph audit."
+  ];
+  return analyses[turnIdx] || analyses[0];
+}
+
 /* ================= 4. Force-Directed Canvas Visualization ================= */
 const AGENT_COLORS={
-  'A':'#5CC0DE',
-  'B':'#F28E2B',
-  'C':'#7AD6A8',
-  'D':'#B07AA1',
-  'A->B':'#E9B44C',
-  'A+C':'#52D1E0',
-  'CONTAGION':'#FF6B6B'
+  'A':'#0E6F8E',
+  'B':'#C05621',
+  'C':'#2D6A4F',
+  'D':'#6B3BA7',
+  'A->B':'#D97706',
+  'A+C':'#0284C7',
+  'CONTAGION':'#DC2626'
 };
 
 let activeSimNodes=[];
@@ -408,7 +425,6 @@ function initPhysicsNodes(turnIdx){
 
 function updatePhysics(){
   const W=1040, H=460;
-  // Node repulsion
   for(let i=0;i<activeSimNodes.length;i++){
     for(let j=i+1;j<activeSimNodes.length;j++){
       const a=activeSimNodes[i], b=activeSimNodes[j];
@@ -421,7 +437,6 @@ function updatePhysics(){
       }
     }
   }
-  // Link attraction
   activeSimLinks.forEach(l=>{
     if(!l.sourceNode||!l.targetNode)return;
     const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
@@ -433,7 +448,6 @@ function updatePhysics(){
     l.targetNode.x -= dx/dist*force;
     l.targetNode.y -= dy/dist*force;
   });
-  // Bounds
   activeSimNodes.forEach(n=>{
     n.x=clamp(n.x, 70, W-70);
     n.y=clamp(n.y, 40, H-40);
@@ -443,7 +457,17 @@ function updatePhysics(){
 function drawGraph(){
   const cv=$('#cvsGraph');if(!cv)return;
   const g=cv.getContext('2d'), W=cv.width, H=cv.height;
-  g.fillStyle='#0A1017';g.fillRect(0,0,W,H);
+  const isDark = (document && document.documentElement && document.documentElement.getAttribute) ? (document.documentElement.getAttribute('data-theme')==='dark') : false;
+
+  // Dynamic light/dark canvas background
+  g.fillStyle = isDark ? '#0A1017' : '#F8FAFC';
+  g.fillRect(0,0,W,H);
+
+  // Subtle grid in light mode
+  g.strokeStyle = isDark ? '#16222F' : '#E2E8F0';
+  g.lineWidth = 1;
+  for(let x=40;x<W;x+=80){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();}
+  for(let y=40;y<H;y+=80){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
 
   updatePhysics();
 
@@ -455,15 +479,15 @@ function drawGraph(){
     g.lineTo(l.targetNode.x, l.targetNode.y);
 
     if(l.type==='refuted'){
-      g.strokeStyle='#FF6B6B';g.setLineDash([5,4]);g.lineWidth=2;
+      g.strokeStyle='#DC2626';g.setLineDash([5,4]);g.lineWidth=2;
     }else if(l.type==='bridge'){
-      g.strokeStyle='#7AD6A8';g.setLineDash([]);g.lineWidth=3.5;
+      g.strokeStyle='#16A34A';g.setLineDash([]);g.lineWidth=3.2;
     }else if(l.type==='contagion'){
-      g.strokeStyle='#FF5252';g.setLineDash([3,3]);g.lineWidth=2.5;
+      g.strokeStyle='#EF4444';g.setLineDash([3,3]);g.lineWidth=2.2;
     }else if(l.type==='injected'){
-      g.strokeStyle='#E9B44C';g.setLineDash([]);g.lineWidth=2.2;
+      g.strokeStyle='#D97706';g.setLineDash([]);g.lineWidth=2;
     }else{
-      g.strokeStyle='#2A3E54';g.setLineDash([]);g.lineWidth=1.5;
+      g.strokeStyle=isDark ? '#2A3E54' : '#94A3B8';g.setLineDash([]);g.lineWidth=1.5;
     }
     g.stroke();
     g.setLineDash([]);
@@ -471,35 +495,38 @@ function drawGraph(){
     // Edge Label
     const midX=(l.sourceNode.x+l.targetNode.x)/2;
     const midY=(l.sourceNode.y+l.targetNode.y)/2;
-    g.fillStyle='#7E95A8';
-    g.font='9px sans-serif';
+    g.fillStyle=isDark ? '#94A3B8' : '#475569';
+    g.font='10px sans-serif';
     g.textAlign='center';
     g.fillText(l.label, midX, midY-4);
   });
 
   // Draw Nodes
   activeSimNodes.forEach(n=>{
-    const col=AGENT_COLORS[n.agent]||'#5CC0DE';
-    const radius = n.highlight||n.contagion ? 14 : 11;
+    const col=AGENT_COLORS[n.agent]||'#0E6F8E';
+    const radius = n.highlight||n.contagion ? 13 : 10;
 
-    // Outer glow for highlights
     if(n.highlight){
-      g.beginPath();g.arc(n.x,n.y,radius+8,0,6.2832);
-      g.fillStyle='rgba(82, 209, 224, 0.25)';g.fill();
+      g.beginPath();g.arc(n.x,n.y,radius+7,0,6.2832);
+      g.fillStyle=isDark ? 'rgba(82, 209, 224, 0.25)' : 'rgba(14, 111, 142, 0.2)';
+      g.fill();
     }else if(n.contagion){
-      g.beginPath();g.arc(n.x,n.y,radius+10,0,6.2832);
-      g.fillStyle='rgba(255, 82, 82, 0.35)';g.fill();
+      g.beginPath();g.arc(n.x,n.y,radius+8,0,6.2832);
+      g.fillStyle='rgba(220, 38, 38, 0.28)';g.fill();
     }
 
     g.beginPath();g.arc(n.x,n.y,radius,0,6.2832);
     g.fillStyle=col;g.fill();
-    g.strokeStyle='#FFFFFF';g.lineWidth=1.8;g.stroke();
+    g.strokeStyle='#FFFFFF';g.lineWidth=2;g.stroke();
 
     // Node text
-    g.fillStyle='#E5EEF5';g.font='11px sans-serif';g.textAlign='center';
+    g.fillStyle=isDark ? '#E5EEF5' : '#0F172A';
+    g.font='bold 11px sans-serif';
+    g.textAlign='center';
     g.fillText(n.label, n.x, n.y+radius+14);
 
-    g.fillStyle='#8FA3AD';g.font='9px sans-serif';
+    g.fillStyle=isDark ? '#8FA3AD' : '#64748B';
+    g.font='9px sans-serif';
     g.fillText('['+n.cluster+']', n.x, n.y-radius-4);
   });
 
@@ -573,6 +600,16 @@ document.addEventListener('click',async e=>{
 
   const v=t.dataset.val, act=t.dataset.act;
   if(act==='loadmodel'){LLM.load();return;}
+  if(act==='toggletheme'){
+    const docEl=document.documentElement;
+    const isDark=docEl.getAttribute('data-theme')==='dark';
+    const nextTheme=isDark?'light':'dark';
+    docEl.setAttribute('data-theme',nextTheme);
+    try{localStorage.setItem('agent_kg_theme',nextTheme);}catch(ex){}
+    const btnEl=$('#themeBtn');
+    if(btnEl)btnEl.textContent=nextTheme==='dark'?'🌙 Dark Mode':'☀️ Light Mode';
+    return;
+  }
   if(act==='preset'){S.prompt=PRESETS[+v];draw();return;}
   if(act==='prevturn'){setTurn(S.currentTurn-1);return;}
   if(act==='nextturn'){setTurn(S.currentTurn+1);return;}
@@ -584,6 +621,17 @@ document.addEventListener('change',e=>{
   if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='prompt')S.prompt=e.target.value;});
+
+// Startup: Default to light mode (user requested light mode)
+(function initTheme(){
+  let pref = 'light';
+  try{ pref = localStorage.getItem('agent_kg_theme') || 'light'; }catch(e){}
+  if(document && document.documentElement && document.documentElement.setAttribute){
+    document.documentElement.setAttribute('data-theme', pref);
+  }
+  const btnEl = $('#themeBtn');
+  if(btnEl) btnEl.textContent = pref==='dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+})();
 
 // Startup
 initPhysicsNodes(0);
