@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>An orchestra team: from request to a performed classic</title>
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#10171D;--panel:#18222B;--ink:#E6EDF2;--muted:#9FADB9;--line:#2D3B47;--accent:#5CC0DE;--accent-ink:#06222C;--chip:#223140;
+    --warn:#F0B84A;--warn-bg:#3A2D10;--bad:#FF9A90;--bad-bg:#3D1E1B;--good:#7AD6A8;--good-bg:#16342A;}
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:980px;margin:0 auto;padding:20px 16px 48px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.3rem/1.2 var(--display);margin:0 0 8px;}
+h3{font:600 1rem/1.3 var(--display);margin:16px 0 6px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:70ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 12px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;min-width:0;}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:10px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;font-size:.9rem;}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);}
+.card.pick{border:2px solid var(--accent);}
+.card.top{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem;}
+.agent b{min-width:150px;}
+.agent span{color:var(--muted);word-break:break-word;}
+details{border-top:1px solid var(--line);padding:8px 0;}
+summary{cursor:pointer;font-weight:600;}
+canvas#stage{width:100%;border-radius:12px;background:#12161c;display:block;}
+.bar{height:8px;background:var(--chip);border-radius:4px;overflow:hidden;margin:10px 0;}
+.bar i{display:block;height:100%;width:0;background:var(--accent);}
+ol.lede-items{color:var(--muted);max-width:70ch;margin:8px 0 12px 20px;padding:0;}
+ol.lede-items li{margin:4px 0;}
+ol.lede-items b{color:var(--ink);}
+.foot{margin-top:24px;color:var(--muted);font-size:.85rem;max-width:76ch;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="small muted" style="margin-bottom:8px">A team of AI agents with different jobs plans and performs a classic piece (WebLLM agents, a synthesized orchestra, one HTML file)</div>
+    <h1>An orchestra team: from request to a performed classic</h1>
+    <p class="lede">Ask for a piece and a size of ensemble. A conductor picks the piece and the ensemble. Three maestros with different lenses plan three interpretations, and a concertmaster picks the lead instrument and the bowing. Plain code writes out every part from the score, synthesizes the orchestra in your browser and renders each interpretation offline. A sound critic that hears only measurements finds what is wrong with the balance, the loudness or the dynamics. The team fixes it, and a curator ranks the takes. You listen, pick, and can download a WAV.</p>
+    <ol class="lede-items">
+      <li><b>Conductor</b>: Chooses the piece (Ode to Joy, Canon in D, Für Elise or Minuet in G) and a string quartet, chamber group or full orchestra.</li>
+      <li><b>Three maestros</b>: Classical, Romantic and Period lenses set tempo, expression, rubato, warmth and reverb.</li>
+      <li><b>Concertmaster</b>: Picks the lead instrument and the articulation for each take.</li>
+      <li><b>Players (code)</b>: Violins, viola, cello, bass, flute, oboe, clarinet, horn, trumpet, harp, piano, harpsichord and timpani, synthesized with Web Audio.</li>
+      <li><b>Sound critic, fixes and curator</b>: Melody balance, headroom, dynamic range and brightness are measured. A critic that sees only numbers, then a ranking. You make the final pick.</li>
+    </ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" aria-live="polite"></main>
+  <section class="panel" id="stagepanel" aria-label="Stage">
+    <h2 id="stagetitle">The stage</h2>
+    <canvas id="stage" width="940" height="430" aria-label="Orchestra stage and piano roll"></canvas>
+    <div class="bar" aria-hidden="true"><i id="prog"></i></div>
+    <div class="row" id="stagebtns"><span class="muted small">Build a performance, then press Listen on one of the takes.</span></div>
+  </section>
+  <p class="foot">Honest label: the agents are a small on-device chat model, so some replies cannot be read, and the page then falls back to simple rules and says so. The music is real score data for four public domain classics, arranged here for the ensemble (the melody is from the score, and the accompaniment is generated from the chords). The sounds are simple synthesized instruments, not recordings, so they sound like a stylized orchestra and not a real hall. The measurements check balance, headroom, dynamic range and brightness. They do not measure beauty, so your own ears are the real test. The WebLLM model downloads from huggingface.co and is cached in your browser. Nothing you type leaves your device.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const pct=v=>Math.round(v*100)+'%';
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function tog(act,val,label,on,dis){return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(extra){const e=$('#status');if(e)e.innerHTML=extra||'';}
+
+/* ================= music theory and the scores ================= */
+const PC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+function noteMidi(n){const m=/^([A-G])([#b]?)(-?\d)$/.exec(n);if(!m)throw new Error('bad note '+n);return 12*(+m[3]+1)+PC[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0);}
+function parseMel(str){let t=0;const notes=[];str.trim().split(/\s+/).forEach(tok=>{const p=tok.split(':'),d=p[1]===undefined?1:parseFloat(p[1]);if(p[0]!=='r')notes.push({b:t,d,midi:noteMidi(p[0])});t+=d;});return{notes,len:t};}
+function chordInfo(name){const m=/^([A-G])([#b]?)(m7|m|7)?$/.exec(name);if(!m)throw new Error('bad chord '+name);const root=(PC[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0)+12)%12,q=m[3]||'',iv=q==='m'?[0,3,7]:q==='7'?[0,4,7,10]:q==='m7'?[0,3,7,10]:[0,4,7];return{root,pcs:iv.map(i=>(root+i)%12)};}
+function parseChords(str){let t=0;const list=[];str.trim().split(/\s+/).forEach(tok=>{const p=tok.split(':'),d=parseFloat(p[1]),c=chordInfo(p[0]);list.push({b:t,d,name:p[0],root:c.root,pcs:c.pcs});t+=d;});return{list,len:t};}
+function chordAt(ch,b){for(const c of ch.list)if(b>=c.b-1e-6&&b<c.b+c.d-1e-6)return c;return ch.list[ch.list.length-1];}
+function nearestTone(c,m,mode){let best=null,bd=1e9;for(let x=m-12;x<=m+12;x++){if(c.pcs.indexOf(((x%12)+12)%12)<0)continue;if(mode==='up'&&x<=m)continue;if(mode==='down'&&x>=m)continue;const d=Math.abs(x-m);if(d<bd){bd=d;best=x;}}return best===null?m:best;}
+const rep=(s,n)=>Array(n).fill(s).join(' ');
+const ODE_A='F#4 F#4 G4 A4 A4 G4 F#4 E4 D4 D4 E4 F#4 F#4:1.5 E4:.5 E4:2 ';
+const ODE_A2='F#4 F#4 G4 A4 A4 G4 F#4 E4 D4 D4 E4 F#4 E4:1.5 D4:.5 D4:2 ';
+const ODE_B='E4 E4 F#4 D4 E4 F#4:.5 G4:.5 F#4 D4 E4 F#4:.5 G4:.5 F#4 E4 D4 E4 A3:2 ';
+const MIN_1='D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 ';
+const GROUND='D:1 A:1 Bm:1 F#m:1 G:1 D:1 G:1 A:1';
+const PIECES={
+  ode:{title:'Ode to Joy',composer:'Beethoven, Symphony No. 9 (1824)',bpm:108,bar:4,style:'march',
+    melody:ODE_A+ODE_A2+ODE_B+ODE_A2,
+    chords:'D:4 D:4 D:2 A:2 A:4 D:4 D:4 D:2 A:2 A:2 D:2 Bm:4 G:4 D:4 D:2 A:2 D:4 D:4 D:2 A:2 A:2 D:2'},
+  canon:{title:'Canon in D',composer:'Pachelbel (c. 1680)',bpm:64,bar:4,style:'canon',canon:8,
+    melody:'r:8 F#5:2 E5:2 D5:2 C#5:2 B4:2 A4:2 B4:2 C#5:2 @var2 @var3',
+    chords:rep(GROUND,7)},
+  elise:{title:'Für Elise',composer:'Beethoven (1810)',bpm:70,bar:1.5,style:'arp',
+    melody:'E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 r:.5 C4:.5 E4:.5 A4:.5 B4:1 r:.5 E4:.5 G#4:.5 B4:.5 C5:1 r:.5 '+
+            'E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 r:.5 C4:.5 E4:.5 A4:.5 B4:1 r:.5 E4:.5 C5:.5 B4:.5 A4:1.5',
+    chords:'Am:1 Am:3 Am:3 E:3 Am:1.5 Am:1 Am:3 Am:3 E:3 Am:1.5'},
+  minuet:{title:'Minuet in G',composer:'Petzold (c. 1725, once credited to Bach)',bpm:116,bar:3,style:'waltz',
+    melody:MIN_1+'C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 F#4:1 G4:.5 A4:.5 B4:.5 G4:.5 A4:3 '+MIN_1+'C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 A4:1 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3',
+    chords:'G:3 G:3 C:3 G:3 C:3 G:3 D:3 D:3 G:3 G:3 C:3 G:3 C:3 G:3 D:3 G:3'}
+};
+/* The canon's variations are written from the theme and the chords, so every note is a chord tone. */
+(function(){
+  const P=PIECES.canon,ch=parseChords(P.chords),theme=parseMel('F#5:2 E5:2 D5:2 C#5:2 B4:2 A4:2 B4:2 C#5:2').notes;
+  let v2='',v3='';
+  theme.forEach(n=>{
+    const c1=chordAt(ch,8+n.b),c2=chordAt(ch,8+n.b+1),t=n.midi;
+    const nm=m=>{const names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];return names[m%12]+(Math.floor(m/12)-1);};
+    v2+=nm(t)+':1 '+nm(nearestTone(c2,t,'near'))+':1 ';
+    v3+=nm(t)+':.5 '+nm(nearestTone(c1,t,'up'))+':.5 '+nm(nearestTone(c2,t,'near'))+':.5 '+nm(nearestTone(c2,t,'down'))+':.5 ';
+  });
+  P.melody=P.melody.replace('@var2',v2).replace('@var3',v3);
+})();
+(function(){for(const k in PIECES){const P=PIECES[k],m=parseMel(P.melody),c=parseChords(P.chords);if(Math.abs(m.len-c.len)>1e-6)throw new Error(k+': melody '+m.len+' beats but chords '+c.len);P.len=m.len;}})();
+
+/* ================= the players ================= */
+const INST={
+  violin:{name:'Violin',kind:'bow',cut:3600,gain:0.95,slow:1,rel:0.14,pan:-0.5,sec:'Strings',x:.28,y:.78},
+  violin2:{name:'2nd violin',kind:'bow',cut:3200,gain:0.8,slow:1.1,rel:0.14,pan:-0.2,sec:'Strings',x:.4,y:.88},
+  viola:{name:'Viola',kind:'bow',cut:2200,gain:0.85,slow:1.2,rel:0.16,pan:0.2,sec:'Strings',x:.6,y:.88},
+  cello:{name:'Cello',kind:'bow',cut:1500,gain:1.0,slow:1.3,rel:0.18,pan:0.5,sec:'Strings',x:.72,y:.78},
+  bass:{name:'Double bass',kind:'bow',cut:800,gain:1.0,slow:1.5,rel:0.2,pan:0.65,sec:'Strings',x:.86,y:.68},
+  flute:{name:'Flute',kind:'air',gain:0.8,slow:1.4,rel:0.1,pan:-0.12,sec:'Woodwinds',x:.4,y:.55},
+  oboe:{name:'Oboe',kind:'reed',sub:'oboe',gain:0.8,slow:1.2,rel:0.08,pan:0.0,sec:'Woodwinds',x:.5,y:.55},
+  clarinet:{name:'Clarinet',kind:'reed',sub:'clar',gain:0.85,slow:1.2,rel:0.08,pan:0.14,sec:'Woodwinds',x:.6,y:.55},
+  horn:{name:'Horn',kind:'brass',cut:1100,gain:0.8,slow:1.8,rel:0.18,pan:0.3,sec:'Brass',x:.7,y:.42},
+  trumpet:{name:'Trumpet',kind:'brass',cut:3200,gain:0.7,slow:1.1,rel:0.1,pan:0.4,sec:'Brass',x:.8,y:.4},
+  harp:{name:'Harp',kind:'pluck',sub:'harp',gain:0.85,decay:1.3,pan:-0.7,sec:'Keys and harp',x:.1,y:.6},
+  piano:{name:'Piano',kind:'pluck',sub:'piano',gain:0.9,decay:1.7,pan:-0.05,sec:'Keys and harp',x:.2,y:.5},
+  harpsichord:{name:'Harpsichord',kind:'pluck',sub:'harpsichord',gain:0.8,decay:0.55,pan:-0.3,sec:'Keys and harp',x:.18,y:.55},
+  timpani:{name:'Timpani',kind:'drum',gain:1.0,pan:0.7,sec:'Percussion',x:.9,y:.3}
+};
+const SEC_COLOR={'Strings':'#E9B44C','Woodwinds':'#5CC0DE','Brass':'#E8744F','Keys and harp':'#9C7BE0','Percussion':'#8FA3AD'};
+const ROLE_COLOR={melody:'#FFD166',double:'#FFE9A8',counter:'#5CC0DE',inner:'#7AD6A8',pad:'#9C7BE0',bass:'#E8744F',perc:'#8FA3AD'};
+const ENSEMBLES={
+  quartet:{name:'String quartet',melody:['violin','viola'],counter:['violin2'],inner:['viola'],pad:['viola'],bass:['cello'],perc:false,double:false},
+  chamber:{name:'Chamber group',melody:['flute','violin','oboe','clarinet'],counter:['clarinet','violin2','flute','oboe'],inner:['piano','harpsichord','harp'],pad:['viola'],bass:['cello'],perc:false,double:false},
+  orchestra:{name:'Symphony orchestra',melody:['violin','flute','oboe','trumpet'],counter:['clarinet','flute','horn'],inner:['harp','piano'],pad:['horn','viola'],bass:['cello','bass'],perc:true,double:true}
+};
+const ARTIC={legato:{a:0.07,hold:1.03},detached:{a:0.03,hold:0.86},staccato:{a:0.012,hold:0.45}};
+const ROLE_VOL={melody:1,double:0.5,counter:0.62,inner:0.5,pad:0.36,bass:0.85,perc:0.8};
+
+/* ================= from score and plan to a list of notes ================= */
+function pickInst(ens,role,wanted,avoid){const opts=ens[role];if(wanted&&opts.indexOf(wanted)>=0)return wanted;const f=opts.find(x=>x!==avoid);return f||opts[0];}
+function roster(ensKey,plan){
+  const E=ENSEMBLES[ensKey],melody=pickInst(E,'melody',plan.melody),r={melody};
+  r.counter=pickInst(E,'counter',null,melody);
+  r.inner=pickInst(E,'inner',plan.inner);r.pad=pickInst(E,'pad',null,melody);r.bass=pickInst(E,'bass');
+  r.double=E.double?(melody==='flute'?'violin':'flute'):null;r.perc=E.perc?'timpani':null;
+  return r;
+}
+function accompany(P,ch){
+  const bass=[],inner=[],pad=[];
+  ch.list.forEach(c=>{
+    const root=36+c.root,fifth=root+7,notes=c.pcs.map(pc=>52+((pc-52)%12+12)%12).sort((a,b)=>a-b);
+    if(P.style!=='canon')notes.forEach(m=>pad.push({b:c.b,d:c.d,midi:m}));
+    if(P.style==='march'){for(let k=0;k<c.d;k++){const par=Math.round(c.b+k)%2;bass.push({b:c.b+k,d:.9,midi:par===0?root:fifth});inner.push({b:c.b+k,d:.9,midi:notes[k%notes.length]});}}
+    else if(P.style==='canon'){bass.push({b:c.b,d:.95,midi:root});for(let j=0;j<c.d*2;j++)inner.push({b:c.b+j*.5,d:.5,midi:notes[j%notes.length]+12});}
+    else if(P.style==='arp'){bass.push({b:c.b,d:c.d,midi:root});const cyc=[root+12,fifth+12,root+24];for(let j=0;j<c.d*2;j++)inner.push({b:c.b+j*.5,d:.5,midi:cyc[j%3]});}
+    else if(P.style==='waltz'){for(let k=0;k<c.d;k+=3){bass.push({b:c.b+k,d:1.4,midi:root});for(let q=1;q<3;q++)notes.forEach(m=>inner.push({b:c.b+k+q,d:.9,midi:m}));}}
+  });
+  return{bass,inner,pad};
+}
+function buildPerformance(pieceKey,ensKey,plan){
+  const P=PIECES[pieceKey],mel=parseMel(P.melody),ch=parseChords(P.chords),L=mel.len,R=roster(ensKey,plan),acc=accompany(P,ch);
+  const spb=60/(P.bpm*plan.tempoScale);
+  const warp=b=>b*spb+plan.rubato*0.2*spb*Math.sin(2*Math.PI*b/8)+0.03*spb*Math.pow(Math.max(0,b-(L-4)),2);
+  const base=0.28+0.09*plan.loudness;
+  const arch=b=>{const ph=(b%8)/8;return 1+plan.expression*0.5*(Math.sin(Math.PI*ph)-0.5)+plan.expression*0.25*(b/L-0.4);};
+  const ev=[];
+  const add=(role,inst,n,shift,vmul)=>{
+    const b=n.b+(shift||0),t=warp(b);let d=warp(b+n.d)-t;
+    const v=clamp(base*ROLE_VOL[role]*arch(b)*(vmul||1),0.04,1);
+    ev.push({role,inst,t,d,midi:n.midi+(n.shiftOct||0),vel:v,b});
+  };
+  mel.notes.forEach((n,i)=>{const last=i===mel.notes.length-1;const nn=last?{b:n.b,d:n.d*2.2,midi:n.midi}:n;add('melody',R.melody,nn);if(R.double)add('double',R.double,{b:n.b,d:nn.d,midi:n.midi+12});});
+  if(P.style==='canon'){
+    const sh=P.canon;
+    mel.notes.forEach(n=>{if(n.b+sh<L)add('counter',R.counter,n,sh);});
+    mel.notes.forEach(n=>{if(n.b+2*sh<L)add('pad',R.pad,{b:n.b,d:n.d,midi:n.midi-12},2*sh);});
+  }else{
+    mel.notes.forEach(n=>{const c=chordAt(ch,n.b);add('counter',R.counter,{b:n.b,d:n.d,midi:nearestTone(c,n.midi-1,'down')});});
+    acc.pad.forEach(n=>add('pad',R.pad,n));
+  }
+  acc.bass.forEach(n=>add('bass',R.bass,n));acc.inner.forEach(n=>add('inner',R.inner,n));
+  if(R.perc){const step=P.bar;for(let b=0;b<L-0.01;b+=step){if(P.style==='canon'&&Math.round(b)%8)continue;const c=chordAt(ch,b);add('perc','timpani',{b,d:1,midi:36+c.root});}const c=chordAt(ch,L-0.5);add('perc','timpani',{b:L-1,d:1,midi:36+c.root});}
+  ev.sort((a,b)=>a.t-b.t);
+  const total=ev.reduce((m,e)=>Math.max(m,e.t+e.d),0)+0.8;
+  return{events:ev,total,roster:R,piece:pieceKey,ens:ensKey,bpm:P.bpm*plan.tempoScale};
+}
+
+/* ================= the synthesizer ================= */
+function makeNoise(ctx){const n=ctx.sampleRate*0.3,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;return b;}
+function makeImpulse(ctx,secs){const n=Math.floor(ctx.sampleRate*secs),b=ctx.createBuffer(2,n,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.4);}return b;}
+function graph(ctx,plan,mode){
+  const master=ctx.createGain();master.gain.value=plan.mix.master;const nodes={};
+  if(mode==='stem'){
+    const merger=ctx.createChannelMerger(2);master.connect(merger);
+    const bm=ctx.createGain(),ba=ctx.createGain();bm.connect(merger,0,0);ba.connect(merger,0,1);merger.connect(ctx.destination);
+    bm.gain.value=plan.mix.master*plan.mix.melody;ba.gain.value=plan.mix.master*plan.mix.acc;
+    return{out:(role)=>(role==='melody'||role==='double')?bm:ba};
+  }
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=3;master.connect(comp);comp.connect(ctx.destination);
+  if(plan.reverb>0.02){const cv=ctx.createConvolver();cv.buffer=makeImpulse(ctx,0.8+plan.reverb*2.6);const wet=ctx.createGain();wet.gain.value=plan.reverb*0.55;cv.connect(wet);wet.connect(master);nodes.rev=cv;}
+  return{out:(role,inst)=>{
+    const k=role+inst;if(nodes[k])return nodes[k];
+    const g=ctx.createGain();g.gain.value=(role==='melody'||role==='double')?plan.mix.melody:plan.mix.acc;
+    const p=ctx.createStereoPanner();p.pan.value=INST[inst].pan;g.connect(p);p.connect(master);if(nodes.rev)p.connect(nodes.rev);
+    return nodes[k]=g;
+  }};
+}
+function playNote(ctx,out,e,plan,noise){
+  const I=INST[e.inst],art=ARTIC[plan.articulation]||ARTIC.detached,f=440*Math.pow(2,(e.midi-69)/12),t=e.t+0.05;
+  const warm=0.55+0.95*(1-plan.warmth),long=!(I.kind==='pluck'||I.kind==='drum');
+  const d=Math.max(0.07,e.d*(long?art.hold:1)),peak=Math.min(0.5,e.vel*I.gain*0.2),a=Math.max(0.012,art.a*(I.slow||1));
+  const osc=(type,fr,end)=>{const o=ctx.createOscillator();o.type=type;o.frequency.value=fr;o.start(t);o.stop(end);return o;};
+  const env=(g,end,rel)=>{const p=g.gain,aa=Math.min(a,Math.max(0.012,(end-t)*0.6));p.setValueAtTime(0.0001,t);p.linearRampToValueAtTime(peak,t+aa);p.setValueAtTime(peak*0.9,Math.max(t+aa,end-0.01));p.linearRampToValueAtTime(0.0001,end+rel);};
+  const vib=(o1,end,depth,hz)=>{if(end-t<0.3)return;const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=hz;lg.gain.value=depth;l.connect(lg);o1.forEach(o=>lg.connect(o.frequency));l.start(t+0.12);l.stop(end);};
+  const g=ctx.createGain();g.connect(out);
+  if(I.kind==='bow'){
+    const end=t+d,fin=end+I.rel+0.05,lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=Math.min(9000,I.cut*warm*(0.7+0.6*e.vel+(e.midi>76?0.2:0)));lp.Q.value=0.6;lp.connect(g);
+    const o1=osc('sawtooth',f,fin),o2=osc('sawtooth',f*1.005,fin);o1.connect(lp);o2.connect(lp);vib([o1,o2],fin,f*0.006,5.3);env(g,end,I.rel);
+  }else if(I.kind==='air'){
+    const end=t+d,fin=end+I.rel+0.05;const o1=osc('sine',f,fin),o2=osc('sine',f*2,fin),o3=osc('sine',f*3,fin),g2=ctx.createGain(),g3=ctx.createGain();g2.gain.value=0.22*(1.3-plan.warmth*0.6);g3.gain.value=0.07;o1.connect(g);o2.connect(g2);g2.connect(g);o3.connect(g3);g3.connect(g);vib([o1,o2,o3],fin,f*0.005,5);env(g,end,I.rel);
+  }else if(I.kind==='reed'){
+    const end=t+d,fin=end+I.rel+0.05,f1=ctx.createBiquadFilter();
+    if(I.sub==='oboe'){f1.type='bandpass';f1.frequency.value=1250*warm;f1.Q.value=1.1;const o=osc('sawtooth',f,fin);o.connect(f1);vib([o],fin,f*0.004,5.2);}
+    else{f1.type='lowpass';f1.frequency.value=1700*warm;f1.Q.value=0.8;const o=osc('square',f,fin);o.connect(f1);vib([o],fin,f*0.003,5);}
+    f1.connect(g);env(g,end,I.rel);if(I.sub==='oboe')peak;
+  }else if(I.kind==='brass'){
+    const end=t+d,fin=end+I.rel+0.05,lp=ctx.createBiquadFilter();lp.type='lowpass';lp.Q.value=1.5;lp.frequency.setValueAtTime(I.cut*0.3,t);lp.frequency.linearRampToValueAtTime(I.cut*warm*(0.6+0.7*e.vel),t+0.14);lp.connect(g);
+    const o1=osc('sawtooth',f,fin),o2=osc('sawtooth',f*0.997,fin);o1.connect(lp);o2.connect(lp);env(g,end,I.rel);
+  }else if(I.kind==='pluck'){
+    const dec=Math.min(2.6,I.decay+Math.min(0.8,e.d*0.4)),fin=t+dec+0.1;g.gain.setValueAtTime(Math.min(0.5,peak*1.4),t);g.gain.exponentialRampToValueAtTime(0.0001,t+dec);
+    if(I.sub==='harpsichord'){const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3800*warm;lp.connect(g);const o=osc('sawtooth',f,fin);o.connect(lp);}
+    else{const parts=I.sub==='piano'?[[1,1],[2,.55],[3,.3],[4,.16],[5,.08]]:[[1,1],[2,.35],[3,.12]];parts.forEach(p=>{if(f*p[0]>9000)return;const o=osc('sine',f*p[0],fin),pg=ctx.createGain();pg.gain.value=p[1]*(p[0]>1?(0.4+0.8*(1-plan.warmth)):1);o.connect(pg);pg.connect(g);});}
+  }else if(I.kind==='drum'){
+    const fin=t+1.4;g.gain.setValueAtTime(Math.min(0.6,peak*2.2),t);g.gain.exponentialRampToValueAtTime(0.0001,t+1.2);
+    const o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(f*2.1,t);o.frequency.exponentialRampToValueAtTime(f,t+0.14);o.connect(g);o.start(t);o.stop(fin);
+    const ns=ctx.createBufferSource();ns.buffer=noise;const nf=ctx.createBiquadFilter();nf.type='lowpass';nf.frequency.value=500;const ng=ctx.createGain();ng.gain.setValueAtTime(peak*1.2,t);ng.gain.exponentialRampToValueAtTime(0.0001,t+0.1);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.12);
+  }
+}
+async function renderOffline(perf,plan,mode,sr){
+  const n=Math.ceil((perf.total+(mode==='mix'?3:1.3))*sr),ctx=new OfflineAudioContext(2,n,sr),g=graph(ctx,plan,mode),nz=makeNoise(ctx);
+  perf.events.forEach(e=>playNote(ctx,g.out(e.role,e.inst),e,plan,nz));
+  return ctx.startRendering();
+}
+function wavBlob(buf){
+  const n=buf.length,ch=2,data=new DataView(new ArrayBuffer(44+n*ch*2)),L=buf.getChannelData(0),R=buf.getChannelData(1);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)data.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF');data.setUint32(4,36+n*4,true);ws(8,'WAVEfmt ');data.setUint32(16,16,true);data.setUint16(20,1,true);data.setUint16(22,2,true);data.setUint32(24,buf.sampleRate,true);data.setUint32(28,buf.sampleRate*4,true);data.setUint16(32,4,true);data.setUint16(34,16,true);ws(36,'data');data.setUint32(40,n*4,true);
+  let o=44;for(let i=0;i<n;i++){data.setInt16(o,clamp(L[i],-1,1)*32767,true);data.setInt16(o+2,clamp(R[i],-1,1)*32767,true);o+=4;}
+  return new Blob([data],{type:'audio/wav'});
+}
+
+/* ================= measuring a take: plain signal statistics ================= */
+const db=x=>20*Math.log10(Math.max(x,1e-6));
+async function measureTake(perf,plan,pieceKey){
+  const sr=22050,buf=await renderOffline(perf,plan,'stem',sr),L=buf.getChannelData(0),R=buf.getChannelData(1),W=Math.floor(sr*0.5),nw=Math.floor(L.length/W);
+  const mel=[],acc=[],mix=[];let peak=0,d2=0,e2=0;
+  for(let w=0;w<nw;w++){
+    let sl=0,sr_=0,sm=0;
+    for(let i=w*W;i<(w+1)*W;i++){const l=L[i],r=R[i],m=l+r;sl+=l*l;sr_+=r*r;sm+=m*m;const a=Math.abs(m);if(a>peak)peak=a;if(i>0){const dm=m-(L[i-1]+R[i-1]);d2+=dm*dm;e2+=m*m;}}
+    const rl=Math.sqrt(sl/W),rr=Math.sqrt(sr_/W),rm=Math.sqrt(sm/W);
+    if(rl>0.004)mel.push(db(rl));if(rr>0.004)acc.push(db(rr));if(rm>0.004)mix.push(db(rm));
+  }
+  mix.sort((a,b)=>a-b);const q=p=>mix.length?mix[Math.min(mix.length-1,Math.floor(p*mix.length))]:0;
+  const m={balance:mean(mel)-mean(acc),peak,range:q(0.9)-q(0.1),bright:e2>0?Math.sqrt(d2/e2):0,tempoRatio:plan.tempoScale,secs:perf.total,loud:q(0.5)};
+  const issues=[];
+  if(m.balance<TH.buriedDb)issues.push({code:'buried',msg:'The melody sits '+Math.abs(m.balance).toFixed(1)+' dB '+(m.balance<0?'below':'only '+m.balance.toFixed(1)+' dB above')+' the accompaniment, so the tune is hard to follow.',fix:'Lift the melody and pull back the accompaniment.'});
+  if(m.balance>TH.thinDb)issues.push({code:'thin',msg:'The melody is '+m.balance.toFixed(1)+' dB above the accompaniment, so the sound is thin.',fix:'Bring the accompaniment up.'});
+  if(m.peak>TH.clip)issues.push({code:'clip',msg:'The peak level is '+m.peak.toFixed(2)+', so loud passages would distort.',fix:'Lower the master level.'});
+  if(m.peak<TH.quiet)issues.push({code:'quiet',msg:'The peak level is only '+m.peak.toFixed(2)+', so the performance is too quiet.',fix:'Raise the master level.'});
+  if(m.range<TH.flat)issues.push({code:'flat',msg:'The loudness only varies by '+m.range.toFixed(1)+' dB, so the playing sounds mechanical.',fix:'Add expression, with swells and a crescendo.'});
+  if(m.bright>TH.harsh)issues.push({code:'harsh',msg:'The sound is bright and edgy (brightness '+m.bright.toFixed(2)+').',fix:'Warm up the tone.'});
+  const closeTo=(v,lo,hi,soft)=>v>=lo&&v<=hi?1:clamp(1-(v<lo?lo-v:v-hi)/soft,0,1);
+  const score=mean([closeTo(m.balance,TH.goodLo,TH.goodHi,8),closeTo(m.peak,0.45,0.9,0.4),closeTo(m.range,TH.rangeLo,TH.rangeHi,6),clamp(1-Math.max(0,m.bright-TH.harsh*0.7)/(TH.harsh*0.6),0,1),closeTo(m.tempoRatio,0.82,1.2,0.3)]);
+  return{metrics:m,issues,score};
+}
+const TH={buriedDb:-0.5,thinDb:9,clip:0.92,quiet:0.2,flat:3.5,harsh:0.55,goodLo:1.5,goodHi:6,rangeLo:5,rangeHi:13};
+function applyFixes(plan,issues){
+  const p=JSON.parse(JSON.stringify(plan)),c=issues.map(i=>i.code);
+  if(c.indexOf('buried')>=0){p.mix.melody=Math.min(2.5,p.mix.melody*1.4);p.mix.acc=Math.max(0.3,p.mix.acc*0.75);}
+  if(c.indexOf('thin')>=0){p.mix.acc=Math.min(2,p.mix.acc*1.35);}
+  if(c.indexOf('clip')>=0){p.mix.master=Math.max(0.2,p.mix.master*0.8);}
+  if(c.indexOf('quiet')>=0){p.mix.master=Math.min(2.5,p.mix.master*1.7);}
+  if(c.indexOf('flat')>=0){p.expression=Math.min(1,p.expression+0.3);}
+  if(c.indexOf('harsh')>=0){p.warmth=Math.min(1,p.warmth+0.3);}
+  return p;
+}
+
+/* ================= WebLLM loader (same approach as the art team and movie crew) ================= */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],note:'',
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU (and the page must be served over https or localhost). The chat model is unavailable here, but you can still build with the rules-only team below.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Chat model for the agents</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device ('+esc(this.modelId)+').'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';h+=btn('loadmodel','','Load model');}
+    return h;
+  },
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(this.chip()+(S.busy?chip('Working: '+S.prog,'warn'):''));},
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';draw();
+    let lastErr='',lib=null;
+    try{lib=await import('https://esm.run/@mlc-ai/web-llm');}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];this.modelId=m[0];this.pct=0;this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});
+        this.state='ready';this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';draw();this.paint();return;
+      }catch(err){lastErr=String((err&&err.message)||err);this.engine=null;}
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';draw();this.paint();
+  }
+};
+
+/* ================= the agents ================= */
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,es=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(es)es=false;else if(c==='\\')es=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+const fnum=(v,a,b,d)=>{if(v===null||v===undefined||v==='')return d;v=Number(v);return isFinite(v)?clamp(v,a,b):d;};
+const S={request:'Ode to Joy, played by a full symphony orchestra',piece:'auto',ens:'auto',qa:1,useModel:true,concept:null,takes:[],curator:null,pick:-1,log:[],busy:false,stop:false,err:'',prog:'',n:0,total:0};
+const LENSES=[
+  {id:'classical',name:'Classical maestro',desc:'clear, balanced and steady, in the spirit of Haydn and Mozart',plan:{tempoScale:1.0,expression:0.35,rubato:0.08,warmth:0.5,reverb:0.35,loudness:3,articulation:'detached',melody:'violin'}},
+  {id:'romantic',name:'Romantic maestro',desc:'warm, expressive, with rubato and big swells, in the spirit of Brahms',plan:{tempoScale:0.88,expression:0.8,rubato:0.6,warmth:0.85,reverb:0.65,loudness:3,articulation:'legato',melody:'oboe'}},
+  {id:'period',name:'Period maestro',desc:'brisk, bright and crisply articulated, like a baroque band',plan:{tempoScale:1.12,expression:0.2,rubato:0,warmth:0.25,reverb:0.2,loudness:3,articulation:'staccato',melody:'flute'}}
+];
+const PRESETS=['Ode to Joy, played by a full symphony orchestra','Pachelbel\'s Canon, played by a string quartet','Für Elise, played by a chamber group','A lively Minuet in G for a chamber group'];
+function need(){if(!LLM.ready())throw new Error('Load the chat model first, or use the rules-only build button.');}
+function note(a,t){S.log.push({agent:a,text:t});}
+async function ask(a,sys,user,temp,max){
+  S.n++;S.prog=a;draw();LLM.paint();await sleep(0);
+  const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,max_tokens:max||200});
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();note(a,text.slice(0,300));return text;
+}
+async function agent(name,sys,user,temp,max){
+  if(!S.useModel){note(name,'(rules-only mode: no model was asked)');return null;}
+  need();return firstJson(await ask(name,sys,user,temp,max));
+}
+function fallbackConcept(req){
+  const b=req.toLowerCase();let piece='ode';
+  if(/canon|pachelbel/.test(b))piece='canon';else if(/elise|beethoven.*piano|fur elise|für/.test(b))piece='elise';else if(/minuet|petzold|bach/.test(b))piece='minuet';else if(/ode|joy|9th|ninth|symphony no/.test(b))piece='ode';
+  let ens='chamber';if(/quartet|strings only|string/.test(b))ens='quartet';else if(/orchestra|symphon|full/.test(b))ens='orchestra';
+  return{piece,ens,mood:'bright',source:'fallback'};
+}
+async function runConductor(){
+  const o=await agent('Conductor','You are the conductor of an orchestra. Choose the piece and the ensemble for the request. Reply with ONE JSON object only.',
+    'Request: '+S.request+'\nPieces: "ode" (Ode to Joy, Beethoven), "canon" (Canon in D, Pachelbel), "elise" (Für Elise, Beethoven), "minuet" (Minuet in G, Petzold).\nEnsembles: "quartet" (string quartet), "chamber" (strings, winds and keys), "orchestra" (full symphony orchestra).\nReturn: {"piece":"ode or canon or elise or minuet","ensemble":"quartet or chamber or orchestra","mood":"two words"}',0.2,100);
+  const fb=fallbackConcept(S.request);let d=null;
+  if(o&&PIECES[o.piece]&&ENSEMBLES[o.ensemble])d={piece:o.piece,ens:o.ensemble,mood:String(o.mood||'').slice(0,40),source:'model'};
+  if(!d){d=fb;if(S.useModel)note('Conductor','(the reply was not usable, so keywords chose the piece and ensemble)');}
+  if(S.piece!=='auto'){d.piece=S.piece;d.source+=', piece set by you';}
+  else if(d.source==='model'&&fb.source==='fallback'&&/ode|canon|elise|minuet/.test(S.request.toLowerCase()))d.piece=fb.piece;
+  if(S.ens!=='auto'){d.ens=S.ens;d.source+=', ensemble set by you';}
+  S.concept=d;
+}
+async function runMaestro(lens){
+  const C=S.concept,b=lens.plan;
+  const o=await agent(lens.name,'You are a conductor with a "'+lens.name.toLowerCase()+'" lens: '+lens.desc+'. You plan an interpretation. Reply with ONE JSON object only.',
+    'Piece: '+PIECES[C.piece].title+' ('+PIECES[C.piece].composer+') for a '+ENSEMBLES[C.ens].name.toLowerCase()+'.\nSet these numbers. tempoScale 0.75-1.25 (1 is the usual tempo), expression 0-1 (swells and phrasing), rubato 0-1 (stretching time), warmth 0-1 (dark and warm versus bright), reverb 0-1 (size of the hall), loudness 1-5.\nReturn: {"tempoScale":'+b.tempoScale+',"expression":'+b.expression+',"rubato":'+b.rubato+',"warmth":'+b.warmth+',"reverb":'+b.reverb+',"loudness":'+b.loudness+'}',0.7,160);
+  if(!o&&S.useModel)note(lens.name,'(the reply was not usable, so the lens defaults were used)');
+  return{tempoScale:fnum(o&&o.tempoScale,0.75,1.25,b.tempoScale),expression:fnum(o&&o.expression,0,1,b.expression),rubato:fnum(o&&o.rubato,0,1,b.rubato),warmth:fnum(o&&o.warmth,0,1,b.warmth),reverb:fnum(o&&o.reverb,0,1,b.reverb),loudness:Math.round(fnum(o&&o.loudness,1,5,b.loudness))};
+}
+async function runConcertmaster(lens,plan){
+  const C=S.concept,E=ENSEMBLES[C.ens];
+  const o=await agent('Concertmaster ('+lens.name.split(' ')[0]+')','You are the concertmaster. Pick the lead instrument and the bowing or tonguing style. Reply with ONE JSON object only.',
+    'Piece: '+PIECES[C.piece].title+', interpretation: '+lens.desc+'.\nLead instrument options: '+E.melody.join(', ')+'.\nArticulation options: legato (smooth), detached (separate notes), staccato (short).\nReturn: {"melody":"one option","articulation":"one option"}',0.5,80);
+  const out={melody:E.melody.indexOf(lens.plan.melody)>=0?lens.plan.melody:E.melody[0],articulation:lens.plan.articulation};
+  if(o&&E.melody.indexOf(o.melody)>=0)out.melody=o.melody;
+  if(o&&ARTIC[o.articulation])out.articulation=o.articulation;
+  if(!o&&S.useModel)note('Concertmaster ('+lens.name.split(' ')[0]+')','(the reply was not usable, so the lens defaults were used)');
+  return out;
+}
+function verdictFallback(r){return r.issues.length?r.issues.map(i=>i.msg).join(' '):'No problems found: the melody is clear, the level is healthy and the dynamics breathe.';}
+async function runCritic(take,r){
+  const m=r.metrics,nums='melody-to-accompaniment '+m.balance.toFixed(1)+' dB, peak '+m.peak.toFixed(2)+', dynamic range '+m.range.toFixed(1)+' dB, brightness '+m.bright.toFixed(2)+', tempo x'+m.tempoRatio.toFixed(2)+'. Problems found by code: '+(r.issues.map(i=>i.code).join(', ')||'none');
+  const o=await agent('Sound critic ('+take.lens.name.split(' ')[0]+')','You are a sound critic. You hear only measurements, not the music. Reply with ONE JSON object only.','Numbers: '+nums+'\nReturn: {"verdict":"one sentence about what to change"}',0.3,90);
+  return o&&typeof o.verdict==='string'&&o.verdict.length>8?o.verdict.slice(0,240):verdictFallback(r);
+}
+async function runCurator(){
+  const done=S.takes.map((t,i)=>({i,t})).filter(x=>x.t.best);const ranked=done.sort((a,b)=>b.t.best.score-a.t.best.score);
+  const o=await agent('Curator','You are the curator of a concert. You only see scores. Reply with ONE JSON object only.','Scores: '+ranked.map(x=>x.t.lens.name+' '+x.t.best.score.toFixed(2)).join('; ')+'\nReturn: {"note":"one sentence recommending which take to hear first"}',0.3,80);
+  S.curator={order:ranked.map(x=>x.i),note:o&&typeof o.note==='string'&&o.note.length>8?o.note.slice(0,220):('Hear the '+ranked[0].t.lens.name.toLowerCase()+' take first: it has the highest measured score ('+ranked[0].t.best.score.toFixed(2)+').')};
+}
+function makePlan(lens,tune,cm){return{tempoScale:tune.tempoScale,expression:tune.expression,rubato:tune.rubato,warmth:tune.warmth,reverb:tune.reverb,loudness:tune.loudness,articulation:cm.articulation,melody:cm.melody,inner:lens.id==='period'?'harpsichord':(lens.id==='romantic'?'harp':'piano'),mix:{melody:1,acc:1,master:1}};}
+async function run(){
+  if(S.busy)return;
+  S.err='';S.log=[];S.takes=[];S.curator=null;S.pick=-1;S.stop=false;S.n=0;S.busy=true;S.concept=null;stopPlay();
+  S.total=1+LENSES.length*2+LENSES.length*(1+S.qa)+1;
+  try{
+    await runConductor();
+    for(const lens of LENSES){
+      if(S.stop)throw new Error('STOPPED');
+      const tune=await runMaestro(lens);
+      const cm=await runConcertmaster(lens,tune);
+      S.takes.push({lens,rounds:[],best:null,plan0:makePlan(lens,tune,cm)});draw();
+    }
+    for(const take of S.takes){
+      let plan=take.plan0;
+      for(let k=0;k<=S.qa;k++){
+        if(S.stop)throw new Error('STOPPED');
+        S.prog='Recording and measuring: '+take.lens.name+(k?', after fixes '+k:'');draw();LLM.paint();await sleep(30);
+        const perf=buildPerformance(S.concept.piece,S.concept.ens,plan),r=await measureTake(perf,plan,S.concept.piece);
+        r.plan=plan;r.label=k?('Fix pass '+k):'First take';r.secs=perf.total;r.verdict=await runCritic(take,r);take.rounds.push(r);
+        take.best=take.rounds.reduce((a,b)=>b.score>a.score?b:a);draw();
+        if(!r.issues.length||k===S.qa)break;
+        plan=applyFixes(plan,r.issues);note('Sound engineer ('+take.lens.name.split(' ')[0]+')','Fixed: '+r.issues.map(i=>i.fix).join(' '));
+      }
+    }
+    await runCurator();S.prog='';
+  }catch(err){if(err.message!=='STOPPED')S.err=String(err.message||err);else S.err='Stopped. Finished takes are kept below.';}
+  S.busy=false;
+  if(S.takes.some(t=>t.best)&&!S.curator){try{await runCurator();}catch(e){}}
+  draw();LLM.paint();
+}
+
+/* ================= playing, the stage and the piano roll ================= */
+let live=null;
+function stopPlay(){if(live){try{live.ctx.close();}catch(e){}cancelAnimationFrame(live.raf);live=null;}drawStage(0,null);$('#stagebtns').innerHTML=S.pick>=0?playBtns():'<span class="muted small">Build a performance, then press Listen on one of the takes.</span>';$('#prog').style.width='0';}
+function playBtns(){return btn('listen',S.pick,'Listen again','sm')+btn('stopplay','','Stop','ghost sm')+btn('wav',S.pick,'Download WAV','ghost sm');}
+function takeData(i){const t=S.takes[i];if(!t||!t.best)return null;const plan=t.best.plan,perf=buildPerformance(S.concept.piece,S.concept.ens,plan);return{t,plan,perf};}
+function listen(i){
+  const d=takeData(i);if(!d)return;stopPlay();S.pick=i;
+  const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC(),g=graph(ctx,d.plan,'mix'),nz=makeNoise(ctx),t0=ctx.currentTime+0.3;
+  const shifted=d.perf.events.map(e=>Object.assign({},e,{t:e.t+t0}));
+  shifted.forEach(e=>playNote(ctx,g.out(e.role,e.inst),e,d.plan,nz));
+  live={ctx,t0,perf:d.perf,total:d.perf.total,raf:0};
+  const P=PIECES[S.concept.piece];
+  $('#stagetitle').textContent='Now playing: '+P.title+' ('+ENSEMBLES[S.concept.ens].name.toLowerCase()+', '+d.t.lens.name.toLowerCase()+')';
+  $('#stagebtns').innerHTML=playBtns();draw();
+  const loop=()=>{if(!live)return;const t=ctx.currentTime-t0;drawStage(Math.max(0,t),d.perf);$('#prog').style.width=clamp(t/d.perf.total*100,0,100)+'%';if(t>=d.perf.total+0.5){stopPlay();return;}live.raf=requestAnimationFrame(loop);};
+  live.raf=requestAnimationFrame(loop);
+  $('#stagepanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function drawStage(t,perf){
+  const cv=$('#stage'),g=cv.getContext('2d'),W=cv.width,H=cv.height,stageH=H*0.56;
+  g.fillStyle='#12161c';g.fillRect(0,0,W,H);
+  g.fillStyle='#1b2430';g.beginPath();g.ellipse(W/2,stageH*1.05,W*0.46,stageH*0.9,0,Math.PI,2*Math.PI);g.fill();
+  if(!perf){g.fillStyle='#8FA3AD';g.font='16px sans-serif';g.textAlign='center';g.fillText('The stage is empty. Build a performance and press Listen.',W/2,H/2);return;}
+  const active={};perf.events.forEach(e=>{if(t>=e.t&&t<e.t+Math.max(e.d,0.12)){active[e.inst]=Math.max(active[e.inst]||0,e.vel);}});
+  const used={};perf.events.forEach(e=>{used[e.inst]=true;});
+  g.textAlign='center';
+  Object.keys(used).forEach(k=>{
+    const I=INST[k],x=W*(0.08+0.84*I.x),y=stageH*(0.12+0.8*I.y),a=active[k]||0,r=17+a*26;
+    g.fillStyle=SEC_COLOR[I.sec];g.globalAlpha=0.15+0.85*Math.min(1,a*2.2);
+    g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();g.globalAlpha=1;g.strokeStyle=SEC_COLOR[I.sec];g.lineWidth=2;g.beginPath();g.arc(x,y,17,0,6.2832);g.stroke();
+    g.fillStyle='#E6EDF2';g.font='12px sans-serif';g.fillText(I.name,x,y+r+14);
+  });
+  const rollTop=stageH+10,rollH=H-rollTop-8,win=14,x0=t-win*0.3,sx=W/win,roles=perf.events.filter(e=>e.t+e.d>x0&&e.t<x0+win);
+  g.fillStyle='#0d1015';g.fillRect(0,rollTop,W,rollH);
+  let lo=127,hi=0;perf.events.forEach(e=>{if(e.midi<lo)lo=e.midi;if(e.midi>hi)hi=e.midi;});const ny=rollH/(hi-lo+2);
+  roles.forEach(e=>{const x=(e.t-x0)*sx,w=Math.max(2,e.d*sx-1),y=rollTop+rollH-(e.midi-lo+1)*ny;g.fillStyle=ROLE_COLOR[e.role];g.globalAlpha=e.role==='pad'?0.35:0.9;g.fillRect(x,y,w,Math.max(2,ny*0.8));});
+  g.globalAlpha=1;g.fillStyle='#fff';g.fillRect((t-x0)*sx-1,rollTop,2,rollH);
+  g.textAlign='left';g.fillStyle='#8FA3AD';g.font='11px sans-serif';let lx=8;Object.keys(ROLE_COLOR).forEach(r=>{g.fillStyle=ROLE_COLOR[r];g.fillRect(lx,rollTop+4,10,10);g.fillStyle='#8FA3AD';g.fillText(r,lx+14,rollTop+13);lx+=14+g.measureText(r).width+14;});
+  g.textAlign='right';g.fillStyle='#8FA3AD';g.fillText(t.toFixed(0)+' / '+perf.total.toFixed(0)+' s',W-8,18);
+}
+async function downloadWav(i){
+  const d=takeData(i);if(!d)return;$('#stagebtns').innerHTML='<span class="muted small">Rendering the WAV file...</span>';await sleep(30);
+  const buf=await renderOffline(d.perf,d.plan,'mix',32000),blob=wavBlob(buf),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=(PIECES[S.concept.piece].title+' '+d.t.lens.id).toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.wav';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+  $('#stagebtns').innerHTML=live?playBtns():(S.pick>=0?playBtns():'');
+}
+
+/* ================= screen ================= */
+function metricsTable(m){
+  const row=(n,v,t)=>'<tr><td>'+n+'</td><td>'+v+'</td><td class="muted">'+t+'</td></tr>';
+  return '<div class="scroll"><table><thead><tr><th>Measure</th><th>Value</th><th>Healthy</th></tr></thead><tbody>'+row('Melody over accompaniment',m.balance.toFixed(1)+' dB',TH.goodLo+' to '+TH.goodHi+' dB')+row('Peak level',m.peak.toFixed(2),'0.45 to 0.9')+row('Dynamic range',m.range.toFixed(1)+' dB',TH.rangeLo+' to '+TH.rangeHi+' dB')+row('Brightness',m.bright.toFixed(2),'under '+TH.harsh)+row('Tempo','x'+m.tempoRatio.toFixed(2),'0.82 to 1.2')+'</tbody></table></div>';
+}
+function card(take,i){
+  const top=S.curator&&S.curator.order[0]===i,r=take.best,p=r.plan,R=roster(S.concept.ens,p);
+  let h='<div class="card'+(S.pick===i?' pick':'')+(top?' top':'')+'"><h3>'+esc(take.lens.name)+(top?' '+chip('Top ranked','good'):'')+'</h3>'+
+    '<p class="small muted">Measured score '+r.score.toFixed(2)+'. Lead: '+esc(INST[R.melody].name.toLowerCase())+(R.double?' doubled by '+esc(INST[R.double].name.toLowerCase()):'')+'. '+p.articulation+', '+Math.round(PIECES[S.concept.piece].bpm*p.tempoScale)+' bpm, about '+Math.round(r.secs)+' s.</p>'+
+    '<p class="small">Expression '+pct(p.expression)+', rubato '+pct(p.rubato)+', warmth '+pct(p.warmth)+', hall '+pct(p.reverb)+'.</p>'+metricsTable(r.metrics)+
+    '<p class="small" style="margin-top:8px"><b>Critic:</b> '+esc(r.verdict)+'</p>';
+  if(take.rounds.length>1)h+='<details><summary>Fix passes ('+take.rounds.length+' takes)</summary>'+take.rounds.map(x=>'<p class="small"><b>'+esc(x.label)+'</b> (score '+x.score.toFixed(2)+', melody mix x'+x.plan.mix.melody.toFixed(2)+', accompaniment x'+x.plan.mix.acc.toFixed(2)+', master x'+x.plan.mix.master.toFixed(2)+', expression '+pct(x.plan.expression)+', warmth '+pct(x.plan.warmth)+')'+(x.issues.length?'<br><span class="muted">'+x.issues.map(z=>esc(z.msg)).join('<br>')+'</span>':'<br><span class="muted">No problems found.</span>')+'</p>').join('')+'</details>';
+  h+='<div class="row" style="margin-top:10px">'+btn('listen',i,'Listen')+btn('wav',i,'Download WAV','ghost')+'</div></div>';
+  return h;
+}
+function render(){
+  let h='<section class="panel"><h2>1. The orchestra\'s brain</h2>'+LLM.ui()+'</section>';
+  h+='<section class="panel"><h2>2. Your request</h2><label class="range" for="req">What should they play?</label><input type="text" id="req" value="'+esc(S.request)+'" maxlength="160">'+
+    '<div class="row" style="margin-top:10px">'+PRESETS.map((p,i)=>btn('preset',i,esc(p),'ghost sm')).join('')+'</div>'+
+    '<h3>Piece</h3><div class="row">'+tog('piece','auto','Conductor decides',S.piece==='auto',S.busy)+Object.keys(PIECES).map(k=>tog('piece',k,esc(PIECES[k].title),S.piece===k,S.busy)).join('')+'</div>'+
+    '<h3>Ensemble</h3><div class="row">'+tog('ens','auto','Conductor decides',S.ens==='auto',S.busy)+Object.keys(ENSEMBLES).map(k=>tog('ens',k,esc(ENSEMBLES[k].name),S.ens===k,S.busy)).join('')+'</div>'+
+    '<h3>Fix passes after the first take</h3><div class="row">'+[0,1,2].map(n=>tog('qa',n,n===0?'None':String(n),S.qa===n,S.busy)).join('')+'</div>'+
+    '<div class="row" style="margin-top:14px">'+btn('run','','Assemble the orchestra',null,S.busy||!LLM.ready())+btn('runrules','','Build with rules only (no model)','ghost',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+'</div>'+
+    (!LLM.ready()&&!S.busy?'<p class="small muted" style="margin-top:8px">Load the chat model first for the full agent team. The rules-only build runs the same score, synthesizer, measurements and fixes, with simple rules standing in for the agents.</p>':'')+'</section>';
+  if(S.busy||S.err||S.log.length){
+    h+='<section class="panel"><h2>3. The team at work</h2>';
+    if(S.busy)h+='<div class="status warn">Working: '+esc(S.prog)+' (step '+S.n+')</div>';
+    if(S.err)h+='<div class="status '+(S.err.startsWith('Stopped')?'warn':'bad')+'">'+esc(S.err)+'</div>';
+    if(S.concept){const P=PIECES[S.concept.piece];h+='<p class="small"><b>Program:</b> '+esc(P.title)+', '+esc(P.composer)+', for a '+esc(ENSEMBLES[S.concept.ens].name.toLowerCase())+'. Mood: '+esc(S.concept.mood)+'. '+chip(S.concept.source)+'</p>';}
+    if(S.log.length)h+='<details><summary>Agent messages ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+  const ready=S.takes.filter(t=>t.best);
+  if(ready.length){
+    h+='<section class="panel"><h2>4. The takes</h2>';
+    if(S.curator)h+='<div class="status ok"><b>Curator:</b> '+esc(S.curator.note)+'</div>';
+    h+='<p class="small muted">Each take was rendered offline and measured. The numbers check balance, level and dynamics, not beauty, so listen to all three and pick your own favorite.</p><div class="cards">'+
+      (S.curator?S.curator.order.filter(i=>S.takes[i]&&S.takes[i].best):ready.map(t=>S.takes.indexOf(t))).map(i=>card(S.takes[i],i)).join('')+'</div></section>';
+  }
+  return h;
+}
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='req'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#req');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Working','warn'):''));
+}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act]');if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='INPUT')return;
+  const v=t.dataset.val,act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='preset'){S.request=PRESETS[+v];draw();return;}
+  if(act==='piece'){S.piece=v;draw();return;}
+  if(act==='ens'){S.ens=v;draw();return;}
+  if(act==='qa'){S.qa=+v;draw();return;}
+  if(act==='run'){S.useModel=true;run();return;}
+  if(act==='runrules'){S.useModel=false;run();return;}
+  if(act==='stop'){S.stop=true;return;}
+  if(act==='listen'){listen(+v);return;}
+  if(act==='stopplay'){stopPlay();return;}
+  if(act==='wav'){downloadWav(+v);return;}
+});
+document.addEventListener('change',e=>{if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}});
+document.addEventListener('input',e=>{if(e.target.id==='req')S.request=e.target.value;});
+draw();drawStage(0,null);
+</script>
+</body>
+</html>
