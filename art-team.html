@@ -333,7 +333,7 @@ async function fetchBuf(url,onProg){
 function f16(h){const s=(h&0x8000)?-1:1,e=(h>>10)&0x1f,f=h&0x3ff;if(e===0)return s*Math.pow(2,-14)*(f/1024);if(e===31)return f?NaN:s*Infinity;return s*Math.pow(2,e-15)*(1+f/1024);}
 
 /* ================= the art team ================= */
-const S={brief:'A lighthouse at dawn, calm and warm',backend:'canvas',rounds:1,director:null,variants:[],curator:null,choice:null,log:[],busy:false,stop:false,err:'',prog:'',n:0,total:0};
+const S={mode:'team',brief:'A lighthouse at dawn, calm and warm',backend:'canvas',rounds:1,director:null,variants:[],curator:null,choice:null,log:[],busy:false,stop:false,err:'',prog:'',n:0,total:0};
 const LENSES=[{id:'surreal',name:'Surrealist',desc:'dreamlike, with an impossible twist'},{id:'minimal',name:'Minimalist',desc:'very few shapes and lots of empty space'},{id:'classic',name:'Classical',desc:'balanced, painterly, traditional'}];
 const COMPS=['centered','thirds','diagonal','symmetric'];
 const PRESETS=['A lighthouse at dawn, calm and warm','A busy neon city at night in the rain','A quiet pine forest after the rain'];
@@ -461,12 +461,54 @@ function applyFixes(spec,issues){
   return s;
 }
 /* ---------- the SD-Turbo backend (experimental, not tested here) ---------- */
-const SD={state:'idle',msg:'',sess:null,tok:null,ort:null};
+const SD={state:'idle',msg:'',sess:null,tok:null,ort:null,abort:null,file:0,pct:0};
+const isMobile=()=>/iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent||'');
 function toF16(a){const o=new Uint16Array(a.length),f=new Float32Array(1),u=new Uint32Array(f.buffer);for(let i=0;i<a.length;i++){f[0]=a[i];const x=u[0],s=(x>>>16)&0x8000;const e=((x>>>23)&0xff)-127+15,m=x&0x7fffff;if(e<=0)o[i]=s;else if(e>=31)o[i]=s|0x7c00;else o[i]=s|(e<<10)|(m>>>13);}return o;}
 function tensorF32(t){if(t.type==='float16'){const u=t.data instanceof Uint16Array?t.data:new Uint16Array(t.data.buffer.slice(t.data.byteOffset,t.data.byteOffset+t.data.byteLength));const o=new Float32Array(u.length);for(let i=0;i<u.length;i++)o[i]=f16(u[i]);return o;}return t.data;}
 function randn(n,seed){const R=mulberry32(seed>>>0),o=new Float32Array(n);for(let i=0;i<n;i+=2){const u=Math.max(R(),1e-9),v=R(),r=Math.sqrt(-2*Math.log(u));o[i]=r*Math.cos(6.2832*v);if(i+1<n)o[i+1]=r*Math.sin(6.2832*v);}return o;}
+const nap=ms=>new Promise(r=>setTimeout(r,ms));
+async function probeSize(url,signal){
+  try{
+    const r=await fetch(url,{headers:{Range:'bytes=0-0'},signal});
+    if(r.status!==206){try{r.body&&r.body.cancel();}catch(e){}return null;}
+    const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||'');
+    try{await r.arrayBuffer();}catch(e){}
+    return m?+m[1]:null;
+  }catch(e){if(e&&e.name==='AbortError')throw e;return null;}
+}
+/* A big download that survives a flaky connection: it asks for the file in pieces, retries a piece that fails from the byte where it stopped, and shows real progress. If the server cannot do pieces it falls back to one stream. */
+async function fetchBig(url,onProg,signal){
+  let cache=null;
+  try{if(typeof caches!=='undefined'){cache=await caches.open('art-sd-v1');const hit=await cache.match(url);if(hit){onProg(1,'from your browser cache');return await hit.arrayBuffer();}}}catch(e){cache=null;}
+  const say=(got,len)=>onProg(len?got/len:0,(got/1048576).toFixed(0)+(len?' of '+(len/1048576).toFixed(0):'')+' MB');
+  const total=await probeSize(url,signal);let buf,got=0;
+  if(total){
+    buf=new Uint8Array(total);const CH=32*1048576;
+    while(got<total){
+      const end=Math.min(total,got+CH)-1;let ok=false,lastErr=null;
+      for(let attempt=0;attempt<5&&!ok;attempt++){
+        try{
+          const r=await fetch(url,{headers:{Range:'bytes='+got+'-'+end},signal});
+          if(r.status!==206)throw new Error('The server did not honor a range request ('+r.status+')');
+          const rd=r.body.getReader();
+          while(true){const{done,value}=await rd.read();if(done)break;if(got+value.length>total)throw new Error('The server sent too much data');buf.set(value,got);got+=value.length;say(got,total);}
+          if(got<=end)throw new Error('The connection ended early');
+          ok=true;
+        }catch(e){if(e&&e.name==='AbortError')throw e;lastErr=e;SD.msg='Connection problem, retrying from '+(got/1048576).toFixed(0)+' MB...';await nap(500*(attempt+1));}
+      }
+      if(!ok)throw lastErr||new Error('A piece of the download failed');
+    }
+  }else{
+    const r=await fetch(url,{signal});if(!r.ok)throw new Error('Could not download '+url+' ('+r.status+')');
+    const len=+(r.headers.get('content-length')||0);
+    if(len&&r.body&&r.body.getReader){buf=new Uint8Array(len);const rd=r.body.getReader();while(true){const{done,value}=await rd.read();if(done)break;buf.set(value,got);got+=value.length;say(got,len);}}
+    else buf=new Uint8Array(await r.arrayBuffer());
+  }
+  if(cache){try{await cache.put(url,new Response(buf,{headers:{'content-type':'application/octet-stream'}}));}catch(e){}}   // keeping a copy is optional: a full disk must not break the load
+  return buf.buffer;
+}
 async function sdLoad(){
-  SD.state='loading';SD.msg='Loading the runtime...';draw();
+  SD.state='loading';SD.msg='Loading the runtime...';SD.file=0;SD.pct=0;SD.abort=new AbortController();draw();
   try{
     const ORT='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
     const ort=await import(ORT+'ort.webgpu.min.mjs');ort.env.wasm.wasmPaths=ORT;
@@ -476,13 +518,23 @@ async function sdLoad(){
     const base='https://huggingface.co/schmuell/sd-turbo-ort-web/resolve/main/';
     const defs={text_encoder:{url:'text_encoder/model.onnx',fd:{batch_size:1}},unet:{url:'unet/model.onnx',fd:{batch_size:1,num_channels:4,height:64,width:64,sequence_length:77}},vae_decoder:{url:'vae_decoder/model.onnx',fd:{batch_size:1,num_channels_latent:4,height_latent:64,width_latent:64}}};
     SD.sess={};
+    let fi=0;
     for(const k of Object.keys(defs)){
-      const buf=await fetchBuf(base+defs[k].url,(f,t)=>{SD.msg='Downloading '+k+': '+t;if(Math.random()<0.2)draw();});
-      SD.msg='Preparing '+k+' on the GPU...';draw();
+      fi++;SD.file=fi;SD.pct=0;
+      let buf=await fetchBig(base+defs[k].url,(f,t)=>{SD.pct=f;SD.msg='Downloading '+k+': '+t;if(Math.random()<0.25)draw();},SD.abort.signal);
+      SD.pct=1;SD.msg='Preparing '+k+' on the GPU...';draw();
       SD.sess[k]=await ort.InferenceSession.create(buf,{executionProviders:['webgpu'],enableMemPattern:false,enableCpuMemArena:false,freeDimensionOverrides:defs[k].fd});
+      buf=null;
     }
     SD.ort=ort;SD.state='ready';SD.msg='Ready.';
-  }catch(e){SD.state='error';SD.msg='SD-Turbo could not load: '+String((e&&e.message)||e);throw new Error(SD.msg);}
+  }catch(e){
+    if(e&&e.name==='AbortError'){SD.state='idle';SD.msg='Stopped. Any file that finished downloading stays in your browser cache.';throw new Error('SD_STOPPED');}
+    const em=String((e&&e.message)||e);let hint='';
+    if(/dynamically imported module|importing a module script/i.test(em))hint=' The runtime could not be loaded from the internet. Check your connection and any content blocker, then try again.';
+    else if(/network error|failed to fetch|load failed|networkerror/i.test(em))hint=' The download was interrupted. Very large files often fail on phones or unstable connections, so try a desktop computer on Wi-Fi.';
+    else if((e&&e.name==='RangeError')||/memory|allocation/i.test(em))hint=' The browser ran out of memory. SD-Turbo needs a desktop computer with a strong GPU.';
+    SD.state='error';SD.msg='SD-Turbo could not load: '+em+'.'+hint;throw new Error(SD.msg);
+  }
 }
 async function sdRun(sess,feeds){
   try{return await sess.run(feeds);}
@@ -563,7 +615,7 @@ async function renderStep(label,spec){
 async function runTeam(){
   need();
   if(S.backend==='sdturbo'&&SD.state!=='ready')throw new Error('Load the SD-Turbo backend first, or switch to the procedural canvas.');
-  S.log=[];S.variants=[];S.curator=null;S.choice=null;S.n=0;S.total=1+9+(S.rounds*6);
+  S.mode='team';S.log=[];S.variants=[];S.curator=null;S.choice=null;S.n=0;S.total=1+9+(S.rounds*6);
   await runDirector();if(S.stop)return;
   const baseSeed=hash(S.brief);
   for(let li=0;li<LENSES.length&&!S.stop;li++){
@@ -593,6 +645,12 @@ async function runTeam(){
 const pc=v=>Math.round(v*100);
 function bar(name,v,good){return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div class="small" style="width:78px;flex:none">'+name+'</div><div style="flex:1;background:var(--line);border-radius:6px;height:10px"><div style="width:'+pc(v)+'%;height:10px;border-radius:6px;background:'+(good?'#2E7D5B':'#E3A21A')+'"></div></div><div class="small" style="width:30px;text-align:right">'+pc(v)+'</div></div>';}
 function metricsView(m){return bar('Palette',m.paletteMatch,m.paletteMatch>=0.55)+bar('Contrast',m.contrast,m.contrast>=0.35)+bar('Balance',m.balance,m.balance>=0.5)+bar('Busyness',m.busy,m.busy<=0.7&&m.busy>=0.12);}
+function progBar(pct){return '<div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+Math.min(100,Math.max(0,pct*100)).toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';}
+function busyBox(){
+  if(SD.state==='loading')return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>Loading SD-Turbo: file '+(SD.file||'...')+' of 3</b><span class="small">'+esc(SD.msg)+'</span></div>'+progBar(SD.pct);
+  if(S.mode==='sd')return '<div style="display:flex;justify-content:space-between;gap:8px"><b>SD-Turbo</b><span class="small">'+esc(SD.msg||S.prog||'Working...')+'</span></div>';
+  return counter();
+}
 function counter(){const pct=Math.min(100,S.total?S.n/S.total*100:0);return '<div style="display:flex;justify-content:space-between;gap:8px"><b>Model call '+S.n+' of up to '+S.total+'</b><span class="small">'+esc(S.prog||'')+'</span></div><div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+pct.toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';}
 function variantCard(v,i){
   if(!v.concept)return '<div class="box" style="margin-bottom:12px"><b>'+esc(v.lens.name)+'</b> <span class="small muted">is thinking...</span></div>';
@@ -620,7 +678,7 @@ const QA=[
 ];
 function sdBox(){
   if(S.backend!=='sdturbo')return '';
-  return '<div class="box" style="margin-top:8px"><b>SD-Turbo (experimental)</b><p class="small muted">Runs a real image model on WebGPU through ONNX Runtime Web. It downloads about 2 GB the first time, needs a strong desktop GPU, and I could not test it from here.</p>'+
+  return '<div class="box" style="margin-top:8px"><b>SD-Turbo (experimental)</b><p class="small muted">Runs a real image model on WebGPU through ONNX Runtime Web. It downloads several gigabytes the first time (the unet file alone is about 1.6 GB), needs a strong desktop GPU and a lot of memory, and will probably fail on a phone. I could not test it from here.</p>'+
     '<div class="row">'+btn('sdtest','',SD.state==='ready'?'Make a test image':'Load SD-Turbo and make a test image','',S.busy||SD.state==='loading')+chip(SD.state,SD.state==='ready'?'good':(SD.state==='error'?'bad':''))+'</div>'+(SD.msg?'<p class="small muted" style="margin-top:6px">'+esc(SD.msg)+'</p>':'')+(SD.test?'<img src="'+SD.test+'" style="width:150px;border-radius:8px;margin-top:6px">':'')+'</div>';
 }
 function render(){
@@ -630,7 +688,7 @@ function render(){
     '<div class="row" style="margin-top:8px"><span class="small muted">Revision rounds</span><select data-act="rounds">'+[0,1,2].map(v=>'<option'+(S.rounds===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
     '<p class="small muted">The procedural canvas draws simple generative art from the plan. It is not an AI image model, but it lets the whole team run anywhere and be measured.</p>';
   h+='<div class="row" style="margin-top:12px">'+btn('run','','Assemble the team','',S.busy)+btn('reset','','Clear','ghost',S.busy)+'</div>';
-  if(S.busy)h+='<div class="status warn" style="margin-top:10px">'+counter()+'</div>';
+  if(S.busy)h+='<div class="status warn" style="margin-top:10px">'+busyBox()+'</div>';
   if(S.director){
     const D=S.director;
     h+='<h3>The director\'s plan</h3><div class="box"><b>'+esc(D.title)+'</b> '+(D.source==='fallback'?chip('rule-based plan','warn'):'')+'<div class="small muted">Mood: '+esc(D.mood)+'. Composition: '+esc(D.composition)+'.</div><div style="display:flex;gap:6px;margin:8px 0">'+D.palette.map(p=>'<div style="width:38px;height:38px;border-radius:8px;background:'+esc(p)+';border:1px solid #CBD8DD" title="'+esc(p)+'"></div>').join('')+'</div><div class="small">Must have: '+esc(D.must.join(', ')||'nothing in particular')+'. Avoid: '+esc(D.avoid.join(', ')||'nothing in particular')+'.</div></div>';
@@ -647,7 +705,7 @@ function render(){
 function toast(){
   const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
   if(S.err)return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
-  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+counter()+'<div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+busyBox()+'<div style="margin-top:8px">'+btn('stop','',SD.state==='loading'?'Stop the download':'Stop','ghost sm')+'</div></div>';
   return '';
 }
 async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
@@ -658,9 +716,12 @@ const draw=app({
     run:()=>guard(runTeam),
     reset:()=>{S.variants=[];S.director=null;S.curator=null;S.choice=null;S.log=[];S.err='';},
     pick:v=>{S.choice=+v;},
-    sdtest:()=>guard(async()=>{if(SD.state!=='ready')await sdLoad();const t0=performance.now(),cv=await sdGenerate({prompt:'a red circle on a blue background, flat illustration',seed:7});SD.test=cv.toDataURL('image/png');SD.msg='Test image made in '+((performance.now()-t0)/1000).toFixed(1)+' s.';}),
+    sdtest:()=>{
+      if(SD.state!=='ready'&&isMobile()&&!confirm('This looks like a phone. SD-Turbo needs several gigabytes of download and a lot of memory, and will most likely fail here. Load it anyway?'))return;
+      return guard(async()=>{S.mode='sd';try{if(SD.state!=='ready')await sdLoad();}catch(e){if(e&&e.message==='SD_STOPPED')return;throw e;}SD.msg='Generating a test image...';draw();const t0=performance.now(),cv=await sdGenerate({prompt:'a red circle on a blue background, flat illustration',seed:7});SD.test=cv.toDataURL('image/png');SD.msg='Test image made in '+((performance.now()-t0)/1000).toFixed(1)+' s.';});
+    },
     dismiss:()=>{S.err='';},
-    stop:()=>{S.stop=true;},
+    stop:()=>{S.stop=true;if(SD.state==='loading'&&SD.abort)SD.abort.abort();},
     backend:v=>{S.backend=v;},
     ...LLM.act
   },
