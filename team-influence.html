@@ -323,7 +323,7 @@ const PRESETS=[
  {name:'Approve: one decisive fact',facts:['The order was delivered 12 days ago.','The item is not marked final sale.','The refund amount is 340 dollars.'],truth:'Approve'},
  {name:'Allow: nothing blocks it',facts:['The order was delivered 12 days ago.','The item is not marked final sale.','The refund amount is 180 dollars.'],truth:'Allow'}
 ];
-const S={sc:JSON.parse(JSON.stringify(PRESETS[0])),runs:[],busy:false,stop:false,err:'',prog:'',calls:0,low:0};
+const S={sc:JSON.parse(JSON.stringify(PRESETS[0])),runs:[],busy:false,stop:false,err:'',prog:'',calls:0,low:0,n:0,total:36,lastN:0};
 /* ---------- wordings, so the result can be checked against phrasing ---------- */
 const SYS=[r=>'You are the '+r+' on a team that decides refunds. Reply with exactly one word: Allow, Approve or Refuse.',
            r=>'As the '+r+', give your decision on the refund in one word only: Allow, Approve or Refuse.',
@@ -361,28 +361,31 @@ async function askAgent(j,msgs,wi,cache){
 const argmax=p=>OPT.reduce((a,o)=>p[o]>p[a]?o:a,OPT[0]);
 async function runOne(wi){
   const sc=S.sc,truth=sc.truth,cache={},idx=[0,1,2];
-  const step=(t)=>{S.prog=t;draw();return new Promise(r=>setTimeout(r,0));};
+  S.n=0;S.total=36;
+  const tick=(t)=>{S.n++;S.prog='Wording '+(wi+1)+' of 3: '+t;draw();return new Promise(r=>setTimeout(r,0));};
   const alone=[],claims=[];
-  for(const j of idx){if(S.stop)break;await step('Wording '+(wi+1)+': the '+AGENTS[j].name+' alone');alone[j]=await askAgent(j,[],wi,cache);claims[j]=argmax(alone[j].p);}
+  for(const j of idx){if(S.stop)break;await tick('the '+AGENTS[j].name+' alone');alone[j]=await askAgent(j,[],wi,cache);claims[j]=argmax(alone[j].p);}
   if(S.stop)return null;
   const msg=(i,kind)=>({from:i,text:fmtMsg(kind,i,claims[i],sc.facts[i],wi,truth)});
   const list=(j,variant)=>idx.filter(x=>x!==j).map(x=>x===variant.i?(variant.kind==='none'?null:msg(x,variant.kind)):msg(x,'full')).filter(Boolean);
   const base=[];
-  for(const j of idx){await step('Wording '+(wi+1)+': the '+AGENTS[j].name+' with both messages');base[j]=await askAgent(j,list(j,{i:-1}),wi,cache);}
+  for(const j of idx){if(S.stop)break;await tick('the '+AGENTS[j].name+' with both messages');base[j]=await askAgent(j,list(j,{i:-1}),wi,cache);}
+  if(S.stop)return null;
   const pair={};
   for(const j of idx)for(const i of idx){
-    if(i===j||S.stop)continue;
+    if(i===j)continue;
     const r={};
-    for(const kind of ['none','info','claim','plant']){await step('Wording '+(wi+1)+': '+AGENTS[i].name+' to '+AGENTS[j].name+' ('+kind+')');r[kind]=await askAgent(j,list(j,{i,kind}),wi,cache);}
+    for(const kind of ['none','info','claim','plant']){if(S.stop)return null;await tick(AGENTS[i].short+' to '+AGENTS[j].short+', message '+({none:'dropped',info:'facts only',claim:'claim only',plant:'replaced by a wrong claim'}[kind]));r[kind]=await askAgent(j,list(j,{i,kind}),wi,cache);}
     pair[i+'>'+j]=r;
   }
   const joint=[];
   for(const j of idx){
-    if(S.stop)break;await step('Wording '+(wi+1)+': hand-off rules for the '+AGENTS[j].name);
+    if(S.stop)return null;
     const others=idx.filter(x=>x!==j);
-    joint[j]={claim:await askAgent(j,others.map(x=>msg(x,'claim')),wi,cache),info:await askAgent(j,others.map(x=>msg(x,'info')),wi,cache)};
+    await tick('the '+AGENTS[j].name+', claims only from both');const c=await askAgent(j,others.map(x=>msg(x,'claim')),wi,cache);
+    await tick('the '+AGENTS[j].name+', facts only from both');const f=await askAgent(j,others.map(x=>msg(x,'info')),wi,cache);
+    joint[j]={claim:c,info:f};
   }
-  if(S.stop)return null;
   return{wi,truth,alone,claims,base,pair,joint};
 }
 async function runLab(){
@@ -390,6 +393,7 @@ async function runLab(){
   const wi=S.runs.length;if(wi>=3)throw new Error('Three wordings are already done. Reset to start again.');
   S.calls=0;S.low=0;
   const run=await runOne(wi);
+  S.lastN=S.n;
   if(run)S.runs.push(run);
 }
 /* ---------- numbers from the runs ---------- */
@@ -452,6 +456,10 @@ function reading(sm){
   if(small)L.push('The total effects are small, so treat this pattern with caution.');
   return L;
 }
+function counter(){
+  const pct=Math.min(100,S.n/S.total*100);
+  return '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><b>Call '+S.n+' of '+S.total+'</b><span class="small">'+esc(S.prog||'')+'</span></div><div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+pct.toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';
+}
 function render(){
   const sc=S.sc,sm=summarize();
   let h='<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+(LLM.ready()?' <span class="small muted">'+esc(LLM.modelId)+'</span>':LLM.ui()+'<p class="small muted" style="margin-top:8px">A chat model run by WebLLM on WebGPU. It returns the probability of its first word, which is how we measure influence.</p>')+'</div>';
@@ -460,7 +468,7 @@ function render(){
     AGENTS.map(a=>'<div class="box" style="margin-bottom:6px;border-left:6px solid '+a.color+'"><b>'+esc(a.name)+'</b> knows: '+esc(sc.facts[a.id])+'</div>').join('');
   h+='<h3>2  Run the experiment</h3><p class="small muted">Each agent first answers alone and writes a message. Then each agent answers again, with its teammates\' messages in view. The lab drops or edits each message in turn. About 36 model calls per wording.</p>'+
     '<div class="row">'+btn('run','',S.runs.length?'Repeat with another wording':'Run the experiment','',S.busy||S.runs.length>=3)+btn('reset','','Reset','ghost',S.busy)+'</div>'+
-    (S.runs.length?'<p class="small muted" style="margin-top:6px">Wordings done: '+S.runs.length+' of 3. '+(S.runs.length===1?'One wording shows a pattern. More wordings show how steady it is.':'Cells show the average and the range across wordings.')+'</p>':'');
+    (S.busy?'<div class="status warn" style="margin-top:10px">'+counter()+'</div>':'')+(S.runs.length?'<p class="small muted" style="margin-top:6px">Wordings done: '+S.runs.length+' of 3. '+(S.lastN?'The last wording used '+S.lastN+' model calls. ':'')+(S.runs.length===1?'One wording shows a pattern. More wordings show how steady it is.':'Cells show the average and the range across wordings.')+'</p>':'');
   if(S.low>0)h+='<div class="status warn">In '+S.low+' calls the model rarely started with one of the three answer words, so those probabilities are less reliable.</div>';
   if(sm){
     h+='<h3>Alone, and with the team\'s messages</h3><p class="small muted">Chance of the right answer ('+esc(sc.truth)+').</p>'+
@@ -485,7 +493,7 @@ const QA=[
 function toast(){
   const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
   if(S.err)return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
-  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A"><b>Working</b> <span class="small">'+esc(S.prog||'')+'</span><div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+counter()+'<div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
   return '';
 }
 async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
