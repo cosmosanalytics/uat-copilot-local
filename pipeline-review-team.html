@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A review team for agent pipeline code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Paste agent pipeline code and let a team of reviewers check it, with a code analyzer and an on-device model</span></div>
+  <header>
+    <h1>A review team for agent pipeline code</h1>
+    <p class="lede">Paste the design code of an agent pipeline. A static analyzer draws the pipeline as a graph and finds problems in plain code. Then four reviewer agents, each with its own working memory, look for more, a fresh verifier checks every finding against the code, and a synthesizer ranks the result. Try it on the samples, where the seeded problems are known.</p>
+    <ol class="lede-items"><li><b>Static analyzer (code)</b>: Reads the code, draws the pipeline as a graph and applies rules from the executive brief. No model.</li><li><b>Four reviewers</b>: Structure, incentives, safety and grounding. Each sees the code through its own checklist.</li><li><b>Verifier</b>: Starts fresh. It sees only a finding and the lines it cites, and says whether the code supports it.</li><li><b>Synthesizer</b>: Merges, removes duplicates, ranks by risk and writes a short summary.</li><li><b>You</b>: Paste code or pick a sample, and compare the team with one reviewer on its own.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the static analyzer reads the text of the code with simple pattern rules. It does not run or fully parse it, so it can miss problems and flag false ones, and it works best on short, readable pipeline code in Python or JavaScript. The model reviewers are a small on-device model, so they will miss things and some of their findings will be wrong, which is why every one is checked against the code. The samples are made up, with seeded problems. A score on three samples proves very little. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- the rule catalog, from the executive brief ---------- */
+const RULES={
+  S1:{name:'Steps that could run in parallel',group:'Structure',sev:2,why:'Independent steps are awaited one after another, so the longest chain is longer than it needs to be.',fix:'Start independent steps together (Promise.all or asyncio.gather) and merge afterwards.'},
+  S2:{name:'The checker sees the doer\'s reasoning',group:'Structure',sev:4,why:'What flows on an edge decides what the next agent can see. A checker that reads the doer\'s reasoning tends to anchor on it.',fix:'Pass the checker evidence and the result, not the reasoning or shared memory.'},
+  G1:{name:'Clones vote',group:'Incentives',sev:3,why:'Identical agents with the same view share the same blind spots. Voting only helps against random slips.',fix:'Give the second agent different information, an opposing role or its own tools, instead of repeating the same call.'},
+  G2:{name:'The checker has no opposing goal or audit',group:'Incentives',sev:3,why:'A checker told to confirm tends to agree. A rival goal and random audits keep it honest.',fix:'Tell the checker to find flaws, and audit at random.'},
+  R1:{name:'No different eyes',group:'Rule 1',sev:3,why:'A second agent with the same data, role and context adds little.',fix:'Give the checker different data, a rival role or a fresh context.'},
+  R2:{name:'Acts before the check',group:'Rule 2',sev:5,why:'A wrong action that is already done cannot be undone by a later check.',fix:'Execute only after the checker has passed the result.'},
+  R3:{name:'Facts left to the model',group:'Rule 3',sev:3,why:'The model is asked to calculate or recall facts instead of getting them from a tool.',fix:'Compute with code or a database, and let the model reason over verified facts.'},
+  R4:{name:'No way to say unsure',group:'Rule 4',sev:3,why:'The pipeline has no escalation or approval path, so it must answer even when it should not.',fix:'Escalate to a person when agents disagree or confidence is low.'},
+  R5:{name:'No evaluation',group:'Rule 5',sev:2,why:'Nothing measures the pipeline against a baseline on known cases.',fix:'Add tests on known cases and compare with one agent.'},
+  X1:{name:'Hard-coded secret',group:'Hygiene',sev:5,why:'A key in the source can leak.',fix:'Read secrets from the environment or a vault.'},
+  X2:{name:'Unbounded loop',group:'Hygiene',sev:4,why:'A loop with no limit can run forever and burn cost.',fix:'Add a maximum number of attempts and a timeout.'},
+  X3:{name:'No error handling',group:'Hygiene',sev:2,why:'Tool and model calls can fail, and nothing catches it.',fix:'Wrap calls in try/except (or try/catch) and escalate on failure.'},
+  X0:{name:'Other',group:'Other',sev:1,why:'A reviewer reported this, and it does not fit a standard rule.',fix:''}
+};
+const GROUPS=['Structure','Incentives','Rule 1','Rule 2','Rule 3','Rule 4','Rule 5','Hygiene','Other'];
+/* ---------- samples with seeded problems ---------- */
+const SAMPLES={
+ naive:{name:'Naive refund pipeline',lang:'Python',code:[
+'import os','from collections import Counter','','API_KEY = "sk-live-4f9a8c7b2d1e6a3f9b0c"','',
+'def ask_llm(prompt, temperature=0.8):','    return llm.chat(prompt, temperature=temperature)','',
+'def judge(message):','    prompt = "Read the refund policy and this message. Work out the days since delivery and the total, then decide A, B or C.\\n" + message','    return ask_llm(prompt)','',
+'def checker(message, judge_reasoning):','    prompt = "The judge reasoned: " + judge_reasoning + ". Confirm it if it looks right.\\n" + message','    return ask_llm(prompt)','',
+'def vote(message):','    answers = []','    for _ in range(3):','        answers.append(judge(message))','    return Counter(answers).most_common(1)[0][0]','',
+'def issue_refund(order_id, amount):','    return payments.refund(order_id, amount)','',
+'def handle(message, order_id, amount):','    decision = vote(message)','    issue_refund(order_id, amount)','    reasoning = judge(message)','    verdict = checker(message, reasoning)','    while True:','        if verdict:','            break','        verdict = checker(message, reasoning)','    return decision'].join('\n'),
+ seeds:[{tag:'X1',pat:/API_KEY = /},{tag:'R3',pat:/Work out the days since delivery/},{tag:'G1',pat:/for _ in range\(3\)/},{tag:'R2',pat:/^\s*issue_refund\(order_id, amount\)/},{tag:'S2',pat:/verdict = checker\(message, reasoning\)/},{tag:'X2',pat:/while True/},{tag:'X3',pat:/return payments\.refund/},{tag:'R4',pat:/def handle\(/},{tag:'R5',pat:/def handle\(/}]},
+ careful:{name:'Careful refund pipeline',lang:'Python',code:[
+'import asyncio','','def days_between(start, end):','    return (end - start).days','',
+'def extract_facts(message):','    return llm.json("Extract dates, price and quantity as JSON.\\n" + message)','',
+'def judge(facts):','    days = days_between(facts["delivered"], facts["requested"])','    total = facts["price"] * facts["quantity"]','    return llm.chat("Apply the policy to these facts: days=%d total=%d" % (days, total))','',
+'def fresh_checker(message):','    # a rival reviewer that sees only the raw message, never the judge output','    return llm.chat("Find a reason this refund should be refused.\\n" + message)','',
+'def execute_refund(order_id, amount):','    return payments.refund(order_id, amount)','',
+'async def handle(message, order_id, amount):','    facts = extract_facts(message)','    verdict, rival = await asyncio.gather(judge(facts), fresh_checker(message))','    if verdict != rival:','        return escalate_to_person(order_id)','    try:','        return execute_refund(order_id, amount)','    except Exception:','        return escalate_to_person(order_id)'].join('\n'),
+ seeds:[{tag:'R5',pat:/async def handle\(/}]},
+ research:{name:'Research pipeline',lang:'JavaScript',code:[
+'const apiKey = "sk-research-7d3b9e1a5c2f48a6b0d1";','',
+'async function search(topic) { return llm.chat("List 5 sources about " + topic); }','async function summarize(sources) { return llm.chat("Summarize these sources: " + sources); }','async function critique(summary, memory) { return llm.chat("Review this summary. Earlier notes: " + memory + "\\n" + summary); }','async function publish(report) { return cms.post(report); }','',
+'async function run(topic, sharedMemory) {','  const sources = await search(topic);','  const prices = await lookupPrices(topic);','  const news = await lookupNews(topic);','  const summary = await summarize(sources);','  let review = await critique(summary, sharedMemory);','  await publish(summary);','  while (true) {','    if (review) break;','    review = await critique(summary, sharedMemory);','  }','  return summary;','}'].join('\n'),
+ seeds:[{tag:'X1',pat:/const apiKey = /},{tag:'S1',pat:/const sources = await search/},{tag:'S2',pat:/let review = await critique\(summary, sharedMemory\)/},{tag:'X2',pat:/while \(true\)/},{tag:'X3',pat:/await publish\(summary\)/},{tag:'R4',pat:/async function run\(/},{tag:'R5',pat:/async function run\(/}]}
+};
+const S={mode:'static',sample:'naive',code:SAMPLES.naive.code,pool:2,runs:{static:null,single:null,team:null},show:'static',busy:false,err:'',prog:'',showModel:false};
+/* ---------- the static analyzer: plain code, no model ---------- */
+const SIDE=/\b(issue_refund|refund|send_email|send_mail|send|charge|transfer|delete|remove|execute|post|publish|commit|write_file|payments\.\w+|cms\.\w+)\w*\s*\(/i;
+const CHECK=/\b\w*(check|verify|review|validate|audit|critic|critique)\w*\s*\(/i;
+const ESCAL=/(escalat|human|person|approv|abstain|unsure|uncertain|manual review|hand.?off)/i;
+const EVAL=/(test|eval|benchmark|assert|metric|accuracy|golden|baseline)/i;
+const TOOLS=/def (days_between|calculate|calc|add|multiply|compute)\w*|function (days_between|calculate|calc|add|multiply|compute)\w*|calculator|datetime|new Date\(|math\./i;
+const LEAK=/(reason|thought|rationale|explanation|trace|scratch|memory|history|context)/i;
+const SKIP=/^(if|elif|else|for|while|return|print|try|except|catch|with|assert|raise|import|from|class|def|function|await|const|let|var|console|len|range|str|int|float|list|dict|set)$/;
+function analyze(code){
+  const lines=String(code).replace(/\r/g,'').split('\n'),N=lines.length;
+  const fns=[];
+  lines.forEach((ln,i)=>{
+    let m=ln.match(/^(\s*)(?:async\s+)?def\s+(\w+)\s*\(([^)]*)\)/);
+    if(m){fns.push({name:m[2],params:m[3].split(',').map(x=>x.trim().split(/[=:]/)[0].trim()).filter(Boolean),start:i,indent:m[1].length});return;}
+    m=ln.match(/^(\s*)(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/)||ln.match(/^(\s*)(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>/);
+    if(m)fns.push({name:m[2],params:m[3].split(',').map(x=>x.trim().split(/[=:]/)[0].trim()).filter(Boolean),start:i,indent:m[1].length,js:true});
+  });
+  fns.forEach(f=>{
+    if(f.js){let depth=0,started=false,end=N-1;for(let i=f.start;i<N&&end===N-1;i++){for(const ch of lines[i]){if(ch==='{'){depth++;started=true;}else if(ch==='}')depth--;}if(started&&depth<=0){end=i;break;}}f.end=end;}
+    else{let end=N-1;for(let i=f.start+1;i<N;i++){const t=lines[i];if(t.trim()&&t.match(/^\s*/)[0].length<=f.indent&&!/^\s*[#)\]]/.test(t)){end=i-1;break;}}while(end>f.start&&!lines[end].trim())end--;f.end=end;}
+  });
+  const isDef=i=>fns.some(f=>f.start===i);
+  const entry=fns.find(f=>/^(handle|run|main|pipeline|process|review|orchestrate|workflow|answer)/i.test(f.name))||fns[fns.length-1]||null;
+  /* the pipeline graph, from the entry function */
+  const steps=[],vars={},params=entry?entry.params:[];
+  if(entry){
+    for(let i=entry.start+1;i<=entry.end;i++){
+      const t=lines[i].trim();if(!t||/^(#|\/\/)/.test(t))continue;
+      let m=t.match(/^(?:(?:const|let|var)\s+)?([\w,\s]+?)\s*=\s*(?:await\s+)?([\w.]+)\s*\((.*)\)\s*;?$/);
+      let outs=null,callee,argText;
+      if(m){outs=m[1].split(',').map(x=>x.trim()).filter(Boolean);callee=m[2];argText=m[3];}
+      else{
+        m=t.match(/^(?:return\s+)?(?:await\s+)?([\w.]+)\s*\((.*)\)\s*;?$/);
+        if(m){callee=m[1];argText=m[2];}
+      }
+      if(!callee)continue;
+      const last=callee.split('.').pop();
+      if(SKIP.test(callee)||SKIP.test(last)&&!/gather|all/.test(last))continue;
+      if(/gather|Promise\.all|map/.test(callee)){
+        const inner=[...argText.matchAll(/([\w.]+)\(([^()]*)\)/g)];
+        inner.forEach((g,k)=>steps.push({id:steps.length,callee:g[1],line:i+1,args:(g[2].match(/[A-Za-z_]\w*/g)||[]),out:outs?outs[k]:null,par:true,awaited:/await/.test(t)}));
+      }else steps.push({id:steps.length,callee,line:i+1,args:(argText.match(/[A-Za-z_]\w*/g)||[]),out:outs?outs[0]:null,awaited:/await/.test(t),final:/^return/.test(t)});
+    }
+    const prod={};
+    steps.forEach(st=>{st.deps=[];st.args.forEach(a=>{if(prod[a]!==undefined&&st.deps.indexOf(prod[a])<0)st.deps.push(prod[a]);});if(st.out)prod[st.out]=st.id;});
+    steps.forEach(st=>{st.level=st.deps.length?Math.max(...st.deps.map(d=>steps[d].level))+1:0;
+      const f=fns.find(x=>x.name===st.callee.split('.').pop());st.defined=!!f;
+      if(f){const body=lines.slice(f.start+1,f.end+1).join('\n');const rm=body.match(/range\((\d+)\)|<\s*(\d+)/);if(rm&&/for|while/.test(body))st.repeat=+(rm[1]||rm[2]);}
+      st.side=SIDE.test(st.callee+'(')&&!/^(judge|vote|checker)/.test(st.callee);st.check=CHECK.test(st.callee+'(');
+      st.leak=st.args.some(a=>LEAK.test(a))&&st.check;});
+  }
+  const levels={};steps.forEach(s=>{levels[s.level]=(levels[s.level]||0)+1;});
+  const chain=steps.length?Math.max(...steps.map(s=>s.level))+1:0,width=steps.length?Math.max(...Object.values(levels)):0;
+  /* findings */
+  const F=[];
+  const add=(tag,line,why)=>{const ln=Math.max(1,Math.min(N,line));F.push({tag,line:ln,title:RULES[tag].name,fix:RULES[tag].fix,source:'code',snippet:lines[ln-1].trim(),extra:why||''});};
+  lines.forEach((ln,i)=>{
+    if(/(api[_-]?key|secret|token|password)\s*[:=]\s*['"][^'"]{12,}['"]/i.test(ln))add('X1',i+1);
+    if(/while\s*\(?\s*(True|true)\s*\)?\s*:?\s*\{?\s*$/.test(ln)&&!/(max|attempt|retries|limit|timeout)/i.test(lines.slice(i,i+9).join('\n')))add('X2',i+1);
+  });
+  const hasVote=/vote|majority|Counter|most_common|consensus/i.test(code);
+  lines.forEach((ln,i)=>{const m=ln.match(/for\s+\w+\s+in\s+range\((\d+)\)|for\s*\(.*<\s*(\d+)/);if(m&&hasVote&&(+(m[1]||m[2])>=2)&&/\w+\(/.test(lines.slice(i+1,i+4).join('\n')))add('G1',i+1);});
+  if(entry){
+    const body=lines.slice(entry.start+1,entry.end+1);
+    const sideIdx=body.findIndex(l=>SIDE.test(l)&&!/^\s*(#|\/\/)/.test(l)&&!/\bdef\b|\bfunction\b/.test(l));
+    const chkIdx=body.findIndex(l=>CHECK.test(l)&&!/^\s*(#|\/\/)/.test(l));
+    if(sideIdx>=0&&(chkIdx<0||sideIdx<chkIdx))add('R2',entry.start+2+sideIdx,chkIdx<0?'No check at all.':'');
+    const leak=steps.find(s=>s.leak);
+    if(leak)add('S2',leak.line);
+    else{const lf=fns.find(f=>CHECK.test(f.name+'(')&&f.params.some(p=>LEAK.test(p)));if(lf)add('S2',lf.start+1);}
+    if(!ESCAL.test(code))add('R4',entry.start+1);
+    if(!EVAL.test(code))add('R5',entry.start+1);
+    if(!/(try\s*:|try\s*\{|\.catch\(|except\s)/.test(code)){const si=lines.findIndex((l,i)=>SIDE.test(l)&&!isDef(i)&&!/^\s*(#|\/\/)/.test(l)&&!/\bdef\b|\bfunction\b/.test(l));add('X3',si>=0?si+1:entry.start+1);}
+    if(!/(gather|Promise\.all|ThreadPool|asyncio)/.test(code)){const aw=steps.filter(s=>s.awaited);for(let k=0;k+1<aw.length;k++){if(aw[k+1].deps.indexOf(aw[k].id)<0&&aw[k].level===aw[k+1].level){add('S1',aw[k].line);break;}}}
+  }
+  lines.forEach((ln,i)=>{if(/\b(work out|calculate|compute|add up|count the days|how many days)\b/i.test(ln)&&/["']/.test(ln)&&!TOOLS.test(code))if(!F.some(f=>f.tag==='R3'))add('R3',i+1);});
+  F.sort((a,b)=>RULES[b.tag].sev-RULES[a.tag].sev||a.line-b.line);
+  return{lines,N,fns,entry,steps,chain,width,findings:F};
+}
+/* evidence check: does the cited code contain what the claim needs? true, false, or null when the claim is about the whole file */
+const EVID={X1:/key|secret|token|password/i,X2:/while|for\s*\(|for\s+\w+\s+in|loop/i,S2:LEAK,R2:SIDE,G1:/range\(|for\s*\(|for\s+\w+\s+in|vote|majority|Counter/i,R3:/(work out|calculate|compute|add up|days|total|how many)/i,S1:/await|gather|Promise|for\s/i,R1:/check|review|verify|critic|judge/i,G2:/check|review|verify|critic|confirm/i};
+function evidenceOK(tag,lines,line){
+  const re=EVID[tag];if(!re)return null;
+  return re.test(lines.slice(Math.max(0,line-3),Math.min(lines.length,line+2)).join('\n'));
+}
+/* ---------- scoring against seeded problems ---------- */
+function seedLines(sample,lines){
+  return SAMPLES[sample].seeds.map(sd=>{const i=lines.findIndex(l=>sd.pat.test(l));return{tag:sd.tag,line:i<0?-1:i+1};});
+}
+function score(findings,sample,lines){
+  const sl=seedLines(sample,lines);
+  const hit=sl.map(sd=>findings.some(f=>f.tag===sd.tag&&sd.line>0&&Math.abs(f.line-sd.line)<=((sd.tag==='R4'||sd.tag==='R5')?6:2)));
+  const matched=f=>sl.some(sd=>f.tag===sd.tag&&sd.line>0&&Math.abs(f.line-sd.line)<=((sd.tag==='R4'||sd.tag==='R5')?6:2));
+  return{total:sl.length,found:hit.filter(Boolean).length,seeds:sl,hit,extra:findings.filter(f=>!matched(f)).length};
+}
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top), or use the static review.');}
+async function askM(ctx,messages,max,temp){
+  need();ctx.calls++;
+  const r=await LLM.engine.chat.completions.create({messages,temperature:temp||0,max_tokens:max||200});
+  return String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+}
+function jsonBlocks(t,open,close){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!==open)continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c===open)depth++;
+      else if(c===close){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function parseFindings(text,valid,N,max){
+  let arr=null;
+  for(const b of jsonBlocks(text,'[',']')){try{const a=JSON.parse(b);if(Array.isArray(a)){arr=a;break;}}catch(e){}}
+  if(!arr){const objs=[];for(const b of jsonBlocks(text,'{','}')){try{const o=JSON.parse(b);if(o&&typeof o==='object'){if(Array.isArray(o.findings)){arr=o.findings;break;}objs.push(o);}}catch(e){}}if(!arr&&objs.length)arr=objs;}
+  const out=[];
+  (arr||[]).forEach(o=>{
+    if(!o||typeof o!=='object')return;
+    const line=parseInt(o.line,10),title=String(o.title||'').trim();let tag=String(o.tag||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(!(line>=1&&line<=N)||title.length<3)return;
+    if(!RULES[tag])tag='X0';else if(valid.indexOf(tag)<0)tag=valid.indexOf(tag)>=0?tag:tag;
+    out.push({tag,line,title:title.slice(0,90),fix:String(o.fix||'').slice(0,140)});
+  });
+  return out.slice(0,max);
+}
+const ROLES={
+  structure:{name:'Structure reviewer',short:'Structure',color:'#0E6F8E',tags:['S1','S2'],look:'Steps that are awaited one after another but do not depend on each other (S1). Data passed to a checker that should not see it, such as the doer\'s reasoning or a shared memory (S2).'},
+  incentives:{name:'Incentives reviewer',short:'Incentives',color:'#E3A21A',tags:['G1','G2','R1'],look:'Identical agents repeated and voted on (G1). A checker told to confirm instead of find flaws, or no audit (G2). A second agent with the same data, role and context (R1).'},
+  safety:{name:'Safety reviewer',short:'Safety',color:'#B3412E',tags:['R2','R4','X1','X2','X3'],look:'An action done before the check (R2). No escalation or approval path (R4). A secret in the code (X1). A loop with no limit (X2). No error handling around tool or model calls (X3).'},
+  grounding:{name:'Grounding reviewer',short:'Grounding',color:'#2E7D5B',tags:['R3','R5'],look:'A prompt that asks the model to calculate or recall facts instead of using a tool (R3). No tests or evaluation against a baseline (R5).'}
+};
+function codeFor(an){
+  const cap=100,show=an.lines.slice(0,cap).map((l,i)=>(i+1)+': '+l).join('\n');
+  return show+(an.N>cap?'\n(truncated at '+cap+' lines)':'');
+}
+function factsFor(an){
+  return 'Facts from a code analyzer. Entry function: '+(an.entry?an.entry.name:'(none)')+'. Steps in order: '+(an.steps.map(s=>s.callee).join(', ')||'(none found)')+'. Longest chain: '+an.chain+'. Widest step: '+an.width+'.';
+}
+async function runReviewer(ctx,an,role){
+  const r=ROLES[role];
+  const sys='You review the design code of an AI agent pipeline. You are the '+r.name+'. Report only problems you can point to in the code. Reply with ONE JSON array of at most 3 findings, each {"line": number, "tag": "'+r.tags.join('|')+'", "title": "short", "fix": "short"}. If you find nothing, reply [].';
+  const out=await askM(ctx,[{role:'system',content:sys},{role:'user',content:'Look for: '+r.look+'\n'+factsFor(an)+'\nCode:\n'+codeFor(an)}],300,0);
+  return parseFindings(out,r.tags,an.N,3).map(f=>Object.assign(f,{source:role,raw:out.slice(0,200)}));
+}
+async function runSingleReviewer(ctx,an){
+  const tags=Object.keys(ROLES).reduce((a,k)=>a.concat(ROLES[k].tags),[]);
+  const sys='You review the design code of an AI agent pipeline. Report only problems you can point to in the code. Reply with ONE JSON array of at most 6 findings, each {"line": number, "tag": "'+tags.join('|')+'", "title": "short", "fix": "short"}. If you find nothing, reply [].';
+  const look=Object.keys(ROLES).map(k=>ROLES[k].look).join(' ');
+  const out=await askM(ctx,[{role:'system',content:sys},{role:'user',content:'Look for: '+look+'\n'+factsFor(an)+'\nCode:\n'+codeFor(an)}],450,0);
+  return parseFindings(out,tags,an.N,6).map(f=>Object.assign(f,{source:'single'}));
+}
+const PERMS=[['A','B','C'],['A','C','B'],['B','A','C'],['B','C','A'],['C','A','B'],['C','B','A']];
+const VLAB={A:'Yes, the code shows it',B:'No, the code does not show it',C:'Unsure'};
+async function runVerifier(ctx,an,f,k){
+  const ex=an.lines.slice(Math.max(0,f.line-3),Math.min(an.N,f.line+2)).map((l,i)=>(Math.max(0,f.line-3)+i+1)+': '+l).join('\n');
+  const ord=PERMS[(k*5+f.line)%6];
+  const menu=ord.map((c,i)=>'ABC'[i]+') '+VLAB[c]).join('\n');
+  const out=await askM(ctx,[{role:'system',content:'You verify review findings against code. You did not write the finding. Reply with one letter only.'},{role:'user',content:'Code:\n'+ex+'\nClaim about line '+f.line+': '+f.title+'\nDoes the code at those lines support the claim?\n'+menu+'\nReply with one letter.'}],6,0);
+  const m=out.toUpperCase().match(/(?:^|[^A-Z])([ABC])(?![A-Z])/);
+  return m?ord['ABC'.indexOf(m[1])]:'C';
+}
+async function runSummary(ctx,list){
+  const top=list.slice(0,5).map((f,i)=>(i+1)+'. '+RULES[f.tag].name+' (line '+f.line+'): '+f.title).join('\n');
+  const out=await askM(ctx,[{role:'system',content:'You write a short executive summary of a code review. Use only the findings you are given.'},{role:'user',content:'Findings:\n'+top+'\nWrite three short sentences: the biggest risk, the next two, and what to fix first.'}],140,0);
+  return out;
+}
+function templateSummary(list){
+  if(!list.length)return 'No problems were found by the checks that ran.';
+  const t=list.slice(0,3).map(f=>RULES[f.tag].name.toLowerCase()+' (line '+f.line+')');
+  return 'The biggest risks are '+t.join(', ')+'. Fix the highest-risk one first: '+(list[0].fix||RULES[list[0].tag].fix)+'';
+}
+/* ---------- merging, verification status and ranking ---------- */
+function merge(an,codeF,llmF,verdicts){
+  const all=[];
+  codeF.forEach(f=>all.push(Object.assign({},f,{sources:['code'],status:'code'})));
+  llmF.forEach((f,i)=>{
+    const ev=evidenceOK(f.tag,an.lines,f.line),v=verdicts?verdicts[i]:null;
+    let status;
+    if(!verdicts)status=ev===true?'code-supported':(ev===false?'unsupported':'unchecked');
+    else if(ev===true&&v==='A')status='confirmed';
+    else if(ev===true)status='code-supported';
+    else if(v==='A'&&ev===null)status='model-supported';
+    else if(v==='A')status='unverified';
+    else if(v==='B'||ev===false)status='rejected';
+    else status='unverified';
+    all.push(Object.assign({},f,{sources:[f.source],status,snippet:an.lines[f.line-1].trim()}));
+  });
+  const out=[];
+  all.forEach(f=>{
+    const twin=out.find(o=>o.tag===f.tag&&Math.abs(o.line-f.line)<=2&&o.status!=='rejected'&&f.status!=='rejected');
+    if(twin){f.sources.forEach(s=>{if(twin.sources.indexOf(s)<0)twin.sources.push(s);});if(twin.status==='code'||f.status==='code')twin.status=twin.status==='code'?'code':f.status;if(!twin.fix&&f.fix)twin.fix=f.fix;}
+    else out.push(f);
+  });
+  const rank=s=>({code:5,confirmed:5,'code-supported':4,'model-supported':3,unverified:2,unchecked:2,unsupported:1,rejected:0}[s]);
+  out.sort((a,b)=>(rank(b.status)>0)-(rank(a.status)>0)||RULES[b.tag].sev-RULES[a.tag].sev||rank(b.status)-rank(a.status)||a.line-b.line);
+  return out;
+}
+/* ---------- running the reviews ---------- */
+function staticRun(){
+  const an=analyze(S.code),t0=performance.now();
+  const list=merge(an,an.findings,[],null);
+  return{kind:'static',label:'Static analyzer',an,list,reported:list,rejected:[],ms:performance.now()-t0,calls:0,summary:templateSummary(list)};
+}
+async function modelSingle(){
+  need();const an=analyze(S.code),ctx={calls:0},t0=performance.now();
+  const f=await runSingleReviewer(ctx,an);
+  const list=merge(an,[],f,null);
+  return{kind:'single',label:'One model reviewer',an,list,reported:list,rejected:[],ms:performance.now()-t0,calls:ctx.calls,summary:''};
+}
+async function modelTeam(){
+  need();const an=analyze(S.code),ctx={calls:0},t0=performance.now(),now=()=>performance.now()-t0,tl=[];
+  const run=async(items,n,fn)=>{let k=0;await Promise.all(Array.from({length:n},(_,i)=>i+1).map(async slot=>{while(true){const i=k++;if(i>=items.length)break;const st=now();S.prog=items[i].label+'...';draw();items[i].out=await fn(items[i],i);tl.push({slot,start:st,end:now(),label:items[i].tag,color:items[i].color});}}));};
+  const roles=Object.keys(ROLES).map(k=>({role:k,label:ROLES[k].name,tag:ROLES[k].short[0],color:ROLES[k].color}));
+  await run(roles,S.pool,async it=>runReviewer(ctx,an,it.role));
+  const llmF=[];roles.forEach(r=>(r.out||[]).forEach(f=>llmF.push(f)));
+  const vitems=llmF.map((f,i)=>({label:'Verifying finding '+(i+1)+' of '+llmF.length,tag:'V',color:'#2B4A57',f,i}));
+  await run(vitems,S.pool,async it=>runVerifier(ctx,an,it.f,it.i));
+  const verdicts=vitems.map(v=>v.out);
+  const list=merge(an,an.findings,llmF,verdicts);
+  const reported=list.filter(f=>f.status!=='rejected'),rejected=list.filter(f=>f.status==='rejected');
+  let summary='';
+  const st=now();S.prog='Writing the summary...';draw();
+  try{summary=await runSummary(ctx,reported);}catch(e){summary='';}
+  tl.push({slot:1,start:st,end:now(),label:'Σ',color:'#17262D'});
+  if(!summary||summary.length<30||(reported.length&&/no (problems|issues)|looks fine|nothing wrong|no json/i.test(summary)))summary=templateSummary(reported);
+  return{kind:'team',label:'Team of reviewers',an,list,reported,rejected,ms:now(),calls:ctx.calls,summary,tl,pool:S.pool,modelFound:llmF.length};
+}
+/* ---------- rendering ---------- */
+const sec=ms=>(ms/1000).toFixed(1)+' s';
+function graphSvg(an){
+  if(!an.steps.length)return '<p class="small muted">No pipeline steps were found in the entry function, so no graph can be drawn. The static rules still ran.</p>';
+  const Wd=420,rowH=62,levels={};an.steps.forEach(s=>{(levels[s.level]=levels[s.level]||[]).push(s);});
+  const nL=Object.keys(levels).length,H=nL*rowH+86;
+  const pos={};
+  const inX=Wd/2;
+  let svg='<svg viewBox="0 0 '+Wd+' '+H+'" width="100%" role="img" aria-label="The pipeline drawn from the code"><defs><marker id="ah2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="context-stroke"/></marker></defs>';
+  let edges='',nodes='';
+  nodes+='<rect x="'+(inX-45)+'" y="6" width="90" height="26" rx="7" fill="#5A6B73"/><text x="'+inX+'" y="23" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">Input</text>';
+  Object.keys(levels).forEach(lv=>{
+    const row=levels[lv],w=Math.min(150,(Wd-20)/row.length-10);
+    row.forEach((s,k)=>{
+      const cx=(Wd/row.length)*(k+0.5),y=58+(+lv)*rowH;
+      pos[s.id]={cx,y,w};
+      const fill=s.side?'#B3412E':(s.check?'#E3A21A':'#0E6F8E'),tc=s.check&&!s.side?'#17262D':'#fff';
+      if(s.repeat)nodes+='<rect x="'+(cx-w/2+6)+'" y="'+(y-6)+'" width="'+w+'" height="28" rx="7" fill="#9FB5BE"/>';
+      nodes+='<rect x="'+(cx-w/2)+'" y="'+y+'" width="'+w+'" height="28" rx="7" fill="'+fill+'"/><text x="'+cx+'" y="'+(y+18)+'" font-size="11.5" font-weight="700" text-anchor="middle" fill="'+tc+'">'+esc(s.callee.split('.').pop().slice(0,16))+(s.repeat?' x'+s.repeat:'')+'</text>';
+    });
+  });
+  an.steps.forEach(s=>{
+    const p=pos[s.id];
+    if(!s.deps.length)edges+='<line x1="'+inX+'" y1="32" x2="'+p.cx+'" y2="'+p.y+'" stroke="#2B4A57" stroke-width="2" marker-end="url(#ah2)"/>';
+    s.deps.forEach(d=>{const q=pos[d],red=s.leak;edges+='<line x1="'+q.cx+'" y1="'+(q.y+28)+'" x2="'+p.cx+'" y2="'+p.y+'" stroke="'+(red?'#B3412E':'#2B4A57')+'" stroke-width="2"'+(red?' stroke-dasharray="5 4"':'')+' marker-end="url(#ah2)"/>';});
+  });
+  svg+=edges+nodes+'</svg>';
+  return '<div class="svgbox">'+svg+'</div><p class="small muted"><span style="color:#B3412E"><b>Red</b></span> steps act on the world, <span style="color:#a66a00"><b>amber</b></span> steps check, a stacked step repeats, and a dashed arrow carries reasoning or memory to a checker.</p>';
+}
+function codeView(run){
+  const an=analyze(S.code),flag={};
+  ((run&&run.reported)||[]).forEach(f=>{flag[f.line]=(flag[f.line]?flag[f.line]+', ':'')+f.tag;});
+  return '<div class="scroll" style="max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.55;min-width:520px">'+
+    an.lines.map((l,i)=>'<div style="display:flex;padding:0 8px;'+(flag[i+1]?'background:#FBE9E5;border-left:4px solid #B3412E':'border-left:4px solid transparent')+'"><span style="width:30px;color:#8A98A0;flex:none">'+(i+1)+'</span><span style="white-space:pre">'+esc(l)+'</span>'+(flag[i+1]?'<span style="margin-left:auto;color:#B3412E;font-weight:700;padding-left:10px">'+esc(flag[i+1])+'</span>':'')+'</div>').join('')+'</div></div>';
+}
+const STATUS={code:['good','found by code'],confirmed:['good','confirmed by the verifier and the code'],'code-supported':['good','supported by the code'],'model-supported':['warn','supported by the verifier only'],unverified:['warn','unverified'],unchecked:['warn','not independently checked'],unsupported:['bad','the cited code does not support it'],rejected:['bad','rejected']};
+function findingCard(f){
+  const st=STATUS[f.status]||['',''],R=RULES[f.tag];
+  const by=f.sources.map(s=>s==='code'?'code analyzer':(ROLES[s]?ROLES[s].short+' reviewer':(s==='single'?'one model reviewer':s))).join(' + ');
+  return '<div class="box" style="margin-bottom:8px"><b>'+esc(f.tag)+' · '+esc(R.name)+'</b> '+chip('severity '+R.sev,R.sev>=4?'bad':(R.sev>=3?'warn':''))+' '+chip(st[1],st[0])+(f.sources.length>1?' '+chip('found independently by '+f.sources.length,'good'):'')+
+    '<div class="small" style="margin-top:4px">Line '+f.line+': <span style="font-family:ui-monospace,Menlo,monospace">'+esc((f.snippet||'').slice(0,90))+'</span></div>'+
+    (f.title&&f.title!==R.name?'<div class="small" style="margin-top:2px">Reviewer\'s note: '+esc(f.title)+'</div>':'')+
+    '<div class="small muted" style="margin-top:2px">'+esc(R.why)+'</div>'+
+    ((f.fix||R.fix)?'<div class="small" style="margin-top:2px"><b>Fix:</b> '+esc(f.fix||R.fix)+'</div>':'')+
+    '<div class="small muted" style="margin-top:2px">Found by: '+esc(by)+'</div></div>';
+}
+function gantt(run){
+  const tl=run.tl;if(!tl||!tl.length)return '';
+  const Wd=560,L=48,R=10,T=10,rowH=20,lanes=run.pool,H=T+lanes*rowH+26,tmax=Math.max(...tl.map(x=>x.end))*1.02,px=t=>L+(t/tmax)*(Wd-L-R);
+  let s='<svg viewBox="0 0 '+Wd+' '+H+'" width="100%" role="img" aria-label="When each agent ran">';
+  for(let a=1;a<=lanes;a++)s+='<text x="4" y="'+(T+(a-1)*rowH+14)+'" font-size="10" fill="currentColor" opacity=".8">Slot '+a+'</text>';
+  tl.forEach(b=>{const x=px(b.start),w=Math.max(3,px(b.end)-px(b.start)),y=T+(b.slot-1)*rowH+2;s+='<rect x="'+x.toFixed(1)+'" y="'+y+'" width="'+w.toFixed(1)+'" height="'+(rowH-4)+'" rx="3" fill="'+b.color+'"/>'+(w>12?'<text x="'+(x+w/2).toFixed(1)+'" y="'+(y+(rowH-4)/2+3.5)+'" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">'+esc(b.label)+'</text>':'');});
+  const ay=T+lanes*rowH+6;s+='<line x1="'+L+'" y1="'+ay+'" x2="'+(Wd-R)+'" y2="'+ay+'" stroke="currentColor" opacity=".35"/>';
+  for(let k=0;k<=4;k++){const tv=tmax*k/4;s+='<text x="'+px(tv).toFixed(1)+'" y="'+(ay+13)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+(tv/1000).toFixed(1)+' s</text>';}
+  return '<h3>When each agent ran</h3><p class="small muted">S, I, S and G are the four reviewers, V is a verifier, and Σ is the synthesizer. With one model on one GPU, agents may queue instead of overlapping.</p><div class="svgbox">'+s+'</svg></div>';
+}
+function scoreView(){
+  if(S.sample==='custom')return '';
+  const an=analyze(S.code),rows=[];
+  ['static','single','team'].forEach(k=>{const r=S.runs[k];if(!r)return;const sc=score(r.reported,S.sample,an.lines);
+    const unsup=r.reported.filter(f=>f.status!=='code'&&evidenceOK(f.tag,an.lines,f.line)===false).length;
+    rows.push([r.label,sc.found+' of '+sc.total,r.reported.length,sc.extra,unsup,k==='team'?r.rejected.length:'-',k==='static'?'instant':sec(r.ms),k==='static'?'0':r.calls]);});
+  if(!rows.length)return '';
+  const any=S.runs.team||S.runs.single||S.runs.static,sl=seedLines(S.sample,an.lines);
+  const sc=score(any.reported,S.sample,an.lines);
+  return '<h3>Scored against the seeded problems</h3>'+table(['Setup','Seeded problems found','Findings reported','Reported, not seeded','Reported with unsupported citations','Rejected by the verifier','Time','Model calls'],rows,720)+
+    '<p class="small muted">The sample has '+sl.length+' seeded problems: '+sl.map(x=>x.tag+(x.line>0?' (line '+x.line+')':'')).join(', ')+'. A "reported, not seeded" finding may still be a real problem, or a false alarm.</p>';
+}
+const QA=[
+ ['Why does a verifier check every finding?','Reviewer models make things up, such as citing a line that does not show the problem. A verifier that starts fresh and sees only the claim and the cited lines can reject those, which is cross validation inside the review.'],
+ ['Why is the static analyzer not enough?','It only knows patterns. It cannot judge whether a prompt tells the checker to confirm or to find flaws. The model reviewers add that judgment, and the analyzer keeps them honest.'],
+ ['What counts as an independent find?','Two sources reported the same rule near the same line. A reviewer and the code analyzer, or two reviewers with different checklists, agreeing is stronger evidence than one source alone.'],
+ ['Why compare with one model reviewer?','It shows whether the team earns its extra calls: more seeded problems found, fewer findings with unsupported citations, and what the verifier rejected.']
+];
+function modelBox(){
+  if(S.mode!=='model')return '';
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'</div>';
+}
+function render(){
+  S.runs.static=staticRun();
+  const an=S.runs.static.an;
+  const run=S.runs[S.show]||S.runs.static;
+  const samples=Object.keys(SAMPLES).map(k=>tog('sample',k,SAMPLES[k].name,S.sample===k)).join('')+tog('sample','custom','My own code',S.sample==='custom');
+  const tiles='<div class="tiles"><div class="tile"><b>'+an.steps.length+'</b><span>steps found</span></div><div class="tile"><b>'+an.chain+'</b><span>longest chain</span></div><div class="tile"><b>'+an.width+'</b><span>widest step</span></div><div class="tile"><b>'+S.runs.static.reported.length+'</b><span>problems found by code</span></div></div>';
+  const ctl='<div class="row" style="margin-top:12px">'+(S.mode==='model'?btn('single','','Review with one model','',S.busy)+btn('team','','Review with the team','',S.busy)+btn('both','','Run both and compare','ghost',S.busy):'')+(S.busy?btn('stop','','Stop','ghost'):'')+btn('reset','','Clear model runs','ghost',S.busy)+'</div>';
+  const pick='<div class="row" style="margin-top:10px"><span class="small muted">Show</span>'+['static','single','team'].filter(k=>S.runs[k]).map(k=>tog('show',k,{static:'Static',single:'One model',team:'Team'}[k],S.show===k)).join('')+'</div>';
+  const list=run.reported;
+  return modelBox()+'<div class="row">'+tog('mode','static','Static review (no model, instant)',S.mode==='static')+tog('mode','model','Review team with the language model',S.mode==='model')+'</div>'+
+    '<h3>The pipeline code</h3><div class="row">'+samples+'</div><textarea class="editor" id="code" data-act="code" rows="10" spellcheck="false" style="margin-top:10px;font-family:ui-monospace,Menlo,monospace;font-size:12px">'+esc(S.code)+'</textarea>'+
+    '<h3>The pipeline, drawn from the code</h3>'+graphSvg(an)+tiles+
+    (S.mode==='model'?'<div class="grid2"><div><label class="range" for="pool">Reviewers working at once</label><select id="pool" data-act="pool">'+['1','2','4'].map(v=>'<option'+(String(S.pool)===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div></div>':'')+ctl+
+    (S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Reviewing on your device</b><br>'+esc(S.prog)+'</div>':'')+
+    scoreView()+pick+'<h3>Findings ('+esc(run.label)+')</h3>'+(run.summary?'<div class="status ok"><b>Summary.</b> '+esc(run.summary)+'</div>':'')+
+    (run.kind==='team'?'<p class="small muted">The verifier rejected '+run.rejected.length+' of '+(run.modelFound||0)+' reviewer findings. '+run.calls+' model calls in '+sec(run.ms)+'.</p>':'')+
+    (list.length?list.map(findingCard).join(''):'<p class="small muted">No findings.</p>')+
+    (run.rejected&&run.rejected.length?'<details style="margin-top:8px"><summary class="small">Rejected findings ('+run.rejected.length+')</summary>'+run.rejected.map(f=>'<div class="box small" style="margin-top:6px"><b>'+esc(f.tag)+'</b> line '+f.line+': '+esc(f.title)+' <span class="muted">('+esc(f.sources.join(', '))+')</span></div>').join('')+'</details>':'')+
+    '<h3>The code, with findings marked</h3>'+codeView(run)+(run.kind==='team'?gantt(run):'')+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const draw=app({
+  render,
+  act:{
+    model:()=>{S.showModel=!S.showModel;},
+    mode:v=>{S.mode=v;if(v==='static')S.show='static';},
+    sample:v=>{S.sample=v;if(v!=='custom')S.code=SAMPLES[v].code;S.runs={static:null,single:null,team:null};S.show='static';},
+    show:v=>{S.show=v;},
+    stop:()=>{S.stop=true;},
+    reset:()=>{S.runs={static:null,single:null,team:null};S.show='static';S.err='';},
+    single:()=>guard(async()=>{const t=document.getElementById('code');if(t)S.code=t.value;S.runs.single=await modelSingle();S.show='single';}),
+    team:()=>guard(async()=>{const t=document.getElementById('code');if(t)S.code=t.value;S.runs.team=await modelTeam();S.show='team';}),
+    both:()=>guard(async()=>{const t=document.getElementById('code');if(t)S.code=t.value;S.runs.single=await modelSingle();S.runs.team=await modelTeam();S.show='team';}),
+    ...LLM.act
+  },
+  change:{pool:t=>{S.pool=+t.value;},...LLM.change},
+  input:{code:t=>{S.code=t.value;S.sample='custom';S.runs.single=null;S.runs.team=null;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>
