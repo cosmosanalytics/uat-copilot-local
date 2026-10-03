@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decision Flow Team: AI agents that unblock human decisions</title>
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#1A6FA8; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --orange:#B85C00; --orange-bg:#FFF0E0;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#10171D;--panel:#18222B;--ink:#E6EDF2;--muted:#9FADB9;--line:#2D3B47;--accent:#5CC0DE;--accent-ink:#06222C;--chip:#223140;
+    --warn:#F0B84A;--warn-bg:#3A2D10;--bad:#FF9A90;--bad-bg:#3D1E1B;--good:#7AD6A8;--good-bg:#16342A;
+    --orange:#F0A040;--orange-bg:#3A2200;}
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1040px;margin:0 auto;padding:20px 16px 48px;}
+h1{font:700 clamp(1.6rem,4vw,2.4rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.25rem/1.2 var(--display);margin:0 0 8px;}
+h3{font:600 1rem/1.3 var(--display);margin:14px 0 5px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:72ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 12px;}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:10px 0;font-size:.9rem;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.status.orange{background:var(--orange-bg);color:var(--orange);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+.chip.orange{background:var(--orange-bg);color:var(--orange);}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea{resize:vertical;min-height:72px;}
+select{max-width:400px;min-height:44px;}
+progress{width:100%;height:12px;accent-color:var(--accent);}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);position:relative;}
+.card.pick{border:2px solid var(--accent);}
+.card.best{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent-msg{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.87rem;}
+.agent-msg b{min-width:160px;color:var(--ink);}
+.agent-msg span{color:var(--muted);word-break:break-word;}
+details{border-top:1px solid var(--line);padding:8px 0;}
+summary{cursor:pointer;font-weight:600;}
+.flow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0;}
+.flow-node{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel);font-size:.88rem;}
+.flow-node .role{font-weight:700;font-size:.95rem;margin-bottom:4px;}
+.flow-node .verdict{color:var(--muted);margin-top:4px;font-size:.82rem;}
+.flow-node.blocked{border-color:var(--bad);background:var(--bad-bg);}
+.flow-node.ready{border-color:var(--good);background:var(--good-bg);}
+.flow-node.working{border-color:var(--warn);background:var(--warn-bg);}
+.flow-node.escalate{border-color:var(--orange);background:var(--orange-bg);}
+.bar{height:8px;background:var(--chip);border-radius:4px;overflow:hidden;margin:8px 0;}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s;}
+canvas#flowmap{width:100%;border-radius:12px;background:#0d1117;display:block;}
+.foot{margin-top:24px;color:var(--muted);font-size:.85rem;max-width:78ch;}
+ol.lede-items{color:var(--muted);max-width:72ch;margin:8px 0 12px 20px;padding:0;}
+ol.lede-items li{margin:4px 0;}
+ol.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="small muted" style="margin-bottom:8px">An AI agent organization that spots every blocked human decision, prepares it, and gets it to the right person faster (WebLLM on-device, one HTML file)</div>
+    <h1>Decision Flow Team: AI agents that fill the grey areas of waiting</h1>
+    <p class="lede">When you run 13 AI coding sessions at once, most of them sit idle, waiting for you. The bottleneck is not the AI — it is the queue of decisions only a human can make. This team of AI agents does everything possible to shrink that queue: it spots what is blocked, drafts a recommendation with evidence, assigns it to the right person, checks if it can be safely delegated, sets a deadline, and escalates if nothing moves.</p>
+    <ol class="lede-items">
+      <li><b>Intake officer</b>: Reads the work item or decision request and extracts the key facts — what is blocked, who owns it, and why it needs a human.</li>
+      <li><b>Three analysts</b>: A risk analyst, a scope analyst, and a cost analyst each assess the decision from their own lens and produce a one-sentence verdict.</li>
+      <li><b>Delegation checker</b>: Decides whether the decision can be safely handled by rules (and what those rules are), or truly needs a human eye.</li>
+      <li><b>Recommender</b>: Drafts the shortest possible recommendation a human needs to say yes or no — no more, no less.</li>
+      <li><b>Scheduler</b>: Assigns urgency, an owner, and a deadline. Flags overdue items.</li>
+      <li><b>Escalation agent</b>: If a decision is overdue and still unresolved, proposes an escalation path and a default action.</li>
+    </ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" aria-live="polite"></main>
+  <section class="panel" id="mappanel" aria-label="Decision flow map">
+    <h2 id="maptitle">Decision flow map</h2>
+    <canvas id="flowmap" width="1000" height="360" aria-label="Live map of decisions and their state"></canvas>
+    <div class="row" style="margin-top:8px" id="maplegend"></div>
+  </section>
+  <p class="foot">Honest label: the agents are a small on-device chat model, so some replies cannot be parsed, and the page falls back to rules and says so. The decision pipeline logic (delegation check, urgency scoring, escalation) runs on plain code. Nothing you type leaves your device. The WebLLM model downloads from huggingface.co and is cached in your browser.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function tog(act,val,label,on,dis){return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(x){const e=$('#status');if(e)e.innerHTML=x||'';}
+
+/* ========== example scenarios ========== */
+const SCENARIOS=[
+  'We need to choose between two cloud vendors for our new data pipeline. The contracts are both on the table but legal is busy and nobody has reviewed the SLAs yet. The go-live is in 12 days.',
+  'The design team is waiting on a decision about the colour palette before they can finish the component library. The brand guidelines allow three options and the marketing director said "just pick one" but the product manager wants sign-off first.',
+  'A pull request that fixes a critical production bug has been open for 4 days. Two engineers approved it but the tech lead is travelling and has not responded. The bug is causing roughly 3% of checkout flows to fail.',
+  'The team needs to decide whether to use an off-the-shelf analytics SDK or build a custom solution. The build estimate is 3 weeks, the SDK costs $400/month, and the decision is blocking sprint planning for two squads.',
+  'A customer escalation email has been sitting in the shared inbox for 6 hours. The support lead is in a meeting. The customer wants to know if we can refund a payment outside the usual 30-day window.',
+  'We have three candidate architectures for the new microservices split. The architecture review board meets in 2 weeks but engineering wants to start this week. Nobody has written a recommendation yet.',
+];
+
+const URGENCY_LABELS={critical:'critical',high:'high',medium:'medium',low:'low'};
+const URGENCY_COLORS={critical:'bad',high:'warn',medium:'orange',low:''};
+const STATUS_COLORS={blocked:'blocked',ready:'ready',working:'working',escalate:'escalate'};
+
+/* ========== WebLLM loader ========== */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, ~1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (~1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (~0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest)'],
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],note:'',
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not support WebGPU (must be served over https or localhost). The model is unavailable, but you can still run the rules-only pipeline.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label style="font-weight:500;display:block;margin-bottom:4px" for="modelsel">On-device chat model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Downloaded once, cached in your browser. Use Wi-Fi the first time. The page tries smaller models automatically if the first does not fit.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device ('+esc(this.modelId)+').'+(this.note?'<br>'+esc(this.note):'')+' </div>';
+    else{if(this.state==='error')h+='<div class="status bad">Could not load: '+esc(this.text)+'</div>';h+=btn('loadmodel','','Load model');}
+    return h;
+  },
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(LLM.chip()+(S.busy?chip('Working: '+S.prog,'warn'):''));},
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';draw();
+    let lastErr='',lib=null;
+    try{lib=await import('https://esm.run/@mlc-ai/web-llm');}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];this.modelId=m[0];this.pct=0;this.text=(i?'Trying smaller model: ':'Loading ')+m[1];this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});
+        this.state='ready';this.note=i?('Fell back to '+m[1]+' as the larger model did not fit.'):'';draw();this.paint();return;
+      }catch(err){lastErr=String((err&&err.message)||err);this.engine=null;}
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';draw();this.paint();
+  }
+};
+
+/* ========== agent helpers ========== */
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,es=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(es)es=false;else if(c==='\\')es=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+const fstr=(v,d)=>{if(v===null||v===undefined)return d;const s=String(v).trim();return s.length>3?s.slice(0,280):d;};
+const fnum=(v,a,b,d)=>{if(v===null||v===undefined||v==='')return d;v=Number(v);return isFinite(v)?clamp(v,a,b):d;};
+
+const S={
+  request:'',scenario:0,useModel:true,busy:false,stop:false,err:'',prog:'',
+  log:[],decisions:[],n:0,total:0,pick:-1,
+};
+
+function note(a,t){S.log.push({agent:a,text:t});}
+
+async function ask(agent,sys,user,temp,max){
+  S.n++;S.prog=agent;draw();LLM.paint();await sleep(0);
+  const r=await LLM.engine.chat.completions.create({
+    messages:[{role:'system',content:sys},{role:'user',content:user}],
+    temperature:temp,max_tokens:max||200
+  });
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  note(agent,text.slice(0,300));return text;
+}
+async function agentJson(name,sys,user,temp,max){
+  if(!S.useModel){note(name,'(rules-only)');return null;}
+  if(!LLM.ready())throw new Error('Load the model first or use rules-only.');
+  return firstJson(await ask(name,sys,user,temp,max));
+}
+
+/* ========== fallback rules ========== */
+function fallbackIntake(req){
+  const b=req.toLowerCase();
+  let owner='Team lead';
+  if(/legal|contract|sla|compliance/.test(b))owner='Legal';
+  else if(/design|colour|brand|palette/.test(b))owner='Design lead';
+  else if(/engineer|code|pull request|pr|bug|deploy/.test(b))owner='Tech lead';
+  else if(/customer|refund|support/.test(b))owner='Support lead';
+  else if(/architect|microservice|infrastructure/.test(b))owner='Architecture board';
+  else if(/budget|cost|spend|vendor/.test(b))owner='Finance';
+  let what='A decision is pending';
+  const m=req.match(/(?:need to decide|choose between|decision about|waiting on)[^.?!]{5,60}/i);
+  if(m)what=m[0].trim();
+  return{what:what.slice(0,180),owner,blocker:'Awaiting human sign-off',source:'fallback'};
+}
+function riskScore(req){
+  const b=req.toLowerCase();
+  let score=0;
+  if(/critical|production|outage|fail|breaking|3%|revenue/.test(b))score+=3;
+  if(/customer|client|escalat|complaint/.test(b))score+=2;
+  if(/contract|legal|sla|compliance/.test(b))score+=2;
+  if(/12 day|this week|urgent|asap|today/.test(b))score+=2;
+  if(/6 hour|4 day/.test(b))score+=1;
+  return Math.min(score,5);
+}
+function fallbackRisk(req){
+  const s=riskScore(req);
+  const v=s>=4?'High risk — delay has direct revenue or customer impact.':s>=2?'Medium risk — delay causes friction but is recoverable.':'Low risk — can wait a day or two without serious harm.';
+  return{verdict:v,score:s,source:'fallback'};
+}
+function fallbackScope(req){
+  const b=req.toLowerCase();
+  const wide=/team|squad|everyone|all|platform|company|org/.test(b);
+  const narrow=/one person|single|just|only/.test(b);
+  const v=wide?'Wide scope — decision affects multiple teams or the whole platform.':narrow?'Narrow scope — affects one person or one small task.':'Moderate scope — affects a single team or feature area.';
+  return{verdict:v,wide,source:'fallback'};
+}
+function fallbackCost(req){
+  const b=req.toLowerCase();
+  const hasCost=/\$|\€|cost|budget|spend|week|month/.test(b);
+  const v=hasCost?'There is a measurable cost to delay: either direct spend or lost engineering time.':'No explicit cost was mentioned, but idle time has an opportunity cost.';
+  return{verdict:v,source:'fallback'};
+}
+function fallbackDelegate(intake,risk){
+  const canDelegate=risk.score<=1&&!/legal|contract|revenue|customer/.test(intake.what.toLowerCase());
+  const rule=canDelegate?'This looks safe to handle by rule: proceed with the option that minimizes rework.':'This requires a human: the risk or scope is too high for a rule-based call.';
+  return{canDelegate,rule,source:'fallback'};
+}
+function fallbackRecommend(intake,risk,scope,cost,delegate){
+  const lines=[];
+  lines.push('Decision needed: '+intake.what+'.');
+  lines.push('Owner: '+intake.owner+'. Blocker: '+intake.blocker+'.');
+  lines.push('Risk: '+risk.verdict);
+  if(delegate.canDelegate)lines.push('Delegation: '+delegate.rule);
+  else lines.push('Human required: '+delegate.rule);
+  lines.push('Suggested action: '+(delegate.canDelegate?'Apply the delegation rule and close this item.':'Schedule a 15-minute sync with '+intake.owner+' to get a decision today.'));
+  return{recommendation:lines.join(' '),source:'fallback'};
+}
+function fallbackSchedule(intake,risk){
+  const urgency=risk.score>=4?'critical':risk.score>=3?'high':risk.score>=2?'medium':'low';
+  const daysMap={critical:0,high:1,medium:3,low:7};
+  const d=new Date();d.setDate(d.getDate()+daysMap[urgency]);
+  const deadline=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  return{urgency,owner:intake.owner,deadline,source:'fallback'};
+}
+function fallbackEscalate(sched,intake){
+  const path=sched.urgency==='critical'?'Escalate to the CEO or product VP immediately and unblock by end of day.':sched.urgency==='high'?'Escalate to the department head. Default action: take the lower-risk option and document the decision.':'Flag in the next standup. Default action: park and revisit '+sched.deadline+'.';
+  return{path,defaultAction:'Take the lowest-risk option available and document it.',source:'fallback'};
+}
+
+/* ========== agent pipeline for one decision ========== */
+async function analyseDecision(req, idx){
+  const dec={req,idx,status:'working',intake:null,risk:null,scope:null,cost:null,delegate:null,recommend:null,sched:null,escalate:null,score:0};
+  S.decisions[idx]=dec;draw();
+
+  /* 1. Intake */
+  S.prog='Intake officer';draw();LLM.paint();
+  const io=await agentJson('Intake officer',
+    'You are an intake officer for a decision-routing system. Extract the key facts. Reply with ONE JSON object only.',
+    'Work item: '+req+'\nReturn: {"what":"what decision is needed (one sentence)","owner":"job title of the decision owner","blocker":"what is stopping progress","urgency_hint":"any time pressure mentioned"}',
+    0.2,140);
+  dec.intake=io&&io.what?{what:io.what.slice(0,200),owner:String(io.owner||'Team lead').slice(0,60),blocker:String(io.blocker||'Pending sign-off').slice(0,120),source:'model'}:fallbackIntake(req);
+  if(io&&!io.what&&S.useModel)note('Intake officer','(reply not usable, using fallback)');
+  dec.status='working';S.decisions[idx]=dec;draw();
+
+  /* 2. Three analysts in parallel (sequential for simplicity with single engine) */
+  S.prog='Risk analyst';draw();LLM.paint();
+  const ro=await agentJson('Risk analyst',
+    'You are a risk analyst. Assess the risk of delay. Reply with ONE JSON object only.',
+    'Decision: '+dec.intake.what+'\nContext: '+req.slice(0,300)+'\nReturn: {"verdict":"one sentence","score":0-5}',0.4,100);
+  dec.risk=ro&&ro.verdict?{verdict:String(ro.verdict).slice(0,200),score:fnum(ro.score,0,5,2),source:'model'}:fallbackRisk(req);
+  if(ro&&!ro.verdict&&S.useModel)note('Risk analyst','(reply not usable, using fallback)');
+
+  S.prog='Scope analyst';draw();LLM.paint();
+  const so=await agentJson('Scope analyst',
+    'You are a scope analyst. Assess how many people or systems this decision affects. Reply with ONE JSON object only.',
+    'Decision: '+dec.intake.what+'\nContext: '+req.slice(0,300)+'\nReturn: {"verdict":"one sentence","wide":true_or_false}',0.4,100);
+  dec.scope=so&&so.verdict?{verdict:String(so.verdict).slice(0,200),wide:!!so.wide,source:'model'}:fallbackScope(req);
+
+  S.prog='Cost analyst';draw();LLM.paint();
+  const co=await agentJson('Cost analyst',
+    'You are a cost analyst. Assess the cost of delay (money, time, or opportunity). Reply with ONE JSON object only.',
+    'Decision: '+dec.intake.what+'\nContext: '+req.slice(0,300)+'\nReturn: {"verdict":"one sentence"}',0.4,100);
+  dec.cost=co&&co.verdict?{verdict:String(co.verdict).slice(0,200),source:'model'}:fallbackCost(req);
+
+  /* 3. Delegation check */
+  S.prog='Delegation checker';draw();LLM.paint();
+  const synthCtx='Decision: '+dec.intake.what+'\nRisk: '+dec.risk.verdict+'\nScope: '+dec.scope.verdict+'\nCost: '+dec.cost.verdict;
+  const do_=await agentJson('Delegation checker',
+    'You are a delegation checker. Decide if this decision can be safely handled by a rule, or must go to a human. Reply with ONE JSON object only.',
+    synthCtx+'\nReturn: {"canDelegate":true_or_false,"rule":"if delegatable: the rule to apply; otherwise: why a human is needed"}',0.3,120);
+  dec.delegate=do_&&typeof do_.canDelegate==='boolean'?{canDelegate:do_.canDelegate,rule:String(do_.rule||'').slice(0,220),source:'model'}:fallbackDelegate(dec.intake,dec.risk);
+
+  /* 4. Recommender */
+  S.prog='Recommender';draw();LLM.paint();
+  const ro2=await agentJson('Recommender',
+    'You are a decision recommender. Write the shortest possible recommendation a human needs to say yes or no. Reply with ONE JSON object only.',
+    synthCtx+'\nDelegation: '+dec.delegate.rule+'\nReturn: {"recommendation":"two to four sentences max"}',0.5,180);
+  dec.recommend=ro2&&ro2.recommendation?{recommendation:String(ro2.recommendation).slice(0,320),source:'model'}:fallbackRecommend(dec.intake,dec.risk,dec.scope,dec.cost,dec.delegate);
+
+  /* 5. Scheduler */
+  S.prog='Scheduler';draw();LLM.paint();
+  const uo=await agentJson('Scheduler',
+    'You are a scheduler. Assign urgency, an owner, and a deadline. Reply with ONE JSON object only.',
+    'Decision: '+dec.intake.what+'\nOwner: '+dec.intake.owner+'\nRisk score: '+dec.risk.score+'\nReturn: {"urgency":"critical or high or medium or low","owner":"job title","deadline":"short date or timeframe like \'today\' or \'by Friday\'"}',0.2,100);
+  dec.sched=uo&&uo.urgency&&URGENCY_LABELS[uo.urgency]?{urgency:uo.urgency,owner:String(uo.owner||dec.intake.owner).slice(0,60),deadline:String(uo.deadline||'').slice(0,40),source:'model'}:fallbackSchedule(dec.intake,dec.risk);
+
+  /* 6. Escalation agent */
+  S.prog='Escalation agent';draw();LLM.paint();
+  const eo=await agentJson('Escalation agent',
+    'You are an escalation agent. The decision has not been made yet. Propose an escalation path and a safe default action. Reply with ONE JSON object only.',
+    'Decision: '+dec.intake.what+'\nUrgency: '+dec.sched.urgency+'\nOwner: '+dec.sched.owner+'\nDeadline: '+dec.sched.deadline+'\nReturn: {"path":"escalation path in one sentence","defaultAction":"safe default in one sentence"}',0.3,120);
+  dec.escalate=eo&&eo.path?{path:String(eo.path).slice(0,220),defaultAction:String(eo.defaultAction||'').slice(0,180),source:'model'}:fallbackEscalate(dec.sched,dec.intake);
+
+  /* score: 0-100 representing how ready this item is to be decided */
+  dec.score=Math.round(
+    (dec.delegate.canDelegate?85:60)+
+    (dec.recommend?10:0)+
+    (dec.sched?5:0)
+  );
+  dec.status=dec.delegate.canDelegate?'ready':dec.sched.urgency==='critical'?'escalate':'blocked';
+  S.decisions[idx]=dec;draw();drawMap();
+}
+
+async function run(){
+  if(S.busy)return;
+  S.err='';S.log=[];S.decisions=[];S.pick=-1;S.stop=false;S.n=0;S.busy=true;S.prog='';
+  const items=S.request.split('\n\n').map(s=>s.trim()).filter(s=>s.length>10).slice(0,6);
+  if(!items.length){S.err='Enter at least one decision item.';S.busy=false;draw();return;}
+  S.total=items.length*7;
+  try{
+    for(let i=0;i<items.length;i++){
+      if(S.stop)throw new Error('STOPPED');
+      await analyseDecision(items[i],i);
+    }
+    S.prog='';
+  }catch(err){
+    if(err.message!=='STOPPED')S.err=String(err.message||err);
+    else S.err='Stopped. Decisions processed so far are shown below.';
+  }
+  S.busy=false;draw();LLM.paint();drawMap();
+}
+
+/* ========== canvas map ========== */
+const NODE_COLORS={blocked:'#A92F27',ready:'#1D6B4B',working:'#8A5A00',escalate:'#B85C00',idle:'#56636F'};
+const URGENCY_C={critical:'#FF6B6B',high:'#FFB347',medium:'#FFD700',low:'#90EE90'};
+
+function drawMap(){
+  const cv=$('#flowmap'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  g.fillStyle='#0d1117';g.fillRect(0,0,W,H);
+  const decs=S.decisions;
+  if(!decs||!decs.length){
+    g.fillStyle='#8FA3AD';g.font='15px sans-serif';g.textAlign='center';
+    g.fillText('Process a decision item to see the flow map.',W/2,H/2);
+    return;
+  }
+  const STAGES=['Intake','Risk','Scope','Cost','Delegate','Recommend','Schedule','Escalate'];
+  const nStages=STAGES.length,sx=W/(nStages+1);
+  /* stage headers */
+  STAGES.forEach((s,i)=>{
+    const x=(i+1)*sx;
+    g.fillStyle='#3A4F6A';g.fillRect(x-sx*0.44,8,sx*0.88,22);
+    g.fillStyle='#9FADB9';g.font='11px sans-serif';g.textAlign='center';g.fillText(s,x,23);
+  });
+  /* one row per decision */
+  const rowH=(H-44)/(decs.length+0.5);
+  decs.forEach((dec,di)=>{
+    if(!dec)return;
+    const y=44+di*rowH+rowH*0.5;
+    /* label */
+    g.fillStyle='#C4D3DF';g.font='11px sans-serif';g.textAlign='left';
+    g.fillText('#'+(di+1)+' '+dec.req.slice(0,28)+'…',6,y+4);
+    /* stage nodes */
+    const stageData=[
+      dec.intake,dec.risk,dec.scope,dec.cost,dec.delegate,dec.recommend,dec.sched,dec.escalate
+    ];
+    let lastX=null,lastY=null;
+    stageData.forEach((d,si)=>{
+      const x=(si+1)*sx,r=10;
+      const col=d?(dec.status==='escalate'&&si===7?'#B85C00':dec.status==='ready'&&si>=5?'#1D6B4B':'#1A6FA8'):'#223140';
+      g.beginPath();g.arc(x,y,r,0,6.2832);g.fillStyle=col;g.fill();
+      if(d){g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();}
+      if(lastX!==null){
+        g.beginPath();g.moveTo(lastX+10,lastY);g.lineTo(x-10,y);
+        g.strokeStyle=d?'#2A4A6A':'#1E2A35';g.lineWidth=1.5;g.stroke();
+      }
+      lastX=x;lastY=y;
+    });
+    /* urgency badge */
+    if(dec.sched){
+      const uc=URGENCY_C[dec.sched.urgency]||'#90EE90';
+      g.fillStyle=uc;g.font='bold 10px sans-serif';g.textAlign='right';
+      g.fillText(dec.sched.urgency.toUpperCase(),W-8,y+4);
+    }
+  });
+  /* legend */
+  const leg=$('#maplegend');
+  if(leg)leg.innerHTML=[['Ready (can delegate)','#1D6B4B'],['Needs human','#1A6FA8'],['Escalate','#B85C00'],['Pending','#223140']].map(([l,c])=>'<span style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;color:var(--muted)"><span style="width:12px;height:12px;border-radius:50%;background:'+c+';display:inline-block"></span>'+l+'</span>').join('');
+}
+
+/* ========== UI ========== */
+function cardHtml(dec,i){
+  const urg=dec.sched?dec.sched.urgency:'medium';
+  const urgCls=URGENCY_COLORS[urg]||'';
+  const stCls=dec.status==='ready'?'best':dec.status==='escalate'?'pick':'';
+  let h='<div class="card '+stCls+'">';
+  h+='<h3>#'+(i+1)+' '+chip(urg,urgCls)+' '+(dec.status==='ready'?chip('Can delegate','good'):dec.status==='escalate'?chip('Escalate','bad'):chip('Needs human','warn'))+'</h3>';
+  h+='<p class="small muted" style="margin:0 0 8px;word-break:break-word">'+esc(dec.req.slice(0,120))+(dec.req.length>120?'…':'')+'</p>';
+  if(dec.intake)h+='<p class="small"><b>Decision:</b> '+esc(dec.intake.what)+'<br><b>Owner:</b> '+esc(dec.intake.owner)+'<br><b>Blocker:</b> '+esc(dec.intake.blocker)+'</p>';
+  if(dec.recommend)h+='<div class="status '+(dec.status==='ready'?'ok':dec.status==='escalate'?'bad':'orange')+'" style="margin-top:8px"><b>Recommendation:</b> '+esc(dec.recommend.recommendation)+'</div>';
+  if(dec.sched)h+='<p class="small" style="margin-top:8px"><b>Owner:</b> '+esc(dec.sched.owner)+' &nbsp;·&nbsp; <b>Deadline:</b> '+esc(dec.sched.deadline)+'</p>';
+  if(dec.escalate)h+='<details><summary class="small">Escalation path</summary><p class="small muted">'+esc(dec.escalate.path)+'<br><b>Default action:</b> '+esc(dec.escalate.defaultAction)+'</p></details>';
+  if(dec.risk||dec.scope||dec.cost){
+    h+='<details><summary class="small">Analyst verdicts</summary>';
+    if(dec.risk)h+='<p class="small muted"><b>Risk:</b> '+esc(dec.risk.verdict)+'</p>';
+    if(dec.scope)h+='<p class="small muted"><b>Scope:</b> '+esc(dec.scope.verdict)+'</p>';
+    if(dec.cost)h+='<p class="small muted"><b>Cost of delay:</b> '+esc(dec.cost.verdict)+'</p>';
+    if(dec.delegate)h+='<p class="small muted"><b>Delegation:</b> '+esc(dec.delegate.rule)+'</p>';
+    h+='</details>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function render(){
+  let h='<section class="panel"><h2>1. The brain (on-device model)</h2>'+LLM.ui()+'</section>';
+  h+='<section class="panel"><h2>2. Decision items</h2>';
+  h+='<p class="small muted">Enter one or more work items or decisions that are blocked. Separate multiple items with a blank line (up to 6 at a time).</p>';
+  h+='<textarea id="req" rows="5" maxlength="2000" placeholder="Paste a decision item here…">'+esc(S.request)+'</textarea>';
+  h+='<h3>Example scenarios</h3><div class="row">';
+  SCENARIOS.forEach((s,i)=>h+=btn('scenario',i,'Scenario '+(i+1),'ghost sm'));
+  h+='</div>';
+  h+='<div class="row" style="margin-top:14px">'+btn('run','','Analyse with the full team',null,S.busy||(!LLM.ready()&&S.useModel))+btn('runrules','','Rules only (no model)','ghost',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+' </div>';
+  if(!LLM.ready()&&!S.busy)h+='<p class="small muted" style="margin-top:8px">Load the model above for agent-written verdicts. Rules-only still runs the full pipeline with fallback logic.</p>';
+  h+='</section>';
+
+  if(S.busy||S.err||S.log.length){
+    h+='<section class="panel"><h2>3. The team at work</h2>';
+    if(S.busy)h+='<div class="status warn">Working: '+esc(S.prog)+' (step '+S.n+' of ~'+S.total+')</div><div class="bar"><i id="progbar" style="width:'+clamp(S.n/Math.max(1,S.total)*100,0,100)+'%"></i></div>';
+    if(S.err)h+='<div class="status '+(S.err.startsWith('Stopped')?'warn':'bad')+'">'+esc(S.err)+'</div>';
+    if(S.log.length)h+='<details><summary>Agent messages ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+
+  const done=S.decisions.filter(d=>d&&d.status!=='working');
+  if(done.length){
+    h+='<section class="panel"><h2>4. Decision queue</h2>';
+    const canDel=done.filter(d=>d.status==='ready').length;
+    const esc_=done.filter(d=>d.status==='escalate').length;
+    const human=done.filter(d=>d.status==='blocked').length;
+    h+='<div class="row" style="margin-bottom:12px">';
+    if(canDel)h+=chip(canDel+' can be delegated','good');
+    if(esc_)h+=chip(esc_+' need escalation','bad');
+    if(human)h+=chip(human+' need a human decision','warn');
+    h+='</div>';
+    h+='<div class="cards">'+S.decisions.filter(d=>d&&d.status!=='working').map((d,i)=>cardHtml(d,i)).join('')+'</div>';
+    h+='</section>';
+  }
+  return h;
+}
+
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='req'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#req');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Working','warn'):''));
+}
+
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act]');if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;
+  const v=t.dataset.val,act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='scenario'){S.request=SCENARIOS[+v];draw();return;}
+  if(act==='run'){S.useModel=true;run();return;}
+  if(act==='runrules'){S.useModel=false;run();return;}
+  if(act==='stop'){S.stop=true;return;}
+});
+document.addEventListener('change',e=>{if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}});
+document.addEventListener('input',e=>{if(e.target.id==='req')S.request=e.target.value;});
+
+draw();drawMap();
+</script>
+</body>
+</html>
