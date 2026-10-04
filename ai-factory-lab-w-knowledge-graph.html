@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Factory lab w knowledge graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">A hierarchy of four agents (a real on-device model, simulated factory)</span></div>
+  <header>
+    <h1>AI Factory lab w knowledge graph</h1>
+    <p class="lede">The AI Factory as a hierarchy of four agents. Decisions consolidate up, limits flow down, and the top is written by a human.</p>
+    <ol class="lede-items"><li><b>Product operator</b>: Handles each request, from clean to control, with a model and tools.</li><li><b>Product designer</b>: Consolidates the operator&#x27;s decisions into a design signal and a calibration curve.</li><li><b>Factory operator</b>: Uses MPC scenario simulation to choose the product&#x27;s configuration.</li><li><b>Factory designer</b>: Consolidates the factory operator&#x27;s decisions into limits and defaults.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the inventory MPC, the scenario simulation and the consolidation are real calculations in JavaScript on made-up numbers. The language model is a small open model running locally through WebLLM and WebGPU, and its confidence comes from token probabilities. The four agents are a framing: each one observes, decides, acts and reports, and only Level 1 uses the model to act. The four checkpoints, the Control rules, the design signals and the proposals are simplified illustrations of the AI Factory ideas, not a formal implementation. Small models make mistakes, and the checks are there to catch them. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+const ORDERS0={
+  'O-1001':{item:'Standing desk',paid:480,status:'delivered',refunded:0},
+  'O-2002':{item:'Table lamp',paid:60,status:'shipped',refunded:0},
+  'O-3003':{item:'Rain jacket',paid:95,status:'processing',refunded:0}
+};
+let ORDERS=JSON.parse(JSON.stringify(ORDERS0));
+const LABELS={A:'Order status',B:'Refund request',C:'Complaint',D:'Address change',E:'Stock question'};
+const REQUIRE={'Order status':['order_id'],'Refund request':['order_id','amount'],'Complaint':[],'Address change':['order_id','address'],'Stock question':['item']};
+const CAL=[
+ ['I moved last month and need my shipping address updated.','D'],['Please send my next order to my new PO box in Ohio.','D'],
+ ['I want my money back for the blender I bought last week.','B'],['How do I return this jacket for a refund?','B'],
+ ['Your delivery fees are unfair and the rep was rude to me.','C'],['I am unhappy about the charge on my last bill.','C'],
+ ['Where is my order? It was due on Monday.','A'],['Can you check the tracking for my package?','A'],
+ ['Can you update where my parcels get delivered?','D'],['I would like a refund for the damaged screen.','B'],
+ ['Why was I charged twice this month? This is unacceptable.','C'],['Has my order shipped yet?','A']
+];
+
+/* ---------- MPC core: the deterministic model ---------- */
+const MULT=[0.8,1,1.3],WGT=[0.25,0.5,0.25];
+function simBase(I,pipe,S,F,H,h,s){
+  let cost=0;pipe=pipe.slice();
+  for(let k=0;k<H;k++){
+    if(k>0)I+=pipe.shift();
+    const IP=I+pipe.reduce((a,b)=>a+b,0);
+    const x=Math.max(0,S-IP);
+    pipe.push(x);
+    I-=F;
+    cost+=h*Math.max(I,0)+s*Math.max(-I,0);
+  }
+  return cost;
+}
+function mpcDecide(I,pipe,F,H,h,s){
+  let best=null;const curve=[];
+  for(let S=0;S<=700;S+=10){
+    let c=0;MULT.forEach((m,i)=>{c+=WGT[i]*simBase(I,pipe,S,F*m,H,h,s);});
+    curve.push({S,cost:c});
+    if(!best||c<best.cost-1e-9)best={S,cost:c};
+  }
+  const IP=I+pipe.reduce((a,b)=>a+b,0);
+  return{S:best.S,x:Math.max(0,best.S-IP),cost:best.cost,curve,IP,I,F};
+}
+function demandPath(scn){
+  const d=Array(12).fill(100);
+  if(scn==='spike')for(let t=4;t<8;t++)d[t]=160;
+  if(scn==='drop')for(let t=4;t<8;t++)d[t]=50;
+  if(scn==='season')for(let t=0;t<12;t++)d[t]=Math.round(100+40*Math.sin(t/12*2*Math.PI));
+  return d;
+}
+function runInv(p){
+  const T=12,h=1,s=5,L=p.L,H=p.H,D=demandPath(p.scn),out={D};
+  for(const pol of['mpc','rule']){
+    let I=p.I0;const pipe=Array(L).fill(100),hist=[100,100,100];
+    const rec={I:[],x:[],cost:0,plans:[]};
+    for(let t=0;t<T;t++){
+      I+=pipe.shift();
+      const F=Math.round((hist[hist.length-1]+hist[hist.length-2]+hist[hist.length-3])/3);
+      let x;
+      if(pol==='mpc'){const pl=mpcDecide(I,pipe,F,H,h,s);x=Math.round(pl.x);rec.plans.push(pl);}
+      else x=Math.round(F*1.1);
+      pipe.push(x);
+      I-=D[t];
+      rec.cost+=h*Math.max(I,0)+s*Math.max(-I,0);
+      rec.I.push(I);rec.x.push(x);
+      hist.push(D[t]);
+    }
+    out[pol]=rec;
+  }
+  return out;
+}
+const ITEMS={lamp:{D:40,I0:20,L:2,label:'Table lamps'},desk:{D:15,I0:30,L:1,label:'Standing desks'},jacket:{D:60,I0:40,L:1,label:'Rain jackets'}};
+function planInventory(item){
+  const it=ITEMS[item];if(!it)return 'No planning model for item '+item+'. Known items: '+Object.keys(ITEMS).join(', ')+'.';
+  const pipe=Array(it.L-1).fill(it.D),I=it.I0;
+  const pl=mpcDecide(I,pipe,it.D,Math.max(3,it.L+2),1,5);
+  return it.label+': on hand '+it.I0+', forecast demand '+it.D+' per period, lead time '+it.L+'. MPC recommends ordering '+Math.round(pl.x)+' units now (order-up-to level '+pl.S+').';
+}
+/* ---------- tiny chart ---------- */
+function lineSvg(series,opt){
+  const W=opt.w||560,H=opt.h||210,L=44,R=12,T=12,B=26;
+  const all=series.flatMap(s=>s.values);
+  const lo=Math.min(0,...all),hi=Math.max(...all),n=series[0].values.length;
+  const px=i=>L+(n===1?0:i/(n-1))*(W-L-R),py=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+esc(opt.label||'chart')+'">';
+  svg+='<line x1="'+L+'" y1="'+py(0).toFixed(1)+'" x2="'+(W-R)+'" y2="'+py(0).toFixed(1)+'" stroke="currentColor" opacity=".35"/>';
+  svg+='<text x="4" y="'+(T+8)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(hi)+'</text><text x="4" y="'+(H-B)+'" font-size="10" fill="currentColor" opacity=".7">'+Math.round(lo)+'</text>';
+  series.forEach(s=>{
+    const pts=s.values.map((v,i)=>px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ');
+    svg+='<polyline points="'+pts+'" fill="none" stroke="'+s.color+'" stroke-width="2.5"'+(s.dash?' stroke-dasharray="5 4"':'')+'/>';
+  });
+  if(opt.mark!==undefined&&opt.mark>=0){const v=series[0].values[opt.mark];svg+='<circle cx="'+px(opt.mark).toFixed(1)+'" cy="'+py(v).toFixed(1)+'" r="6" fill="#E3A21A" stroke="#17262D" stroke-width="1"/>';}
+  (opt.xlabels||[]).forEach((lb,i)=>{if(lb!=='')svg+='<text x="'+px(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity=".7">'+esc(lb)+'</text>';});
+  return svg+'</svg>';
+}
+function legend(items){return '<div class="row small" style="gap:14px">'+items.map(i=>'<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+i[1]+';margin-right:4px"></span>'+esc(i[0])+'</span>').join('')+'</div>';}
+
+/* ---------- model helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top).');}
+async function chat(messages,max,lp){
+  need();
+  const t0=performance.now();
+  const req={messages,temperature:0,max_tokens:max||120};
+  if(lp){req.logprobs=true;req.top_logprobs=4;}
+  const r=await LLM.engine.chat.completions.create(req);
+  const ch=r.choices[0];
+  return{text:String((ch.message&&ch.message.content)||'').trim(),ms:Math.round(performance.now()-t0),lp:(ch.logprobs&&ch.logprobs.content)||[],promptTokens:(r.usage&&r.usage.prompt_tokens)||0};
+}
+const CLS_SYS='You classify online store customer requests. Reply as instructed.';
+function clsPrompt(text,mode,feedback){
+  const base='Classify this online store customer request.\nA) Order status\nB) Refund request\nC) Complaint\nD) Address change\nE) Stock question\nRequest: '+text+'\n';
+  if(mode==='think')return base+(feedback?'A reviewer flagged a problem with a first attempt: '+feedback+'\n':'')+'Give a short reason in one sentence, then end with "Answer: X" where X is one letter.';
+  return base+'Reply with one letter.';
+}
+async function classify(text,mode,feedback){
+  const out=await chat([{role:'system',content:CLS_SYS},{role:'user',content:clsPrompt(text,mode,feedback)}],mode==='think'?110:6,true);
+  const up=out.text.toUpperCase();
+  let letter='';
+  if(mode==='think'){const m=up.match(/ANSWER:\s*\(?([A-E])/);letter=m?m[1]:'';}
+  else{const m=up.match(/(?:^|[^A-Z])([A-E])(?![A-Z])/);letter=m?m[1]:'';}
+  let conf=0;
+  if(letter&&out.lp.length){
+    const idx=out.lp.map(t=>String(t.token).trim().replace(/[().:*]/g,'').toUpperCase()===letter);
+    let at=-1;for(let i=idx.length-1;i>=0;i--)if(idx[i]){at=i;break;}
+    if(at>=0&&typeof out.lp[at].logprob==='number')conf=Math.exp(out.lp[at].logprob);
+  }
+  return{letter,label:LABELS[letter]||'',conf,raw:out.text,ms:out.ms,promptTokens:out.promptTokens,mode};
+}
+function fieldsOf(text){
+  const oid=(text.match(/O-\d{4}/i)||[])[0];
+  const am=text.match(/\$\s?(\d[\d,]*(?:\.\d+)?)/);
+  const addr=(text.match(/\baddress\b.*?\bto\s+(.+?)\.?$/i)||[])[1]||null;
+  const it=(text.match(/\b(lamps?|desks?|jackets?)\b/i)||[])[1]||null;
+  return{order_id:oid?oid.toUpperCase():null,amount:am?Number(am[1].replace(/,/g,'')):null,address:addr,item:it?it.toLowerCase().replace(/s$/,''):null};
+}
+
+
+const QA={
+ 1:[['What does the product operator do?','It handles one request at a time: clean, sort with the model, protect private data, act with tools, then Monitor checks the plan and the answer and Control decides what happens next.'],['Where does the confidence bar come from?','From above. Level 3 assigns it when you apply a plan, and Monitor uses it in the Confidence checkpoint.'],['Why is a refund above 200 not just executed?','High stakes always need a person. The tool refuses to run until someone approves.']],
+ 2:[['What does the product designer consolidate?','Level 1 decisions: how many were accepted, escalated or retried, and how confident the model was. It also measures a calibration curve.'],['Why calibrate?','Level 3 needs to know how many requests each confidence bar would automate and how accurate they would be. Twelve messages is far too few to trust, so treat the curve as a demo.']],
+ 3:[['What does the factory operator simulate?','Each option, a model class and a confidence bar, over a short horizon. Options that break a hard rule are dropped, and the cheapest of the rest wins.'],['What happens when you apply a plan?','Only the first period is applied, the product is reconfigured, and the next period is planned again with fresh numbers.'],['What does the audit evidence do?','It lowers the small model\'s estimated accuracy, and the best plan changes with no change to the logic.']],
+ 4:[['Who sets the limits?','At the top of any hierarchy, a human. Level 4 proposes changes from the history of Level 3, and you adopt or ignore them.'],['Why does a limit matter to Level 3?','Level 3 treats the accuracy rule, reviewer capacity and queue size as hard rules. Change one and the best plan can change.']]
+};
+const PATHS={steady:[60,60,60,60,60,60,60,60,60,60],spike:[60,60,160,160,60,60,60,60,60,60],ramp:[40,60,80,100,120,140,140,140,140,140]};
+function classOf(id){return /(3B|1\.5B)/.test(String(id))?'large':'small';}
+/* ---------- state ---------- */
+const S={lvl:1,sub1:'run',busy:false,err:'',showModel:false,
+  req:'I want a refund of $45 for O-3003.',sys2:false,r1:null,log:[],
+  cfg:{theta:0.7,cls:'large',fromPeriod:null},
+  inv:{scn:'drop',L:'1',H:'3',I0:'60',view:'0'},
+  curves:{},l2msg:'',memo:'',
+  f:{t:0,Q:0,path:'spike',H:'3',drop:'0',hist:[]},
+  lim:{target:95,cap:30,qmax:10},defCls:null};
+/* ---------- Monitor (four checkpoints) and Control ---------- */
+function checkpoints(label,f,conf,passes,theta){
+  const miss=(REQUIRE[label]||[]).filter(k=>!f[k]);
+  const c1={name:'Coverage',pass:!miss.length,reason:miss.length?'missing '+miss.join(', '):'everything needed is present'};
+  const con=[];
+  if(f.order_id&&!ORDERS[f.order_id])con.push('order '+f.order_id+' does not exist');
+  const o=f.order_id&&ORDERS[f.order_id];
+  if(label==='Refund request'&&o&&f.amount&&f.amount>o.paid-o.refunded)con.push('refund '+f.amount+' is more than the '+(o.paid-o.refunded)+' still refundable');
+  if(label==='Address change'&&o&&o.status==='delivered')con.push('order '+f.order_id+' is already delivered');
+  if(label==='Stock question'&&f.item&&!ITEMS[f.item])con.push('no planning model for '+f.item);
+  const c2={name:'Contradiction',pass:!con.length,reason:con.length?con.join('; '):'consistent with verified data'};
+  const c3={name:'Confidence',pass:conf>=theta,reason:'confidence '+conf.toFixed(2)+(conf>=theta?' meets':' is below')+' the '+theta.toFixed(2)+' bar set from above'};
+  const eff=conf*Math.pow(0.9,passes-1);
+  const stakes=(label==='Refund request'&&f.amount>200)?'high':((label==='Refund request'||label==='Address change')?'medium':'low');
+  const bar={low:0.6,medium:0.8,high:2}[stakes];
+  const c4={name:'Risk gate',stakes,pass:eff>=bar,reason:'stakes '+stakes+'; confidence after '+passes+' pass'+(passes>1?'es':'')+' is '+eff.toFixed(2)+(bar>1?' (high stakes always need a person)':' (bar '+bar.toFixed(2)+')')};
+  return[c1,c2,c3,c4];
+}
+function control(checks,passes,maxPasses){
+  const g=n=>checks.find(c=>c.name===n);
+  if(checks.every(c=>c.pass))return{action:'Accept',why:'All four checkpoints passed.'};
+  if(!g('Contradiction').pass)return{action:'Escalate to a person',why:'The request conflicts with verified data.'};
+  if(!g('Coverage').pass)return{action:'Ask for more information',why:'Something needed is missing.'};
+  if(!g('Risk gate').pass&&g('Risk gate').stakes==='high')return{action:'Escalate to a person',why:'High stakes always need a person.'};
+  if(passes<maxPasses)return{action:'Retry (System 2)',why:'Confidence is too low. Try a deeper pass.'};
+  return{action:'Escalate to a person',why:'Not confident enough after '+passes+' pass'+(passes>1?'es':'')+'.'};
+}
+/* ---------- Level 1: the product operator ---------- */
+async function runRequest(raw,sys2){
+  const theta=S.cfg.theta;
+  const r={raw,theta,passes:[]};
+  r.cleaned=cleanText(raw);
+  if(!r.cleaned){r.outcome={action:'Rejected',why:'The message is empty after cleaning.'};return r;}
+  let c=await classify(r.cleaned,'fast');r.passes.push(c);
+  const f=fieldsOf(r.cleaned);r.fields=f;
+  if(c.conf<theta&&sys2)c=await classify(r.cleaned,'think','confidence '+c.conf.toFixed(2)+' is below the bar of '+theta.toFixed(2)),r.passes.push(c);
+  r.cls=c;r.masked=maskText(r.cleaned);
+  const passes=r.passes.length;
+  const ctx={};r.ctx=ctx;
+  const checks=checkpoints(c.label,f,c.conf,passes,theta);
+  const failing=checks.filter(x=>!x.pass);
+  const onlyHigh=failing.length===1&&failing[0].name==='Risk gate'&&failing[0].stakes==='high';
+  const automatable=['Order status','Refund request','Stock question'].indexOf(c.label)>=0;
+  r.agent=null;
+  if(automatable&&(failing.length===0||onlyHigh))r.agent=await agentLoop(r.cleaned,BIZ_TOOLS(ctx),5);
+  if(r.agent&&/refund(?:ed)?\b.*\b(processed|issued|completed|done)|\b(processed|issued|completed)\b.*refund|i have refunded|has been refunded/i.test(r.agent.final)&&!ctx.refunded&&!ctx.pending){
+    const k=checks.find(x=>x.name==='Contradiction');k.pass=false;k.reason='the answer claims a refund that no tool performed';
+  }
+  r.checks=checks;
+  const stillFailing=checks.filter(x=>!x.pass);
+  if(ctx.pending)r.outcome={action:'Needs approval',why:'A refund above 200 waits for a person.'};
+  else if(!stillFailing.length)r.outcome=r.agent?{action:'Accept',why:'All four checkpoints passed.'}:{action:'Escalate to a person',why:'This type of request is not automated in the demo.'};
+  else r.outcome=control(checks,passes,passes);
+  return r;
+}
+function logOutcome(r){
+  S.log.push({decision:r.outcome.action,conf:r.cls?r.cls.conf:0,label:r.cls?r.cls.label:'',passes:r.passes.length,theta:r.theta,cls:S.cfg.cls});
+}
+/* ---------- Level 2: the product designer ---------- */
+function l2Stats(){
+  const L=S.log.filter(x=>!/^Human/.test(x.decision)),H=S.log.filter(x=>/^Human/.test(x.decision));
+  const n=L.length,cnt={};
+  L.forEach(x=>{cnt[x.decision]=(cnt[x.decision]||0)+1;});
+  return{n,cnt,accept:L.filter(x=>x.decision==='Accept').length,esc:L.filter(x=>/Escalate|Needs approval|Ask for more/.test(x.decision)).length,
+    retry:L.filter(x=>x.passes>1).length,avg:n?L.reduce((a,x)=>a+x.conf,0)/n:0,
+    hApprove:H.filter(x=>/approved/.test(x.decision)).length,hReject:H.filter(x=>/rejected/.test(x.decision)).length,
+    share:th=>n?L.filter(x=>x.conf>=th).length/n:0};
+}
+function designSignal(st){
+  if(st.n<3)return 'Run at least three requests at Level 1 so there is something to consolidate.';
+  if(st.hReject>st.hApprove)return 'Humans reject more than they approve. The prompt or the bar is wrong.';
+  if(st.esc/st.n>0.4)return 'Many requests ('+Math.round(st.esc/st.n*100)+'%) need a person. Improve the prompt, add examples, or ask Level 3 for a larger model.';
+  if(st.accept/st.n>0.8)return 'Almost everything is accepted ('+Math.round(st.accept/st.n*100)+'%). Audit a sample before relaxing the bar.';
+  return 'Keep the design and keep auditing a sample.';
+}
+function shortSignal(st){return st.n<3?'needs more requests':(st.hReject>st.hApprove?'humans reject often':(st.esc/st.n>0.4?'too many escalations':(st.accept/st.n>0.8?'almost all accepted':'steady')));}
+async function calibrate(){
+  const cls=classOf(LLM.modelId),res=[];
+  for(let i=0;i<CAL.length;i++){
+    S.l2msg='Calibrating '+(i+1)+' of '+CAL.length;draw();await sleep(0);
+    const c=await classify(CAL[i][0],'fast');
+    res.push({ok:c.letter===CAL[i][1],conf:c.conf});
+  }
+  const curve={};
+  [0.5,0.7,0.9].forEach(th=>{const auto=res.filter(r=>r.conf>=th);curve[th]=[auto.length/res.length,auto.length?auto.filter(r=>r.ok).length/auto.length:1];});
+  S.curves[cls]={model:LLM.modelId,n:res.length,curve,acc:res.filter(r=>r.ok).length/res.length};
+  S.l2msg='';
+}
+async function writeMemo(){
+  const st=l2Stats();
+  const txt='Requests handled: '+st.n+'. Accepted: '+st.accept+'. Escalated or needing approval: '+st.esc+'. Retried with a deeper pass: '+st.retry+'. Average confidence: '+st.avg.toFixed(2)+'. Human reviews: '+st.hApprove+' approved, '+st.hReject+' rejected. Current confidence bar: '+S.cfg.theta.toFixed(2)+'.';
+  const out=await chat([{role:'system',content:'You are a product designer agent for an online store support workflow. Be concrete and short.'},{role:'user',content:'Here are consolidated statistics from the product operator:\n'+txt+'\nWrite three short bullet points recommending changes to the product design (prompt, tools or confidence bar).'}],170);
+  S.memo=out.text;
+}
+/* ---------- Level 3: the factory operator ---------- */
+const ASSUMED={small:{0.5:[0.90,0.92],0.7:[0.75,0.96],0.9:[0.50,0.99]},large:{0.5:[0.95,0.95],0.7:[0.85,0.97],0.9:[0.65,0.995]}};
+function baseCurve(drop){
+  const out=[];
+  ['small','large'].forEach(m=>{[0.5,0.7,0.9].forEach(th=>{
+    let a=ASSUMED[m][th][0],acc=ASSUMED[m][th][1],src='assumed';
+    const cal=S.curves[m];
+    if(cal&&cal.curve[th]){a=cal.curve[th][0];acc=cal.curve[th][1];src='measured';}
+    out.push({m,th,a,acc:Math.max(0,acc-(m==='small'?drop/100:0)),src});
+  });});
+  return out;
+}
+function factoryParams(){return{H:+S.f.H,cap:S.lim.cap,target:S.lim.target/100,qmax:S.lim.qmax,cm:{small:1,large:5},ch:20,ce:100,cw:2,path:PATHS[S.f.path]};}
+function evalOption(o,t,Q,P){
+  let q=Q,cost=0,feasible=true;const notes=[];
+  for(let j=0;j<P.H;j++){
+    const V=P.path[Math.min(t+j,P.path.length-1)];
+    const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
+    q=Math.max(q+human-P.cap,0);
+    cost+=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*q;
+    if(q>P.qmax+1e-9&&notes.indexOf('queue over '+P.qmax)<0){feasible=false;notes.push('queue over '+P.qmax);}
+  }
+  if(o.acc<P.target-1e-9){feasible=false;notes.push('accuracy under '+Math.round(P.target*100)+'%');}
+  return{cost,feasible,notes};
+}
+function planFactory(){
+  const F=S.f,P=factoryParams();
+  const opts=baseCurve(+F.drop).map(o=>({...o,...evalOption(o,F.t,F.Q,P)}));
+  const feas=opts.filter(o=>o.feasible);
+  const best=feas.length?feas.reduce((a,b)=>b.cost<a.cost-1e-9?b:a):null;
+  return{opts,best,P};
+}
+/* ---------- Level 4: the factory designer ---------- */
+function l4Stats(){
+  const H=S.f.hist;
+  return{n:H.length,large:H.filter(h=>/^Large/.test(h.opt)).length,small:H.filter(h=>/^Small/.test(h.opt)).length,people:H.filter(h=>/All to people/.test(h.opt)).length,maxQ:Math.max(0,...H.map(h=>h.Q)),cost:H.reduce((a,h)=>a+h.cost,0)};
+}
+function l4Proposals(){
+  const st=l4Stats(),P=[];
+  if(st.n<2)return[{id:'none',text:'Apply at least two periods at Level 3 so there is something to consolidate.'}];
+  if(st.people>0||st.maxQ>=S.lim.qmax)P.push({id:'cap',text:'Some periods handed everything to people or filled the queue. Raise reviewer capacity to '+(S.lim.cap+10)+' per period.'});
+  if(st.large/st.n>0.5)P.push({id:'defLarge',text:'The large model was chosen in '+Math.round(st.large/st.n*100)+'% of periods. Make it the default model class.'});
+  else if(st.small/st.n>0.5)P.push({id:'defSmall',text:'The small model handled most periods. Keep it as the default model class.'});
+  if(!P.length)P.push({id:'none',text:'Nothing to change. Keep the limits and keep watching.'});
+  return P;
+}
+
+function invPanel(){
+  const p={scn:S.inv.scn,L:+S.inv.L,H:+S.inv.H,I0:+S.inv.I0};
+  const r=runInv(p),v=+S.inv.view,pl=r.mpc.plans[v];
+  const warn=p.H<=p.L?'<div class="status warn">The horizon ('+p.H+') is not longer than the lead time ('+p.L+'). An order placed now has not arrived inside the horizon, so the simulation cannot see its effect. Lengthen the horizon.</div>':'';
+  const ch=lineSvg([{name:'Demand',color:'#8A98A0',values:r.D,dash:true},{name:'MPC on hand',color:'#0E6F8E',values:r.mpc.I},{name:'Rule on hand',color:'#E3A21A',values:r.rule.I}],{label:'On-hand inventory by period',xlabels:r.D.map((_,i)=>i%2===0?String(i+1):'')});
+  const cv=lineSvg([{name:'Expected cost',color:'#2B4A57',values:pl.curve.map(c=>c.cost)}],{label:'Expected cost against order-up-to level',mark:pl.curve.findIndex(c=>c.S===pl.S),xlabels:pl.curve.map(c=>c.S%100===0?String(c.S):'')});
+  const rows=r.D.map((d,t)=>[t+1,d,r.mpc.x[t],r.mpc.I[t],r.rule.x[t],r.rule.I[t]]);
+  return '<h3>Tool: the inventory planner (Model 1)</h3><p class="small muted">Model predictive control (MPC) plans several steps ahead by simulating options, applies only the first step, then re-plans. It runs here on Model 1, a sales and operations style inventory model, where demand is the only external input and every state is observed. The product operator can call this planner as a tool.</p>'+
+    '<div class="grid2"><div><label class="range" for="scn">Demand scenario</label><select id="scn" data-act="scn">'+[['steady','Steady'],['drop','Drop in the middle'],['spike','Spike in the middle'],['season','Seasonal']].map(o=>'<option value="'+o[0]+'"'+(S.inv.scn===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="Lt">Lead time (periods)</label><select id="Lt" data-act="Lt">'+['1','2'].map(o=>'<option'+(S.inv.L===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="Hz">Planning horizon (periods)</label><select id="Hz" data-act="Hz">'+['1','2','3','4','5'].map(o=>'<option'+(S.inv.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="I0">Starting on hand</label><select id="I0" data-act="I0">'+['0','60','100','160'].map(o=>'<option'+(S.inv.I0===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+warn+
+    '<div class="tiles" style="margin-top:12px"><div class="tile"><b>'+Math.round(r.mpc.cost)+'</b><span>MPC total cost</span></div><div class="tile"><b>'+Math.round(r.rule.cost)+'</b><span>Rule total cost (forecast plus 10%)</span></div></div>'+
+    '<h3>On-hand inventory (below zero is a backlog)</h3><div class="svgbox">'+ch+'</div>'+legend([['Demand','#8A98A0'],['MPC','#0E6F8E'],['Rule','#E3A21A']])+
+    '<h3>Look inside one planning step</h3><label class="range" for="view">Period</label><select id="view" data-act="view">'+r.D.map((_,i)=>'<option value="'+i+'"'+(S.inv.view===String(i)?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select>'+
+    '<p>At period '+(v+1)+' the forecast is <b>'+pl.F+'</b>. The planner simulated every order-up-to level over '+p.H+' period'+(p.H===1?'':'s')+' under three demand scenarios (80%, 100% and 130% of forecast) and picked the cheapest on average: level <b>'+pl.S+'</b>. Inventory position is '+pl.IP+', so it orders <b>'+Math.round(pl.x)+'</b>, applies only that first order, and re-plans next period.</p>'+
+    '<div class="svgbox">'+cv+'</div><p class="small muted">Amber dot: the chosen level. Each point is one simulated scenario set, which is the "simulate and choose" step.</p>'+
+    '<h3>Period by period</h3>'+table(['Period','Demand','MPC order','MPC on hand','Rule order','Rule on hand'],rows,520)+
+    '<p class="small muted"><b>What to notice:</b> MPC is only as good as its model and forecast. A lagging forecast can make it overreact to a spike, and a short horizon makes it fail outright.</p>';
+}
+
+function stageChips(r){
+  const first=r.passes[0];
+  const st=[['Encoding',first.promptTokens?first.promptTokens+' prompt tokens (real count)':'text becomes tokens',true],['Syntactic','inside the model, not observable here',false],['Semantic','inside the model, not observable here',false],['Reasoning',r.passes.length>1?'System 2: a second, deeper pass ran':'System 1: one pass',r.passes.length>1],['Decoding','"'+String(r.passes[r.passes.length-1].raw).slice(0,40)+'"',true]];
+  return '<div class="scroll"><table style="min-width:560px"><thead><tr>'+st.map(s=>'<th>'+esc(s[0])+'</th>').join('')+'</tr></thead><tbody><tr>'+st.map(s=>'<td class="small" style="'+(s[2]?'':'opacity:.6')+'">'+esc(s[1])+'</td>').join('')+'</tr></tbody></table></div>';
+}
+
+function cleanText(t){return String(t).replace(/\s+/g,' ').replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g,'').trim();}
+function maskText(t){return t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]').replace(/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g,'[phone]');}
+const BIZ_TOOLS=ctx=>[
+  {name:'get_order_status',desc:'Look up the status of an order by id, such as O-1001.',params:{order_id:'The order id'},run:a=>ORDERS[a.order_id]?JSON.stringify({order_id:a.order_id,item:ORDERS[a.order_id].item,status:ORDERS[a.order_id].status,paid:ORDERS[a.order_id].paid}):'No order with that id.'},
+  {name:'request_refund',desc:'Refund an amount on an order. Refunds above 200 need a person to approve.',params:{order_id:'The order id',amount:'The amount to refund'},run:a=>{
+    const o=ORDERS[a.order_id],amt=Number(a.amount);
+    if(!o)return 'No order with that id.';
+    if(!(amt>0)||amt>o.paid-o.refunded)return 'Invalid amount. Refundable: '+(o.paid-o.refunded)+'.';
+    if(amt>200){ctx.pending={order_id:a.order_id,amount:amt};return 'NOT EXECUTED: refunds above 200 need a person to approve.';}
+    o.refunded+=amt;ctx.refunded=(ctx.refunded||0)+amt;return 'Refund of '+amt+' processed on '+a.order_id+'.';}},
+  {name:'plan_inventory',desc:'Run the inventory planning model (Model 1) for an item: lamp, desk or jacket.',params:{item:'lamp, desk or jacket'},run:a=>{ctx.usedModel1=true;return planInventory(String(a.item||'').toLowerCase());}}
+];
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function extractJson(t,pred){
+  for(const c of jsonCandidates(t)){
+    let o;try{o=JSON.parse(c);}catch(e){continue;}
+    if(!o||typeof o!=='object')continue;
+    if(!pred||pred(o))return o;
+  }
+  const m=String(t).match(/\{[\s\S]*\}/);
+  if(m){try{const o=JSON.parse(m[0]);if(!pred||pred(o))return o;}catch(e){}}
+  return null;
+}
+function asText(v){return typeof v==='string'?v:(v===null||v===undefined?'':JSON.stringify(v));}
+function parseAction(t){
+  const o=extractJson(t,x=>x.final!==undefined||x.tool);
+  if(!o)return null;
+  if(o.final!==undefined)return{final:asText(o.final)};
+  if(o.tool)return{tool:String(o.tool),args:(o.args&&typeof o.args==='object')?o.args:{}};
+  return null;
+}
+async function agentLoop(question,tools,max){
+  const sys='You are an online store support agent.\nYou can call tools. Tools:\n'+tools.map(t=>'- '+t.name+'('+Object.keys(t.params).join(', ')+'): '+t.desc).join('\n')+'\nReply with ONLY one JSON object.\nTo call a tool: {"tool":"name","args":{...}}\nTo answer the user: {"final":"your answer"}\nUse a tool whenever the answer depends on data you do not have. Never say an action is done unless a tool result shows it. After a tool result, answer with {"final": ...}.';
+  const msgs=[{role:'user',content:question}],steps=[];
+  let lastKey=null,lastRes=null;
+  for(let c=1;c<=(max||5);c++){
+    let out=await chat([{role:'system',content:sys}].concat(msgs),160);
+    let act=parseAction(out.text);
+    if(!act){out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out.text},{role:'user',content:'Reply with ONE valid JSON object only.'}]),160);act=parseAction(out.text);}
+    if(!act){steps.push({type:'parse_error',raw:out.text});return{steps,final:'',status:'parse_error'};}
+    if(act.final!==undefined){msgs.push({role:'assistant',content:out.text});steps.push({type:'final',text:act.final});return{steps,final:act.final,status:'done'};}
+    const spec=tools.find(t=>t.name===act.tool);
+    const key=act.tool+JSON.stringify(act.args),repeat=key===lastKey&&lastRes;
+    let result,ok=true;
+    if(repeat){result=lastRes.result;ok=lastRes.ok;}
+    else if(!spec){result='Error: no tool named '+act.tool;ok=false;}
+    else{try{result=String(await spec.run(act.args));}catch(e){result='Error: '+e.message;ok=false;}}
+    lastKey=key;lastRes={result,ok};
+    msgs.push({role:'assistant',content:out.text},{role:'user',content:'TOOL RESULT ('+act.tool+'): '+result+(repeat?'\n(Not run again: identical call, so no side effect repeated.) Answer the user now with {"final": ...}.':'')});
+    steps.push({type:'tool',tool:act.tool,args:act.args,result,ok,repeat:!!repeat});
+  }
+  if(steps.some(s=>s.type==='tool'&&s.ok)){
+    const out=await chat([{role:'system',content:sys}].concat(msgs,[{role:'user',content:'You are out of steps. Using the tool results above, answer the user now. Reply with ONE JSON object: {"final": "..."}.'}]),160);
+    const act=parseAction(out.text);
+    if(act&&act.final!==undefined){steps.push({type:'final',text:act.final,forced:true});return{steps,final:act.final,status:'done',forced:true};}
+  }
+  return{steps,final:'',status:'max_steps'};
+}
+
+
+/* ---------- rendering ---------- */
+function kv(rows){return '<dl class="kv" style="margin:8px 0 12px">'+rows.map(r=>'<dt>'+esc(r[0])+'</dt><dd>'+r[1]+'</dd>').join('')+'</dl>';}
+function hierarchy(){
+  const st=l2Stats();
+  const cfgTxt=S.cfg.fromPeriod?('Assigned: '+S.cfg.cls+' model, bar '+S.cfg.theta.toFixed(1)+' (period '+S.cfg.fromPeriod+')'):'Nothing assigned yet. The product runs with its defaults: bar 0.7.';
+  const cur=Object.keys(S.curves);
+  const cards=[
+    [4,'Factory designer','factory design = consolidated factory operation','Limits: accuracy at least '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'. Default model: '+(S.defCls||'not set')+'.','#0B2B36'],
+    [3,'Factory operator','factory operation = consolidated product design',cfgTxt,'#2B4A57'],
+    [2,'Product designer','product design = consolidated product operation',(cur.length?'Calibrated: '+cur.join(', ')+'. ':'Calibration assumed. ')+'Signal: '+shortSignal(st)+'.','#0A566F'],
+    [1,'Product operator','product operation, the lowest level',st.n+' request'+(st.n===1?'':'s')+': '+st.accept+' accepted, '+st.esc+' to people.','#0E6F8E']
+  ];
+  let h='';
+  cards.forEach((c,i)=>{
+    const on=S.lvl===c[0];
+    h+='<div data-act="lvl" data-val="'+c[0]+'" role="button" tabindex="0" style="cursor:pointer;border:2px solid '+(on?'#E3A21A':'transparent')+';border-left:8px solid '+c[4]+';border-radius:10px;padding:10px 12px;background:var(--chip)">'+
+      '<b>Level '+c[0]+': '+esc(c[1])+'</b> <span class="small muted">'+esc(c[2])+'</span><div class="small" style="margin-top:2px">'+esc(c[3])+'</div></div>';
+    if(i<3)h+='<div class="row small muted" style="justify-content:center;gap:28px;margin:2px 0"><span>↓ limits</span><span style="color:#A66A00">↑ consolidates</span></div>';
+  });
+  return h;
+}
+function agentCard(lv){
+  const cfg=S.cfg;
+  if(lv===1)return kv([['Observes','One request at a time.'],['Decides','Which type it is, whether to act, and what to do next.'],['Acts','Tools and replies, within permissions and policy.'],['Reports up','Every decision, to Level 2.'],['Limits from above','Confidence bar '+cfg.theta.toFixed(2)+(cfg.fromPeriod?' (from Level 3)':' (default)')+'. Refunds above 200 need approval.']]);
+  if(lv===2)return kv([['Observes','The log of Level 1 decisions.'],['Decides','The design signal, and the calibration curve for the model.'],['Acts','Updates the product design record.'],['Reports up','The curve and the observed rates, to Level 3.'],['Limits from above','Whatever model class and bar Level 3 assigned.']]);
+  if(lv===3)return kv([['Observes','The product design from Level 2.'],['Decides','Model class and confidence bar, by simulating options over a short horizon (MPC).'],['Acts','Assigns the configuration to the product. Level 1 starts using it.'],['Reports up','The history of its decisions, to Level 4.'],['Limits from above','Accuracy rule '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'.']]);
+  return kv([['Observes','The history of Level 3 decisions.'],['Decides','Limits and the default model class.'],['Acts','Sets the limits Level 3 must respect.'],['Reports up','Nothing. At the top, a human writes the first design.'],['Limits from above','None.']]);
+}
+function l1Run(){
+  let out='';
+  if(S.r1){
+    const r=S.r1;
+    const cards=[['1. Clean','Process',r.raw!==r.cleaned?'Tidied: '+esc(JSON.stringify(r.cleaned)):'Nothing to clean.']];
+    if(r.cls){
+      cards.push(['2. Sort','AI step',stageChips(r)+'<p style="margin:8px 0 0">Label: <b>'+esc(r.cls.label||'(none)')+'</b>, confidence '+r.cls.conf.toFixed(2)+(r.passes.length>1?' after a deeper second pass':'')+'</p>']);
+      cards.push(['3. Protect','Process','Logged text: '+esc(r.masked)]);
+      cards.push(['4. Act','AI step',r.agent?(r.agent.steps.map(s=>s.type==='tool'?'tool <b>'+esc(s.tool)+'</b> '+esc(JSON.stringify(s.args))+' → '+esc(String(s.result).slice(0,140))+(s.repeat?' (repeat, not run again)':''):(s.type==='final'?'answer: '+esc(s.text):'parse error')).join('<br>')+(r.agent.forced?'<br><span class="small muted">The model ran out of steps, so the loop asked once more for a final answer.</span>':'')+(r.ctx.usedModel1?'<br><span class="chip warn">Model 1 used as a tool</span>':'')):'The agent did not act: '+esc(r.outcome.why)]);
+      cards.push(['5. Monitor','Oversight','<p class="small muted" style="margin:0 0 4px">The checks gate the action, then check the answer.</p><ul class="checks">'+r.checks.map(c=>'<li>'+chip(c.pass?'Pass':'Fail',c.pass?'good':'bad')+' <b>'+esc(c.name)+'</b>: '+esc(c.reason)+'</li>').join('')+'</ul>']);
+    }
+    const o=r.outcome;
+    let ctl='<b>'+esc(o.action)+'.</b> '+esc(o.why);
+    if(o.action==='Needs approval'&&!r.approved&&!r.rejected)ctl+='<div class="row" style="margin-top:8px">'+btn('approve1','','Approve the refund')+btn('reject1','','Reject','ghost')+'</div>';
+    else if(o.action!=='Accept'&&o.action!=='Rejected'&&!r.human)ctl+='<div class="row" style="margin-top:8px">'+btn('human1','approve','Human approves','ghost sm')+btn('human1','reject','Human rejects','ghost sm')+'</div>';
+    if(r.approved)ctl+='<div class="status ok" style="margin-top:8px">Approved by a person: '+esc(r.approved)+'</div>';
+    if(r.rejected)ctl+='<div class="status warn" style="margin-top:8px">Rejected by a person.</div>';
+    if(r.human)ctl+='<div class="status ok" style="margin-top:8px">Human decision recorded: '+esc(r.human)+'.</div>';
+    cards.push(['6. Control','Oversight',ctl]);
+    out=cards.map(c=>'<div class="box" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>'+c[0]+'</b>'+chip(c[1],c[1]==='AI step'?'good':(c[1]==='Oversight'?'warn':''))+'</div><div style="margin-top:6px">'+c[2]+'</div></div>').join('');
+  }
+  const qs=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','Refund $900 for order O-3003.','I want a refund for the broken lamp.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '];
+  return '<div class="row">'+qs.map((q,i)=>btn('pick1',i,esc(q.trim().length>22?q.trim().slice(0,22)+'…':q.trim()),'ghost sm')).join('')+'</div>'+
+    '<textarea class="editor" id="req" data-act="req" rows="2" spellcheck="false" style="min-height:60px;margin-top:10px">'+esc(S.req)+'</textarea>'+
+    '<div class="row" style="margin-top:8px">'+tog('sys2','s1','System 1: one pass',!S.sys2)+tog('sys2','s2','System 2: retry when unsure',S.sys2)+'</div>'+
+    '<div class="row" style="margin-top:10px">'+btn('run1','','Run the product operator','',S.busy)+btn('resetorders','','Reset the orders','ghost')+'</div>'+out+
+    '<p class="small muted"><b>What to notice:</b> Sort and Act are the AI core (the centaur). Monitor and Control close the loop. Change the confidence bar from Level 3 and the same request can flip from acted on to escalated.</p>';
+}
+function lvl1(){
+  const adv=(S.cfg.fromPeriod&&classOf(LLM.modelId)!==S.cfg.cls)?'<div class="status warn">Level 3 assigned a '+esc(S.cfg.cls)+' model, but a '+esc(classOf(LLM.modelId))+' model is loaded. Open Level 3 to load the assigned one.</div>':'';
+  return '<h2>Level 1: the product operator</h2><p class="small muted">Product operation. The lowest level handles each request as it arrives.</p>'+agentCard(1)+adv+
+    '<div class="row">'+tog('sub1','run','Run a request',S.sub1==='run')+tog('sub1','tool','Tool: inventory planner',S.sub1==='tool')+'</div><div style="margin-top:12px">'+(S.sub1==='run'?l1Run():invPanel())+'</div>';
+}
+function lvl2(){
+  const st=l2Stats();
+  const rows=Object.keys(st.cnt).map(k=>[k,st.cnt[k]]);
+  const share=[0.5,0.7,0.9].map(th=>[th.toFixed(1),Math.round(st.share(th)*100)+'%']);
+  const curTbl=['small','large'].map(m=>{const c=S.curves[m];return [m==='small'?'Small model':'Large model',c?('measured with '+c.model):'assumed',[0.5,0.7,0.9].map(th=>{const v=c?c.curve[th]:ASSUMED[m][th];return th.toFixed(1)+': '+Math.round(v[0]*100)+'% auto, '+(v[1]*100).toFixed(0)+'% accurate';}).join(' | ')];});
+  return '<h2>Level 2: the product designer</h2><p class="small muted">Product design = consolidated product operation. It turns many Level 1 decisions into one design record.</p>'+agentCard(2)+
+    '<h3>Consolidated from Level 1</h3>'+(st.n?table(['Decision','Count'],rows,280)+'<p class="small muted">Average confidence '+st.avg.toFixed(2)+' over '+st.n+' request'+(st.n===1?'':'s')+'. Retried with a deeper pass: '+st.retry+'. Human reviews: '+st.hApprove+' approved, '+st.hReject+' rejected.</p>'+
+      '<p class="small muted">Share of logged requests each bar would have automated:</p>'+table(['Confidence bar','Share automated'],share,280):'<p class="small muted">No requests yet. Run some at Level 1.</p>')+
+    '<div class="status '+(st.n<3?'warn':'ok')+'" style="margin-top:10px"><b>Design signal:</b> '+esc(designSignal(st))+'</div>'+
+    '<h3>Calibration for Level 3</h3><p class="small muted">Level 3 needs to know how many requests each bar would automate and how accurate they would be. This runs 12 labelled messages through the loaded model ('+esc(classOf(LLM.modelId))+' class) and stores the curve. Twelve messages are far too few to trust.</p>'+
+    '<div class="row">'+btn('cal2','','Measure the loaded model','',S.busy)+btn('memo2','','Write a design memo (optional)','ghost',S.busy||!st.n)+'</div>'+(S.l2msg?'<div class="status warn">'+esc(S.l2msg)+'</div>':'')+
+    table(['Class','Source','Curve by confidence bar'],curTbl,560)+
+    (S.memo?'<h3>Design memo from the model</h3><pre style="white-space:pre-wrap">'+esc(S.memo)+'</pre><p class="small muted">Narrative only. Nothing else uses it.</p>':'');
+}
+function lvl3(){
+  const F=S.f,pl=planFactory(),P=pl.P,maxC=Math.max(...pl.opts.map(o=>o.cost));
+  const rows=pl.opts.map(o=>{
+    const best=pl.best&&o.m===pl.best.m&&o.th===pl.best.th;
+    const bw=Math.round(o.cost/maxC*100);
+    return '<tr style="'+(best?'background:var(--good-bg)':'')+'"><td>'+(o.feasible?'✓':'✗')+'</td><td>'+(o.m==='small'?'Small':'Large')+' model, bar '+o.th.toFixed(1)+'<br><span class="small muted">'+o.src+'</span></td><td>'+Math.round(o.a*100)+'%</td><td>'+(o.acc*100).toFixed(1)+'%</td><td><div style="background:'+(o.feasible?(best?'#2E7D5B':'#0E6F8E'):'#B9C4C9')+';height:12px;width:'+bw+'%;min-width:4px;border-radius:3px"></div><span class="small">'+Math.round(o.cost)+'</span></td><td class="small">'+esc(o.notes.join('; ')||(best?'best feasible plan':'feasible'))+'</td></tr>';
+  }).join('');
+  const hist=F.hist.length?table(['Period','Volume','Applied','Queue after','Cost'],F.hist.map(h=>[h.t+1,h.V,h.opt,h.Q.toFixed(0),Math.round(h.cost)]),460):'<p class="small muted">Nothing applied yet.</p>';
+  const adv=(S.cfg.fromPeriod&&classOf(LLM.modelId)!==S.cfg.cls)?'<div class="status warn">The assigned model class is '+esc(S.cfg.cls)+', but a '+esc(classOf(LLM.modelId))+' model is loaded. '+btn('loadassigned','','Load a '+esc(S.cfg.cls)+' model','sm')+'</div>':'';
+  return '<h2>Level 3: the factory operator</h2><p class="small muted">Factory operation = consolidated product design. It uses the product design from Level 2 to choose how the product runs.</p>'+agentCard(3)+
+    '<p class="small muted">MPC here is scenario simulation: simulate each option over a short horizon, drop any that break a hard rule, pick the cheapest of the rest, apply only the first period, then plan again.</p>'+
+    '<div class="grid2"><div><label class="range" for="fpath">Volume path</label><select id="fpath" data-act="fpath">'+[['steady','Steady 60'],['spike','Spike to 160'],['ramp','Ramp up']].map(o=>'<option value="'+o[0]+'"'+(F.path===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="fH">Horizon (periods)</label><select id="fH" data-act="fH">'+['1','2','3','4'].map(o=>'<option'+(F.H===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+
+    '<label class="range" for="fdrop">Evidence: an audit finds the small model\'s accuracy drops by (points)</label><select id="fdrop" data-act="fdrop">'+['0','1','3','5'].map(o=>'<option'+(F.drop===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'+
+    '<p style="margin-top:12px">Now at period <b>'+(F.t+1)+'</b>. Volume '+P.path[Math.min(F.t,P.path.length-1)]+', queue '+F.Q.toFixed(0)+'. Hard rules from Level 4: accuracy at least '+S.lim.target+'%, '+S.lim.cap+' reviews per period, queue at most '+S.lim.qmax+'.</p>'+
+    '<div class="scroll"><table style="min-width:660px"><thead><tr><th></th><th>Option</th><th>Automated</th><th>Accuracy</th><th>Cost over '+P.H+' period'+(P.H===1?'':'s')+'</th><th>Verdict</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    (pl.best?'<div class="status ok"><b>Best feasible plan:</b> '+(pl.best.m==='small'?'small':'large')+' model, bar '+pl.best.th.toFixed(1)+'. Apply only the first period, then plan again.</div>':'<div class="status bad"><b>No feasible plan.</b> Every option breaks a hard rule. Hand this period to people, or ask Level 4 for different limits.</div>')+
+    '<div class="row" style="margin-top:10px">'+btn('apply3','','Apply the first period and advance','',!pl.best||F.t>=PATHS[F.path].length-1)+(!pl.best?btn('hand3','','Hand this period to people','ghost',F.t>=PATHS[F.path].length-1):'')+btn('reset3','','Reset','ghost')+'</div>'+adv+hist+
+    '<p class="small muted"><b>What to notice:</b> applying a plan sets the confidence bar that Level 1 uses, so the factory decision changes how the product operator behaves. Costs per request: small model 1, large model 5, human review 20, an error 100.</p>';
+}
+function lvl4(){
+  const st=l4Stats(),props=l4Proposals();
+  return '<h2>Level 4: the factory designer</h2><p class="small muted">Factory design = consolidated factory operation. It turns the history of Level 3 decisions into limits and defaults.</p>'+agentCard(4)+
+    '<h3>Limits it sets (written by a human at the top)</h3><div class="grid2"><div><label class="range" for="ltarget">Accuracy rule on automatic cases</label><select id="ltarget" data-act="ltarget">'+['90','95','98'].map(o=>'<option value="'+o+'"'+(String(S.lim.target)===o?' selected':'')+'>'+o+'%</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="lcap">People can review per period</label><select id="lcap" data-act="lcap">'+['10','20','30','40','50','60'].map(o=>'<option'+(String(S.lim.cap)===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>'+
+    '<div><label class="range" for="lqmax">Largest allowed queue</label><select id="lqmax" data-act="lqmax">'+['5','10','20'].map(o=>'<option'+(String(S.lim.qmax)===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>'+
+    '<h3>Consolidated from Level 3</h3>'+(st.n?'<div class="tiles"><div class="tile"><b>'+st.n+'</b><span>periods applied</span></div><div class="tile"><b>'+st.large+' / '+st.small+'</b><span>large / small chosen</span></div><div class="tile"><b>'+st.people+'</b><span>periods handed to people</span></div><div class="tile"><b>'+Math.round(st.cost)+'</b><span>total cost</span></div></div>':'<p class="small muted">No periods yet. Apply some at Level 3.</p>')+
+    '<h3>Design proposals</h3>'+props.map(p=>'<div class="box" style="margin-bottom:8px"><p style="margin:0 0 6px">'+esc(p.text)+'</p>'+(p.id!=='none'?btn('adopt',p.id,'Adopt','sm'):'')+'</div>').join('')+
+    '<p class="small muted"><b>What to notice:</b> change a limit and go back to Level 3. The best plan can change, because the limits are hard rules there. Default model: <b>'+esc(S.defCls||'not set')+'</b>.</p>';
+}
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+' ('+classOf(LLM.modelId)+' class)</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Level 1 and the optional Level 2 steps use the model. Levels 3 and 4 do not.</p></div>';
+}
+function render(){
+  const body={1:lvl1,2:lvl2,3:lvl3,4:lvl4}[S.lvl]();
+  const tour='<div class="box" style="margin:12px 0"><b>Try this path</b><ol class="small" style="margin:6px 0 0 18px;padding:0"><li>Level 1: run three or four requests.</li><li>Level 2: see them consolidated, then measure the model.</li><li>Level 3: simulate the options and apply a plan. Go back to Level 1 and run the same request again.</li><li>Level 4: adopt a proposal or change a limit, then return to Level 3.</li></ol></div>';
+  return modelBox()+'<h3 style="margin-top:0">The hierarchy</h3>'+hierarchy()+tour+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn">Running on your device...</div>':'')+'<div style="margin-top:12px">'+body+'</div>'+renderKnowledgeGraphSection()+qa(QA[S.lvl]);
+}
+async function guard(fn){S.err='';S.busy=true;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;}
+const QUICK=['Where is order O-2002?','I want a refund of $45 for O-3003.','I want a refund of $480 for O-1001.','Refund $900 for order O-3003.','I want a refund for the broken lamp.','How many lamps should we reorder?','   WHERE is   order O-1001 ?   '];
+
+function renderKnowledgeGraphSection(){
+  return '<div class="panel" style="margin:16px 0;padding:16px;">' +
+    '<h3>AI Factory Hierarchy Knowledge Graph</h3>' +
+    '<p class="small muted">Live interactive epistemic graph: Level 1 Product Operator (4 checkpoints), Level 2 Product Designer (Calibration & Memos), Level 3 Factory Operator (MPC Horizon Simulator), and Level 4 Factory Designer (Governance Limits). Decisions consolidate up, limits flow down. Click any node to inspect role & control logic.</p>' +
+    '<div style="position:relative;background:#0A1017;border-radius:10px;overflow:hidden;border:1px solid #CBD4DB;margin:10px 0;">' +
+    '<canvas id="cvsFactoryKG" width="1000" height="360" style="width:100%;height:360px;display:block;cursor:pointer;"></canvas>' +
+    '</div>' +
+    '<div class="row small muted" style="margin-top:6px;flex-wrap:wrap;gap:8px;">' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E6F8E;margin-right:4px;"></i>L1: Product Operator</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#E3A21A;margin-right:4px;"></i>L2: Product Designer</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2E7D5B;margin-right:4px;"></i>L3: Factory Operator (MPC)</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9333EA;margin-right:4px;"></i>L4: Factory Designer</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563EB;margin-right:4px;"></i>Human Sign-off</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;"></i>Pruned Policy Violations</span>' +
+    '</div></div>';
+}
+
+
+let factKgSimNodes = [];
+let factKgSimLinks = [];
+let factSelectedNode = null;
+
+function buildFactoryKnowledgeGraph(){
+  const curLvl = (typeof S !== 'undefined' && S.lvl) ? S.lvl : 1;
+
+  factKgSimNodes = [
+    {id:'l1_op', label:'L1: Product Operator', role:'l1', x:180, y:120, highlight:(curLvl===1), roleName:'Level 1: Product Operator', info:'Processes incoming requests with model & tools: executes Clean, Reason, Action, and Control.'},
+    {id:'l1_chk', label:'4 Checkpoints (Clean-Control)', role:'l1', x:180, y:220, roleName:'Checkpoints Pipeline', info:'Validates inputs, inspects model confidence, restricts tool actions, and halts unverified side-effects.'},
+    {id:'l1_hum', label:'Human Sign-off Gate', role:'human', x:180, y:300, roleName:'Human-in-the-Loop', info:'High-stakes decisions (e.g. refunds over threshold) escalate to human review before commit.'},
+    {id:'l1_prn', label:'[PRUNED] Policy Breaches', role:'pruned', x:60, y:220, roleName:'Pruned Actions', info:'Blocked out-of-bounds tool actions, malformed queries, and unauthorized refund values.'},
+    
+    {id:'l2_des', label:'L2: Product Designer', role:'l2', x:440, y:120, highlight:(curLvl===2), roleName:'Level 2: Product Designer', info:'Consolidates operational decisions into calibration curves, accuracy ratios, and model design memos.'},
+    {id:'l2_cal', label:'Calibration Curve (Acc vs Conf)', role:'l2', x:440, y:220, roleName:'Confidence Calibration', info:'Audits model overconfidence: maps token log-probs to empirical task accuracy.'},
+    
+    {id:'l3_op', label:'L3: Factory Operator (MPC)', role:'l3', x:700, y:120, highlight:(curLvl===3), roleName:'Level 3: Factory Operator', info:'Uses Model Predictive Control scenario simulation to optimize buffer capacity and backlog risk.'},
+    {id:'l3_sim', label:'Rolling Horizon Scenario Sim', role:'l3', x:700, y:220, roleName:'MPC Planning Horizon', info:'Simulates demand patterns over N periods to trade off stockout penalty vs inventory holding cost.'},
+    
+    {id:'l4_des', label:'L4: Factory Designer', role:'l4', x:920, y:120, highlight:(curLvl===4), roleName:'Level 4: Factory Designer', info:'Governed by human leadership: establishes risk limits, maximum queue lengths, and safety budgets.'},
+    {id:'l4_lim', label:'Limits & Defaults Flow Down', role:'l4', x:920, y:240, roleName:'Systemic Policy Constraints', info:'Top-down governance constraints flow downward to enforce operational boundaries across all tiers.'}
+  ];
+
+  factKgSimLinks = [
+    {source:'l1_op', target:'l1_chk', label:'EXECUTES', type:'normal'},
+    {source:'l1_chk', target:'l1_prn', label:'BLOCKS', type:'refuted'},
+    {source:'l1_chk', target:'l1_hum', label:'ESCALATES', type:'bridge'},
+    {source:'l1_op', target:'l2_des', label:'CONSOLIDATES_UP', type:'bridge'},
+    {source:'l2_des', target:'l2_cal', label:'CALIBRATES', type:'normal'},
+    {source:'l2_des', target:'l3_op', label:'FEEDS_METRICS', type:'bridge'},
+    {source:'l3_op', target:'l3_sim', label:'SIMULATES_MPC', type:'normal'},
+    {source:'l3_op', target:'l4_des', label:'REPORTS_CAPACITY', type:'bridge'},
+    {source:'l4_des', target:'l4_lim', label:'ESTABLISHES', type:'normal'},
+    {source:'l4_lim', target:'l3_op', label:'CONSTRAINS_MPC', type:'normal'},
+    {source:'l4_lim', target:'l1_op', label:'FLOWS_DOWN_LIMITS', type:'bridge'}
+  ];
+
+  factKgSimLinks.forEach(l => {
+    l.sourceNode = factKgSimNodes.find(n => n.id === l.source);
+    l.targetNode = factKgSimNodes.find(n => n.id === l.target);
+  });
+}
+
+function updateFactKgPhysics(){
+  const W=1000, H=360;
+  for(let i=0;i<factKgSimNodes.length;i++){
+    for(let j=i+1;j<factKgSimNodes.length;j++){
+      const a=factKgSimNodes[i], b=factKgSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<125){
+        const f=(125-dist)/dist * 0.08;
+        a.x -= dx*f; a.y -= dy*f;
+        b.x += dx*f; b.y += dy*f;
+      }
+    }
+  }
+  factKgSimLinks.forEach(l => {
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(dist-110)*0.035;
+    l.sourceNode.x += dx/dist*f; l.sourceNode.y += dy/dist*f;
+    l.targetNode.x -= dx/dist*f; l.targetNode.y -= dy/dist*f;
+  });
+  factKgSimNodes.forEach(n => {
+    n.x = Math.max(50, Math.min(W-50, n.x));
+    n.y = Math.max(40, Math.min(H-40, n.y));
+  });
+}
+
+const FACT_KG_COLORS = {
+  l1:'#0E6F8E', l2:'#E3A21A', l3:'#2E7D5B', l4:'#9333EA', human:'#2563EB', pruned:'#DC2626'
+};
+
+function drawFactoryKgLoop(){
+  const cv = document.getElementById('cvsFactoryKG');
+  if(cv){
+    const g = cv.getContext('2d'), W=cv.width, H=cv.height;
+    g.fillStyle = '#0A1017';
+    g.fillRect(0,0,W,H);
+
+    updateFactKgPhysics();
+
+    factKgSimLinks.forEach(l => {
+      if(!l.sourceNode||!l.targetNode)return;
+      g.beginPath();
+      g.moveTo(l.sourceNode.x, l.sourceNode.y);
+      g.lineTo(l.targetNode.x, l.targetNode.y);
+      if(l.type==='refuted'){
+        g.strokeStyle='#DC2626'; g.setLineDash([5,4]); g.lineWidth=2;
+      }else if(l.type==='bridge'){
+        g.strokeStyle='#16A34A'; g.setLineDash([]); g.lineWidth=3;
+      }else{
+        g.strokeStyle='#2A3E54'; g.setLineDash([]); g.lineWidth=1.5;
+      }
+      g.stroke();
+      g.setLineDash([]);
+      const mx=(l.sourceNode.x+l.targetNode.x)/2, my=(l.sourceNode.y+l.targetNode.y)/2;
+      g.fillStyle='#8FA3AD'; g.font='9px sans-serif'; g.textAlign='center';
+      g.fillText(l.label, mx, my-4);
+    });
+
+    factKgSimNodes.forEach(n => {
+      const col = FACT_KG_COLORS[n.role] || '#0E6F8E';
+      const isSel = factSelectedNode && factSelectedNode.id === n.id;
+      const rad = (n.highlight || isSel) ? 14 : 10;
+      if(n.highlight || isSel){
+        g.beginPath(); g.arc(n.x, n.y, rad+6, 0, 6.2832);
+        g.fillStyle = isSel ? 'rgba(37, 99, 235, 0.35)' : 'rgba(14, 111, 142, 0.28)'; g.fill();
+      }
+      g.beginPath(); g.arc(n.x, n.y, rad, 0, 6.2832);
+      g.fillStyle = col; g.fill();
+      g.strokeStyle = '#FFFFFF'; g.lineWidth = isSel ? 2.5 : 1.8; g.stroke();
+
+      g.fillStyle = '#E5EEF5'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+      g.fillText(n.label, n.x, n.y + rad + 14);
+    });
+
+    // Event Annotation Callout Banner & Pointer
+    const targetNodeId = (factSelectedNode && factSelectedNode.id) || 'l1_prn';
+    const targetNode = factKgSimNodes.find(n => n.id === targetNodeId) || factKgSimNodes[0];
+
+    g.fillStyle = 'rgba(23, 34, 43, 0.94)';
+    g.fillRect(16, 16, 460, 76);
+    g.strokeStyle = '#4FC3E8'; g.lineWidth = 1.5;
+    g.strokeRect(16, 16, 460, 76);
+
+    g.fillStyle = '#4FC3E8'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left';
+    g.fillText('EVENT ANNOTATION: ' + (factSelectedNode ? 'INSPECTING ' + factSelectedNode.roleName.toUpperCase() : '4-TIER HIERARCHY & CONSOLIDATION CONTROL'), 28, 36);
+
+    g.fillStyle = '#FFFFFF'; g.font = 'bold 12px sans-serif';
+    g.fillText(factSelectedNode ? factSelectedNode.label : 'Decisions Consolidate Up, Limits Flow Down', 28, 54);
+
+    g.fillStyle = '#99AAB9'; g.font = '11px sans-serif';
+    g.fillText(factSelectedNode ? factSelectedNode.info : 'L1 executes checkpoints; decisions consolidate up to L2/L3, while L4 human limits flow down.', 28, 72);
+
+    if(targetNode){
+      g.beginPath();
+      g.moveTo(476, 54);
+      g.lineTo(targetNode.x, targetNode.y - 18);
+      g.strokeStyle = 'rgba(79, 195, 232, 0.7)';
+      g.lineWidth = 1.8;
+      g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
+
+      g.beginPath();
+      g.arc(targetNode.x, targetNode.y, 22 + Math.sin(Date.now()*0.006)*4, 0, 6.2832);
+      g.strokeStyle = '#4FC3E8';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
+  requestAnimationFrame(drawFactoryKgLoop);
+}
+
+function initFactoryKgInteraction(){
+  const cv = document.getElementById('cvsFactoryKG');
+  if(!cv)return;
+  cv.addEventListener('click', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    const hit = factKgSimNodes.find(n => Math.hypot(n.x - x, n.y - y) < 24);
+    if(hit){
+      factSelectedNode = hit;
+    }else{
+      factSelectedNode = null;
+    }
+  });
+}
+
+const draw=app({
+  render,
+  act:{
+    lvl:v=>{S.lvl=+v;S.err='';},
+    sub1:v=>{S.sub1=v;},
+    model:()=>{S.showModel=!S.showModel;},
+    pick1:v=>{S.req=QUICK[+v];S.r1=null;},
+    sys2:v=>{S.sys2=v==='s2';},
+    run1:()=>guard(async()=>{const r=await runRequest(S.req,S.sys2);S.r1=r;if(r.outcome.action!=='Rejected')logOutcome(r);}),
+    resetorders:()=>{ORDERS=JSON.parse(JSON.stringify(ORDERS0));S.r1=null;},
+    approve1:()=>{
+      const r=S.r1;if(!r||!r.ctx.pending)return;
+      const p=r.ctx.pending,o=ORDERS[p.order_id];o.refunded+=p.amount;
+      r.approved='refund of '+p.amount+' processed on '+p.order_id;r.ctx.pending=null;r.ctx.refunded=p.amount;
+      S.log.push({decision:'Human approved',conf:1,passes:1});
+    },
+    reject1:()=>{const r=S.r1;if(!r)return;r.rejected=true;r.ctx.pending=null;S.log.push({decision:'Human rejected',conf:1,passes:1});},
+    human1:v=>{if(S.r1){S.r1.human=v==='approve'?'approved':'rejected';S.log.push({decision:'Human '+S.r1.human,conf:1,passes:1});}},
+    cal2:()=>guard(calibrate),
+    memo2:()=>guard(writeMemo),
+    apply3:()=>{
+      const F=S.f,pl=planFactory();if(!pl.best)return;
+      const P=pl.P,V=P.path[Math.min(F.t,P.path.length-1)],o=pl.best;
+      const auto=V*o.a,human=V-auto,err=auto*(1-o.acc);
+      F.Q=Math.max(F.Q+human-P.cap,0);
+      const cost=V*P.cm[o.m]+human*P.ch+err*P.ce+P.cw*F.Q;
+      F.hist.push({t:F.t,V,opt:(o.m==='small'?'Small':'Large')+' @ '+o.th.toFixed(1),Q:F.Q,cost});
+      S.cfg={theta:o.th,cls:o.m,fromPeriod:F.t+1};
+      F.t+=1;
+    },
+    hand3:()=>{
+      const F=S.f,P=factoryParams(),V=P.path[Math.min(F.t,P.path.length-1)];
+      F.Q=Math.max(F.Q+V-P.cap,0);
+      F.hist.push({t:F.t,V,opt:'All to people',Q:F.Q,cost:V*P.ch+P.cw*F.Q});
+      F.t+=1;
+    },
+    reset3:()=>{S.f.t=0;S.f.Q=0;S.f.hist=[];S.cfg={theta:0.7,cls:S.defCls||'large',fromPeriod:null};},
+    loadassigned:()=>{LLM.modelId=S.cfg.cls==='large'?MODELS[0][0]:MODELS[2][0];LLM.engine=null;LLM.state='idle';LLM.load();return false;},
+    adopt:v=>{
+      if(v==='cap')S.lim.cap=Math.min(60,S.lim.cap+10);
+      if(v==='defLarge'){S.defCls='large';if(!S.cfg.fromPeriod)S.cfg.cls='large';}
+      if(v==='defSmall'){S.defCls='small';if(!S.cfg.fromPeriod)S.cfg.cls='small';}
+    },
+    ...LLM.act
+  },
+  change:{
+    scn:t=>{S.inv.scn=t.value;},Lt:t=>{S.inv.L=t.value;},Hz:t=>{S.inv.H=t.value;},I0:t=>{S.inv.I0=t.value;},view:t=>{S.inv.view=t.value;},
+    fpath:t=>{S.f.path=t.value;S.f.t=0;S.f.Q=0;S.f.hist=[];},fH:t=>{S.f.H=t.value;},fdrop:t=>{S.f.drop=t.value;},
+    ltarget:t=>{S.lim.target=+t.value;},lcap:t=>{S.lim.cap=+t.value;},lqmax:t=>{S.lim.qmax=+t.value;},
+    ...LLM.change
+  },
+  input:{req:t=>{S.req=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+buildFactoryKnowledgeGraph();
+requestAnimationFrame(drawFactoryKgLoop);
+setTimeout(initFactoryKgInteraction, 200);
+draw();
+</script>
+</body>
+</html>
