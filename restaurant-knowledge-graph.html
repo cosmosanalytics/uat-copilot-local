@@ -148,6 +148,12 @@ const TURNS=[
     title:'Turn 0: Everyone in Their Own Silo',
     desc:'The restaurant is planning its opening menu. Each team member knows their own job, but has not talked to the others yet. The Chef knows tasty recipes, the Nutritionist knows allergies, the Accountant knows wholesale ingredient prices, and the Manager knows table turnover speed.',
     event:'Initial state: 4 completely separate knowledge bubbles. No collaboration yet.',
+    annotation:{
+      title:'Notice the 4 Separate Groups',
+      text:'No lines connect the 4 corners yet. Each person only knows their own job!',
+      targetNode:'n1',
+      badge:'4 Isolated Islands'
+    },
     nodes:[
       {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
       {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
@@ -174,6 +180,12 @@ const TURNS=[
     title:'Turn 1: Sharing Facts (Knowledge Injection)',
     desc:'The Accountant informs the Chef that beef prices jumped 40% this week. The Chef learns this new financial constraint and realizes Truffle Butter Steak will now lose money unless altered.',
     event:'The Accountant shares price data with the Chef. A cross-domain link forms!',
+    annotation:{
+      title:'Look at the Orange Bridge (#Beef Price Spike)',
+      text:'Accountant passed price data to Chef. Chef now connects wholesale cost to his steak recipe!',
+      targetNode:'n11',
+      badge:'New Shared Fact Sprouted'
+    },
     nodes:[
       {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
       {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
@@ -203,6 +215,12 @@ const TURNS=[
     title:'Turn 2: Catching a Mistake (Belief Disproof & Pruning)',
     desc:'The Chef believed "Cream sauce makes everyone happy." But the Nutritionist reviews customer cards and shows that 35% of guests are lactose intolerant. The Chef\'s assumption is disproved, and the cream recipe is cut!',
     event:'The Nutritionist disproves a false assumption. The old recipe connection is cut in red.',
+    annotation:{
+      title:'Look at the Red Dashed Line [REFUTED]',
+      text:'Nutritionist proved 35% are lactose-intolerant. The bad assumption was cut from the menu!',
+      targetNode:'n12',
+      badge:'Bad Belief Pruned (Cut)'
+    },
     nodes:[
       {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
       {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
@@ -234,6 +252,12 @@ const TURNS=[
     title:'Turn 3: Reaching Agreement (Consensus Bridge)',
     desc:'The Chef, Nutritionist, and Accountant work together to invent a brand new signature dish: "Herb-Crusted Salmon with Quinoa". It has high margins (Accountant happy), zero dairy (Nutritionist happy), and is delicious (Chef happy)!',
     event:'A strong green consensus bridge connects Cooking, Health, and Finance!',
+    annotation:{
+      title:'Look at the Thick Green Center Bridge',
+      text:'All 3 agents agreed! Herb Salmon satisfies the budget, allergy safety, and delicious flavor.',
+      targetNode:'n13',
+      badge:'Consensus Signature Dish'
+    },
     nodes:[
       {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
       {id:'n3',label:'Flambé Technique',agent:'Chef',cluster:'Cooking',x:230,y:200},
@@ -259,6 +283,12 @@ const TURNS=[
     title:'Turn 4: Stopping a False Rumor (Contagion Alert)',
     desc:'The Manager heard a fake TikTok rumor: "Cooking with zero oil makes steaks cook in 30 seconds!" The Manager suggested it to the kitchen. The Knowledge Graph immediately flags this unverified rumor in bright red before the kitchen ruins dinner service!',
     event:'Contagion warning: Fake rumor detected and stopped before causing real damage.',
+    annotation:{
+      title:'Look at the Flashing Red Node (Fake Rumor)',
+      text:'Unverified online rumor was caught before infecting the kitchen. The Chef rejected the false claim!',
+      targetNode:'n14',
+      badge:'Fake Claim Blocked'
+    },
     nodes:[
       {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
       {id:'n13',label:'Herb Salmon & Quinoa',agent:'All-Consensus',cluster:'Menu Special',x:480,y:250},
@@ -507,6 +537,53 @@ function drawGraph(){
     g.font='9px sans-serif';
     g.fillText('['+n.cluster+']', n.x, n.y-radius-4);
   });
+
+  // Event Callout Overlay (Top Left Banner & Highlight Pointer)
+  const curTurnData = TURNS[S.currentTurn];
+  if(curTurnData && curTurnData.annotation){
+    const anno = curTurnData.annotation;
+    // Semi-transparent rounded callout box
+    g.fillStyle = isDark ? 'rgba(23, 34, 43, 0.92)' : 'rgba(255, 255, 255, 0.95)';
+    g.fillRect(16, 16, 380, 72);
+    g.strokeStyle = isDark ? '#4FC3E8' : '#006A80';
+    g.lineWidth = 1.5;
+    g.strokeRect(16, 16, 380, 72);
+
+    // Callout header badge
+    g.fillStyle = isDark ? '#4FC3E8' : '#006A80';
+    g.font = 'bold 11px sans-serif';
+    g.textAlign = 'left';
+    g.fillText('EVENT ANNOTATION: ' + anno.badge.toUpperCase(), 28, 36);
+
+    // Callout title & text
+    g.fillStyle = isDark ? '#E5EEF5' : '#0F172A';
+    g.font = 'bold 12px sans-serif';
+    g.fillText(anno.title, 28, 54);
+
+    g.fillStyle = isDark ? '#99AAB9' : '#475569';
+    g.font = '11px sans-serif';
+    g.fillText(anno.text, 28, 72);
+
+    // Visual pointer arrow to the key event node
+    const tgt = activeSimNodes.find(n => n.id === anno.targetNode);
+    if(tgt){
+      g.beginPath();
+      g.moveTo(396, 52);
+      g.lineTo(tgt.x, tgt.y - 18);
+      g.strokeStyle = isDark ? 'rgba(79, 195, 232, 0.65)' : 'rgba(0, 106, 128, 0.55)';
+      g.lineWidth = 1.8;
+      g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
+      
+      // Target pulse circle
+      g.beginPath();
+      g.arc(tgt.x, tgt.y, 22 + Math.sin(Date.now()*0.006)*4, 0, 6.2832);
+      g.strokeStyle = isDark ? '#4FC3E8' : '#006A80';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
 
   requestAnimationFrame(drawGraph);
 }
