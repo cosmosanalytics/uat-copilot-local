@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Can LLMs map what an agent knows?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Turn each agent&#x27;s notes into a knowledge graph, see which areas each agent knows, and watch conversations change the map (a WebLLM chat model, scored against a known world)</span></div>
+  <header>
+    <h1>Can LLMs map what an agent knows?</h1>
+    <p class="lede">Three agents each hold a few notes about a small company. An LLM reads the notes and extracts facts, code builds a knowledge graph for each agent, finds its areas, and an LLM names them. You see which areas each agent knows and how well the map matches a hidden answer key. Then the agents talk: each answers from its own map, the listener&#x27;s LLM extracts what it heard, and the listener&#x27;s map changes. A wrong claim can be injected, and three trust policies can be compared on the same conversation.</p>
+    <ol class="lede-items"><li><b>The world</b>: A small company with four areas (suppliers, quality, finance, logistics) and a hidden answer key of 29 facts.</li><li><b>The maps</b>: An LLM reads each agent&#x27;s notes into triples, code builds the graph and finds the areas, an LLM names them. A rule-based reader is included as a baseline.</li><li><b>The coverage grid</b>: Which areas each agent knows, scored against the key.</li><li><b>The conversations</b>: Retrieval from the speaker&#x27;s graph, a spoken message, extraction by the listener, and a merge with a trust policy. New, reinforced, replaced and conflicting facts are drawn.</li><li><b>Policies and your own text</b>: Newest wins, own notes win, or keep both and flag. Replayed on the same messages, with no extra model calls.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: this is a small, hand-built world with a hidden answer key, so the scores show how an LLM reader behaves here, not how it behaves on your documents. The graph covers what an agent has written down and what it hears, not what its model weights know. The areas are the groups of nodes that are linked together, so they only separate cleanly because the facts here share hub words like supplier, and one wrong link could merge two of them. A small on-device model will miss and invent facts, and the page counts both. The rule-based reader only understands this page's sentence patterns. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ================= the world and its answer key ================= */
+const AREAS=['Suppliers','Quality','Finance','Logistics'];
+const AREA_COL={Suppliers:'#0E6F8E',Quality:'#B3412E',Finance:'#2E7D5B',Logistics:'#A66A00'};
+const CL_COL=['#0E6F8E','#B3412E','#2E7D5B','#A66A00','#6B4FBB','#5A6B73','#E5603F'];
+const AG=[{id:'A',name:'Agent A',role:'procurement',color:'#6B4FBB'},{id:'B',name:'Agent B',role:'quality and finance',color:'#0E6F8E'},{id:'C',name:'Agent C',role:'logistics',color:'#E3A21A'}];
+const RELS=['is_a','delivers','ships_from','supplies','defect_rate','certified_by','approved_by','amount','serves','stores','manages'];
+const FUNCTIONAL=['delivers','ships_from','defect_rate','amount'];
+const WORLD=[
+ ['Suppliers','Acme','is_a','supplier'],['Suppliers','Borealis','is_a','supplier'],['Suppliers','Cobalt','is_a','supplier'],['Suppliers','Acme','delivers','late'],['Suppliers','Cobalt','delivers','on time'],['Suppliers','Borealis','ships_from','Rotterdam'],['Suppliers','Acme','supplies','resin'],['Suppliers','Borealis','supplies','steel'],
+ ['Quality','Line 1','is_a','production line'],['Quality','Line 2','is_a','production line'],['Quality','Line 2','defect_rate','high'],['Quality','Line 1','defect_rate','low'],['Quality','Line 1','certified_by','Nordic Audit'],['Quality','Mara','manages','Line 2'],
+ ['Finance','Budget','is_a','finance item'],['Finance','Invoice 17','is_a','finance item'],['Finance','Budget','approved_by','Dana'],['Finance','Invoice 17','approved_by','Dana'],['Finance','Budget','amount','40 thousand'],['Finance','Invoice 17','amount','12 thousand'],
+ ['Logistics','Truck 7','is_a','logistics asset'],['Logistics','Truck 9','is_a','logistics asset'],['Logistics','Warehouse North','is_a','logistics asset'],['Logistics','Warehouse South','is_a','logistics asset'],['Logistics','Truck 7','serves','Antwerp'],['Logistics','Truck 9','serves','Antwerp'],['Logistics','Warehouse North','stores','pallets'],['Logistics','Warehouse South','stores','crates'],['Logistics','Pia','manages','Warehouse North']
+].map(a=>({area:a[0],s:a[1],r:a[2],o:a[3]}));
+const DOCS=[
+ {id:'A1',agent:'A',time:3,title:'Procurement memo, Q3',claims:[['Acme','is_a','supplier'],['Borealis','is_a','supplier'],['Cobalt','is_a','supplier'],['Acme','delivers','late'],['Cobalt','delivers','on time']],noise:'The cafeteria menu changed this week.'},
+ {id:'A2',agent:'A',time:3,title:'Supplier note, Q3',claims:[['Borealis','ships_from','Rotterdam'],['Acme','supplies','resin'],['Borealis','supplies','steel']]},
+ {id:'A3',agent:'A',time:3,title:'Quality report, Q3',claims:[['Line 1','is_a','production line'],['Line 2','is_a','production line'],['Line 2','defect_rate','high'],['Line 1','defect_rate','low']]},
+ {id:'B1',agent:'B',time:1,title:'Old memo, Q1',claims:[['Acme Corp','is_a','supplier'],['Acme Corp','delivers','on time'],['Line 1','certified_by','Nordic Audit']],noise:'Parking spots were reassigned.'},
+ {id:'B2',agent:'B',time:3,title:'Quality log, Q3',claims:[['Line 1','is_a','production line'],['Line 2','is_a','production line'],['Mara','manages','Line 2'],['Line 2','defect_rate','high']]},
+ {id:'B3',agent:'B',time:3,title:'Finance memo, Q3',claims:[['Budget','is_a','finance item'],['Invoice 17','is_a','finance item'],['Budget','approved_by','Dana'],['Invoice 17','approved_by','Dana'],['Budget','amount','40 thousand']]},
+ {id:'C1',agent:'C',time:3,title:'Dispatch note, Q3',claims:[['Truck 7','is_a','logistics asset'],['Truck 9','is_a','logistics asset'],['Warehouse North','is_a','logistics asset'],['Warehouse South','is_a','logistics asset'],['Truck 7','serves','Antwerp'],['Truck 9','serves','Antwerp']]},
+ {id:'C2',agent:'C',time:3,title:'Warehouse log, Q3',claims:[['Warehouse North','stores','pallets'],['Warehouse South','stores','crates'],['Pia','manages','Warehouse North']],noise:'The forklift battery was replaced.'},
+ {id:'C3',agent:'C',time:3,title:'Finance snippet, Q3',claims:[['Invoice 17','is_a','finance item'],['Invoice 17','amount','12 thousand'],['Borealis','ships_from','Rotterdam'],['Borealis','is_a','supplier']]}
+];
+const EXCH=[{from:'A',to:'B',entity:'Acme'},{from:'C',to:'A',entity:'Borealis',wrong:{from:'Rotterdam',to:'Hamburg'}},{from:'B',to:'C',entity:'Line 2'}];
+const T_NOW=4;
+/* ---------- names, relations, and matching ---------- */
+const clean=x=>String(x==null?'':x).replace(/[.]+$/,'').replace(/\s+/g,' ').trim();
+function normE(x){
+  let t=clean(x).toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().replace(/^(the|a|an) /,'').replace(/ (corp|inc|ltd|co)$/,'');
+  t=t.replace(/ /g,'');if(t.length>4&&/[^aiuos]s$/.test(t))t=t.slice(0,-1);return t;
+}
+const SYN={delivered:'delivers',delivery:'delivers',ship_from:'ships_from',shipped_from:'ships_from',ships:'ships_from',supply:'supplies',supplied:'supplies',supplied_by:'supplies',instance_of:'is_a',type:'is_a',type_of:'is_a',is:'is_a',isa:'is_a',defect:'defect_rate',has_defect_rate:'defect_rate',certified:'certified_by',approved:'approved_by',cost:'amount',costs:'amount',budget:'amount',budget_amount:'amount',serve:'serves',store:'stores',stored:'stores',manage:'manages',manager_of:'manages'};
+function canonRel(r){let t=clean(r).toLowerCase().replace(/[\s-]+/g,'_');if(RELS.indexOf(t)>=0)return t;return SYN[t]||t;}
+const key=(s,r,o)=>normE(s)+'|'+canonRel(r)+'|'+normE(o);
+const TRUTH=new Set(WORLD.map(f=>key(f.s,f.r,f.o)));
+const NODE_AREA={};WORLD.forEach(f=>{if(!NODE_AREA[normE(f.s)])NODE_AREA[normE(f.s)]=f.area;if(!NODE_AREA[normE(f.o)])NODE_AREA[normE(f.o)]=f.area;});
+/* ---------- writing the notes from the claims ---------- */
+const plural=o=>o+'s';
+function sentenceOf(s,r,o){
+  const T={delivers:()=>s+' delivers '+o+'.',ships_from:()=>s+' ships from '+o+'.',supplies:()=>s+' supplies '+o+'.',defect_rate:()=>s+' has a '+o+' defect rate.',certified_by:()=>s+' is certified by '+o+'.',approved_by:()=>s+' is approved by '+o+'.',amount:()=>s+' amount is '+o+'.',serves:()=>s+' serves '+o+'.',stores:()=>s+' stores '+o+'.',manages:()=>s+' manages '+o+'.',is_a:()=>s+' is '+(/^[aeiou]/i.test(o)?'an ':'a ')+o+'.'};
+  return (T[r]||T.is_a)();
+}
+function renderDoc(d){
+  const parts=[],groups={};
+  d.claims.forEach(c=>{if(c[1]==='is_a'){(groups[c[2]]=groups[c[2]]||[]).push(c[0]);}});
+  const done={};
+  d.claims.forEach(c=>{
+    if(c[1]==='is_a'){const g=groups[c[2]];if(done[c[2]])return;done[c[2]]=true;
+      if(g.length===1)parts.push(sentenceOf(g[0],'is_a',c[2]));
+      else parts.push(g.slice(0,-1).join(', ')+' and '+g[g.length-1]+' are '+plural(c[2])+'.');}
+    else parts.push(sentenceOf(c[0],c[1],c[2]));
+  });
+  return d.title+'. '+parts.join(' ')+(d.noise?' '+d.noise:'');
+}
+DOCS.forEach(d=>{d.text=renderDoc(d);});
+/* ---------- the rule-based reader, a baseline that only knows these sentence patterns ---------- */
+function readRules(text){
+  const out=[];
+  String(text).split(/\.\s+|\.\s*$/).map(x=>x.trim()).filter(Boolean).forEach(sen=>{
+    let m;
+    const P=[[/^(.+) delivers (on time|late)$/i,'delivers'],[/^(.+) ships from (.+)$/i,'ships_from'],[/^(.+) supplies (.+)$/i,'supplies'],[/^(.+) has an? (high|low) defect rate$/i,'defect_rate'],[/^(.+) is certified by (.+)$/i,'certified_by'],[/^(.+) is approved by (.+)$/i,'approved_by'],[/^(.+?) amount is (.+)$/i,'amount'],[/^(.+) serves (.+)$/i,'serves'],[/^(.+) stores (.+)$/i,'stores'],[/^(.+) manages (.+)$/i,'manages']];
+    for(const [re,rel] of P){if((m=re.exec(sen))){out.push({s:m[1],r:rel,o:m[2]});return;}}
+    if((m=/^(.+) (is|are) (?:an? )?(.+)$/i.exec(sen))){const subs=m[1].split(/,\s*|\s+and\s+/).filter(Boolean),obj=m[2].toLowerCase()==='are'?m[3].replace(/s$/,''):m[3];subs.forEach(s=>out.push({s,r:'is_a',o:obj}));}
+  });
+  return out;
+}
+/* ---------- the graph ---------- */
+const newGraph=()=>({nodes:{},edges:[]});
+const cloneGraph=g=>JSON.parse(JSON.stringify(g));
+function addNode(g,label){const id=normE(label);if(!id)return null;if(!g.nodes[id])g.nodes[id]={id,label:clean(label)};return id;}
+/* policy: 'newest' the newer claim wins, 'own' the agent's own notes win, 'flag' keep both and believe neither */
+function mergeTriple(g,t,src,time,policy,diff){
+  const r=canonRel(t.r),sid=normE(t.s),oid=normE(t.o);
+  if(!sid||!oid||!r)return;
+  const live=e=>e.status==='active'||e.status==='conflict';
+  const same=g.edges.find(e=>e.sid===sid&&e.r===r&&e.oid===oid&&live(e));
+  if(same){same.conf=Math.min(1,same.conf+0.2);if(same.srcs.indexOf(src)<0)same.srcs.push(src);if(diff)diff.push({kind:'reinforced',e:same});return;}
+  const mk=(status)=>{addNode(g,t.s);addNode(g,t.o);const e={id:sid+'|'+r+'|'+oid+'|'+src+'|'+time,sid,r,oid,src,srcs:[src],time,status,conf:0.6};g.edges.push(e);return e;};
+  if(FUNCTIONAL.indexOf(r)>=0){
+    const old=g.edges.find(e=>e.sid===sid&&e.r===r&&e.oid!==oid&&live(e));
+    if(old){
+      if(policy==='flag'){const e=mk('conflict');old.status='conflict';if(diff)diff.push({kind:'conflict',e,old});return;}
+      if(policy==='own'&&old.src==='own'){const e=mk('rejected');if(diff)diff.push({kind:'rejected',e,old});return;}
+      if(time>old.time||(policy==='own'&&old.src!=='own')){const nn=!g.nodes[oid];const e=mk('active');old.status='replaced';old.replacedBy=e.id;if(diff)diff.push({kind:'replaced',e,old,newNode:nn});return;}
+      const e=mk('rejected');if(diff)diff.push({kind:'ignored',e,old});return;
+    }
+  }
+  const nn=[!g.nodes[sid],!g.nodes[oid]];const e=mk('active');if(diff)diff.push({kind:'new',e,newNodes:nn});
+}
+const believed=g=>g.edges.filter(e=>e.status==='active');
+function triplesOf(g,e){return {s:g.nodes[e.sid].label,r:e.r,o:g.nodes[e.oid].label};}
+function retrieve(g,entity){const id=normE(entity);return believed(g).filter(e=>e.sid===id||e.oid===id).map(e=>triplesOf(g,e));}
+/* ---------- areas: groups of nodes that are linked together ---------- */
+function communities(g){
+  const ids=Object.keys(g.nodes).sort(),parent={};ids.forEach(i=>{parent[i]=i;});
+  const find=x=>{while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;};
+  const deg={};ids.forEach(i=>{deg[i]=0;});
+  g.edges.filter(e=>e.status!=='replaced'&&e.status!=='rejected').forEach(e=>{if(e.sid===e.oid)return;deg[e.sid]++;deg[e.oid]++;const a=find(e.sid),b=find(e.oid);if(a!==b){if(a<b)parent[b]=a;else parent[a]=b;}});
+  const groups={};ids.forEach(i=>{(groups[find(i)]=groups[find(i)]||[]).push(i);});
+  return Object.keys(groups).map(k=>{const nodes=groups[k].slice().sort((a,b)=>deg[b]-deg[a]||(a<b?-1:1));return{id:k,nodes,hub:nodes[0]};}).sort((a,b)=>b.nodes.length-a.nodes.length||(a.id<b.id?-1:1));
+}
+function areaStats(g,cl){
+  const cnt={};cl.nodes.forEach(n=>{const a=NODE_AREA[n]||'unknown';cnt[a]=(cnt[a]||0)+1;});
+  const best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  return{major:best,pure:cnt[best]/cl.nodes.length,count:cnt};
+}
+/* ---------- scoring against the answer key ---------- */
+function scoreGraph(g){
+  const b=believed(g),keys=new Set(),wrong=[];
+  b.forEach(e=>{const k=e.sid+'|'+e.r+'|'+e.oid;if(TRUTH.has(k))keys.add(k);else wrong.push(e);});
+  const perArea={};AREAS.forEach(a=>{perArea[a]={k:0,m:WORLD.filter(f=>f.area===a).length};});
+  WORLD.forEach(f=>{if(keys.has(key(f.s,f.r,f.o)))perArea[f.area].k++;});
+  return{believed:b.length,right:keys.size,wrong:wrong.length,wrongEdges:wrong,recall:keys.size/WORLD.length,perArea,conflict:g.edges.filter(e=>e.status==='conflict').length,rejected:g.edges.filter(e=>e.status==='rejected'||e.status==='replaced').length};
+}
+function extractionScore(docs,results){
+  let tp=0,fp=0,fn=0,tpL=0,fpL=0,fnL=0;
+  docs.forEach(d=>{
+    const claim=new Set(d.claims.map(c=>key(c[0],c[1],c[2]))),claimL=new Set(d.claims.map(c=>normE(c[0])+'|'+normE(c[2])));
+    const got=new Set((results[d.id]||[]).map(t=>key(t.s,t.r,t.o))),gotL=new Set((results[d.id]||[]).map(t=>normE(t.s)+'|'+normE(t.o)));
+    got.forEach(k=>{if(claim.has(k))tp++;else fp++;});claim.forEach(k=>{if(!got.has(k))fn++;});
+    gotL.forEach(k=>{if(claimL.has(k))tpL++;else fpL++;});claimL.forEach(k=>{if(!gotL.has(k))fnL++;});
+  });
+  const P=(a,b)=>a+b?a/(a+b):0;
+  return{tp,fp,fn,precision:P(tp,fp),recall:P(tp,fn),lenientPrecision:P(tpL,fpL),lenientRecall:P(tpL,fnL)};
+}
+/* ---------- state ---------- */
+const S={reader:'llm',policy:'newest',inject:true,base:null,after:null,extract:null,areas:null,talk:null,custom:null,customText:'Dana approved the Q3 budget. Acme delivers late and ships from Rotterdam. Line 2 has a high defect rate. Mara manages Line 2.',busy:false,stop:false,err:'',prog:'',n:0,total:0,stage:''};
+/* ---------- the LLM calls ---------- */
+function need(){if(S.reader==='llm'&&!LLM.ready())throw new Error('Load the chat model first (the box at the top), or switch the reader to the rules baseline.');}
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,esc=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+async function llm(label,sys,user,max,temp){
+  need();S.n++;S.prog=label;draw();await new Promise(r=>setTimeout(r,0));
+  const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp||0,max_tokens:max||300});
+  return String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+}
+async function readText(label,text,free){
+  if(S.reader==='rules')return{triples:readRules(text),usable:true,raw:'(rules)'};
+  const rel=free?'':'Use only these relations: '+RELS.join(', ')+'. Examples: {"s":"Acme","r":"delivers","o":"late"}, {"s":"Line 2","r":"has defect_rate","o":"high"}, {"s":"Acme","r":"is_a","o":"supplier"}.\n';
+  const t=await llm(label,'You turn short notes into facts. Reply with ONE JSON object only.',rel+'Note: '+text+'\nExtract every business fact as {"s":subject,"r":relation,"o":object}. Skip chatter that is not a fact. Return: {"triples":[...]}',420,0);
+  const j=firstJson(t);
+  if(j&&Array.isArray(j.triples)){
+    const tr=j.triples.map(x=>({s:clean(x&&x.s),r:clean(x&&x.r),o:clean(x&&x.o)})).filter(x=>x.s&&x.r&&x.o);
+    return{triples:tr,usable:true,raw:t};
+  }
+  return{triples:[],usable:false,raw:t};
+}
+async function nameArea(label,g,cl){
+  if(S.reader==='rules'){return{name:fallbackName(g,cl),source:'rule'};}
+  const facts=g.edges.filter(e=>cl.nodes.indexOf(e.sid)>=0&&e.status!=='replaced').slice(0,10).map(e=>sentenceOf(g.nodes[e.sid].label,e.r,g.nodes[e.oid].label)).join(' ');
+  const t=await llm(label,'You name groups of related facts. Reply with ONE JSON object only.','Facts: '+facts+'\nGive this group a topic name of one or two words. Return: {"name":"..."}',60,0);
+  const j=firstJson(t);
+  if(j&&typeof j.name==='string'&&j.name.trim().length>1&&j.name.length<30)return{name:j.name.trim(),source:'model'};
+  return{name:fallbackName(g,cl),source:'rule'};
+}
+const fallbackName=(g,cl)=>(g.nodes[cl.hub]?g.nodes[cl.hub].label:cl.hub)+' group';
+/* ---------- stage 1: build the maps ---------- */
+async function buildMaps(){
+  need();S.n=0;S.stage='maps';S.total=DOCS.length;S.talk=null;S.after=null;S.err='';
+  const results={},raw={},unusable=[];
+  for(const d of DOCS){
+    if(S.stop)return;
+    const r=await readText('Reading '+d.id,d.text,false);results[d.id]=r.triples;raw[d.id]=r.raw;if(!r.usable)unusable.push(d.id);
+  }
+  const base={};AG.forEach(a=>{base[a.id]=newGraph();});
+  DOCS.forEach(d=>{results[d.id].forEach(t=>mergeTriple(base[d.agent],t,'own',d.time,'newest',null));});
+  const cls={};let calls=0;AG.forEach(a=>{cls[a.id]=communities(base[a.id]).filter(c=>c.nodes.length>=2);calls+=cls[a.id].length;});
+  S.total=DOCS.length+(S.reader==='llm'?calls:0);
+  const areas={};
+  for(const a of AG){
+    areas[a.id]=[];
+    for(const c of cls[a.id]){
+      if(S.stop)return;
+      const nm=await nameArea('Naming an area for '+a.name,base[a.id],c);
+      areas[a.id].push(Object.assign({},c,nm,areaStats(base[a.id],c)));
+    }
+  }
+  const ex={};AG.forEach(a=>{ex[a.id]=extractionScore(DOCS.filter(d=>d.agent===a.id),results);});
+  S.base=base;S.extract={results,raw,unusable,score:ex,all:extractionScore(DOCS,results)};S.areas=areas;
+}
+/* ---------- stage 2: let the agents talk ---------- */
+function replay(policy,inject){
+  const g={};AG.forEach(a=>{g[a.id]=cloneGraph(S.base[a.id]);});
+  const diffs=[];
+  S.talk.ex.forEach((x,i)=>{
+    const tr=(inject&&x.wrong&&x.wrongTriples)?x.wrongTriples:x.triples,diff=[];
+    tr.forEach(t=>mergeTriple(g[x.to],t,x.from,T_NOW,policy,diff));
+    diffs.push(diff);
+  });
+  return{g,diffs};
+}
+async function letThemTalk(){
+  need();if(!S.base)throw new Error('Build the maps first.');
+  S.n=0;S.stage='talk';S.total=S.reader==='llm'?7:0;S.err='';
+  const ex=[];
+  for(const x of EXCH){
+    if(S.stop)return;
+    const from=AG.find(a=>a.id===x.from),to=AG.find(a=>a.id===x.to);
+    const facts=retrieve(S.base[x.from],x.entity);
+    let msg;
+    if(S.reader==='rules'||!facts.length)msg=facts.map(f=>sentenceOf(f.s,f.r,f.o)).join(' ')||(from.name+' knows nothing about '+x.entity+'.');
+    else msg=await llm(from.name+' answers '+to.name+' about '+x.entity,'You are '+from.name+', a colleague. A teammate asked what you know about '+x.entity+'. Answer in one or two plain sentences, using only the facts given.',facts.map(f=>'- '+sentenceOf(f.s,f.r,f.o)).join('\n'),120,0.2);
+    if(S.stop)return;
+    const rd=await readText(to.name+' reads the message',msg,false);
+    const rec={from:x.from,to:x.to,entity:x.entity,facts,message:msg,triples:rd.triples,usable:rd.usable,wrong:x.wrong||null};
+    if(x.wrong){
+      let wm=msg.split(x.wrong.from).join(x.wrong.to);
+      if(wm===msg)wm=msg+' '+sentenceOf(x.entity,'ships_from',x.wrong.to);
+      if(S.stop)return;
+      const rw=await readText(to.name+' reads the wrong version',wm,false);
+      rec.wrongMessage=wm;rec.wrongTriples=rw.triples;
+    }
+    ex.push(rec);
+  }
+  S.talk={ex};
+}
+/* ---------- your own text ---------- */
+async function mapOwn(){
+  need();S.n=0;S.stage='custom';S.total=S.reader==='llm'?2:0;S.err='';S.custom=null;
+  const r=await readText('Reading your text',S.customText,true);
+  const g=newGraph();r.triples.forEach(t=>mergeTriple(g,t,'own',5,'newest',null));
+  const cls=communities(g).filter(c=>c.nodes.length>=2),areas=[];
+  S.total=1+(S.reader==='llm'?cls.length:0);
+  for(const c of cls){if(S.stop)return;const nm=await nameArea('Naming an area',g,c);areas.push(Object.assign({},c,nm));}
+  S.custom={g,areas,usable:r.usable,n:r.triples.length};
+}
+/* ---------- drawing the graph ---------- */
+const SRC_COL={own:'#5A6B73',A:'#6B4FBB',B:'#0E6F8E',C:'#E3A21A'};
+function layout(g,cls,W,H){
+  const pos={},ann=[],k=cls.length,anchors=[];
+  if(k===1)anchors.push([W/2,H*0.5]);
+  else if(k===2)anchors.push([W*0.27,H*0.5],[W*0.73,H*0.5]);
+  else if(k===3)anchors.push([W*0.5,H*0.3],[W*0.25,H*0.74],[W*0.75,H*0.74]);
+  else for(let i=0;i<k;i++){const col=i%2,row=Math.floor(i/2),rows=Math.ceil(k/2);anchors.push([W*(col?0.73:0.27),H*(rows===1?0.5:0.24+0.52*row/(rows-1))]);}
+  cls.forEach((c,ci)=>{
+    const [ax,ay]=anchors[ci]||[W/2,H/2],n=c.nodes.length;
+    const inner=Math.min(4,Math.max(0,n-1)),outer=Math.max(0,n-1-inner);
+    pos[c.nodes[0]]=[ax,ay];
+    c.nodes.slice(1,1+inner).forEach((id,i)=>{const a=2*Math.PI*i/Math.max(inner,1)-Math.PI/2;pos[id]=[ax+Math.cos(a)*(inner>1?25:22),ay+Math.sin(a)*(inner>1?25:22)];});
+    c.nodes.slice(1+inner).forEach((id,i)=>{const a=2*Math.PI*(i+0.5)/Math.max(outer,1)-Math.PI/2;pos[id]=[ax+Math.cos(a)*(outer>0?48:0),ay+Math.sin(a)*(outer>0?48:0)];});
+    ann.push({cx:ax,cy:ay,r:n<=1?16:(outer>0?60:(inner>1?40:32)),ci});
+  });
+  return{pos,ann};
+}
+function graphSvg(g,areas,opt){
+  opt=opt||{};const W=340,cls0=(areas&&areas.length?areas:communities(g).filter(c=>c.nodes.length>=1)).slice();
+  const cls=cls0,inCl=new Set();cls.forEach(c=>c.nodes.forEach(n=>inCl.add(n)));
+  const rest=Object.keys(g.nodes).filter(n=>!inCl.has(n));if(rest.length)cls.push({id:'rest',nodes:rest,hub:rest[0],name:'',source:'rule'});
+  const rows=cls.length>=4?Math.ceil(cls.length/2):2,H=opt.h||(330+(rows>2?95*(rows-2):0));
+  const {pos,ann}=layout(g,cls,W,H),hl=opt.hl||{newNodes:new Set(),newEdges:new Set()};
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Knowledge graph">';
+  ann.forEach(a=>{const c=cls[a.ci];s+='<circle cx="'+a.cx.toFixed(1)+'" cy="'+a.cy.toFixed(1)+'" r="'+a.r+'" fill="'+CL_COL[a.ci%CL_COL.length]+'" fill-opacity="0.12"/>';if(c.name)s+='<text x="'+a.cx.toFixed(1)+'" y="'+(a.cy-a.r-12).toFixed(1)+'" font-size="10" font-weight="700" text-anchor="middle" fill="'+CL_COL[a.ci%CL_COL.length]+'">'+esc(c.name.slice(0,22))+'</text>';});
+  g.edges.forEach(e=>{
+    const p=pos[e.sid],q=pos[e.oid];if(!p||!q)return;
+    let col=SRC_COL[e.src]||'#5A6B73',w=1.5+e.conf,dash='',op=1;
+    if(e.status==='conflict'){col='#B3412E';dash=' stroke-dasharray="4 3"';w=2;}
+    else if(e.status==='replaced'){op=0.25;dash=' stroke-dasharray="1 3"';}
+    else if(e.status==='rejected'){col='#B3412E';op=0.35;dash=' stroke-dasharray="1 3"';}
+    if(hl.newEdges.has(e.id)&&e.status==='active'){s+='<line x1="'+p[0].toFixed(1)+'" y1="'+p[1].toFixed(1)+'" x2="'+q[0].toFixed(1)+'" y2="'+q[1].toFixed(1)+'" stroke="#2E7D5B" stroke-opacity="0.35" stroke-width="'+(w+4)+'"/>';}
+    s+='<line x1="'+p[0].toFixed(1)+'" y1="'+p[1].toFixed(1)+'" x2="'+q[0].toFixed(1)+'" y2="'+q[1].toFixed(1)+'" stroke="'+col+'" stroke-opacity="'+op+'" stroke-width="'+w.toFixed(1)+'"'+dash+'><title>'+esc(sentenceOf(g.nodes[e.sid].label,e.r,g.nodes[e.oid].label)+' ('+e.status+', from '+(e.src==='own'?'its own notes':'agent '+e.src)+')')+'</title></line>';
+  });
+  Object.keys(pos).forEach(id=>{
+    const n=g.nodes[id];if(!n)return;const p=pos[id],ci=cls.findIndex(c=>c.nodes.indexOf(id)>=0),cx=p[0],cy=p[1];
+    const an=ann.find(a=>a.ci===ci),dx=an?cx-an.cx:0,dy=an?cy-an.cy:0,anchor=Math.abs(dx)<6?'middle':(dx>0?'start':'end'),lx=cx+(Math.abs(dx)<6?0:(dx>0?8:-8)),ly=cy+(Math.abs(dx)<6?(dy>=0?15:-9):4);
+    if(hl.newNodes.has(id))s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="10" fill="none" stroke="#2E7D5B" stroke-width="2.5"/>';
+    s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="5.5" fill="'+CL_COL[Math.max(0,ci)%CL_COL.length]+'"/><text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" font-size="9" text-anchor="'+anchor+'" fill="#17262D">'+esc(n.label.slice(0,15))+'</text>';
+  });
+  return s+'</svg>';
+}
+/* ---------- drawing the page ---------- */
+const pcn=v=>Math.round(v*100)+'%';
+function counter(){const pct_=S.total?Math.min(100,S.n/S.total*100):0;return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>'+(S.total?'Model call '+S.n+' of up to '+S.total:'Working')+'</b><span class="small">'+esc(S.prog||'')+'</span></div>'+(S.total?'<div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+pct_.toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>':'');}
+function legend(){return '<div class="small muted" style="margin-top:4px;line-height:1.7"><span style="color:#5A6B73"><b>grey</b></span> own notes, <span style="color:#6B4FBB"><b>purple</b></span> told by A, <span style="color:#0E6F8E"><b>teal</b></span> told by B, <span style="color:#E3A21A"><b>gold</b></span> told by C. <span style="color:#B3412E"><b>Red dashed</b></span> a conflict, <b>faint dotted</b> a fact that was replaced or rejected, <span style="color:#2E7D5B"><b>green</b></span> new this conversation. Thicker lines are better supported.</div>';}
+function edgeList(g){
+  return '<details style="margin-top:6px"><summary class="small">Every link ('+g.edges.length+')</summary><ul class="small" style="margin:6px 0 0 18px">'+g.edges.map(e=>'<li>'+esc(sentenceOf(g.nodes[e.sid].label,e.r,g.nodes[e.oid].label))+' <span class="muted">('+e.status+', '+(e.src==='own'?'own notes':'from '+e.src)+')</span></li>').join('')+'</ul></details>';
+}
+function agentWorldCard(a){
+  const ds=DOCS.filter(d=>d.agent===a.id);
+  return '<div class="box" style="margin-bottom:8px;border-left:6px solid '+a.color+'"><b>'+esc(a.name)+'</b> <span class="small muted">'+esc(a.role)+', '+ds.length+' notes</span><details style="margin-top:4px"><summary class="small">Read its notes</summary>'+ds.map(d=>'<div class="small" style="margin-top:6px"><b>'+d.id+'</b> <span class="muted">(Q'+d.time+')</span> '+esc(d.text)+'</div>').join('')+'</details></div>';
+}
+function coverage(before,after){
+  const g='display:grid;grid-template-columns:62px repeat(4,1fr);gap:4px;font-size:12px;align-items:stretch;';
+  let h='<div style="'+g+'"><div></div>'+AREAS.map(a=>'<div style="text-align:center;font-weight:700;color:'+AREA_COL[a]+';padding:4px 0">'+a+'</div>').join('');
+  AG.forEach(a=>{
+    const sb=scoreGraph(before[a.id]),sa=after?scoreGraph(after[a.id]):null;
+    h+='<div style="font-weight:700;color:'+a.color+';padding:10px 2px 0 0">'+a.name.replace('Agent ','')+'</div>'+AREAS.map(ar=>{
+      const k0=sb.perArea[ar].k,m=sb.perArea[ar].m,k1=sa?sa.perArea[ar].k:k0,r=k1/m,ch=sa&&k1!==k0;
+      return '<div style="background:'+AREA_COL[ar]+';background:rgba('+hex3(AREA_COL[ar])+','+(0.08+0.62*r).toFixed(2)+');border-radius:8px;text-align:center;padding:9px 2px;font-weight:700;font-size:14px;'+(r>0.6?'color:#fff;':'')+(ch?'outline:2px solid #2E7D5B;':'')+'">'+(ch?k0+' to '+k1:k1)+'<div style="font-weight:400;font-size:10px">of '+m+'</div></div>';
+    }).join('');
+  });
+  return h+'</div>';
+}
+function hex3(h){const n=parseInt(h.slice(1),16);return((n>>16)&255)+','+((n>>8)&255)+','+(n&255);}
+function sceneOf(x){return x.wrong&&S.inject;}
+function exchangeCard(x,i,diff,gAfter){
+  const from=AG.find(a=>a.id===x.from),to=AG.find(a=>a.id===x.to),wr=sceneOf(x);
+  const msg=wr?x.wrongMessage:x.message,tr=wr?x.wrongTriples:x.triples;
+  const kind={new:'New',reinforced:'Reinforced',replaced:'Replaced an older fact',rejected:'Rejected',ignored:'Ignored (older)',conflict:'Conflict, neither believed'};
+  const col={new:'#2E7D5B',reinforced:'#0E6F8E',replaced:'#A66A00',rejected:'#B3412E',ignored:'#5A6B73',conflict:'#B3412E'};
+  let h='<div class="box" style="margin-bottom:10px"><b style="color:'+from.color+'">'+esc(from.name)+'</b> tells <b style="color:'+to.color+'">'+esc(to.name)+'</b> about <b>'+esc(x.entity)+'</b>'+(wr?' '+chip('wrong claim injected','bad'):'')+
+    '<div class="small muted" style="margin-top:4px">Retrieved from '+esc(from.name)+'\'s map: '+(x.facts.length?x.facts.map(f=>esc(sentenceOf(f.s,f.r,f.o))).join(' '):'nothing')+'</div>'+
+    '<div style="background:#EFEAFB;border-radius:10px;padding:8px 10px;margin:6px 0" class="small">'+esc(msg)+'</div>'+
+    '<div class="small muted">'+esc(to.name)+'\'s reader found '+tr.length+' fact'+(tr.length===1?'':'s')+(x.usable===false?' (the reply could not be read)':'')+'.</div>';
+  const useful=diff.filter(d=>d.kind!=='reinforced'||true);
+  h+='<ul class="small" style="margin:6px 0 0 18px">'+useful.map(d=>'<li><b style="color:'+col[d.kind]+'">'+kind[d.kind]+':</b> '+esc(sentenceOf(gAfter.nodes[d.e.sid]?gAfter.nodes[d.e.sid].label:d.e.sid,d.e.r,gAfter.nodes[d.e.oid]?gAfter.nodes[d.e.oid].label:d.e.oid))+(d.old?' <span class="muted">(against: '+esc(gAfter.nodes[d.old.oid]?gAfter.nodes[d.old.oid].label:d.old.oid)+')</span>':'')+'</li>').join('')+'</ul></div>';
+  return h;
+}
+function policyRows(){
+  return ['newest','own','flag'].map(p=>{
+    const r=replay(p,S.inject),sc=AG.map(a=>scoreGraph(r.g[a.id]));
+    const B=r.g.B,A=r.g.A;
+    const fixed=believed(B).some(e=>e.sid==='acme'&&e.r==='delivers'&&e.oid==='late');
+    const stillStale=believed(B).some(e=>e.sid==='acme'&&e.r==='delivers'&&e.oid==='ontime');
+    const bad=believed(A).some(e=>e.sid==='borealis'&&e.r==='ships_from'&&e.oid==='hamburg');
+    return{p,fixed,stillStale,bad,wrong:sc.reduce((a,x)=>a+x.wrong,0),known:sc.reduce((a,x)=>a+x.right,0),flags:sc.reduce((a,x)=>a+x.conflict,0)};
+  });
+}
+const POL={newest:'Newest wins',own:'Own notes win',flag:'Keep both and flag'};
+function modelBox(){
+  if(S.reader!=='llm')return '';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+(LLM.ready()?' <span class="small muted">'+esc(LLM.modelId)+'</span>':LLM.ui()+'<p class="small muted" style="margin-top:8px">A chat model run by WebLLM on WebGPU. It reads the notes, names the areas, and speaks for the agents.</p>')+'</div>';
+}
+const QA=[
+ ['Can an LLM really build a knowledge map?','It can extract facts from text well enough to draw one, and this page scores it against an answer key so you can see how often it misses or invents links. On messy real documents it will do worse than on these clean notes.'],
+ ['What is in the map, and what is not?','The map holds what an agent has written down and what it has heard. It does not hold what the model weights know. To see that you have to probe the model with questions, or use open weights and look inside.'],
+ ['Where do the areas come from?','Code finds the groups of nodes that are linked together, and an LLM names them. They separate cleanly here because the notes share hub words like supplier or production line. One invented link between two areas would merge them, and a missing link would split one, so real graphs are messier.'],
+ ['Why do the policies differ?','When two sources disagree about something that can only have one value, such as when a supplier delivers, the agent must pick. Trusting the newest fixes stale notes but also adopts a fresh mistake. Trusting its own notes does the reverse. Flagging believes neither.'],
+ ['Why is there a rules reader?','It is a baseline that only understands this page\'s sentence patterns. If the LLM reader scores below it, the LLM is not adding anything here. On free text the rules reader would find nothing.']
+];
+function render(){
+  let h=modelBox();
+  h+='<h3>0  The reader</h3><div class="row">'+tog('reader','llm','LLM reader (WebLLM)',S.reader==='llm')+tog('reader','rules','Rules baseline (no model)',S.reader==='rules')+'</div><p class="small muted">The reader turns notes into facts. Switching it clears the maps.</p>';
+  h+='<h3>1  The world and the notes</h3><p class="small muted">A small company with four areas: '+AREAS.map(a=>'<b style="color:'+AREA_COL[a]+'">'+a+'</b>').join(', ')+'. A hidden answer key holds '+WORLD.length+' true facts. Three agents hold different notes, and one note from Q1 is out of date.</p>'+AG.map(agentWorldCard).join('');
+  h+='<h3>2  Build the maps</h3><div class="row">'+btn('build','',S.base?'Build the maps again':'Build the maps','',S.busy)+'</div>';
+  if(S.busy)h+='<div class="status warn" style="margin-top:10px">'+counter()+'</div>';
+  if(S.base){
+    const ex=S.extract;
+    h+='<h3>Which areas does each agent know?</h3><p class="small muted">Facts each agent believes, out of the facts in the answer key for that area.</p>'+coverage(S.base,null);
+    const sc=ex.score;
+    h+='<h3>How well did the reader read?</h3>'+(function(){const g='display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:4px;font-size:12px;align-items:center;';let t='<div style="'+g+'font-weight:700;color:#5A6B73;border-bottom:1px solid var(--line);padding-bottom:4px"><div>Notes of</div><div>Found right</div><div>Missed or invented</div></div>';
+      AG.forEach(a=>{const s=sc[a.id];t+='<div style="'+g+'padding:6px 0;border-bottom:1px solid var(--line)"><div style="color:'+a.color+'"><b>'+esc(a.name)+'</b></div><div><b>'+s.tp+'</b> <span class="muted">('+pcn(s.recall)+' of what the notes say)</span></div><div>'+s.fn+' missed, '+s.fp+' invented</div></div>';});
+      const s=ex.all;t+='<div style="'+g+'padding:6px 0;font-weight:700"><div>All notes</div><div>precision '+pcn(s.precision)+', recall '+pcn(s.recall)+'</div><div class="small muted" style="font-weight:400">loose match '+pcn(s.lenientPrecision)+' and '+pcn(s.lenientRecall)+'</div></div>';return t;})()+
+      (ex.unusable.length?'<div class="status warn" style="margin-top:8px">The model gave no usable reply for '+ex.unusable.length+' of '+DOCS.length+' notes ('+ex.unusable.join(', ')+'). Those notes are missing from the maps.</div>':'')+
+      '<p class="small muted">Precision is the share of found facts that the notes really state, and recall is the share of stated facts that were found. Loose match ignores the relation word.</p>';
+    h+='<h3>The maps</h3>'+AG.map(a=>{
+      const g=S.base[a.id],ar=S.areas[a.id],sg=scoreGraph(g),pur=ar.length?ar.reduce((x,c)=>x+c.pure*c.nodes.length,0)/ar.reduce((x,c)=>x+c.nodes.length,0):0;
+      return '<div class="box" style="margin-bottom:10px"><b style="color:'+a.color+'">'+esc(a.name)+'</b> <span class="small muted">'+Object.keys(g.nodes).length+' nodes, '+g.edges.length+' links, '+ar.length+' areas found</span>'+graphSvg(g,ar,{})+
+        '<div class="small" style="margin-top:4px">'+ar.map(c=>'<div><b>'+esc(c.name)+'</b>'+(c.source==='rule'?' <span class="muted">(rule name)</span>':'')+' <span class="muted">matches</span> '+esc(c.major)+', '+pcn(c.pure)+' pure, '+c.nodes.length+' nodes</div>').join('')+'</div>'+
+        '<div class="small muted" style="margin-top:4px">Believes '+sg.right+' true facts and '+sg.wrong+' that the key does not hold. Area purity '+pcn(pur)+'.</div>'+edgeList(g)+'</div>';}).join('')+legend();
+  }
+  h+='<h3>3  Let the agents talk</h3>';
+  if(!S.base)h+='<p class="small muted">Build the maps first.</p>';
+  else{
+    h+='<p class="small muted">Each agent answers from its own map, using only the facts it retrieves. The listener\'s reader extracts what it heard, and the listener\'s map changes. One exchange can carry a wrong claim.</p>'+
+      '<div class="row">'+btn('talk','',S.talk?'Run the conversations again':'Let the agents talk','',S.busy)+'</div>';
+  }
+  if(S.base&&S.talk){
+    const r=replay(S.policy,S.inject);
+    h+='<div class="row" style="margin-top:10px">'+['newest','own','flag'].map(p=>tog('policy',p,POL[p],S.policy===p)).join('')+'</div><div class="row" style="margin-top:6px">'+tog('inject','on','Wrong claim injected',S.inject)+tog('inject','off','No wrong claim',!S.inject)+'</div>'+
+      '<p class="small muted">Policy: what a listener does when new information disagrees with a fact it already holds. Both switches replay the same messages, with no new model calls.</p>';
+    h+='<h3>What was said</h3>'+S.talk.ex.map((x,i)=>exchangeCard(x,i,r.diffs[i],r.g[x.to])).join('');
+    const hlN={},hlE={};AG.forEach(a=>{hlN[a.id]=new Set();hlE[a.id]=new Set();});
+    S.talk.ex.forEach((x,i)=>{r.diffs[i].forEach(d=>{if(d.kind==='new'||d.kind==='replaced'){hlE[x.to].add(d.e.id);const gg=r.g[x.to];[d.e.sid,d.e.oid].forEach(n=>{if(!S.base[x.to].nodes[n])hlN[x.to].add(n);});}});});
+    h+='<h3>The maps after talking</h3><p class="small muted">Which areas each agent knows now. A green outline marks a change.</p>'+coverage(S.base,r.g)+
+      AG.map(a=>{const g=r.g[a.id],cl=communities(g).filter(c=>c.nodes.length>=2).map(c=>{const nm=S.areas[a.id].find(o=>o.nodes.some(n=>c.nodes.indexOf(n)>=0));return Object.assign({},c,{name:nm?nm.name:fallbackName(g,c),source:nm?nm.source:'rule'});});
+        return '<div class="box" style="margin:10px 0"><b style="color:'+a.color+'">'+esc(a.name)+' after</b>'+graphSvg(g,cl,{hl:{newNodes:hlN[a.id],newEdges:hlE[a.id]}})+edgeList(g)+'</div>';}).join('')+legend();
+    h+='<h3>Before and after</h3>'+(function(){const g='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;font-size:12px;align-items:center;';let t='<div style="'+g+'font-weight:700;color:#5A6B73;border-bottom:1px solid var(--line);padding-bottom:4px"><div></div><div>True facts believed</div><div>Wrong beliefs</div><div>Flagged conflicts</div></div>';
+      AG.forEach(a=>{const b=scoreGraph(S.base[a.id]),n=scoreGraph(r.g[a.id]);t+='<div style="'+g+'padding:6px 0;border-bottom:1px solid var(--line)"><div style="color:'+a.color+'"><b>'+esc(a.name)+'</b></div><div>'+b.right+' to <b>'+n.right+'</b></div><div>'+b.wrong+' to <b style="color:'+(n.wrong>b.wrong?'#B3412E':'inherit')+'">'+n.wrong+'</b></div><div>'+b.conflict+' to '+n.conflict+'</div></div>';});return t;})();
+    const rows=policyRows();
+    h+='<h3>Which policy is best?</h3><p class="small muted">The same messages, replayed under each policy'+(S.inject?', with the wrong claim in':', with no wrong claim')+'.</p>'+(function(){const g='display:grid;grid-template-columns:1.2fr 1fr 1fr 0.7fr 0.8fr;gap:4px;font-size:12px;align-items:center;';let t='<div style="'+g+'font-weight:700;color:#5A6B73;border-bottom:1px solid var(--line);padding-bottom:4px"><div>Policy</div><div>B\'s old Acme note</div><div>A and the wrong claim</div><div>Wrong beliefs</div><div>True facts known</div></div>';
+      rows.forEach(x=>{t+='<div style="'+g+'padding:6px 0;border-bottom:1px solid var(--line)"><div><b>'+POL[x.p]+'</b></div><div>'+(x.fixed?'<span style="color:#2E7D5B">fixed</span>':(x.stillStale?'<span style="color:#B3412E">still believed</span>':'not believed'))+'</div><div>'+(S.inject?(x.bad?'<span style="color:#B3412E">adopted it</span>':'resisted'):'none sent')+'</div><div><b>'+x.wrong+'</b></div><div>'+x.known+'</div></div>';});return t;})()+
+      '<ul class="checks" style="margin-top:8px"><li>'+(function(){const n=rows.find(x=>x.p==='newest'),o=rows.find(x=>x.p==='own'),f=rows.find(x=>x.p==='flag');return 'Newest wins '+(n.fixed?'fixes':'does not fix')+' B\'s out-of-date note'+(S.inject?(n.bad?' but adopts the wrong claim':' and resists the wrong claim'):'')+'. Own notes win '+(o.fixed?'fixes':'keeps')+' the old note'+(S.inject?(o.bad?' and adopts the wrong claim':' and resists the wrong claim'):'')+'. Flagging believes neither side of a disagreement, so it keeps fewer wrong beliefs but also fewer right ones.';})()+'</li><li>No policy is best in both cases. That is the trade-off between correcting old knowledge and resisting new mistakes.</li></ul>';
+  }
+  h+='<h3>4  Map your own text</h3><textarea class="editor" id="ctext" data-act="ctext" rows="4">'+esc(S.customText)+'</textarea><div class="row" style="margin-top:6px">'+btn('custom','','Map this text','',S.busy)+'</div><p class="small muted">The LLM reader may use any relation words here, since there is no answer key. The rules reader only understands the page\'s own sentence patterns.</p>';
+  if(S.custom){
+    const c=S.custom;
+    h+='<div class="box" style="margin-top:8px"><b>'+c.n+' fact'+(c.n===1?'':'s')+' found</b>'+(c.usable?'':' '+chip('the reply could not be read','warn'))+graphSvg(c.g,c.areas,{h:260})+'<div class="small">'+c.areas.map(a=>'<div><b>'+esc(a.name)+'</b>'+(a.source==='rule'?' <span class="muted">(rule name)</span>':'')+', '+a.nodes.length+' nodes</div>').join('')+'</div>'+(S.reader==='rules'?'<p class="small muted">The rules reader only understands this page\'s sentence patterns, so expect little from free text.</p>':'')+edgeList(c.g)+'</div>';
+  }
+  return h+qa(QA)+toast();
+}
+function toast(){
+  const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
+  if(S.err)return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+counter()+'<div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
+  return '';
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+const draw=app({
+  render,
+  act:{
+    reader:v=>{S.reader=v;S.base=null;S.after=null;S.extract=null;S.areas=null;S.talk=null;},
+    policy:v=>{S.policy=v;},
+    inject:v=>{S.inject=v==='on';},
+    build:()=>guard(buildMaps),
+    talk:()=>guard(letThemTalk),
+    custom:()=>guard(mapOwn),
+    dismiss:()=>{S.err='';},
+    stop:()=>{S.stop=true;},
+    ...LLM.act
+  },
+  change:{...LLM.change},
+  input:{ctext:t=>{S.customText=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+draw();
+</script>
+</body>
+</html>
