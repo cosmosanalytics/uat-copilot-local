@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Combined Inter- & Intra-Agent Knowledge Graphs w knowledge graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0C1117;
+  --panel: #161F28;
+  --panel-hover: #1E2B37;
+  --border: #2D3E4F;
+  --ink: #E6EDF2;
+  --muted: #8E9FAA;
+  --accent: #0E8DB7;
+  --accent-light: #4FC3E8;
+  --accent-ink: #FFFFFF;
+  --good: #10B981;
+  --good-bg: rgba(16, 185, 129, 0.15);
+  --warn: #F59E0B;
+  --warn-bg: rgba(245, 158, 11, 0.15);
+  --bad: #EF4444;
+  --bad-bg: rgba(239, 68, 68, 0.15);
+  --bridge: #10B981;
+  --refuted: #EF4444;
+  --font-display: "Bricolage Grotesque", -apple-system, sans-serif;
+  --font-body: "Public Sans", -apple-system, sans-serif;
+  --font-code: "JetBrains Mono", Consolas, monospace;
+}
+
+[data-theme="light"] {
+  --bg: #F4F6F9;
+  --panel: #FFFFFF;
+  --panel-hover: #F0F4F8;
+  --border: #D1DBE5;
+  --ink: #111827;
+  --muted: #4B5563;
+  --accent: #0284C7;
+  --accent-light: #0369A1;
+  --accent-ink: #FFFFFF;
+  --good: #059669;
+  --good-bg: #ECFDF5;
+  --warn: #D97706;
+  --warn-bg: #FFFBEB;
+  --bad: #DC2626;
+  --bad-bg: #FEF2F2;
+  --bridge: #059669;
+  --refuted: #DC2626;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  padding: 16px 24px 40px;
+  max-width: 1440px;
+  margin: 0 auto;
+  transition: background 0.2s, color 0.2s;
+}
+
+header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  font-family: var(--font-code);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+  max-width: 900px;
+}
+
+.controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-group {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+button.btn-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+button.btn-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+button.btn-tab:hover:not(.active) {
+  color: var(--ink);
+  background: var(--panel-hover);
+}
+
+button.btn-action {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+button.btn-action:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+}
+
+@media (max-width: 1080px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+.canvas-container {
+  position: relative;
+  background: #0A0F14;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 540px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+[data-theme="light"] .canvas-container {
+  background: #F8FAFC;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+#kgCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+#kgCanvas:active {
+  cursor: grabbing;
+}
+
+/* Turn Stepper & Timeline */
+.stepper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-top: 12px;
+  gap: 12px;
+}
+
+.turn-pill-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.turn-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.turn-pill.active {
+  background: var(--accent);
+  color: #FFFFFF;
+  border-color: var(--accent);
+}
+
+/* Side Inspector Panel */
+.inspector-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 540px;
+  overflow-y: auto;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.inspector-card h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-card p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.metric-label { color: var(--muted); }
+.metric-value { font-weight: 700; color: var(--ink); font-family: var(--font-code); }
+
+.legend-card {
+  margin-top: auto;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-line {
+  width: 18px;
+  height: 3px;
+}
+
+.legend-line.refuted {
+  border-top: 2px dashed #EF4444;
+  height: 0;
+}
+
+.legend-line.bridge {
+  background: #10B981;
+  height: 3px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>
+        Combined Inter- & Intra-Agent Knowledge Graphs
+        <span class="badge">w knowledge graph</span>
+      </h1>
+      <p class="lede">
+        Dual-scale epistemic intelligence: Explore macro-coordination across autonomous teams (<strong>Inter-Agent Graph</strong>) and click any agent to zoom directly inside its cognitive working memory and reasoning mind (<strong>Intra-Agent Graph</strong>).
+      </p>
+    </div>
+    <button class="btn-action" id="themeToggle" onclick="toggleTheme()">
+      <span id="themeIcon">☀️</span> Mode
+    </button>
+  </div>
+</header>
+
+<div class="controls-bar">
+  <!-- Scenario Selector -->
+  <div class="control-group">
+    <span class="control-label">Scenario:</span>
+    <div class="btn-group">
+      <button class="btn-tab active" id="scen-simple" onclick="setScenario('simple')">Simple: Restaurant Team</button>
+      <button class="btn-tab" id="scen-enterprise" onclick="setScenario('enterprise')">Enterprise: Cloud & FinOps</button>
+    </div>
+  </div>
+
+  <!-- Scale / View Mode -->
+  <div class="control-group">
+    <span class="control-label">Scale View:</span>
+    <div class="btn-group">
+      <button class="btn-tab active" id="view-team" onclick="setViewMode('team')">Team Level (Inter-Agent)</button>
+      <button class="btn-tab" id="view-mind" onclick="setViewMode('mind')">Agent Mind (Intra-Agent)</button>
+    </div>
+  </div>
+
+  <!-- Agent Zoom Picker (active in Mind view) -->
+  <div class="control-group" id="agentPickerGroup" style="display:none;">
+    <span class="control-label">Inspecting:</span>
+    <select id="agentSelect" onchange="onAgentSelectChange(this.value)" style="background:var(--bg);color:var(--ink);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;font-family:var(--font-body);">
+      <!-- Populated dynamically -->
+    </select>
+  </div>
+</div>
+
+<div class="main-grid">
+  <!-- Interactive Canvas -->
+  <div>
+    <div class="canvas-container">
+      <canvas id="kgCanvas" width="1080" height="540"></canvas>
+    </div>
+
+    <!-- Stepper & Timeline Controls -->
+    <div class="stepper-bar">
+      <div class="control-group">
+        <button class="btn-action" onclick="stepTurn(-1)">◀ Prev</button>
+        <button class="btn-action" id="playBtn" onclick="togglePlay()">▶ Play</button>
+        <button class="btn-action" onclick="stepTurn(1)">Next ▶</button>
+      </div>
+      <div class="turn-pill-container" id="turnPills">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Inspector Side Panel -->
+  <div class="inspector-panel" id="inspectorPanel">
+    <div class="panel-title">
+      <span id="inspectorTitle">Epistemic Inspector</span>
+      <span class="badge" id="inspectorBadge">Active</span>
+    </div>
+
+    <div class="inspector-card" id="cardOverview">
+      <h4 id="cardHeading">Navigation Tip</h4>
+      <p id="cardDescription">Click any Agent node on the canvas to zoom inside its internal cognitive mind graph, or use the View toggle above to switch between Team and Mind perspectives.</p>
+      <div class="metric-row" id="metric1Row">
+        <span class="metric-label" id="metric1Label">Current Scale</span>
+        <span class="metric-value" id="metric1Value">Inter-Agent (Macro)</span>
+      </div>
+      <div class="metric-row" id="metric2Row">
+        <span class="metric-label" id="metric2Label">Active Scenario</span>
+        <span class="metric-value" id="metric2Value">Restaurant Operations</span>
+      </div>
+    </div>
+
+    <div class="inspector-card" id="cardEvent">
+      <h4 id="eventHeading">Active Knowledge Event</h4>
+      <p id="eventDescription">Turn 0: Cold start baseline. Agents hold distinct epistemic domains with no cross-pollination yet.</p>
+    </div>
+
+    <div class="legend-card">
+      <div style="font-weight:700;color:var(--ink);margin-bottom:4px;">Graph Legend</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#0E8DB7;"></span> Primary Agent Role / Vision</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#D97706;"></span> Specialist Lens / Premise</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span> Tool Grounding / Observation</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#8B5CF6;"></span> Shared Artifact / Plan Node</div>
+      <div class="legend-item"><span class="legend-line bridge"></span> Inter-Agent Consensus Bridge</div>
+      <div class="legend-item"><span class="legend-line refuted"></span> [PRUNED / REFUTED] Severed Assumption</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ==============================================================================
+   SCENARIO DATA DEFINITIONS
+   ============================================================================== */
+
+const SCENARIOS = {
+  simple: {
+    id: 'simple',
+    name: 'Simple: Restaurant Team',
+    agents: [
+      { id: 'chef', label: 'Executive Chef', role: 'chef', color: '#0E8DB7' },
+      { id: 'nutr', label: 'Clinical Nutritionist', role: 'nutr', color: '#10B981' },
+      { id: 'acct', label: 'Cost Accountant', role: 'acct', color: '#D97706' },
+      { id: 'mgr',  label: 'Floor Manager', role: 'mgr', color: '#8B5CF6' }
+    ],
+    turns: [
+      {
+        turn: 0,
+        title: 'Initial Kitchen Silos (Cold Start)',
+        desc: 'Chef plans a luxurious risotto; Nutritionist audits dietary guidelines in isolation; Accountant tracks raw food cost targets; Manager preps floor rush hour SLAs.',
+        badge: 'Isolated Silos',
+        inter: {
+          nodes: [
+            { id: 'chef', label: 'Executive Chef', role: 'chef', x: 220, y: 150 },
+            { id: 'nutr', label: 'Nutritionist', role: 'nutr', x: 220, y: 390 },
+            { id: 'acct', label: 'Cost Accountant', role: 'acct', x: 860, y: 150 },
+            { id: 'mgr',  label: 'Floor Manager', role: 'mgr', x: 860, y: 390 },
+            { id: 'art_menu', label: 'Truffle Risotto Spec', role: 'art', x: 540, y: 270 }
+          ],
+          links: [
+            { source: 'chef', target: 'art_menu', label: 'DRAFTS', type: 'normal' }
+          ],
+          targetNode: 'chef'
+        },
+        mind: {
+          chef: {
+            title: 'Chef: Pure Culinary Flavor Vision',
+            desc: 'Initial internal belief: Heavy reduction, aged parmesan, truffle butter. Zero consideration for sodium caps or food cost.',
+            nodes: [
+              { id: 'c_goal', label: 'Flavor: Rich Umami', role: 'goal', x: 260, y: 180, highlight: true },
+              { id: 'c_prem1', label: 'Heavy Salt Reduction', role: 'premise', x: 500, y: 140 },
+              { id: 'c_prem2', label: 'Triple Truffle Butter', role: 'premise', x: 500, y: 280 },
+              { id: 'c_out', label: 'Draft Recipe Card', role: 'art', x: 800, y: 220 }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_prem1', label: 'REQUIRES', type: 'normal' },
+              { source: 'c_goal', target: 'c_prem2', label: 'ENHANCES', type: 'normal' },
+              { source: 'c_prem1', target: 'c_out', label: 'SPECIFIES', type: 'normal' }
+            ],
+            targetNode: 'c_prem1'
+          },
+          nutr: {
+            title: 'Nutritionist: Dietary Guidelines Baseline',
+            desc: 'Internal memory: Strictly bounded by 600mg sodium limit and allergen segregation rules.',
+            nodes: [
+              { id: 'n_goal', label: 'Cardiac Health Standard', role: 'goal', x: 260, y: 220 },
+              { id: 'n_lim1', label: 'Max Sodium: <600mg', role: 'premise', x: 540, y: 160 },
+              { id: 'n_lim2', label: 'Dairy Allergen Isolation', role: 'premise', x: 540, y: 300 }
+            ],
+            links: [
+              { source: 'n_goal', target: 'n_lim1', label: 'ENFORCES', type: 'normal' },
+              { source: 'n_goal', target: 'n_lim2', label: 'AUDITS', type: 'normal' }
+            ],
+            targetNode: 'n_lim1'
+          },
+          acct: {
+            title: 'Accountant: Margin Constraints',
+            desc: 'Internal memory: Food cost must remain strictly <= 28% of $34 menu price ($9.52 max).',
+            nodes: [
+              { id: 'a_goal', label: 'Target Margin: 72%', role: 'goal', x: 260, y: 220 },
+              { id: 'a_lim1', label: 'Max Cost: $9.52 / plate', role: 'premise', x: 540, y: 160 },
+              { id: 'a_tool', label: 'Supplier Price Matrix', role: 'tool', x: 540, y: 300 }
+            ],
+            links: [
+              { source: 'a_goal', target: 'a_lim1', label: 'CALCULATES', type: 'normal' },
+              { source: 'a_tool', target: 'a_lim1', label: 'FEEDS_COST', type: 'normal' }
+            ],
+            targetNode: 'a_lim1'
+          },
+          mgr: {
+            title: 'Floor Manager: Speed & Service SLAs',
+            desc: 'Internal memory: Tables turn every 45 mins. Kitchen ticket-to-table SLA is 14 minutes.',
+            nodes: [
+              { id: 'm_goal', label: 'Ticket SLA: <= 14 mins', role: 'goal', x: 260, y: 220 },
+              { id: 'm_risk', label: 'Risotto Simmer Bottleneck', role: 'premise', x: 540, y: 220 }
+            ],
+            links: [
+              { source: 'm_goal', target: 'm_risk', label: 'MONITORS', type: 'normal' }
+            ],
+            targetNode: 'm_risk'
+          }
+        }
+      },
+      {
+        turn: 1,
+        title: 'Turn 1: Recipe Hand-off & Tool Inspection',
+        desc: 'Chef passes recipe to Nutritionist and Accountant. Nutritionist queries USDA database and discovers sodium spikes to 1,420mg. Accountant calculates plate cost at $14.80 (43% cost ratio).',
+        badge: 'Cross-Agent Hand-off',
+        inter: {
+          nodes: [
+            { id: 'chef', label: 'Executive Chef', role: 'chef', x: 220, y: 150 },
+            { id: 'nutr', label: 'Nutritionist', role: 'nutr', x: 220, y: 390 },
+            { id: 'acct', label: 'Cost Accountant', role: 'acct', x: 860, y: 150 },
+            { id: 'mgr',  label: 'Floor Manager', role: 'mgr', x: 860, y: 390 },
+            { id: 'art_menu', label: 'Risotto Recipe (v1)', role: 'art', x: 540, y: 220 },
+            { id: 'usda_node', label: 'USDA Sodium Audit', role: 'tool', x: 400, y: 360 }
+          ],
+          links: [
+            { source: 'chef', target: 'art_menu', label: 'HANDS_OFF', type: 'normal' },
+            { source: 'art_menu', target: 'nutr', label: 'INSPECTED_BY', type: 'bridge' },
+            { source: 'art_menu', target: 'acct', label: 'COSTED_BY', type: 'bridge' },
+            { source: 'nutr', target: 'usda_node', label: 'TOOL_QUERY', type: 'normal' }
+          ],
+          targetNode: 'usda_node'
+        },
+        mind: {
+          chef: {
+            title: 'Chef: Waiting for Nutritional Audit',
+            desc: 'Chef awaits feedback from Nutritionist; holds firm belief that traditional heavy stock reduction is indispensable.',
+            nodes: [
+              { id: 'c_goal', label: 'Flavor: Rich Umami', role: 'goal', x: 260, y: 180 },
+              { id: 'c_prem1', label: 'Heavy Salt Reduction', role: 'premise', x: 500, y: 140, highlight: true },
+              { id: 'c_prem2', label: 'Triple Truffle Butter', role: 'premise', x: 500, y: 280 },
+              { id: 'c_out', label: 'Draft Recipe Card (v1)', role: 'art', x: 800, y: 220 }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_prem1', label: 'REQUIRES', type: 'normal' },
+              { source: 'c_goal', target: 'c_prem2', label: 'ENHANCES', type: 'normal' },
+              { source: 'c_prem1', target: 'c_out', label: 'SPECIFIES', type: 'normal' }
+            ],
+            targetNode: 'c_prem1'
+          },
+          nutr: {
+            title: 'Nutritionist: Tool Inspection in USDA Database',
+            desc: 'Tool check confirms Parmesan + broth reduction causes critical sodium violation.',
+            nodes: [
+              { id: 'n_goal', label: 'Cardiac Health Standard', role: 'goal', x: 240, y: 220 },
+              { id: 'n_usda', label: 'USDA API: 1420mg Na Detected', role: 'tool', x: 540, y: 160, highlight: true },
+              { id: 'n_viol', label: 'Flag: +136% Over Limit', role: 'premise', x: 800, y: 220 }
+            ],
+            links: [
+              { source: 'n_goal', target: 'n_usda', label: 'QUERIES', type: 'normal' },
+              { source: 'n_usda', target: 'n_viol', label: 'PROVES_VIOLATION', type: 'bridge' }
+            ],
+            targetNode: 'n_usda'
+          },
+          acct: {
+            title: 'Accountant: Cost Overrun Detected',
+            desc: 'Wholesale pricing check proves imported truffle butter spikes plate cost to $14.80.',
+            nodes: [
+              { id: 'a_goal', label: 'Target Margin: 72%', role: 'goal', x: 240, y: 220 },
+              { id: 'a_inv', label: 'Invoice Check: Truffle Butter $48/lb', role: 'tool', x: 540, y: 160, highlight: true },
+              { id: 'a_over', label: 'Plate Cost $14.80 (43% Cost)', role: 'premise', x: 800, y: 220 }
+            ],
+            links: [
+              { source: 'a_goal', target: 'a_inv', label: 'AUDITS', type: 'normal' },
+              { source: 'a_inv', target: 'a_over', label: 'CALCULATES', type: 'normal' }
+            ],
+            targetNode: 'a_inv'
+          },
+          mgr: {
+            title: 'Manager: Timing Audit',
+            desc: 'Kitchen simulation shows raw rice boiling requires 22 minutes, exceeding table SLA.',
+            nodes: [
+              { id: 'm_goal', label: 'Ticket SLA: <= 14 mins', role: 'goal', x: 240, y: 220 },
+              { id: 'm_kds', label: 'KDS Queue Sim: 22 mins', role: 'tool', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'm_goal', target: 'm_kds', label: 'SIMULATES', type: 'normal' }
+            ],
+            targetNode: 'm_kds'
+          }
+        }
+      },
+      {
+        turn: 2,
+        title: 'Turn 2: Belief Revision & Pruning (Disproof)',
+        desc: 'Nutritionist refutes Chef\'s high-salt reduction. Inside Chef\'s mind, the belief that heavy salt is required is PRUNED. Chef adopts Shiitake Mushroom & Miso umami substitution.',
+        badge: 'Belief Disproof & Pruning',
+        inter: {
+          nodes: [
+            { id: 'chef', label: 'Executive Chef', role: 'chef', x: 220, y: 150 },
+            { id: 'nutr', label: 'Nutritionist', role: 'nutr', x: 220, y: 390 },
+            { id: 'acct', label: 'Cost Accountant', role: 'acct', x: 860, y: 150 },
+            { id: 'mgr',  label: 'Floor Manager', role: 'mgr', x: 860, y: 390 },
+            { id: 'art_menu', label: 'Risotto Recipe (v2)', role: 'art', x: 540, y: 220 },
+            { id: 'prun_salt', label: '[PRUNED] High-Salt Reduction', role: 'pruned', x: 400, y: 100 }
+          ],
+          links: [
+            { source: 'chef', target: 'prun_salt', label: 'PRUNED', type: 'refuted' },
+            { source: 'nutr', target: 'chef', label: 'REFUTES_PREMISE', type: 'refuted' },
+            { source: 'chef', target: 'art_menu', label: 'REVISES_WITH_MISO', type: 'bridge' }
+          ],
+          targetNode: 'prun_salt'
+        },
+        mind: {
+          chef: {
+            title: 'Chef: Internal Belief Revision',
+            desc: 'Chef severes the belief edge linking flavor to high-salt stock, replacing it with naturally glutamic shiitake broth.',
+            nodes: [
+              { id: 'c_goal', label: 'Flavor: Rich Umami', role: 'goal', x: 240, y: 220 },
+              { id: 'c_prun', label: '[PRUNED] Heavy Salt Reduction', role: 'pruned', x: 540, y: 130, highlight: true },
+              { id: 'c_sub', label: 'Miso & Roasted Shiitake Broth', role: 'tool', x: 540, y: 290 },
+              { id: 'c_out', label: 'Revised Recipe Card (v2)', role: 'art', x: 820, y: 220 }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_prun', label: 'REFUTED', type: 'refuted' },
+              { source: 'c_goal', target: 'c_sub', label: 'ADOPTS_SUBSTITUTE', type: 'bridge' },
+              { source: 'c_sub', target: 'c_out', label: 'SPECIFIES', type: 'normal' }
+            ],
+            targetNode: 'c_prun'
+          },
+          nutr: {
+            title: 'Nutritionist: Miso Verification',
+            desc: 'Validates that fermented miso paste maintains umami flavor with 68% lower sodium impact.',
+            nodes: [
+              { id: 'n_goal', label: 'Cardiac Health Standard', role: 'goal', x: 240, y: 220 },
+              { id: 'n_ok', label: 'Miso Audit: 420mg Na (PASSED)', role: 'tool', x: 560, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'n_goal', target: 'n_ok', label: 'APPROVES', type: 'bridge' }
+            ],
+            targetNode: 'n_ok'
+          },
+          acct: {
+            title: 'Accountant: Ingredient Cost Optimization',
+            desc: 'Prunes imported truffle oil; substitutes local mushroom foraging contract.',
+            nodes: [
+              { id: 'a_goal', label: 'Target Margin: 72%', role: 'goal', x: 240, y: 220 },
+              { id: 'a_prun', label: '[PRUNED] $48 Truffle Oil', role: 'pruned', x: 540, y: 140, highlight: true },
+              { id: 'a_bulk', label: 'Local Forager Shiitake ($12/lb)', role: 'tool', x: 540, y: 290 }
+            ],
+            links: [
+              { source: 'a_goal', target: 'a_prun', label: 'REJECTED', type: 'refuted' },
+              { source: 'a_goal', target: 'a_bulk', label: 'APPROVED', type: 'bridge' }
+            ],
+            targetNode: 'a_prun'
+          },
+          mgr: {
+            title: 'Manager: Par-Cooking Workflow',
+            desc: 'Adopts 8-minute par-cooking technique, pruning made-to-order raw rice delay.',
+            nodes: [
+              { id: 'm_goal', label: 'Ticket SLA: <= 14 mins', role: 'goal', x: 240, y: 220 },
+              { id: 'm_prun', label: '[PRUNED] Raw Grain Cooking', role: 'pruned', x: 540, y: 140 },
+              { id: 'm_prep', label: 'Afternoon Par-Cook (8 min prep)', role: 'tool', x: 540, y: 290, highlight: true }
+            ],
+            links: [
+              { source: 'm_goal', target: 'm_prun', label: 'PRUNED', type: 'refuted' },
+              { source: 'm_goal', target: 'm_prep', label: 'SOLVES_SLA', type: 'bridge' }
+            ],
+            targetNode: 'm_prep'
+          }
+        }
+      },
+      {
+        turn: 3,
+        title: 'Turn 3: Full Inter-Agent Consensus & Menu Launch',
+        desc: 'All 4 agents converge: Chef achieves umami flavor, Nutritionist signs off on 420mg sodium, Accountant achieves 74% margin ($7.80 plate cost), and Manager locks 9-minute ticket SLA.',
+        badge: 'Consensus Bridge Established',
+        inter: {
+          nodes: [
+            { id: 'chef', label: 'Executive Chef', role: 'chef', x: 200, y: 150 },
+            { id: 'nutr', label: 'Nutritionist', role: 'nutr', x: 200, y: 390 },
+            { id: 'acct', label: 'Cost Accountant', role: 'acct', x: 880, y: 150 },
+            { id: 'mgr',  label: 'Floor Manager', role: 'mgr', x: 880, y: 390 },
+            { id: 'master_menu', label: 'Consensus Master Menu Card', role: 'consensus', x: 540, y: 270, highlight: true }
+          ],
+          links: [
+            { source: 'chef', target: 'master_menu', label: 'FLAVOR_APPROVED', type: 'bridge' },
+            { source: 'nutr', target: 'master_menu', label: 'HEALTH_VERIFIED', type: 'bridge' },
+            { source: 'acct', target: 'master_menu', label: 'MARGIN_74%_LOCKED', type: 'bridge' },
+            { source: 'mgr',  target: 'master_menu', label: '9MIN_SLA_LOCKED', type: 'bridge' }
+          ],
+          targetNode: 'master_menu'
+        },
+        mind: {
+          chef: {
+            title: 'Chef: Consensus Alignment',
+            desc: 'Internal mind reflects verified harmonious recipe: flavor, health, and cost perfectly balanced.',
+            nodes: [
+              { id: 'c_goal', label: 'Flavor: Rich Umami', role: 'goal', x: 240, y: 220 },
+              { id: 'c_sub', label: 'Miso & Roasted Shiitake Broth', role: 'tool', x: 540, y: 220 },
+              { id: 'c_con', label: 'Approved Master Risotto', role: 'consensus', x: 820, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_sub', label: 'INTEGRATES', type: 'bridge' },
+              { source: 'c_sub', target: 'c_con', label: 'LAUNCHES', type: 'bridge' }
+            ],
+            targetNode: 'c_con'
+          },
+          nutr: {
+            title: 'Nutritionist: Clean Attestation',
+            desc: 'Issues formal dietary compliance certificate.',
+            nodes: [
+              { id: 'n_goal', label: 'Cardiac Health Standard', role: 'goal', x: 240, y: 220 },
+              { id: 'n_cert', label: 'Nutritional Green Seal', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'n_goal', target: 'n_cert', label: 'AWARDS_SEAL', type: 'bridge' }
+            ],
+            targetNode: 'n_cert'
+          },
+          acct: {
+            title: 'Accountant: Target Margin Surpassed',
+            desc: 'Plate cost locked at $7.80 against $34 sale price (77% margin).',
+            nodes: [
+              { id: 'a_goal', label: 'Target Margin: 72%', role: 'goal', x: 240, y: 220 },
+              { id: 'a_res', label: 'Final Plate Cost: $7.80 (77% Margin)', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'a_goal', target: 'a_res', label: 'COMMITS', type: 'bridge' }
+            ],
+            targetNode: 'a_res'
+          },
+          mgr: {
+            title: 'Manager: Expedited Prep SLA',
+            desc: '9-minute average plating time locked into KDS software.',
+            nodes: [
+              { id: 'm_goal', label: 'Ticket SLA: <= 14 mins', role: 'goal', x: 240, y: 220 },
+              { id: 'm_sla', label: 'KDS Route: 9 min Turn SLA', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'm_goal', target: 'm_sla', label: 'LOCKED', type: 'bridge' }
+            ],
+            targetNode: 'm_sla'
+          }
+        }
+      }
+    ]
+  },
+
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise: Cloud & FinOps Governance',
+    agents: [
+      { id: 'sec',  label: 'SecOps Lead', role: 'sec', color: '#0E8DB7' },
+      { id: 'fin',  label: 'FinOps Lead', role: 'fin', color: '#D97706' },
+      { id: 'comp', label: 'Compliance Officer', role: 'comp', color: '#10B981' },
+      { id: 'qa',   label: 'QA Reliability Critic', role: 'qa', color: '#EF4444' }
+    ],
+    turns: [
+      {
+        turn: 0,
+        title: 'Initial Enterprise Silos (Cold Start)',
+        desc: 'SecOps designs zero-trust IAM enclaves; FinOps analyzes annual reserved instances; Compliance tracks GDPR sovereignty; QA measures tail latency SLAs.',
+        badge: 'Isolated Epistemic Silos',
+        inter: {
+          nodes: [
+            { id: 'sec',  label: 'SecOps Agent', role: 'sec', x: 220, y: 150 },
+            { id: 'comp', label: 'Compliance Agent', role: 'comp', x: 220, y: 390 },
+            { id: 'fin',  label: 'FinOps Agent', role: 'fin', x: 860, y: 150 },
+            { id: 'qa',   label: 'QA Reliability Critic', role: 'qa', x: 860, y: 390 },
+            { id: 'art_tf', label: 'Multi-Region Terraform Spec', role: 'art', x: 540, y: 270 }
+          ],
+          links: [
+            { source: 'sec', target: 'art_tf', label: 'DRAFTS_SPEC', type: 'normal' }
+          ],
+          targetNode: 'sec'
+        },
+        mind: {
+          sec: {
+            title: 'SecOps: Zero-Trust Enclave Isolation',
+            desc: 'Internal belief: All intra-region microservices must enforce mutual TLS with rotated KMS cryptographic tokens.',
+            nodes: [
+              { id: 's_goal', label: 'Policy: Zero-Trust Auth', role: 'goal', x: 240, y: 220, highlight: true },
+              { id: 's_mtls', label: 'Strict mTLS Protocol', role: 'premise', x: 540, y: 160 },
+              { id: 's_kms', label: 'KMS Envelope Encryption', role: 'premise', x: 540, y: 280 }
+            ],
+            links: [
+              { source: 's_goal', target: 's_mtls', label: 'ENFORCES', type: 'normal' },
+              { source: 's_goal', target: 's_kms', label: 'ROTATES', type: 'normal' }
+            ],
+            targetNode: 's_goal'
+          },
+          fin: {
+            title: 'FinOps: Cloud Cost Reduction Goal',
+            desc: 'Internal belief: Shift batch infrastructure 100% to Spot Instances to cut $140k/mo.',
+            nodes: [
+              { id: 'f_goal', label: 'Cost Cut Goal: -$140k/mo', role: 'goal', x: 240, y: 220 },
+              { id: 'f_prem', label: '100% Spot Instance Fleet', role: 'premise', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'f_goal', target: 'f_prem', label: 'PROPOSES', type: 'normal' }
+            ],
+            targetNode: 'f_prem'
+          },
+          comp: {
+            title: 'Compliance: GDPR Sovereignty Mandate',
+            desc: 'Internal belief: EU resident PII data must never traverse non-EU regional availability zones.',
+            nodes: [
+              { id: 'c_goal', label: 'GDPR Article 17 Mandate', role: 'goal', x: 240, y: 220 },
+              { id: 'c_geo', label: 'EU Boundary Fence (eu-west-1)', role: 'premise', x: 540, y: 220 }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_geo', label: 'RESTRICTS', type: 'normal' }
+            ],
+            targetNode: 'c_geo'
+          },
+          qa: {
+            title: 'QA: P99 Tail Latency Constraint',
+            desc: 'Internal belief: P99 tail latency must remain below 150ms under peak 50,000 req/sec load.',
+            nodes: [
+              { id: 'q_goal', label: 'SLA: P99 <= 150ms', role: 'goal', x: 240, y: 220 },
+              { id: 'q_load', label: 'Chaos Monkey Cluster Test', role: 'tool', x: 540, y: 220 }
+            ],
+            links: [
+              { source: 'q_goal', target: 'q_load', label: 'BENCHMARKS', type: 'normal' }
+            ],
+            targetNode: 'q_goal'
+          }
+        }
+      },
+      {
+        turn: 1,
+        title: 'Turn 1: Tool Telemetry Injection',
+        desc: 'SecOps queries network telemetry and injects VPC cross-region latency into FinOps. FinOps discovers cross-region peering introduces unforeseen data egress fees.',
+        badge: 'Knowledge Injection',
+        inter: {
+          nodes: [
+            { id: 'sec',  label: 'SecOps Agent', role: 'sec', x: 220, y: 150 },
+            { id: 'comp', label: 'Compliance Agent', role: 'comp', x: 220, y: 390 },
+            { id: 'fin',  label: 'FinOps Agent', role: 'fin', x: 860, y: 150 },
+            { id: 'qa',   label: 'QA Reliability Critic', role: 'qa', x: 860, y: 390 },
+            { id: 'vpc_peer', label: 'VPC Peering Telemetry', role: 'tool', x: 540, y: 150, highlight: true }
+          ],
+          links: [
+            { source: 'sec', target: 'vpc_peer', label: 'INJECTS_FACTS', type: 'bridge' },
+            { source: 'vpc_peer', target: 'fin', label: 'ADOPTED_BY_FINOPS', type: 'bridge' },
+            { source: 'sec', target: 'comp', label: 'CHECKS_ACCESS', type: 'normal' }
+          ],
+          targetNode: 'vpc_peer'
+        },
+        mind: {
+          sec: {
+            title: 'SecOps: Telemetry Verified',
+            desc: 'Network monitoring confirms inter-region transit gateway latencies are within bounds.',
+            nodes: [
+              { id: 's_goal', label: 'Policy: Zero-Trust Auth', role: 'goal', x: 240, y: 220 },
+              { id: 's_tel', label: 'VPC Flow Log Telemetry', role: 'tool', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 's_goal', target: 's_tel', label: 'VERIFIES', type: 'bridge' }
+            ],
+            targetNode: 's_tel'
+          },
+          fin: {
+            title: 'FinOps: Foreign Node Ingested',
+            desc: 'Ingests SecOps VPC latency telemetry; uncovers that cross-region egress doubles networking cost.',
+            nodes: [
+              { id: 'f_goal', label: 'Cost Cut Goal: -$140k/mo', role: 'goal', x: 240, y: 220 },
+              { id: 'f_tel', label: 'Injected: VPC Egress Telemetry', role: 'tool', x: 540, y: 140, highlight: true },
+              { id: 'f_bill', label: 'Egress Cost Surge ($32k/mo)', role: 'premise', x: 540, y: 290 }
+            ],
+            links: [
+              { source: 'f_goal', target: 'f_tel', label: 'INGESTS', type: 'bridge' },
+              { source: 'f_tel', target: 'f_bill', label: 'REVEALS_FEE', type: 'normal' }
+            ],
+            targetNode: 'f_tel'
+          },
+          comp: {
+            title: 'Compliance: VPC Sovereignty Audit',
+            desc: 'Verifies that transit gateways do not route unencrypted data across non-EU availability zones.',
+            nodes: [
+              { id: 'c_goal', label: 'GDPR Article 17 Mandate', role: 'goal', x: 240, y: 220 },
+              { id: 'c_audit', label: 'Transit Gateway Sovereignty Audit', role: 'tool', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_audit', label: 'AUDITS', type: 'normal' }
+            ],
+            targetNode: 'c_audit'
+          },
+          qa: {
+            title: 'QA: Spot Instance Failure Profiling',
+            desc: 'Simulates Spot eviction events; discovers tail latency spikes to 3,400ms.',
+            nodes: [
+              { id: 'q_goal', label: 'SLA: P99 <= 150ms', role: 'goal', x: 240, y: 220 },
+              { id: 'q_spike', label: 'Chaos Test: 3,400ms Spike on Eviction', role: 'tool', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'q_goal', target: 'q_spike', label: 'DETECTS_ANOMALY', type: 'normal' }
+            ],
+            targetNode: 'q_spike'
+          }
+        }
+      },
+      {
+        turn: 2,
+        title: 'Turn 2: Belief Revision & Disproof (Edge Pruning)',
+        desc: 'QA Critic refutes FinOps assumption that Spot instances always cut cost. High termination spikes crash the P99 SLA. FinOps severs the spot-fleet premise edge.',
+        badge: 'Belief Disproof & Pruning',
+        inter: {
+          nodes: [
+            { id: 'sec',  label: 'SecOps Agent', role: 'sec', x: 220, y: 150 },
+            { id: 'comp', label: 'Compliance Agent', role: 'comp', x: 220, y: 390 },
+            { id: 'fin',  label: 'FinOps Agent', role: 'fin', x: 860, y: 150 },
+            { id: 'qa',   label: 'QA Reliability Critic', role: 'qa', x: 860, y: 390 },
+            { id: 'prun_spot', label: '[PRUNED] 100% Spot Fleet Assumption', role: 'pruned', x: 540, y: 270, highlight: true }
+          ],
+          links: [
+            { source: 'qa', target: 'fin', label: 'REFUTES_PREMISE', type: 'refuted' },
+            { source: 'fin', target: 'prun_spot', label: 'SEVERED', type: 'refuted' }
+          ],
+          targetNode: 'prun_spot'
+        },
+        mind: {
+          fin: {
+            title: 'FinOps: Internal Disproof of Spot Fleet',
+            desc: 'Severes the unverified optimization link. Adopts 70% Reserved Instances + 30% Savings Plan.',
+            nodes: [
+              { id: 'f_goal', label: 'Cost Cut Goal: -$140k/mo', role: 'goal', x: 240, y: 220 },
+              { id: 'f_prun', label: '[PRUNED] 100% Spot Assumption', role: 'pruned', x: 540, y: 140, highlight: true },
+              { id: 'f_ri', label: '70% 3-Yr Reserved + 30% Savings Plan', role: 'tool', x: 540, y: 290 }
+            ],
+            links: [
+              { source: 'f_goal', target: 'f_prun', label: 'REFUTED', type: 'refuted' },
+              { source: 'f_goal', target: 'f_ri', label: 'ADOPTS_OPTIMAL', type: 'bridge' }
+            ],
+            targetNode: 'f_prun'
+          },
+          qa: {
+            title: 'QA: Proof of Eviction Instability',
+            desc: 'Issues verified reliability disproof report.',
+            nodes: [
+              { id: 'q_goal', label: 'SLA: P99 <= 150ms', role: 'goal', x: 240, y: 220 },
+              { id: 'q_dis', label: 'Disproof: Spot Evictions Violate SLA', role: 'tool', x: 580, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'q_goal', target: 'q_dis', label: 'ISSUES_DISPROOF', type: 'bridge' }
+            ],
+            targetNode: 'q_dis'
+          },
+          sec: {
+            title: 'SecOps: Least Privilege Hardening',
+            desc: 'Prunes wildcard IAM roles discovered during vulnerability audit.',
+            nodes: [
+              { id: 's_goal', label: 'Policy: Zero-Trust Auth', role: 'goal', x: 240, y: 220 },
+              { id: 's_prun', label: '[PRUNED] Wildcard s3:* IAM Role', role: 'pruned', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 's_goal', target: 's_prun', label: 'SEVERED', type: 'refuted' }
+            ],
+            targetNode: 's_prun'
+          },
+          comp: {
+            title: 'Compliance: In-Memory Masking Pruned',
+            desc: 'Rejects in-memory pseudonymization as insufficient under GDPR Article 17.',
+            nodes: [
+              { id: 'c_goal', label: 'GDPR Article 17 Mandate', role: 'goal', x: 240, y: 220 },
+              { id: 'c_prun', label: '[PRUNED] In-Memory Masking', role: 'pruned', x: 540, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_prun', label: 'REFUTED', type: 'refuted' }
+            ],
+            targetNode: 'c_prun'
+          }
+        }
+      },
+      {
+        turn: 3,
+        title: 'Turn 3: Interdisciplinary Consensus & Launch Bridge',
+        desc: 'SecOps and Compliance establish a strong semantic bridge: PII Tokenization is enforced directly in IAM policy. FinOps locks $118k/mo savings and QA verifies P99 = 112ms.',
+        badge: 'Consensus Bridge Established',
+        inter: {
+          nodes: [
+            { id: 'sec',  label: 'SecOps Agent', role: 'sec', x: 220, y: 150 },
+            { id: 'comp', label: 'Compliance Agent', role: 'comp', x: 220, y: 390 },
+            { id: 'fin',  label: 'FinOps Agent', role: 'fin', x: 860, y: 150 },
+            { id: 'qa',   label: 'QA Reliability Critic', role: 'qa', x: 860, y: 390 },
+            { id: 'gate_bridge', label: 'Cross-Domain Attested Gate', role: 'consensus', x: 540, y: 270, highlight: true }
+          ],
+          links: [
+            { source: 'sec', target: 'gate_bridge', label: 'MTLS_ENFORCED', type: 'bridge' },
+            { source: 'comp', target: 'gate_bridge', label: 'GDPR_VERIFIED', type: 'bridge' },
+            { source: 'fin', target: 'gate_bridge', label: 'BUDGET_APPROVED', type: 'bridge' },
+            { source: 'qa', target: 'gate_bridge', label: 'P99_112MS_PASSED', type: 'bridge' }
+          ],
+          targetNode: 'gate_bridge'
+        },
+        mind: {
+          sec: {
+            title: 'SecOps: Consensus Token Integration',
+            desc: 'Integrates HSM hardware tokenization directly into the Terraform deployment gate.',
+            nodes: [
+              { id: 's_goal', label: 'Policy: Zero-Trust Auth', role: 'goal', x: 240, y: 220 },
+              { id: 's_gate', label: 'HSM Cryptographic Attestation', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 's_goal', target: 's_gate', label: 'ATTESTS', type: 'bridge' }
+            ],
+            targetNode: 's_gate'
+          },
+          comp: {
+            title: 'Compliance: GDPR Sovereignty Certified',
+            desc: 'Attestation seals regulatory compliance across all deployment regions.',
+            nodes: [
+              { id: 'c_goal', label: 'GDPR Article 17 Mandate', role: 'goal', x: 240, y: 220 },
+              { id: 'c_gate', label: 'Sovereignty Compliance Sign-off', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'c_goal', target: 'c_gate', label: 'APPROVES', type: 'bridge' }
+            ],
+            targetNode: 'c_gate'
+          },
+          fin: {
+            title: 'FinOps: Locked ROI Agreement',
+            desc: 'Commits $118,500/month verified net savings.',
+            nodes: [
+              { id: 'f_goal', label: 'Cost Cut Goal: -$140k/mo', role: 'goal', x: 240, y: 220 },
+              { id: 'f_gate', label: 'Committed Net Savings: $118.5k/mo', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'f_goal', target: 'f_gate', label: 'LOCKS_SAVINGS', type: 'bridge' }
+            ],
+            targetNode: 'f_gate'
+          },
+          qa: {
+            title: 'QA: Performance SLA Green Seal',
+            desc: 'P99 latency benchmarks at 112ms under full load.',
+            nodes: [
+              { id: 'q_goal', label: 'SLA: P99 <= 150ms', role: 'goal', x: 240, y: 220 },
+              { id: 'q_gate', label: 'Chaos Benchmark: P99=112ms (PASSED)', role: 'consensus', x: 620, y: 220, highlight: true }
+            ],
+            links: [
+              { source: 'q_goal', target: 'q_gate', label: 'PASSES_SLA', type: 'bridge' }
+            ],
+            targetNode: 'q_gate'
+          }
+        }
+      }
+    ]
+  }
+};
+
+/* ==============================================================================
+   APPLICATION STATE & CONTROLLER
+   ============================================================================== */
+
+const S = {
+  scenario: 'simple',     // 'simple' | 'enterprise'
+  viewMode: 'team',       // 'team' | 'mind'
+  agentId: 'chef',        // active agent in mind view
+  turn: 0,
+  isPlaying: false,
+  timer: null,
+  isDark: true,
+  selectedNode: null,
+  simNodes: [],
+  simLinks: []
+};
+
+// Node Color Mapping
+const ROLE_COLORS = {
+  // Simple
+  chef: '#0E8DB7', nutr: '#10B981', acct: '#D97706', mgr: '#8B5CF6', art: '#EC4899',
+  // Enterprise
+  sec: '#0E8DB7', comp: '#10B981', fin: '#D97706', qa: '#EF4444',
+  // Generic / Intra
+  goal: '#0E8DB7', premise: '#D97706', tool: '#10B981', pruned: '#EF4444', consensus: '#2563EB'
+};
+
+function initSimGraph() {
+  const scen = SCENARIOS[S.scenario];
+  const curTurnData = scen.turns[S.turn];
+
+  let rawNodes = [];
+  let rawLinks = [];
+
+  if (S.viewMode === 'team') {
+    rawNodes = curTurnData.inter.nodes;
+    rawLinks = curTurnData.inter.links;
+  } else {
+    const mindData = curTurnData.mind[S.agentId] || curTurnData.mind[Object.keys(curTurnData.mind)[0]];
+    rawNodes = mindData.nodes;
+    rawLinks = mindData.links;
+  }
+
+  // Clone nodes preserving positions if existing
+  S.simNodes = rawNodes.map(rn => {
+    const existing = S.simNodes.find(en => en.id === rn.id);
+    return {
+      id: rn.id,
+      label: rn.label,
+      role: rn.role,
+      highlight: rn.highlight,
+      x: existing ? existing.x : rn.x,
+      y: existing ? existing.y : rn.y,
+      vx: 0,
+      vy: 0
+    };
+  });
+
+  S.simLinks = rawLinks.map(rl => ({
+    source: rl.source,
+    target: rl.target,
+    label: rl.label,
+    type: rl.type,
+    sourceNode: S.simNodes.find(n => n.id === rl.source),
+    targetNode: S.simNodes.find(n => n.id === rl.target)
+  }));
+
+  updateInspector();
+}
+
+function updatePhysics() {
+  const W = 1080, H = 540;
+  // Repulsion
+  for (let i = 0; i < S.simNodes.length; i++) {
+    for (let j = i + 1; j < S.simNodes.length; j++) {
+      const a = S.simNodes[i], b = S.simNodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist < 140) {
+        const f = (140 - dist) / dist * 0.08;
+        a.x -= dx * f; a.y -= dy * f;
+        b.x += dx * f; b.y += dy * f;
+      }
+    }
+  }
+
+  // Spring Links
+  S.simLinks.forEach(l => {
+    if (!l.sourceNode || !l.targetNode) return;
+    const dx = l.targetNode.x - l.sourceNode.x, dy = l.targetNode.y - l.sourceNode.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const f = (dist - 120) * 0.035;
+    l.sourceNode.x += (dx / dist) * f; l.sourceNode.y += (dy / dist) * f;
+    l.targetNode.x -= (dx / dist) * f; l.targetNode.y -= (dy / dist) * f;
+  });
+
+  // Boundary Clamp
+  S.simNodes.forEach(n => {
+    n.x = Math.max(70, Math.min(W - 70, n.x));
+    n.y = Math.max(50, Math.min(H - 50, n.y));
+  });
+}
+
+function drawLoop() {
+  const cv = document.getElementById('kgCanvas');
+  if (!cv) return;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+
+  // Background
+  g.fillStyle = S.isDark ? '#0A0F14' : '#F8FAFC';
+  g.fillRect(0, 0, W, H);
+
+  // Subtle grid dots
+  g.fillStyle = S.isDark ? '#16232F' : '#E2E8F0';
+  for (let x = 20; x < W; x += 40) {
+    for (let y = 20; y < H; y += 40) {
+      g.fillRect(x, y, 1.5, 1.5);
+    }
+  }
+
+  updatePhysics();
+
+  // Draw Links
+  S.simLinks.forEach(l => {
+    if (!l.sourceNode || !l.targetNode) return;
+    g.beginPath();
+    g.moveTo(l.sourceNode.x, l.sourceNode.y);
+    g.lineTo(l.targetNode.x, l.targetNode.y);
+
+    if (l.type === 'refuted') {
+      g.strokeStyle = '#EF4444';
+      g.setLineDash([6, 4]);
+      g.lineWidth = 2.2;
+    } else if (l.type === 'bridge') {
+      g.strokeStyle = '#10B981';
+      g.setLineDash([]);
+      g.lineWidth = 3.5;
+    } else {
+      g.strokeStyle = S.isDark ? '#2D3E4F' : '#CBD5E1';
+      g.setLineDash([]);
+      g.lineWidth = 1.6;
+    }
+    g.stroke();
+    g.setLineDash([]);
+
+    // Edge Label
+    const mx = (l.sourceNode.x + l.targetNode.x) / 2;
+    const my = (l.sourceNode.y + l.targetNode.y) / 2;
+    g.fillStyle = S.isDark ? '#8E9FAA' : '#64748B';
+    g.font = 'bold 9px sans-serif';
+    g.textAlign = 'center';
+    g.fillText(l.label, mx, my - 4);
+  });
+
+  // Draw Nodes
+  S.simNodes.forEach(n => {
+    const col = ROLE_COLORS[n.role] || '#0E8DB7';
+    const isSel = S.selectedNode && S.selectedNode.id === n.id;
+    const rad = (n.highlight || isSel) ? 16 : 12;
+
+    // Outer glow for highlights
+    if (n.highlight || isSel) {
+      g.beginPath();
+      g.arc(n.x, n.y, rad + 8, 0, 6.2832);
+      g.fillStyle = isSel ? 'rgba(37, 99, 235, 0.35)' : 'rgba(16, 185, 129, 0.25)';
+      g.fill();
+    }
+
+    // Node body
+    g.beginPath();
+    g.arc(n.x, n.y, rad, 0, 6.2832);
+    g.fillStyle = col;
+    g.fill();
+    g.strokeStyle = '#FFFFFF';
+    g.lineWidth = isSel ? 3 : 2;
+    g.stroke();
+
+    // Node Label
+    g.fillStyle = S.isDark ? '#E6EDF2' : '#0F172A';
+    g.font = 'bold 11px sans-serif';
+    g.textAlign = 'center';
+    g.fillText(n.label, n.x, n.y + rad + 15);
+  });
+
+  // Callout Banner & Pointer Arrow
+  drawCallout(g);
+
+  requestAnimationFrame(drawLoop);
+}
+
+function drawCallout(g) {
+  const scen = SCENARIOS[S.scenario];
+  const curTurnData = scen.turns[S.turn];
+
+  let targetId = (S.selectedNode && S.selectedNode.id);
+  if (!targetId) {
+    if (S.viewMode === 'team') {
+      targetId = curTurnData.inter.targetNode;
+    } else {
+      const mindData = curTurnData.mind[S.agentId];
+      targetId = mindData ? mindData.targetNode : null;
+    }
+  }
+
+  const tgt = S.simNodes.find(n => n.id === targetId) || S.simNodes[0];
+
+  // Callout Banner
+  g.fillStyle = S.isDark ? 'rgba(22, 31, 40, 0.94)' : 'rgba(255, 255, 255, 0.96)';
+  g.fillRect(16, 16, 460, 76);
+  g.strokeStyle = S.isDark ? '#4FC3E8' : '#0284C7';
+  g.lineWidth = 1.5;
+  g.strokeRect(16, 16, 460, 76);
+
+  // Badge header
+  g.fillStyle = S.isDark ? '#4FC3E8' : '#0284C7';
+  g.font = 'bold 11px sans-serif';
+  g.textAlign = 'left';
+  const modePrefix = S.viewMode === 'team' ? 'INTER-AGENT TEAM' : 'INTRA-AGENT MIND';
+  g.fillText(modePrefix + ': ' + curTurnData.badge.toUpperCase(), 28, 36);
+
+  // Title
+  g.fillStyle = S.isDark ? '#FFFFFF' : '#0F172A';
+  g.font = 'bold 12px sans-serif';
+  const calloutTitle = S.selectedNode ? S.selectedNode.label : curTurnData.title;
+  g.fillText(calloutTitle, 28, 54);
+
+  // Description
+  g.fillStyle = S.isDark ? '#8E9FAA' : '#475569';
+  g.font = '11px sans-serif';
+  const desc = S.viewMode === 'team' ? curTurnData.desc : (curTurnData.mind[S.agentId] ? curTurnData.mind[S.agentId].desc : curTurnData.desc);
+  g.fillText(desc.slice(0, 75) + '...', 28, 72);
+
+  // Pointer Line & Pulsing Ring
+  if (tgt) {
+    g.beginPath();
+    g.moveTo(476, 54);
+    g.lineTo(tgt.x, tgt.y - 18);
+    g.strokeStyle = S.isDark ? 'rgba(79, 195, 232, 0.7)' : 'rgba(2, 132, 199, 0.7)';
+    g.lineWidth = 1.8;
+    g.setLineDash([4, 3]);
+    g.stroke();
+    g.setLineDash([]);
+
+    g.beginPath();
+    g.arc(tgt.x, tgt.y, 22 + Math.sin(Date.now() * 0.006) * 4, 0, 6.2832);
+    g.strokeStyle = S.isDark ? '#4FC3E8' : '#0284C7';
+    g.lineWidth = 1.5;
+    g.stroke();
+  }
+}
+
+/* ==============================================================================
+   UI INTERACTIONS & STATE TRANSITIONS
+   ============================================================================== */
+
+function setScenario(scenKey) {
+  S.scenario = scenKey;
+  S.turn = 0;
+  S.selectedNode = null;
+  document.getElementById('scen-simple').classList.toggle('active', scenKey === 'simple');
+  document.getElementById('scen-enterprise').classList.toggle('active', scenKey === 'enterprise');
+
+  // Default agent for the scenario
+  const scen = SCENARIOS[scenKey];
+  S.agentId = scen.agents[0].id;
+
+  populateAgentPicker();
+  renderTurnPills();
+  initSimGraph();
+}
+
+function setViewMode(mode) {
+  S.viewMode = mode;
+  S.selectedNode = null;
+  document.getElementById('view-team').classList.toggle('active', mode === 'team');
+  document.getElementById('view-mind').classList.toggle('active', mode === 'mind');
+  document.getElementById('agentPickerGroup').style.display = mode === 'mind' ? 'flex' : 'none';
+
+  initSimGraph();
+}
+
+function onAgentSelectChange(agentId) {
+  S.agentId = agentId;
+  S.selectedNode = null;
+  initSimGraph();
+}
+
+function populateAgentPicker() {
+  const sel = document.getElementById('agentSelect');
+  const scen = SCENARIOS[S.scenario];
+  sel.innerHTML = scen.agents.map(a => `<option value="${a.id}" ${a.id === S.agentId ? 'selected' : ''}>${a.label}</option>`).join('');
+}
+
+function renderTurnPills() {
+  const c = document.getElementById('turnPills');
+  const scen = SCENARIOS[S.scenario];
+  c.innerHTML = scen.turns.map((t, idx) => `
+    <button class="turn-pill ${idx === S.turn ? 'active' : ''}" onclick="setTurn(${idx})">
+      T${t.turn}: ${t.badge}
+    </button>
+  `).join('');
+}
+
+function setTurn(idx) {
+  const scen = SCENARIOS[S.scenario];
+  S.turn = Math.max(0, Math.min(scen.turns.length - 1, idx));
+  S.selectedNode = null;
+  renderTurnPills();
+  initSimGraph();
+}
+
+function stepTurn(delta) {
+  setTurn(S.turn + delta);
+}
+
+function togglePlay() {
+  S.isPlaying = !S.isPlaying;
+  document.getElementById('playBtn').textContent = S.isPlaying ? '❚❚ Pause' : '▶ Play';
+  if (S.isPlaying) {
+    S.timer = setInterval(() => {
+      const scen = SCENARIOS[S.scenario];
+      if (S.turn >= scen.turns.length - 1) {
+        setTurn(0);
+      } else {
+        stepTurn(1);
+      }
+    }, 2800);
+  } else {
+    clearInterval(S.timer);
+    S.timer = null;
+  }
+}
+
+function toggleTheme() {
+  S.isDark = !S.isDark;
+  document.body.setAttribute('data-theme', S.isDark ? 'dark' : 'light');
+  document.getElementById('themeIcon').textContent = S.isDark ? '☀️' : '🌙';
+}
+
+function updateInspector() {
+  const scen = SCENARIOS[S.scenario];
+  const curTurn = scen.turns[S.turn];
+
+  document.getElementById('metric1Value').textContent = S.viewMode === 'team' ? 'Inter-Agent (Team Level)' : `Intra-Agent (${S.agentId.toUpperCase()})`;
+  document.getElementById('metric2Value').textContent = scen.name;
+
+  document.getElementById('eventHeading').textContent = curTurn.title;
+  document.getElementById('eventDescription').textContent = S.viewMode === 'team' 
+    ? curTurn.desc 
+    : (curTurn.mind[S.agentId] ? curTurn.mind[S.agentId].desc : curTurn.desc);
+
+  if (S.selectedNode) {
+    document.getElementById('cardHeading').textContent = 'Selected: ' + S.selectedNode.label;
+    document.getElementById('cardDescription').textContent = S.viewMode === 'team'
+      ? `Clicking this agent in Team View allows you to dive into its mind. Role: ${S.selectedNode.role.toUpperCase()}`
+      : `Internal cognitive concept in ${S.agentId.toUpperCase()}'s working memory. Epistemic Role: ${S.selectedNode.role.toUpperCase()}`;
+  } else {
+    document.getElementById('cardHeading').textContent = 'Navigation Tip';
+    document.getElementById('cardDescription').textContent = S.viewMode === 'team'
+      ? 'Click any Agent node on the canvas to zoom inside its internal cognitive mind graph.'
+      : `Inspecting the internal belief and thought decomposition graph of ${S.agentId.toUpperCase()}.`;
+  }
+}
+
+// Canvas Interaction (Click to inspect or zoom)
+function initCanvasInteraction() {
+  const cv = document.getElementById('kgCanvas');
+  if (!cv) return;
+
+  cv.addEventListener('click', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+
+    const hit = S.simNodes.find(n => Math.hypot(n.x - x, n.y - y) < 26);
+    if (hit) {
+      S.selectedNode = hit;
+      // If clicking an agent in Team view, offer or trigger dive into mind
+      const scen = SCENARIOS[S.scenario];
+      const isAgent = scen.agents.find(a => a.id === hit.id);
+      if (S.viewMode === 'team' && isAgent) {
+        // Switch to Mind view for this agent!
+        S.agentId = hit.id;
+        setViewMode('mind');
+        document.getElementById('agentSelect').value = hit.id;
+        return;
+      }
+    } else {
+      S.selectedNode = null;
+    }
+    updateInspector();
+  });
+}
+
+// Initialization on DOM Ready
+window.addEventListener('DOMContentLoaded', () => {
+  populateAgentPicker();
+  renderTurnPills();
+  initSimGraph();
+  initCanvasInteraction();
+  requestAnimationFrame(drawLoop);
+});
+</script>
+</body>
+</html>
