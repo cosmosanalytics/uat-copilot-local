@@ -357,6 +357,94 @@ button.btn-action:hover {
   background: #10B981;
   height: 3px;
 }
+
+/* WebLLM Engine Panel & Chat */
+.llm-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.llm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip-status {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-status.ready { background: var(--good-bg); color: var(--good); border: 1px solid var(--good); }
+.chip-status.loading { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
+.chip-status.standby { background: var(--panel-hover); color: var(--muted); border: 1px solid var(--border); }
+
+progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: none;
+  background: var(--border);
+}
+progress::-webkit-progress-bar { background: var(--border); }
+progress::-webkit-progress-value { background: var(--accent); }
+progress::-moz-progress-bar { background: var(--accent); }
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-body);
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-response {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.45;
+  display: none;
+}
+
 </style>
 </head>
 <body data-theme="light">
@@ -377,6 +465,40 @@ button.btn-action:hover {
     </button>
   </div>
 </header>
+
+
+<div class="llm-panel" id="llmEnginePanel">
+  <div class="llm-row">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;">
+        <span>🧠</span> Execution Engine:
+      </span>
+      <span class="chip-status standby" id="engineChip">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;"></span>
+        Procedural Engine (Instant & Deterministic)
+      </span>
+      <span class="small muted" id="gpuNotice" style="font-size:11px;color:var(--muted);">
+        Runs locally in browser. No download required.
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select id="modelSelect" style="background:var(--bg);color:var(--ink);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:12px;font-family:var(--font-body);">
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B (Fast, ~350 MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (Balanced, ~700 MB)</option>
+      </select>
+      <button class="btn-action" id="btnLoadModel" onclick="loadWebLLM()">
+        ⚡ Load On-Device WebLLM
+      </button>
+    </div>
+  </div>
+  <div id="loadProgressContainer" style="display:none;margin-top:6px;">
+    <progress id="loadProgressBar" max="100" value="0"></progress>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;">
+      <span id="loadProgressText">Initializing WebGPU pipeline...</span>
+      <span id="loadProgressPercent">0%</span>
+    </div>
+  </div>
+</div>
 
 <div class="controls-bar">
   <!-- Scenario Selector -->
@@ -451,7 +573,20 @@ button.btn-action:hover {
       <p id="eventDescription">Turn 0: Cold start baseline. Agents hold distinct epistemic domains with no cross-pollination yet.</p>
     </div>
 
-    <div class="legend-card">
+    
+    <div class="inspector-card" id="cardAgentQuery">
+      <h4><span>💬</span> Query Agent's Mind</h4>
+      <p id="queryPromptText">Ask this agent why it pruned assumptions or how its internal knowledge informs team decisions.</p>
+      <div class="chat-box">
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="agentQuestionInput" placeholder="Ask e.g. Why did you prune that belief?" onkeydown="if(event.key==='Enter')askAgentMind()" />
+          <button class="btn-action" onclick="askAgentMind()" style="padding:6px 12px;">Ask</button>
+        </div>
+        <div class="chat-response" id="agentResponseBox"></div>
+      </div>
+    </div>
+
+<div class="legend-card">
       <div style="font-weight:700;color:var(--ink);margin-bottom:4px;">Graph Legend</div>
       <div class="legend-item"><span class="legend-dot" style="background:#0E8DB7;"></span> Primary Agent Role / Vision</div>
       <div class="legend-item"><span class="legend-dot" style="background:#D97706;"></span> Specialist Lens / Premise</div>
@@ -1500,6 +1635,150 @@ function initCanvasInteraction() {
 }
 
 // Initialization on DOM Ready
+
+/* ==============================================================================
+   WEBLLM INTEGRATION & REASONING SYNTHESIS
+   ============================================================================== */
+
+const HAS_GPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
+
+const LLM_STATE = {
+  lib: null,
+  engine: null,
+  status: 'idle', // 'idle' | 'loading' | 'ready' | 'error'
+  pct: 0,
+  text: '',
+  selectedModel: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC'
+};
+
+async function loadWebLLM() {
+  const btn = document.getElementById('btnLoadModel');
+  const chip = document.getElementById('engineChip');
+  const progContainer = document.getElementById('loadProgressContainer');
+  const progBar = document.getElementById('loadProgressBar');
+  const progText = document.getElementById('loadProgressText');
+  const progPct = document.getElementById('loadProgressPercent');
+
+  if (!HAS_GPU) {
+    alert("WebGPU is not detected in your browser. The app will continue running in fast, deterministic procedural mode!");
+    return;
+  }
+
+  try {
+    LLM_STATE.status = 'loading';
+    btn.disabled = true;
+    btn.textContent = 'Loading Engine...';
+    chip.className = 'chip-status loading';
+    chip.textContent = 'Loading Model Weights...';
+    progContainer.style.display = 'block';
+
+    if (!LLM_STATE.lib) {
+      progText.textContent = 'Downloading WebLLM runtime library...';
+      LLM_STATE.lib = await import('https://esm.run/@mlc-ai/web-llm');
+    }
+
+    const modelName = document.getElementById('modelSelect').value;
+    LLM_STATE.selectedModel = modelName;
+
+    LLM_STATE.engine = await LLM_STATE.lib.CreateMLCEngine(modelName, {
+      initProgressCallback: p => {
+        const pct = Math.round((p.progress || 0) * 100);
+        progBar.value = pct;
+        progPct.textContent = pct + '%';
+        progText.textContent = p.text || 'Fetching model tensors into WebGPU cache...';
+      }
+    });
+
+    LLM_STATE.status = 'ready';
+    chip.className = 'chip-status ready';
+    chip.textContent = 'WebLLM Active (' + modelName.split('-')[0] + ' on WebGPU)';
+    btn.textContent = '✓ Model Loaded';
+    btn.disabled = true;
+    progContainer.style.display = 'none';
+
+  } catch (err) {
+    console.error('WebLLM load error:', err);
+    LLM_STATE.status = 'error';
+    chip.className = 'chip-status standby';
+    chip.textContent = 'WebLLM Unavailable (Falling back to Procedural)';
+    btn.disabled = false;
+    btn.textContent = '⚡ Retry Load WebLLM';
+    progContainer.style.display = 'none';
+  }
+}
+
+// Query the active agent's mind
+async function askAgentMind() {
+  const input = document.getElementById('agentQuestionInput');
+  const respBox = document.getElementById('agentResponseBox');
+  const question = (input.value || '').trim();
+  if (!question) return;
+
+  const scen = SCENARIOS[S.scenario];
+  const curTurn = scen.turns[S.turn];
+  const targetAgent = S.viewMode === 'mind' ? S.agentId : (S.selectedNode ? S.selectedNode.id : scen.agents[0].id);
+  const agentInfo = scen.agents.find(a => a.id === targetAgent) || scen.agents[0];
+  const mindData = curTurn.mind[targetAgent] || curTurn.mind[Object.keys(curTurn.mind)[0]];
+
+  respBox.style.display = 'block';
+  respBox.textContent = 'Thinking from ' + agentInfo.label + "'s epistemic graph...";
+
+  // Prepare context from current mind knowledge graph
+  const nodesSummary = mindData.nodes.map(n => '- ' + n.label + ' (' + n.role + ')').join('\n');
+  const edgesSummary = mindData.links.map(l => '- ' + l.source + ' --[' + l.label + ']--> ' + l.target + (l.type === 'refuted' ? ' [PRUNED / REFUTED]' : '')).join('\n');
+
+  // If WebLLM is loaded and active, query local model!
+  if (LLM_STATE.status === 'ready' && LLM_STATE.engine) {
+    try {
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are ' + agentInfo.label + ' in an epistemic knowledge graph simulation (' + scen.name + ').\n' +
+                   'Your current internal working memory nodes are:\n' + nodesSummary + '\n' +
+                   'Your internal and external relationships are:\n' + edgesSummary + '\n' +
+                   'Current context: ' + mindData.desc + '\n' +
+                   'Answer the user concisely and directly in 2-3 sentences based strictly on your internal knowledge graph and what was pruned or confirmed.'
+        },
+        { role: 'user', content: question }
+      ];
+
+      const res = await LLM_STATE.engine.chat.completions.create({
+        messages,
+        max_tokens: 150,
+        temperature: 0.3
+      });
+
+      const reply = res.choices[0].message.content;
+      respBox.innerHTML = '<strong>' + agentInfo.label + ':</strong> ' + reply;
+      input.value = '';
+      return;
+    } catch (e) {
+      console.warn('WebLLM generation error, falling back to grounded rule:', e);
+    }
+  }
+
+  // Fast grounded synthesis fallback (if model not loaded or error)
+  setTimeout(() => {
+    let reply = '';
+    const qLower = question.toLowerCase();
+    if (qLower.includes('why') && (qLower.includes('prun') || qLower.includes('refut') || qLower.includes('disprov'))) {
+      if (S.scenario === 'simple') {
+        reply = 'I pruned the high-salt reduction because tool telemetry from the USDA database proved it caused a 1,420mg sodium spike (+136% over cardiac safety limits). Substituting roasted shiitake & miso preserved the rich umami flavor while keeping sodium at a verified 420mg.';
+      } else {
+        reply = 'I pruned the 100% Spot fleet assumption because chaos testing proved that eviction events spike P99 tail latency to 3,400ms, violating our 150ms SLA. Substituting a 70% Reserved Instance + 30% Savings Plan locked in $118.5k/mo net savings with zero downtime.';
+      }
+    } else if (qLower.includes('next') || qLower.includes('action') || qLower.includes('goal')) {
+      reply = 'My active priority is ' + mindData.title + '. I am validating my local premises against our shared consensus gate before committing any production actions.';
+    } else {
+      reply = 'According to my current working memory, I have verified: ' + mindData.nodes.map(n => n.label).slice(0, 3).join(', ') + '. My decisions remain anchored to tool observations rather than ungrounded assumptions.';
+    }
+
+    respBox.innerHTML = '<strong>' + agentInfo.label + ' (Grounded Epistemic Synthesis):</strong> ' + reply + 
+      '<div style="margin-top:6px;font-size:10px;color:var(--muted);">Tip: Load WebLLM above for open-ended on-device neural responses!</div>';
+    input.value = '';
+  }, 300);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   populateAgentPicker();
   renderTurnPills();
