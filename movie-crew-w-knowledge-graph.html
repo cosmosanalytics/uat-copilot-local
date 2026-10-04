@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A movie crew w knowledge graph: from brief to a screened short</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">A team of AI agents with different jobs plans, cuts, scores and critiques a short film (WebLLM agents, a generated animatic)</span></div>
+  <header>
+    <h1>A movie crew w knowledge graph: from brief to a screened short</h1>
+    <p class="lede">Give the crew a one-line brief. A producer sets the plan, three screenwriters with different lenses write treatments, a cinematographer picks camera moves, and a composer picks the music. Plain code cuts each treatment into a timeline, draws every shot and measures the cut. A critic that sees only numbers finds what weakens it, an editor fixes it, and a curator ranks the cuts. Then you watch them in a screening room, pick one, and can record it.</p>
+    <ol class="lede-items"><li><b>Producer</b>: Turns the brief into a title, logline, tone and palette.</li><li><b>Three screenwriters</b>: Classic three-act, twist ending and visual poem, so the stories differ.</li><li><b>Cinematographer and composer</b>: Camera moves and framing for each shot, and a generated score.</li><li><b>Editor and measurements</b>: Code cuts the timeline and measures runtime, pacing, color jumps, mood, payoff and captions.</li><li><b>Critic and curator</b>: A critic that sees only the numbers, then a ranking by measured score. You make the final pick.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: this is an animatic, not AI video. The shots are simple generated scenes with camera moves, captions and a generated score. The agents are a small on-device chat model, so some replies cannot be read, and the page then falls back to simple rules and says so. The measurements check craft rules such as runtime, pacing and continuity. They do not measure whether the film is good, so your own pick is the real test. Recording uses your browser's video recorder and may not work in every browser. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ================= the movie crew ================= */
+const S={brief:'A lighthouse keeper and a storm',runtime:30,rounds:1,producer:null,cuts:[],curator:null,choice:null,sel:0,log:[],busy:false,stop:false,err:'',prog:'',n:0,total:0,playing:false,muted:false,note:''};
+const LENSES=[{id:'three',name:'Classic three-act',desc:'a clear setup, rising tension, a climax and a resolution'},{id:'twist',name:'Twist ending',desc:'a quiet start and a surprise that changes what we saw'},{id:'poem',name:'Visual poem',desc:'images and mood, almost no words'}];
+const MOODS=['calm','joy','awe','tension','dark'];
+const MOOD_TARGET={calm:0.55,joy:0.66,awe:0.6,tension:0.34,dark:0.24};
+const MOOD_GRADE={calm:0,joy:0.1,awe:0.04,tension:-0.16,dark:-0.28};
+const MOOD_PACE={calm:1.1,joy:1,awe:1.25,tension:0.75,dark:0.85};
+const MOVES=['push-in','pull-out','pan-left','pan-right','tilt-up','static'];
+const FRAMES=['wide','medium','close'];
+const PRESETS=['A robot learns to paint','A lighthouse keeper and a storm','Two strangers share an umbrella'];
+const VW=400,VH=225,SW=500,SH=281;
+/* ---------- small helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the chat model first (the box at the top).');}
+function jsonCandidates(t){t=String(t);const out=[];for(let i=0;i<t.length;i++){if(t[i]!=='{')continue;let depth=0,inStr=false,esc=false;for(let j=i;j<t.length;j++){const c=t[j];if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}else if(c==='"')inStr=true;else if(c==='{')depth++;else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}}}return out;}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const hex2rgb=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(String(h).trim());if(!m)return null;const n=parseInt(m[1],16);return[(n>>16)&255,(n>>8)&255,n&255];};
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const lum=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+const css=(c,a)=>'rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+(a===undefined?1:a)+')';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const wordsOf=s=>String(s||'').split(/\s+/).filter(Boolean).length;
+const DRAW={tower:['lighthouse','tower'],orb:['sun','moon','circle','light','lantern','planet','orb','glow','beam'],peaks:['mountain','hill','peak','cliff','rock','tent'],waves:['wave','water','sea','ocean','river','lake','ripple','storm'],skyline:['city','building','skyline','street'],stars:['star','stars','sparkle','firefly','fireflies'],trees:['tree','forest','pine','woods'],rain:['rain','drizzle','umbrella','lines'],house:['house','cabin','home','door','window'],boat:['boat','ship','sail','robot'],arch:['bridge','arch','canvas','frame']};
+function drawerFor(word){const w=String(word).toLowerCase();for(const k of Object.keys(DRAW))if(DRAW[k].some(x=>w.indexOf(x)>=0))return k;return 'orb';}
+/* ---------- fallbacks, used when a reply cannot be read ---------- */
+function fallbackProducer(brief,runtime){
+  const b=brief.toLowerCase();let pal,tone;
+  if(/night|neon|city|dark|storm/.test(b)){pal=['#0B1030','#26356E','#F2B84B','#9FD3FF'];tone='tense and moody';}
+  else if(/forest|pine|green|robot|paint/.test(b)){pal=['#EAF2E3','#9BC1A0','#E07A5F','#3D405B'];tone='gentle and curious';}
+  else if(/umbrella|rain|stranger/.test(b)){pal=['#C9D6E3','#7C93AD','#E9A15A','#2B3A55'];tone='quiet and warm';}
+  else{pal=['#F4EBD9','#6C8EAD','#E07A5F','#3D405B'];tone='calm';}
+  return{title:brief.slice(0,40),logline:brief,genre:'short film',tone,palette:pal,runtime,source:'fallback'};
+}
+const KEYWORDS=['sun','moon','mountain','wave','water','sea','city','star','tree','forest','rain','house','boat','bridge','lighthouse','tower','light','storm','robot','umbrella','door','canvas'];
+function fallbackTreatment(brief,lens){
+  const b=brief.toLowerCase(),found=KEYWORDS.filter(k=>b.indexOf(k)>=0);
+  const pool=found.length?found:['sun','waves','peaks'];
+  const moods={three:['calm','calm','tension','tension','awe','calm'],twist:['calm','joy','joy','dark','awe','calm'],poem:['calm','awe','joy','awe','calm','calm']}[lens.id];
+  const lines={three:['We meet our place','A normal day','Something changes','The pressure builds','The turning point','Quiet again'],twist:['A quiet beginning','Small joys','Everything seems fine','A detail looks wrong','The truth appears','A new way to see it'],poem:['First light','A slow drift','Colors open','A held breath','Wide and still','Fade']}[lens.id];
+  const beats=moods.map((m,i)=>({shot:lines[i],elements:[pool[i%pool.length],pool[(i+1)%pool.length]],mood:m,caption:lens.id==='poem'?'':lines[i],seconds:4}));
+  return{beats,setup:pool[0],payoff:pool[0],source:'fallback'};
+}
+function fallbackCine(beats){
+  const mv={calm:'pan-right',joy:'pan-left',awe:'tilt-up',tension:'push-in',dark:'push-in'},pat=['wide','medium','close','medium','close','wide'];
+  return beats.map((b,i)=>({move:mv[b.mood]||'static',framing:pat[i%6]}));
+}
+/* ---------- drawing one shot (a procedural scene, not an AI image) ---------- */
+function renderShot(spec,w,h){
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d'),R=mulberry32(spec.seed>>>0),u=Math.min(w,h);
+  const pal=spec.palette.map(hex2rgb).filter(Boolean);while(pal.length<4)pal.push(pal[pal.length-1]||[128,128,128]);
+  const grade=spec.grade||0,shade=c=>grade>=0?mix(c,[255,255,255],grade):mix(c,[0,0,0],-grade);
+  const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,css(shade(pal[0])));gr.addColorStop(1,css(shade(pal[1])));g.fillStyle=gr;g.fillRect(0,0,w,h);
+  const col=()=>{let c=pal[2+Math.floor(R()*2)];if(!spec.strict){const gray=Math.floor(R()*255);c=mix(c,[gray,gray,gray],0.35);}return shade(c);};
+  const comp=spec.composition||'thirds';let fx=0.5,fy=0.42;
+  if(comp==='thirds'){fx=R()<0.5?1/3:2/3;fy=1/3;}else if(comp==='diagonal'){fx=0.7;fy=0.3;}
+  const els=[];(spec.elements||[]).forEach(wd=>{const d=drawerFor(wd);if(els.indexOf(d)<0)els.push(d);});
+  const n=Math.max(1,Math.min(4,spec.density||3)),use=els.slice(0,n);if(!use.length)use.push('orb');
+  const order=['stars','rain','orb','peaks','skyline','tower','trees','house','waves','boat','arch'];use.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  const big=spec.big||1;
+  use.forEach(d=>{
+    if(d==='orb'){const r=u*(0.13+0.05*R())*big,c=col(),gl=g.createRadialGradient(w*fx,h*fy,r*0.2,w*fx,h*fy,r*2.2);gl.addColorStop(0,css(c,0.55));gl.addColorStop(1,css(c,0));g.fillStyle=gl;g.fillRect(0,0,w,h);g.fillStyle=css(c);g.beginPath();g.arc(w*fx,h*fy,r,0,6.2832);g.fill();}
+    else if(d==='peaks'){for(let k=0;k<3;k++){const bx=w*(0.15+0.7*R()),pw=w*(0.3+0.2*R()),ph=h*(0.25+0.25*R());g.fillStyle=css(col());g.beginPath();g.moveTo(bx-pw/2,h);g.lineTo(bx,h-ph);g.lineTo(bx+pw/2,h);g.fill();}}
+    else if(d==='waves'){for(let k=0;k<3;k++){const y0=h*(0.7+0.08*k),amp=h*(0.02+0.012*R()),fr=6+R()*6;g.fillStyle=css(col());g.beginPath();g.moveTo(0,h);for(let x=0;x<=w;x+=4)g.lineTo(x,y0+Math.sin(x/w*fr+k)*amp);g.lineTo(w,h);g.fill();}}
+    else if(d==='skyline'){let x=0;while(x<w){const bw=w*(0.05+0.05*R()),bh=h*(0.2+0.4*R()),c=col();g.fillStyle=css(c);g.fillRect(x,h-bh,bw,bh);g.fillStyle=css(mix(c,[255,255,255],0.6),0.7);for(let wy=h-bh+6;wy<h-8;wy+=10)for(let wx=x+4;wx<x+bw-4;wx+=8)if(R()<0.4)g.fillRect(wx,wy,3,4);x+=bw+2;}}
+    else if(d==='tower'){const tx=w*(comp==='thirds'?(fx>0.5?0.7:0.3):0.5),tw=u*0.07,th=h*0.5,c=col();g.fillStyle=css(c);g.beginPath();g.moveTo(tx-tw,h);g.lineTo(tx-tw*0.6,h-th);g.lineTo(tx+tw*0.6,h-th);g.lineTo(tx+tw,h);g.fill();g.fillStyle=css(mix(c,[255,255,255],0.45));g.fillRect(tx-tw*0.8,h-th-u*0.05,tw*1.6,u*0.05);g.beginPath();g.moveTo(tx-tw*0.9,h-th-u*0.05);g.lineTo(tx,h-th-u*0.13);g.lineTo(tx+tw*0.9,h-th-u*0.05);g.fill();}
+    else if(d==='stars'){for(let i=0;i<24;i++){g.fillStyle=css(mix(col(),[255,255,255],0.6),0.9);g.beginPath();g.arc(w*R(),h*0.5*R(),0.6+R()*1.6,0,6.2832);g.fill();}}
+    else if(d==='trees'){for(let i=0;i<6;i++){const tx=w*(0.06+0.88*R()),th=h*(0.22+0.2*R()),tw=u*0.07;g.fillStyle=css(col());for(let j=0;j<3;j++){g.beginPath();g.moveTo(tx-tw+j*2,h-th*0.25-j*th*0.22);g.lineTo(tx,h-th*0.55-j*th*0.22-th*0.2);g.lineTo(tx+tw-j*2,h-th*0.25-j*th*0.22);g.fill();}g.fillRect(tx-2,h-th*0.25,4,th*0.25);}}
+    else if(d==='rain'){g.strokeStyle=css(mix(col(),[255,255,255],0.5),0.55);g.lineWidth=1;for(let i=0;i<70;i++){const x=w*R(),y=h*R();g.beginPath();g.moveTo(x,y);g.lineTo(x-4,y+12);g.stroke();}}
+    else if(d==='house'){const hx=w*(0.25+0.5*R()),hw=u*0.28,hh=u*0.2,c=col();g.fillStyle=css(c);g.fillRect(hx-hw/2,h-hh-u*0.05,hw,hh);g.beginPath();g.moveTo(hx-hw*0.65,h-hh-u*0.05);g.lineTo(hx,h-hh-u*0.2);g.lineTo(hx+hw*0.65,h-hh-u*0.05);g.fill();}
+    else if(d==='boat'){const bx=w*(0.25+0.5*R()),by=h*0.74,bw=u*0.2,c=col();g.fillStyle=css(c);g.beginPath();g.moveTo(bx-bw,by);g.lineTo(bx+bw,by);g.lineTo(bx+bw*0.7,by+u*0.05);g.lineTo(bx-bw*0.7,by+u*0.05);g.fill();g.beginPath();g.moveTo(bx,by);g.lineTo(bx,by-u*0.2);g.lineTo(bx+bw*0.8,by-u*0.03);g.fill();}
+    else if(d==='arch'){const c=col();g.strokeStyle=css(c);g.lineWidth=u*0.035;g.beginPath();g.arc(w*0.5,h*0.84,u*0.38,3.14159,6.28318);g.stroke();g.fillStyle=css(c);g.fillRect(w*0.5-u*0.38-u*0.017,h*0.84,u*0.035,h*0.16);g.fillRect(w*0.5+u*0.38-u*0.017,h*0.84,u*0.035,h*0.16);}
+  });
+  if(spec.unify){g.fillStyle=css(pal[0],spec.unify);g.fillRect(0,0,w,h);}
+  return cv;
+}
+function shotStats(cv){
+  const N=32,M=18,t=document.createElement('canvas');t.width=N;t.height=M;const g=t.getContext('2d');g.drawImage(cv,0,0,N,M);const d=g.getImageData(0,0,N,M).data;let r=0,gg=0,b=0,L=0;const P=N*M;
+  for(let i=0;i<P;i++){r+=d[4*i];gg+=d[4*i+1];b+=d[4*i+2];L+=(0.2126*d[4*i]+0.7152*d[4*i+1]+0.0722*d[4*i+2])/255;}
+  return{rgb:[r/P,gg/P,b/P],lum:L/P};
+}
+/* ---------- the editor: plain code that turns parameters into a cut ---------- */
+function initialParams(treat,cine,target){
+  const n=treat.beats.length;
+  return{durations:treat.beats.map(b=>clamp(b.seconds,1.5,9)),grades:treat.beats.map(b=>MOOD_GRADE[b.mood]),strict:false,unify:0,framings:treat.beats.map((b,i)=>cine[i].framing),extras:{},target};
+}
+function shotSpec(cut,p,i){
+  const b=cut.treat.beats[i],fr=p.framings[i],pat=['thirds','centered','diagonal','thirds','centered','thirds'];
+  return{elements:b.elements.concat(p.extras[i]||[]),palette:S.producer.palette,seed:cut.seed+i*131,composition:pat[i%6],density:fr==='wide'?4:(fr==='medium'?3:2),big:fr==='close'?1.6:1,grade:p.grades[i],strict:p.strict,unify:p.unify};
+}
+function pearson(a,b){const ma=mean(a),mb=mean(b);let sab=0,saa=0,sbb=0;for(let i=0;i<a.length;i++){sab+=(a[i]-ma)*(b[i]-mb);saa+=(a[i]-ma)**2;sbb+=(b[i]-mb)**2;}return saa<1e-9||sbb<1e-9?null:sab/Math.sqrt(saa*sbb);}
+function measureCut(treat,shots,target){
+  const n=shots.length,durs=shots.map(s=>s.dur),total=durs.reduce((a,b)=>a+b,0),md=mean(durs),cv=Math.sqrt(mean(durs.map(d=>(d-md)**2)))/md;
+  const jumps=[];for(let i=1;i<n;i++){const a=shots[i-1].stats.rgb,b=shots[i].stats.rgb;jumps.push(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])/441.67);}
+  const maxJump=Math.max(0,...jumps),jumpAt=jumps.indexOf(maxJump)+1;
+  const r=pearson(shots.map(s=>MOOD_TARGET[s.mood]),shots.map(s=>s.stats.lum));
+  const dr=drawerFor(treat.setup),has=(i)=>shots[i].spec.elements.some(e=>drawerFor(e)===dr),setupOk=has(0)||has(1),payoffOk=has(n-1)||has(n-2);
+  const fast=shots.map((s,i)=>({i,wps:wordsOf(s.caption)/s.dur})).filter(x=>x.wps>3);
+  const uniq=new Set(shots.map(s=>s.framing)).size,err=Math.abs(total-target)/target;
+  const m={total,err,cv,maxJump,jumpAt,moodR:r,payoff:setupOk&&payoffOk,fast:fast.length,uniq};
+  const issues=[];
+  if(err>0.1)issues.push({code:'runtime',msg:'The cut runs '+total.toFixed(1)+' s against a target of '+target+' s.',fix:'Scale the shot lengths to the target.'});
+  if(cv<0.15)issues.push({code:'pacing',msg:'The shot lengths barely vary (spread '+cv.toFixed(2)+'), so the pacing is flat.',fix:'Shorten tense shots and hold calm and awe shots longer.'});
+  if(maxJump>0.3)issues.push({code:'jump',msg:'The cut into shot '+(jumpAt+1)+' is jarring (color jump '+maxJump.toFixed(2)+').',fix:'Unify the palette across shots.'});
+  if(r!==null&&r<0.3)issues.push({code:'mood',msg:'Shot brightness does not follow the mood (correlation '+r.toFixed(2)+').',fix:'Adjust each shot\'s brightness toward its mood.'});
+  if(!m.payoff)issues.push({code:'payoff',msg:'The setup object "'+treat.setup+'" does not come back near the end.',fix:'Show the setup object in the first and last shots.'});
+  if(fast.length)issues.push({code:'captions',msg:fast.length+' caption'+(fast.length>1?'s':'')+' too fast to read (over 3 words per second).',fix:'Hold those shots longer.'});
+  if(uniq<3)issues.push({code:'variety',msg:'Only '+uniq+' kind of framing is used.',fix:'Mix wide, medium and close shots.'});
+  const score=mean([1-Math.min(1,err/0.3),Math.min(1,cv/0.25),1-Math.min(1,maxJump/0.5),r===null?1:clamp((r+0.2)/0.9,0,1),m.payoff?1:0,1-fast.length/n,Math.min(1,uniq/3)]);
+  return{metrics:m,issues,score};
+}
+function rescale(p,keep){
+  const total=p.durations.reduce((a,b)=>a+b,0),fixed=keep.reduce((a,i)=>a+p.durations[i],0),free=total-fixed,need_=p.target-fixed;
+  const f=free>0.01&&need_>0.3*free?need_/free:p.target/total;
+  p.durations=p.durations.map((d,i)=>clamp((keep.indexOf(i)>=0&&f!==p.target/total?d:d*f),1.2,12));
+  const t2=p.durations.reduce((a,b)=>a+b,0);if(Math.abs(t2-p.target)>0.05){const g=p.target/t2;p.durations=p.durations.map((d,i)=>keep.indexOf(i)>=0?d:d*g);}
+}
+function applyFixes(cut,round,issues){
+  const p=JSON.parse(JSON.stringify(round.params)),codes=issues.map(i=>i.code),beats=cut.treat.beats,n=beats.length;let keep=[],durEdit=false;
+  if(codes.indexOf('mood')>=0)p.grades=p.grades.map((g,i)=>clamp(g+(MOOD_TARGET[beats[i].mood]-round.shots[i].stats.lum)*0.9,-0.45,0.45));
+  if(codes.indexOf('jump')>=0){p.unify=Math.min(0.4,(p.unify||0)+0.15);p.strict=true;}
+  if(codes.indexOf('payoff')>=0){p.extras[0]=(p.extras[0]||[]).concat([cut.treat.setup]);p.extras[n-1]=(p.extras[n-1]||[]).concat([cut.treat.setup]);}
+  if(codes.indexOf('variety')>=0){const pat=['wide','medium','close','medium','close','wide'];p.framings=p.framings.map((f,i)=>pat[i%6]);}
+  if(codes.indexOf('pacing')>=0){p.durations=p.durations.map((d,i)=>d*Math.pow(MOOD_PACE[beats[i].mood],2));durEdit=true;}
+  if(codes.indexOf('captions')>=0){round.shots.forEach((s,i)=>{const need=wordsOf(s.caption)/2.4;if(need>p.durations[i]){p.durations[i]=need;keep.push(i);}});durEdit=true;}
+  if(codes.indexOf('runtime')>=0||durEdit)rescale(p,keep);
+  return p;
+}
+/* ---------- a round: render every shot, then measure the cut ---------- */
+async function makeRound(cut,p,label){
+  S.prog='Drawing: '+cut.lens.name+', '+label;draw();await new Promise(r=>setTimeout(r,0));
+  const shots=cut.treat.beats.map((b,i)=>{
+    const spec=shotSpec(cut,p,i),scene=renderShot(spec,SW,SH),th=document.createElement('canvas');th.width=160;th.height=90;th.getContext('2d').drawImage(scene,0,0,160,90);
+    return{dur:p.durations[i],spec,scene,thumb:th.toDataURL('image/jpeg',0.8),stats:shotStats(scene),mood:b.mood,move:cut.cine[i].move,framing:p.framings[i],caption:b.caption};
+  });
+  const m=measureCut(cut.treat,shots,p.target);
+  return{params:p,shots,metrics:m.metrics,issues:m.issues,score:m.score};
+}
+/* ---------- the composer: notes made from the cut ---------- */
+const SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10]};
+const DEG={calm:0,joy:3,awe:4,tension:5,dark:5};
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function degreeMidi(scale,deg,root){const s=SCALES[scale];const oct=Math.floor(deg/7),d=((deg%7)+7)%7;return root+12*oct+s[d];}
+function buildScore(shots,music){
+  const ev=[],sc=music.scale,beat=60/music.tempo;let t=0;
+  shots.forEach((s,i)=>{
+    const d0=DEG[s.mood]+(i%2?0:0),tones=[0,2,4].map(k=>degreeMidi(sc,d0+k,48));
+    tones.forEach(m=>ev.push({t,d:s.dur+0.5,f:mtof(m),type:'pad',g:0.05}));
+    if(music.feel==='pluck'||s.mood==='joy'||s.mood==='awe'){for(let b=0,x=t;x<t+s.dur-0.1;b++,x+=beat){ev.push({t:x,d:Math.min(0.45,beat*0.9),f:mtof(tones[b%3]+12),type:'pluck',g:0.07});}}
+    if(s.mood==='tension'||s.mood==='dark'){ev.push({t,d:s.dur+0.3,f:mtof(tones[0]-12),type:'drone',g:0.07});ev.push({t,d:s.dur+0.3,f:mtof(tones[0]-12)*1.006,type:'drone',g:0.05});}
+    t+=s.dur;
+  });
+  return{events:ev,total:t};
+}
+function scheduleScore(ctx,dest,events,t0,gainMul){
+  const master=ctx.createGain();master.gain.value=0.7*(gainMul===undefined?1:gainMul);
+  const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(dest);let count=0;
+  events.forEach(e=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();o.type=e.type==='pad'?'triangle':(e.type==='pluck'?'sine':'sawtooth');o.frequency.value=e.f;
+    let node=o;if(e.type==='drone'){const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=220;o.connect(lp);node=lp;}
+    node.connect(g);g.connect(master);
+    const a=e.type==='pluck'?0.01:0.6,rel=e.type==='pluck'?e.d:0.7,st=t0+e.t;
+    g.gain.setValueAtTime(0.0001,st);g.gain.linearRampToValueAtTime(e.g,st+Math.min(a,e.d*0.5));g.gain.setValueAtTime(e.g,st+Math.max(e.d-rel,e.d*0.5));g.gain.linearRampToValueAtTime(0.0001,st+e.d);
+    o.start(st);o.stop(st+e.d+0.05);count++;
+  });
+  return count;
+}
+/* ---------- the screening room ---------- */
+const PV=document.createElement('canvas');PV.width=VW;PV.height=VH;PV.style.cssText='width:100%;border-radius:10px;background:#000;display:block';
+let player={raf:0,ctx:null,resolve:null};
+function bestRound(cut){return cut.best||cut.rounds[cut.rounds.length-1];}
+function wrapText(g,text,maxW){const words=String(text).split(/\s+/),lines=[];let cur='';words.forEach(w=>{const t=cur?cur+' '+w:w;if(g.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t;});if(cur)lines.push(cur);return lines;}
+function drawShotView(g,shot,p,alpha){
+  const sw=SW,sh=SH;let z=1,ox=0,oy=0;const k=shot.move,e=0.5-0.5*Math.cos(Math.PI*p);
+  if(k==='push-in')z=1+0.14*e;else if(k==='pull-out')z=1.14-0.14*e;else if(k==='pan-left')ox=(0.5-e)*0.16*VW;else if(k==='pan-right')ox=(e-0.5)*0.16*VW;else if(k==='tilt-up')oy=(0.5-e)*0.16*VH;
+  const vw=VW/z,vh=VH/z,sx=clamp((sw-vw)/2+ox,0,sw-vw),sy=clamp((sh-vh)/2+oy,0,sh-vh);
+  g.globalAlpha=alpha;g.drawImage(shot.scene,sx,sy,vw,vh,0,0,VW,VH);g.globalAlpha=1;
+}
+function drawFrame(cut,round,t){
+  const g=PV.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,VW,VH);
+  let acc=0,idx=0;for(let i=0;i<round.shots.length;i++){if(t<acc+round.shots[i].dur||i===round.shots.length-1){idx=i;break;}acc+=round.shots[i].dur;}
+  const sh=round.shots[idx],local=clamp((t-acc)/sh.dur,0,1);
+  if(idx>0&&t-acc<0.4){drawShotView(g,round.shots[idx-1],1,1);drawShotView(g,sh,local,(t-acc)/0.4);}else drawShotView(g,sh,local,1);
+  const total=round.shots.reduce((a,s)=>a+s.dur,0);
+  if(sh.caption&&t>acc+0.3){g.font='bold 15px sans-serif';const lines=wrapText(g,sh.caption,VW*0.8);const bh=lines.length*20+10;g.fillStyle='rgba(0,0,0,0.55)';g.fillRect(VW*0.08,VH-bh-12,VW*0.84,bh);g.fillStyle='#fff';g.textAlign='center';lines.forEach((l,i)=>g.fillText(l,VW/2,VH-bh-12+20+i*20));g.textAlign='left';}
+  if(t<1.6){const a=t<1.1?1:1-(t-1.1)/0.5;g.fillStyle='rgba(0,0,0,'+(0.45*a)+')';g.fillRect(0,0,VW,VH);g.fillStyle='rgba(255,255,255,'+a+')';g.textAlign='center';g.font='bold 24px sans-serif';g.fillText(S.producer?S.producer.title.slice(0,28):'',VW/2,VH/2-4);g.font='12px sans-serif';g.fillText(S.producer?S.producer.genre:'',VW/2,VH/2+18);g.textAlign='left';}
+  if(t>total-0.6){g.fillStyle='rgba(0,0,0,'+clamp((t-(total-0.6))/0.6,0,1)+')';g.fillRect(0,0,VW,VH);}
+}
+function posterFrame(){const c=S.cuts[S.sel];if(!c||!c.rounds.length)return;const r=bestRound(c);drawFrame(c,r,Math.min(2.2,r.shots[0].dur*0.5));}
+function stopPlayback(){if(player.raf)cancelAnimationFrame(player.raf);player.raf=0;if(player.ctx){try{player.ctx.close();}catch(e){}player.ctx=null;}S.playing=false;if(player.resolve){const r=player.resolve;player.resolve=null;r(false);}}
+function playCut(cut,round,opts){
+  opts=opts||{};stopPlayback();
+  const total=round.shots.reduce((a,s)=>a+s.dur,0);let ctx=null,dest=null;
+  if(!S.muted||opts.forceAudio){try{ctx=new (window.AudioContext||window.webkitAudioContext)();dest=opts.audioDest?opts.audioDest(ctx):ctx.destination;const sc=buildScore(round.shots,cut.music);scheduleScore(ctx,dest,sc.events,ctx.currentTime+0.1);player.ctx=ctx;}catch(e){ctx=null;}}
+  S.playing=true;draw();
+  return new Promise(resolve=>{
+    player.resolve=resolve;const t0=performance.now();
+    const loop=()=>{const t=(performance.now()-t0)/1000;if(!S.playing){return;}drawFrame(cut,round,Math.min(t,total));if(t>=total){const r=player.resolve;player.resolve=null;stopPlayback();draw();posterFrame();if(r)r(true);return;}player.raf=requestAnimationFrame(loop);};
+    player.raf=requestAnimationFrame(loop);
+  });
+}
+async function recordCut(cut,round){
+  if(typeof MediaRecorder==='undefined'||!PV.captureStream)throw new Error('This browser cannot record video from a canvas.');
+  const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
+  if(!mime)throw new Error('This browser has no WebM recorder.');
+  const stream=PV.captureStream(30);let adest=null;
+  const chunks=[];
+  const prom=playCut(cut,round,{forceAudio:true,audioDest:ctx=>{adest=ctx.createMediaStreamDestination();const mixer=ctx.createGain();mixer.connect(adest);mixer.connect(ctx.destination);return mixer;}});
+  await new Promise(r=>setTimeout(r,60));
+  if(adest){adest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));}
+  const rec=new MediaRecorder(stream,{mimeType:mime});rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  const done=new Promise(r=>{rec.onstop=r;});rec.start(200);
+  await prom;await new Promise(r=>setTimeout(r,250));rec.stop();await done;
+  const blob=new Blob(chunks,{type:'video/webm'});return{blob,url:URL.createObjectURL(blob),size:blob.size,mime};
+}
+function storyboardPng(cut,round){
+  const cw=200,ch=113,cols=3,rows=Math.ceil(round.shots.length/cols),c=document.createElement('canvas');c.width=cols*cw+(cols+1)*10;c.height=rows*(ch+40)+50;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.fillStyle='#17262D';g.font='bold 16px sans-serif';g.fillText(S.producer.title+': '+cut.lens.name,10,28);g.font='11px sans-serif';
+  round.shots.forEach((s,i)=>{const x=10+(i%cols)*(cw+10),y=44+Math.floor(i/cols)*(ch+40);g.drawImage(s.scene,0,0,SW,SH,x,y,cw,ch);g.fillStyle='#17262D';g.fillText((i+1)+'. '+s.mood+', '+s.framing+', '+s.move+', '+s.dur.toFixed(1)+' s',x,y+ch+14);g.fillStyle='#5A6B73';g.fillText(s.caption?('"'+s.caption.slice(0,38)+'"'):'(no caption)',x,y+ch+28);});
+  return c.toDataURL('image/png');
+}
+function scriptText(cut,round){
+  const P=S.producer;let t=P.title+'\n'+P.logline+'\nGenre: '+P.genre+'. Tone: '+P.tone+'. Treatment: '+cut.lens.name+'.\nMusic: '+cut.music.scale+', '+cut.music.tempo+' bpm.\n\n';
+  round.shots.forEach((s,i)=>{t+=(i+1)+'. ['+s.dur.toFixed(1)+' s, '+s.framing+', '+s.move+', '+s.mood+'] '+cut.treat.beats[i].shot+(s.caption?'\n   CAPTION: '+s.caption:'')+'\n';});
+  return t;
+}
+/* ---------- the agents ---------- */
+function note(agent,text){S.log.push({agent,text});}
+async function ask(agent,sys,user,temp,max){
+  need();S.n++;S.prog=agent;draw();await new Promise(r=>setTimeout(r,0));
+  const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,max_tokens:max||300});
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();note(agent,text.slice(0,300));return text;
+}
+async function runProducer(){
+  const t=await ask('Producer','You are the producer of a short film crew. Turn the brief into a plan. Reply with ONE JSON object only.','Brief: '+S.brief+'\nTarget length: '+S.runtime+' seconds, 6 shots.\nReturn: {"title":"short title","logline":"one sentence","genre":"one or two words","tone":"two words","palette":["#RRGGBB","#RRGGBB","#RRGGBB","#RRGGBB"]}',0.2,200);
+  const o=firstJson(t);let d=null;
+  if(o&&Array.isArray(o.palette)){const pal=o.palette.map(x=>String(x).trim()).filter(x=>hex2rgb(x)).slice(0,4);if(pal.length===4)d={title:String(o.title||S.brief).slice(0,50),logline:String(o.logline||S.brief).slice(0,200),genre:String(o.genre||'short film').slice(0,30),tone:String(o.tone||'').slice(0,40),palette:pal.map(x=>x.startsWith('#')?x:'#'+x),runtime:S.runtime,source:'model'};}
+  if(!d){d=fallbackProducer(S.brief,S.runtime);note('Producer','(the reply was not usable, so a simple rule set the plan)');}
+  S.producer=d;
+}
+async function runWriter(lens){
+  const P=S.producer;
+  const t=await ask(lens.name+' writer','You are a screenwriter with a '+lens.name.toLowerCase()+' lens: '+lens.desc+'. Reply with ONE JSON object only.','Brief: '+S.brief+'\nLogline: '+P.logline+'\nTone: '+P.tone+'\nWrite exactly 6 shots. Each mood must be one of calm, joy, awe, tension, dark.\nReturn: {"beats":[{"shot":"what we see, under 12 words","elements":["1 to 3 simple things to draw, one word each"],"mood":"calm","caption":"a short line or empty","seconds":4}],"setup":"one object shown early","payoff":"the same object shown again near the end"}',0.8,520);
+  const o=firstJson(t);
+  if(o&&Array.isArray(o.beats)&&o.beats.length>=4){
+    const beats=o.beats.slice(0,8).map(b=>({shot:String((b&&b.shot)||'A shot').slice(0,80),elements:(Array.isArray(b&&b.elements)?b.elements:[]).map(x=>String(x).toLowerCase().slice(0,20)).filter(Boolean).slice(0,3),mood:MOODS.indexOf(b&&b.mood)>=0?b.mood:'calm',caption:String((b&&b.caption)||'').slice(0,60),seconds:clamp(parseFloat(b&&b.seconds)||4,1.5,9)}));
+    beats.forEach(b=>{if(!b.elements.length)b.elements=['orb'];});
+    const setup=String(o.setup||beats[0].elements[0]).toLowerCase().slice(0,20);
+    return{beats,setup,payoff:String(o.payoff||setup).slice(0,30),source:'model'};
+  }
+  note(lens.name+' writer','(the reply was not usable, so a simple rule wrote the treatment)');
+  return fallbackTreatment(S.brief,lens);
+}
+async function runCine(treat){
+  const t=await ask('Cinematographer','You are a cinematographer. Choose a camera move and a framing for each shot. Reply with ONE JSON object only.','Shots:\n'+treat.beats.map((b,i)=>(i+1)+'. '+b.shot+' ('+b.mood+')').join('\n')+'\nMoves: '+MOVES.join(', ')+'. Framings: '+FRAMES.join(', ')+'.\nReturn: {"shots":[{"move":"push-in","framing":"wide"}]} with one entry per shot.',0.3,300);
+  const o=firstJson(t),fb=fallbackCine(treat.beats);
+  if(o&&Array.isArray(o.shots)&&o.shots.length>=treat.beats.length)return treat.beats.map((b,i)=>{const s=o.shots[i]||{};return{move:MOVES.indexOf(s.move)>=0?s.move:fb[i].move,framing:FRAMES.indexOf(s.framing)>=0?s.framing:fb[i].framing};});
+  note('Cinematographer','(the reply was not usable, so simple rules chose the camera)');return fb;
+}
+async function runComposer(treat){
+  const moods=treat.beats.map(b=>b.mood).join(', ');
+  const t=await ask('Composer','You are a film composer. Choose the music. Reply with ONE JSON object only.','Tone: '+S.producer.tone+'. Moods by shot: '+moods+'.\nReturn: {"scale":"major or minor or dorian","tempo":80,"feel":"pad or pluck"}',0.3,100);
+  const o=firstJson(t);
+  if(o&&SCALES[o.scale])return{scale:o.scale,tempo:clamp(parseInt(o.tempo,10)||80,50,140),feel:o.feel==='pluck'?'pluck':'pad'};
+  const dark=treat.beats.filter(b=>b.mood==='tension'||b.mood==='dark').length>treat.beats.length/3;
+  note('Composer','(the reply was not usable, so a simple rule chose the music)');return{scale:dark?'minor':'major',tempo:dark?72:84,feel:'pad'};
+}
+async function runCritic(cut,round){
+  const P=S.producer,m=round.metrics;
+  const t=await ask('Critic','You are a rival film critic. Find what weakens the cut. You see only the logline and measurements. Reply with ONE JSON object only.','Logline: '+P.logline+'\nTone: '+P.tone+'. Treatment: '+cut.lens.name+'.\nMeasurements: runtime '+m.total.toFixed(1)+' s of '+S.runtime+', shot length spread '+m.cv.toFixed(2)+', biggest color jump between cuts '+m.maxJump.toFixed(2)+', mood to brightness correlation '+(m.moodR===null?'n/a':m.moodR.toFixed(2))+', setup returns: '+(m.payoff?'yes':'no')+', framings used '+m.uniq+'.\nReturn: {"opinion":["up to 2 short suggestions"],"verdict":"keep or revise"}',0.2,160);
+  const o=firstJson(t);
+  if(o&&Array.isArray(o.opinion))return{opinion:o.opinion.map(String).slice(0,2),verdict:o.verdict==='revise'?'revise':'keep'};
+  return{opinion:[],verdict:round.issues.length?'revise':'keep'};
+}
+async function runCrew(){
+  need();stopPlayback();S.log=[];S.cuts=[];S.curator=null;S.choice=null;S.sel=0;S.n=0;S.total=1+12+S.rounds*3;
+  await runProducer();if(S.stop)return;
+  const base=hash(S.brief);
+  for(let li=0;li<LENSES.length&&!S.stop;li++){
+    const lens=LENSES[li],cut={lens,rounds:[],seed:base+li*7919};S.cuts.push(cut);
+    cut.treat=await runWriter(lens);if(S.stop)break;
+    cut.cine=await runCine(cut.treat);if(S.stop)break;
+    cut.music=await runComposer(cut.treat);if(S.stop)break;
+    const r=await makeRound(cut,initialParams(cut.treat,cut.cine,S.runtime),'first cut');
+    r.crit=await runCritic(cut,r);if(S.stop)break;cut.rounds.push(r);
+  }
+  for(let k=1;k<=S.rounds&&!S.stop;k++){
+    for(const cut of S.cuts){
+      if(S.stop)break;const last=cut.rounds[cut.rounds.length-1];if(!last.issues.length)continue;
+      const r=await makeRound(cut,applyFixes(cut,last,last.issues),'revision '+k);
+      r.crit=await runCritic(cut,r);if(S.stop)break;r.fixed=last.issues.map(i=>i.code);cut.rounds.push(r);
+    }
+  }
+  if(S.stop)return;
+  S.cuts.forEach(c=>{c.best=c.rounds.reduce((a,b)=>b.score>a.score?b:a);c.bestIndex=c.rounds.indexOf(c.best);});
+  S.curator=S.cuts.map((c,i)=>({i,score:c.best.score})).sort((a,b)=>b.score-a.score);S.sel=S.curator[0].i;
+  setTimeout(posterFrame,0);
+}
+/* ---------- drawing the page ---------- */
+const pc=v=>Math.round(v*100);
+const MOODCOL={calm:'#6C8EAD',joy:'#E3A21A',awe:'#6B4FBB',tension:'#B3412E',dark:'#2B3A55'};
+function counter(){const pct=Math.min(100,S.total?S.n/S.total*100:0);return '<div style="display:flex;justify-content:space-between;gap:8px"><b>Model call '+S.n+' of up to '+S.total+'</b><span class="small">'+esc(S.prog||'')+'</span></div><div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+pct.toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';}
+function timelineBar(round){const total=round.shots.reduce((a,s)=>a+s.dur,0);return '<div style="display:flex;height:16px;border-radius:6px;overflow:hidden;margin:6px 0">'+round.shots.map(s=>'<div title="'+esc(s.mood)+' '+s.dur.toFixed(1)+' s" style="width:'+(s.dur/total*100)+'%;background:'+MOODCOL[s.mood]+';border-right:1px solid #fff"></div>').join('')+'</div><div class="small muted">'+total.toFixed(1)+' s. Colors show the mood of each shot: '+MOODS.map(m=>'<span style="color:'+MOODCOL[m]+'"><b>'+m+'</b></span>').join(', ')+'.</div>';}
+function cutCard(cut,i){
+  if(!cut.treat)return '<div class="box" style="margin-bottom:12px"><b>'+esc(cut.lens.name)+'</b> <span class="small muted">is writing...</span></div>';
+  if(!cut.rounds.length)return '<div class="box" style="margin-bottom:12px"><b>'+esc(cut.lens.name)+'</b> <span class="small muted">is being cut...</span></div>';
+  const best=bestRound(cut),rank=S.curator?S.curator.findIndex(c=>c.i===i)+1:0;
+  let h='<div class="box" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b>'+esc(cut.lens.name)+'</b>'+(rank?chip('Curator rank '+rank,rank===1?'good':''):'')+'</div><div class="small muted">'+esc(cut.lens.desc)+'</div>'+
+    '<div class="row" style="gap:4px;flex-wrap:wrap;margin:6px 0">'+chip(cut.music.scale+', '+cut.music.tempo+' bpm')+(cut.treat.source==='fallback'?chip('rule-based treatment','warn'):'')+'</div>'+
+    timelineBar(best)+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">'+best.shots.map((s,k)=>'<div><img src="'+s.thumb+'" style="width:100%;border-radius:6px;display:block"><div class="small" style="line-height:1.2"><b>'+(k+1)+'</b> '+esc(s.framing)+', '+esc(s.move)+'<br><span class="muted">'+(s.caption?esc(s.caption.slice(0,28)):'no caption')+'</span></div></div>').join('')+'</div>';
+  const m=best.metrics,iss=best.issues;
+  h+='<div style="margin-top:8px" class="small"><b>Score '+pc(best.score)+'.</b> Best version: '+(cut.bestIndex===0?'the first cut':'revision '+cut.bestIndex)+'. '+(iss.length?'<b>Measured problems left:</b><ul style="margin:4px 0 0 18px">'+iss.map(x=>'<li>'+esc(x.msg)+'</li>').join('')+'</ul>':'<span style="color:#2E7D5B"><b>No measured problems.</b></span>')+'</div>';
+  if(cut.rounds.length>1)h+='<div class="small muted" style="margin-top:4px">Fixes between cuts: '+cut.rounds.slice(1).map(r=>(r.fixed||[]).join(', ')).join(' then ')+'. Scores: '+cut.rounds.map(r=>pc(r.score)).join(' to ')+'.</div>';
+  if(best.crit&&best.crit.opinion.length)h+='<div class="small" style="margin-top:6px"><b>The critic\'s opinion</b> (a small model, not measured): '+best.crit.opinion.map(esc).join(' ')+'</div>';
+  h+='<div class="row" style="margin-top:8px">'+btn('view',i,S.sel===i?'In the screening room':'Open in the screening room',S.sel===i?'':'ghost sm')+btn('pick',i,S.choice===i?'Your pick':'I pick this one',S.choice===i?'':'ghost sm')+'</div></div>';
+  return h;
+}
+function screeningRoom(){
+  const cut=S.cuts[S.sel];if(!cut||!cut.rounds.length)return '';
+  const r=bestRound(cut);
+  return '<h3>The screening room</h3><div class="small muted" style="margin-bottom:6px">'+esc(S.producer.title)+', '+esc(cut.lens.name)+' cut. An animatic made from simple generated scenes, camera moves, captions and a generated score.</div><div id="pslot"></div>'+
+    '<div class="row" style="margin-top:8px">'+btn(S.playing?'stopplay':'play','',S.playing?'Stop':'Play the movie','',false)+btn('mute','',S.muted?'Sound off':'Sound on','ghost sm')+btn('record','','Record as video (WebM)','ghost sm',S.busy||S.playing)+'</div>'+
+    (S.note?'<p class="small muted" style="margin-top:6px">'+esc(S.note)+'</p>':'')+(S.video?'<p class="small" style="margin-top:6px"><a download="movie.webm" href="'+S.video.url+'">Download the recording ('+Math.round(S.video.size/1024)+' KB)</a></p>':'')+
+    '<div class="row" style="margin-top:6px"><a class="btn ghost sm" download="storyboard.png" href="'+storyboardPng(cut,r)+'">Download storyboard</a><a class="btn ghost sm" download="script.txt" href="data:text/plain;charset=utf-8,'+encodeURIComponent(scriptText(cut,r))+'">Download script</a></div>';
+}
+const QA=[
+ ['Is this real video generation?','No. It is an animatic: simple generated scenes with camera moves, captions and a generated score, planned by a team of agents. Running a real video model in a browser is not practical today.'],
+ ['What does each agent do?','The producer sets the plan. Three screenwriters with different lenses write treatments. A cinematographer picks camera moves and framings, and a composer picks the music. Plain code edits the cut and measures it. A critic that sees only the logline and the numbers gives an opinion, and a curator ranks the cuts.'],
+ ['What is measured?','Runtime against the target, how much shot lengths vary, color jumps between cuts, whether brightness follows each shot\'s mood, whether the setup object returns near the end, caption reading speed, and framing variety. These check craft rules, not whether the film is good.'],
+ ['What does a revision do?','The editor changes the cut for the problem measured, for example scaling shot lengths to the target, or nudging each shot\'s brightness toward its mood using the measured brightness. Then the cut is measured again. Fixes can conflict: stronger mood contrast can make cuts more jarring.']
+];
+function render(){
+  let h='<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+(LLM.ready()?' <span class="small muted">'+esc(LLM.modelId)+'</span>':LLM.ui()+'<p class="small muted" style="margin-top:8px">A chat model run by WebLLM on WebGPU. It plays the producer, the screenwriters, the cinematographer, the composer and the critic.</p>')+'</div>';
+  h+='<h3>1  The brief</h3><textarea class="editor" id="brief" data-act="brief" rows="2">'+esc(S.brief)+'</textarea><div class="row" style="margin-top:6px">'+PRESETS.map((p,i)=>btn('preset',i,p,'ghost sm',S.busy)).join('')+'</div>';
+  h+='<h3>2  Settings</h3><div class="row"><span class="small muted">Target length</span><select data-act="runtime">'+[15,30,45].map(v=>'<option value="'+v+'"'+(S.runtime===v?' selected':'')+'>'+v+' seconds</option>').join('')+'</select><span class="small muted">Revision rounds</span><select data-act="rounds">'+[0,1,2].map(v=>'<option'+(S.rounds===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+    '<div class="row" style="margin-top:12px">'+btn('run','','Assemble the crew','',S.busy)+btn('reset','','Clear','ghost',S.busy)+'</div>';
+  if(S.busy)h+='<div class="status warn" style="margin-top:10px">'+counter()+'</div>';
+  if(S.producer){const D=S.producer;h+='<h3>The producer\'s plan</h3><div class="box"><b>'+esc(D.title)+'</b> '+(D.source==='fallback'?chip('rule-based plan','warn'):'')+'<div class="small">'+esc(D.logline)+'</div><div class="small muted">'+esc(D.genre)+'. Tone: '+esc(D.tone)+'. Target '+D.runtime+' s.</div><div style="display:flex;gap:6px;margin:8px 0">'+D.palette.map(p=>'<div style="width:38px;height:38px;border-radius:8px;background:'+esc(p)+';border:1px solid #CBD8DD" title="'+esc(p)+'"></div>').join('')+'</div></div>';}
+  if(S.cuts.length){
+    h+='<h3>The crew\'s cuts</h3>'+S.cuts.map(cutCard).join('');
+    if(S.curator)h+='<div class="status ok"><b>The curator\'s ranking</b> (by the measured score only): '+S.curator.map((c,k)=>(k+1)+'. '+esc(S.cuts[c.i].lens.name)+' ('+pc(c.score)+')').join('; ')+'.'+(S.choice!==null?' <b>You picked the '+esc(S.cuts[S.choice].lens.name)+' cut</b>'+(S.curator[0].i===S.choice?', which is also the curator\'s top choice.':', which is not the curator\'s top choice, so your taste and the measurements disagree. The measurements only check craft rules.'):' Watch them in the screening room, then pick the one you like best. Your choice is the real test.')+'</div>';
+    h+=screeningRoom();
+  }
+  if(S.log.length)h+='<details style="margin-top:10px"><summary class="small">Crew log ('+S.log.length+' messages)</summary>'+S.log.map(l=>'<div class="box small" style="margin-top:4px"><b>'+esc(l.agent)+':</b> '+esc(l.text)+'</div>').join('')+'</details>';
+  return h+renderKnowledgeGraphSection()+qa(QA)+toast();
+}
+function toast(){
+  const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
+  if(S.err)return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+counter()+'<div style="margin-top:8px">'+btn('stop','','Stop','ghost sm')+'</div></div>';
+  return '';
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+
+function renderKnowledgeGraphSection(){
+  return '<div class="panel" style="margin:16px 0;padding:16px;">' +
+    '<h3>Crew Knowledge Graph</h3>' +
+    '<p class="small muted">Live interactive epistemic graph: Producer (Vision), Screenwriters (3 narrative lenses), Cinematographer (Camera choreography), Composer (Adaptive score), and Critic & Editor (Pruning & Trims). Click any node to inspect agent role & decisions.</p>' +
+    '<div style="position:relative;background:#0A1017;border-radius:10px;overflow:hidden;border:1px solid #CBD4DB;margin:10px 0;">' +
+    '<canvas id="cvsCrewKG" width="1000" height="360" style="width:100%;height:360px;display:block;cursor:pointer;"></canvas>' +
+    '</div>' +
+    '<div class="row small muted" style="margin-top:6px;flex-wrap:wrap;gap:8px;">' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E6F8E;margin-right:4px;"></i>Producer/Vision</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:4px;"></i>Screenwriters</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16A34A;margin-right:4px;"></i>Cinematographer</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9333EA;margin-right:4px;"></i>Composer</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;"></i>Critic/Editor</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563EB;margin-right:4px;"></i>Curator</span>' +
+    '</div></div>';
+}
+
+
+let crewKgSimNodes = [];
+let crewKgSimLinks = [];
+let crewSelectedNode = null;
+
+function buildCrewKnowledgeGraph(){
+  const P = (typeof S !== 'undefined' && S.producer) ? S.producer : {title:'Vision', genre:'Sci-Fi Noir', tone:'Contemplative'};
+  const selCut = (typeof S !== 'undefined' && S.cuts && S.cuts[S.sel]) ? S.cuts[S.sel] : (typeof S !== 'undefined' && S.cuts ? S.cuts[0] : null);
+  const lensName = selCut ? selCut.lens.name : 'Classic three-act';
+  const music = selCut && selCut.music ? selCut.music : {scale:'minor', tempo:76};
+
+  crewKgSimNodes = [
+    {id:'p1', label:'Vision: ' + (P.title||'Short Film').slice(0,18), role:'producer', x:180, y:130, roleName:'Executive Producer', info:'Establishes cinematic premise, aesthetic boundaries, and budget constraints.'},
+    {id:'p2', label:'Tone: ' + (P.tone||'Moody').slice(0,15), role:'producer', x:260, y:70, roleName:'Producer / Tone Lead', info:'Enforces emotional frequency, atmospheric palette, and thematic subtext.'},
+    {id:'w1', label:lensName + ' Lens', role:'writer', x:480, y:110, highlight:true, roleName:'Lead Screenwriter', info:'Adapts high-level vision into structured narrative acts and dialogue.'},
+    {id:'w2', label:'6 Story Beats', role:'writer', x:430, y:190, roleName:'Dramaturg / Writer', info:'Paces exposition, rising tension, climax, and catharsis.'},
+    {id:'c1', label:'Camera Framing', role:'cine', x:780, y:90, roleName:'Cinematographer', info:'Determines focal lengths, lighting ratios, and shot compositions.'},
+    {id:'c2', label:'Push-In / Wide Shots', role:'cine', x:870, y:150, roleName:'Director of Photography', info:'Choreographs camera motion, Steadicam rigs, and scene transitions.'},
+    {id:'m1', label:music.scale.toUpperCase() + ' Scale (' + music.tempo + ' bpm)', role:'composer', x:480, y:290, roleName:'Film Composer', info:'Composes dynamic MIDI score aligned with emotional narrative beats.'},
+    {id:'cr1', label:'Craft Score Metrics', role:'critic', x:770, y:270, roleName:'Editorial Critic', info:'Measures pacing cadence, coherence, and audience engagement retention.'},
+    {id:'cr2', label:'[PRUNED] Runtime Trims', role:'critic', x:880, y:230, roleName:'Film Editor', info:'Severed superfluous subplots and pruned dead air to maximize tension.'},
+    {id:'cur1', label:'Curator Consensus Master', role:'curator', x:640, y:210, roleName:'Festival Curator', info:'Synthesizes cross-disciplinary outputs into the final screened cut.'}
+  ];
+
+  crewKgSimLinks = [
+    {source:'p1', target:'p2', label:'SETS_TONE', type:'normal'},
+    {source:'p1', target:'w1', label:'COMMISSIONS', type:'normal'},
+    {source:'w1', target:'w2', label:'STRUCTURES', type:'normal'},
+    {source:'w1', target:'c1', label:'INFORMS_SHOTS', type:'bridge'},
+    {source:'c1', target:'c2', label:'CHOREOGRAPHS', type:'normal'},
+    {source:'w1', target:'m1', label:'INFORMS_MOOD', type:'bridge'},
+    {source:'w2', target:'cr1', label:'EVALUATED_BY', type:'normal'},
+    {source:'cr1', target:'cr2', label:'PRUNED', type:'refuted'},
+    {source:'w2', target:'cur1', label:'MASTERED', type:'bridge'},
+    {source:'m1', target:'cur1', label:'MIXED', type:'bridge'}
+  ];
+
+  crewKgSimLinks.forEach(l => {
+    l.sourceNode = crewKgSimNodes.find(n => n.id === l.source);
+    l.targetNode = crewKgSimNodes.find(n => n.id === l.target);
+  });
+}
+
+function updateCrewKgPhysics(){
+  const W=1000, H=360;
+  for(let i=0;i<crewKgSimNodes.length;i++){
+    for(let j=i+1;j<crewKgSimNodes.length;j++){
+      const a=crewKgSimNodes[i], b=crewKgSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<125){
+        const f=(125-dist)/dist * 0.08;
+        a.x -= dx*f; a.y -= dy*f;
+        b.x += dx*f; b.y += dy*f;
+      }
+    }
+  }
+  crewKgSimLinks.forEach(l => {
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(dist-110)*0.035;
+    l.sourceNode.x += dx/dist*f; l.sourceNode.y += dy/dist*f;
+    l.targetNode.x -= dx/dist*f; l.targetNode.y -= dy/dist*f;
+  });
+  crewKgSimNodes.forEach(n => {
+    n.x = Math.max(50, Math.min(W-50, n.x));
+    n.y = Math.max(40, Math.min(H-40, n.y));
+  });
+}
+
+const CREW_KG_COLORS = {
+  producer:'#0E6F8E', writer:'#D97706', cine:'#16A34A', composer:'#9333EA', critic:'#DC2626', curator:'#2563EB'
+};
+
+function drawCrewKgLoop(){
+  const cv = document.getElementById('cvsCrewKG');
+  if(cv){
+    const g = cv.getContext('2d'), W=cv.width, H=cv.height;
+    g.fillStyle = '#0A1017';
+    g.fillRect(0,0,W,H);
+
+    updateCrewKgPhysics();
+
+    crewKgSimLinks.forEach(l => {
+      if(!l.sourceNode||!l.targetNode)return;
+      g.beginPath();
+      g.moveTo(l.sourceNode.x, l.sourceNode.y);
+      g.lineTo(l.targetNode.x, l.targetNode.y);
+      if(l.type==='refuted'){
+        g.strokeStyle='#DC2626'; g.setLineDash([5,4]); g.lineWidth=2;
+      }else if(l.type==='bridge'){
+        g.strokeStyle='#16A34A'; g.setLineDash([]); g.lineWidth=3;
+      }else{
+        g.strokeStyle='#2A3E54'; g.setLineDash([]); g.lineWidth=1.5;
+      }
+      g.stroke();
+      g.setLineDash([]);
+      const mx=(l.sourceNode.x+l.targetNode.x)/2, my=(l.sourceNode.y+l.targetNode.y)/2;
+      g.fillStyle='#8FA3AD'; g.font='9px sans-serif'; g.textAlign='center';
+      g.fillText(l.label, mx, my-4);
+    });
+
+    crewKgSimNodes.forEach(n => {
+      const col = CREW_KG_COLORS[n.role] || '#0E6F8E';
+      const isSel = crewSelectedNode && crewSelectedNode.id === n.id;
+      const rad = (n.highlight || isSel) ? 14 : 10;
+      if(n.highlight || isSel){
+        g.beginPath(); g.arc(n.x, n.y, rad+6, 0, 6.2832);
+        g.fillStyle = isSel ? 'rgba(37, 99, 235, 0.35)' : 'rgba(217, 119, 6, 0.28)'; g.fill();
+      }
+      g.beginPath(); g.arc(n.x, n.y, rad, 0, 6.2832);
+      g.fillStyle = col; g.fill();
+      g.strokeStyle = '#FFFFFF'; g.lineWidth = isSel ? 2.5 : 1.8; g.stroke();
+
+      g.fillStyle = '#E5EEF5'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+      g.fillText(n.label, n.x, n.y + rad + 14);
+    });
+
+    // Event Annotation Callout Banner & Pointer
+    const targetNodeId = (crewSelectedNode && crewSelectedNode.id) || 'cr2';
+    const targetNode = crewKgSimNodes.find(n => n.id === targetNodeId) || crewKgSimNodes[0];
+
+    g.fillStyle = 'rgba(23, 34, 43, 0.94)';
+    g.fillRect(16, 16, 430, 76);
+    g.strokeStyle = '#4FC3E8'; g.lineWidth = 1.5;
+    g.strokeRect(16, 16, 430, 76);
+
+    g.fillStyle = '#4FC3E8'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left';
+    g.fillText('EVENT ANNOTATION: ' + (crewSelectedNode ? 'INSPECTING ' + crewSelectedNode.roleName.toUpperCase() : 'CROSS-DOMAIN SCRIPT & EDIT PRUNING'), 28, 36);
+
+    g.fillStyle = '#FFFFFF'; g.font = 'bold 12px sans-serif';
+    g.fillText(crewSelectedNode ? crewSelectedNode.label : 'Editorial Trim & Script-to-Score Cross Bridge', 28, 54);
+
+    g.fillStyle = '#99AAB9'; g.font = '11px sans-serif';
+    g.fillText(crewSelectedNode ? crewSelectedNode.info : 'Red dashed edge shows pacing cuts pruned by Editor. Green bridge binds Score & Screenplay.', 28, 72);
+
+    if(targetNode){
+      g.beginPath();
+      g.moveTo(446, 54);
+      g.lineTo(targetNode.x, targetNode.y - 18);
+      g.strokeStyle = 'rgba(79, 195, 232, 0.7)';
+      g.lineWidth = 1.8;
+      g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
+
+      g.beginPath();
+      g.arc(targetNode.x, targetNode.y, 22 + Math.sin(Date.now()*0.006)*4, 0, 6.2832);
+      g.strokeStyle = '#4FC3E8';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
+  requestAnimationFrame(drawCrewKgLoop);
+}
+
+function initCrewKgInteraction(){
+  const cv = document.getElementById('cvsCrewKG');
+  if(!cv)return;
+  cv.addEventListener('click', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    const hit = crewKgSimNodes.find(n => Math.hypot(n.x - x, n.y - y) < 24);
+    if(hit){
+      crewSelectedNode = hit;
+    }else{
+      crewSelectedNode = null;
+    }
+  });
+}
+
+const draw=app({
+  render,
+  act:{
+    preset:v=>{S.brief=PRESETS[+v];},
+    run:()=>guard(runCrew),
+    reset:()=>{stopPlayback();S.cuts=[];S.producer=null;S.curator=null;S.choice=null;S.log=[];S.err='';S.video=null;S.note='';},
+    view:v=>{S.sel=+v;stopPlayback();setTimeout(posterFrame,0);},
+    pick:v=>{S.choice=+v;},
+    play:()=>{const c=S.cuts[S.sel];S.note='';playCut(c,bestRound(c));return true;},
+    stopplay:()=>{stopPlayback();setTimeout(posterFrame,0);},
+    mute:()=>{S.muted=!S.muted;},
+    record:()=>guard(async()=>{const c=S.cuts[S.sel];S.note='Recording in real time. Please wait for the movie to finish.';draw();S.video=await recordCut(c,bestRound(c));S.note='Recording finished.';}),
+    dismiss:()=>{S.err='';},
+    stop:()=>{S.stop=true;},
+    ...LLM.act
+  },
+  change:{runtime:t=>{S.runtime=+t.value;},rounds:t=>{S.rounds=+t.value;},...LLM.change},
+  input:{brief:t=>{S.brief=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+function attachPlayer(){const slot=document.getElementById('pslot');if(slot&&PV.parentNode!==slot){slot.appendChild(PV);if(!S.playing)posterFrame();}}
+new MutationObserver(attachPlayer).observe(document.getElementById('main'),{childList:true,subtree:true});
+LLM.draw=draw;
+setStatus(LLM.chip());
+buildCrewKnowledgeGraph();
+requestAnimationFrame(drawCrewKgLoop);
+setTimeout(initCrewKgInteraction, 200);
+draw();
+</script>
+</body>
+</html>

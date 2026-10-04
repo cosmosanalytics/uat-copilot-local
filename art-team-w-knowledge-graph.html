@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>An art team w knowledge graph: from brief to variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">A team of AI agents with different jobs makes, measures and critiques art (a WebLLM chat model, with a pluggable image backend)</span></div>
+  <header>
+    <h1>An art team w knowledge graph: from brief to variants</h1>
+    <p class="lede">Give the team a one-line brief. A director sets the palette and composition, three concept artists with different lenses propose ideas, a prompt engineer turns each idea into a prompt, an image backend draws it, and code measures the result. A critic that sees only numbers finds what misses the brief, a revision fixes it, and a curator ranks the variants. You make the final pick.</p>
+    <ol class="lede-items"><li><b>Creative director</b>: Turns the brief into a palette, a composition, and things to include and avoid.</li><li><b>Three concept artists</b>: A surrealist, a minimalist and a classicist, so the ideas differ.</li><li><b>Prompt engineer</b>: Turns each concept into a prompt and settings for the image backend.</li><li><b>Image backend</b>: A procedural canvas that works everywhere, or SD-Turbo on WebGPU (experimental).</li><li><b>Critic and measurements</b>: Code measures palette match, contrast, balance and busyness. The critic sees only the numbers.</li><li><b>Curator</b>: Ranks the variants by measured score. You make the final pick.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the agents are a small on-device chat model, so some replies cannot be read, and the page then falls back to simple rules and says so. The procedural canvas draws simple generative art from the plan. It is not an AI image model. The SD-Turbo backend is a best-effort adapter that I could not test, so treat it as experimental. The measurements are plain pixel statistics that check the image against the brief. They do not measure beauty, so your own pick is the real test. The model weights download from huggingface.co. Nothing you type leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+async function fetchBuf(url,onProg){
+  let cache=null;
+  try{if(typeof caches!=='undefined'){cache=await caches.open('llm-neuro-v1');const hit=await cache.match(url);if(hit){onProg&&onProg(1,'from your browser cache');return await hit.arrayBuffer();}}}catch(e){cache=null;}
+  const r=await fetch(url);if(!r.ok)throw new Error('Could not download '+url+' ('+r.status+')');
+  const len=+(r.headers.get('content-length')||0);
+  let saved=Promise.resolve();
+  try{if(cache&&r.clone)saved=cache.put(url,r.clone()).catch(()=>{});}catch(e){}
+  if(r.body&&r.body.getReader&&len){
+    const buf=new Uint8Array(len),rd=r.body.getReader();let got=0;
+    while(true){const{done,value}=await rd.read();if(done)break;buf.set(value,got);got+=value.length;onProg&&onProg(got/len,(got/1048576).toFixed(0)+' of '+(len/1048576).toFixed(0)+' MB');}
+    await saved;
+    return buf.buffer;
+  }
+  const ab=await r.arrayBuffer();onProg&&onProg(1,'');return ab;
+}
+
+function f16(h){const s=(h&0x8000)?-1:1,e=(h>>10)&0x1f,f=h&0x3ff;if(e===0)return s*Math.pow(2,-14)*(f/1024);if(e===31)return f?NaN:s*Infinity;return s*Math.pow(2,e-15)*(1+f/1024);}
+
+/* ================= the art team ================= */
+const S={mode:'team',brief:'A lighthouse at dawn, calm and warm',backend:'canvas',rounds:1,director:null,variants:[],curator:null,choice:null,log:[],busy:false,stop:false,err:'',prog:'',n:0,total:0};
+const LENSES=[{id:'surreal',name:'Surrealist',desc:'dreamlike, with an impossible twist'},{id:'minimal',name:'Minimalist',desc:'very few shapes and lots of empty space'},{id:'classic',name:'Classical',desc:'balanced, painterly, traditional'}];
+const COMPS=['centered','thirds','diagonal','symmetric'];
+const PRESETS=['A lighthouse at dawn, calm and warm','A busy neon city at night in the rain','A quiet pine forest after the rain'];
+/* ---------- small helpers ---------- */
+function need(){if(!LLM.ready())throw new Error('Load the chat model first (the box at the top).');}
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function firstJson(text){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&!Array.isArray(o))return o;}catch(e){}}return null;}
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const hex2rgb=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(String(h).trim());if(!m)return null;const n=parseInt(m[1],16);return[(n>>16)&255,(n>>8)&255,n&255];};
+const rgb2hex=c=>'#'+c.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const lum=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+const css=(c,a)=>'rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+(a===undefined?1:a)+')';
+const NAMES=[['black',[0,0,0]],['white',[255,255,255]],['grey',[128,128,128]],['red',[200,40,40]],['orange',[240,140,40]],['yellow',[240,210,60]],['green',[50,150,70]],['teal',[30,150,150]],['blue',[40,80,200]],['navy',[20,30,90]],['purple',[120,60,170]],['pink',[240,120,170]],['brown',[120,80,50]],['cream',[245,235,210]],['sky blue',[130,190,235]],['peach',[250,190,150]]];
+function colorName(hex){const c=hex2rgb(hex);if(!c)return 'grey';let best=NAMES[0],bd=1e9;NAMES.forEach(n=>{const d=(n[1][0]-c[0])**2+(n[1][1]-c[1])**2+(n[1][2]-c[2])**2;if(d<bd){bd=d;best=n;}});return best[0];}
+/* ---------- fallbacks, used when the model's reply cannot be read ---------- */
+function fallbackDirector(brief){
+  const b=brief.toLowerCase();let pal,mood;
+  if(/night|neon|city|dark/.test(b)){pal=['#0B1030','#1B2A6B','#FF3EA5','#33E1ED'];mood='electric';}
+  else if(/forest|pine|rain|green|moss/.test(b)){pal=['#1F3D2B','#A8C5A0','#4F7F5C','#E7F0D8'];mood='calm and damp';}
+  else if(/dawn|sun|warm|lighthouse|sea/.test(b)){pal=['#FBD7A0','#F28C5A','#2D4A6B','#FFF3D6'];mood='calm and warm';}
+  else{pal=['#F4EBD9','#6C8EAD','#E07A5F','#3D405B'];mood='quiet';}
+  return{title:brief.slice(0,40),mood,palette:pal,composition:'thirds',must:['a clear focal point'],avoid:['clutter'],source:'fallback'};
+}
+const KEYWORDS=['sun','moon','mountain','wave','water','sea','city','building','star','tree','forest','rain','house','boat','bridge','lighthouse','tower','light','hill','river'];
+function fallbackConcept(brief,lens){
+  const b=brief.toLowerCase(),found=KEYWORDS.filter(k=>b.indexOf(k)>=0).slice(0,3);
+  const els=found.length?found:['orb','peaks','waves'];
+  const text={surreal:brief+', with a floating impossible twist',minimal:brief+', reduced to a few simple shapes',classic:brief+', in a balanced, painterly arrangement'}[lens.id];
+  return{concept:text,elements:els,twist:'',source:'fallback'};
+}
+/* ---------- the procedural canvas backend ---------- */
+const DRAW={tower:['lighthouse','tower'],orb:['sun','moon','circle','light','lantern','planet','orb','glow'],peaks:['mountain','hill','peak','triangle','tent','pyramid'],waves:['wave','water','sea','ocean','river','lake','ripple'],skyline:['city','building','skyline','skyscraper'],stars:['star','stars','dots','sparkle','firefly','fireflies'],trees:['tree','forest','pine','woods'],rain:['rain','drizzle','storm','lines'],house:['house','cabin','home'],boat:['boat','ship','sail'],arch:['bridge','arch']};
+function drawerFor(word){const w=String(word).toLowerCase();for(const k of Object.keys(DRAW))if(DRAW[k].some(x=>w.indexOf(x)>=0))return k;return 'orb';}
+function renderCanvas(spec,size){
+  const cv=document.createElement('canvas');cv.width=cv.height=size;const g=cv.getContext('2d'),R=mulberry32(spec.seed>>>0),S_=size;
+  const pal=spec.palette.map(hex2rgb).filter(Boolean);while(pal.length<3)pal.push(pal[pal.length-1]||[128,128,128]);
+  const boost=spec.contrastBoost||0;let bgTop=pal[0],bgBot=pal[1];const dark=lum(mix(bgTop,bgBot,0.5))<0.5,pushBg=dark?[0,0,0]:[255,255,255],pushEl=dark?[255,255,255]:[0,0,0];
+  bgTop=mix(bgTop,pushBg,0.22*boost);bgBot=mix(bgBot,pushBg,0.22*boost);
+  const gr=g.createLinearGradient(0,0,0,S_);gr.addColorStop(0,css(bgTop));gr.addColorStop(1,css(bgBot));g.fillStyle=gr;g.fillRect(0,0,S_,S_);
+  const col=()=>{let c=pal[2+Math.floor(R()*(pal.length-2))];if(!spec.strict){const gray=Math.floor(R()*255);c=mix(c,[gray,gray,gray],0.5);}return mix(c,pushEl,0.2*boost);};
+  const comp=spec.composition||'thirds';
+  let fx=0.5,fy=0.42;if(comp==='thirds'){fx=R()<0.5?1/3:2/3;fy=1/3;}else if(comp==='diagonal'){fx=0.7;fy=0.3;}
+  const els=[];(spec.elements||[]).forEach(w=>{const d=drawerFor(w);if(els.indexOf(d)<0)els.push(d);});
+  const n=Math.max(1,Math.min(5,spec.density||3));const use=els.slice(0,Math.max(1,Math.min(els.length,n)));if(!use.length)use.push('orb');
+  const order=['stars','rain','orb','peaks','skyline','tower','trees','house','waves','boat','arch'];use.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  const AN={a:0.1,r:0.15},alpha=spec.anchor?AN.a:1,extra=n>3?n-3:0;
+  use.forEach(d=>{
+    if(d==='orb'){const r=S_*(0.11+0.05*R())*(spec.anchor?1.5:1);const c=col();const gl=g.createRadialGradient(S_*fx,S_*fy,r*0.2,S_*fx,S_*fy,r*2.2);gl.addColorStop(0,css(c,0.55));gl.addColorStop(1,css(c,0));g.fillStyle=gl;g.fillRect(0,0,S_,S_);g.fillStyle=css(c);g.beginPath();g.arc(S_*fx,S_*fy,r,0,6.2832);g.fill();}
+    else if(d==='peaks'){for(let k=0;k<2+extra;k++){const bx=S_*(0.15+0.7*R()),w=S_*(0.35+0.25*R()),h=S_*(0.2+0.25*R()),c=col();g.fillStyle=css(c,alpha);g.beginPath();g.moveTo(bx-w/2,S_);g.lineTo(bx,S_-h-S_*0.12);g.lineTo(bx+w/2,S_);g.fill();}}
+    else if(d==='waves'){for(let k=0;k<3;k++){const y0=S_*(0.72+0.08*k),amp=S_*(0.015+0.01*R()),fr=6+R()*6,c=col();g.fillStyle=css(c,alpha);g.beginPath();g.moveTo(0,S_);for(let x=0;x<=S_;x+=4)g.lineTo(x,y0+Math.sin(x/S_*fr+k)*amp);g.lineTo(S_,S_);g.fill();}}
+    else if(d==='skyline'){let x=0;while(x<S_){const w=S_*(0.05+0.06*R()),h=S_*(0.15+0.35*R()),c=col();g.fillStyle=css(c,alpha);g.fillRect(x,S_-h,w,h);g.fillStyle=css(mix(c,[255,255,255],0.6),0.7);for(let wy=S_-h+6;wy<S_-8;wy+=10)for(let wx=x+4;wx<x+w-4;wx+=8)if(R()<0.45)g.fillRect(wx,wy,3,4);x+=w+2;}}
+    else if(d==='tower'){const tx=S_*(comp==='thirds'?(fx>0.5?0.7:0.3):0.5),w=S_*0.07,h=S_*0.42,c=col();g.fillStyle=css(c,alpha);g.beginPath();g.moveTo(tx-w,S_);g.lineTo(tx-w*0.6,S_-h);g.lineTo(tx+w*0.6,S_-h);g.lineTo(tx+w,S_);g.fill();g.fillStyle=css(mix(c,[255,255,255],0.4));g.fillRect(tx-w*0.8,S_-h-S_*0.05,w*1.6,S_*0.05);g.beginPath();g.moveTo(tx-w*0.9,S_-h-S_*0.05);g.lineTo(tx,S_-h-S_*0.12);g.lineTo(tx+w*0.9,S_-h-S_*0.05);g.fill();}
+    else if(d==='stars'){const k=18+extra*8;for(let i=0;i<k;i++){const c=mix(col(),[255,255,255],0.6);g.fillStyle=css(c,0.9);g.beginPath();g.arc(S_*R(),S_*0.5*R(),0.6+R()*1.6,0,6.2832);g.fill();}}
+    else if(d==='trees'){const k=5+extra*2;for(let i=0;i<k;i++){const tx=S_*(0.06+0.88*R()),h=S_*(0.18+0.2*R()),w=S_*0.07,c=col();g.fillStyle=css(c,alpha);for(let j=0;j<3;j++){g.beginPath();g.moveTo(tx-w+j*2,S_-h*0.25-j*h*0.22);g.lineTo(tx,S_-h*0.55-j*h*0.22-h*0.2);g.lineTo(tx+w-j*2,S_-h*0.25-j*h*0.22);g.fill();}g.fillRect(tx-2,S_-h*0.25,4,h*0.25);}}
+    else if(d==='rain'){const c=mix(col(),[255,255,255],0.5);g.strokeStyle=css(c,0.55);g.lineWidth=1;for(let i=0;i<60+extra*30;i++){const x=S_*R(),y=S_*R();g.beginPath();g.moveTo(x,y);g.lineTo(x-4,y+12);g.stroke();}}
+    else if(d==='house'){const hx=S_*(0.25+0.5*R()),hw=S_*0.2,hh=S_*0.14,c=col();g.fillStyle=css(c,alpha);g.fillRect(hx-hw/2,S_-hh-S_*0.04,hw,hh);g.beginPath();g.moveTo(hx-hw*0.65,S_-hh-S_*0.04);g.lineTo(hx,S_-hh-S_*0.17);g.lineTo(hx+hw*0.65,S_-hh-S_*0.04);g.fill();}
+    else if(d==='boat'){const bx=S_*(0.25+0.5*R()),by=S_*0.74,w=S_*0.16,c=col();g.fillStyle=css(c,alpha);g.beginPath();g.moveTo(bx-w,by);g.lineTo(bx+w,by);g.lineTo(bx+w*0.7,by+S_*0.045);g.lineTo(bx-w*0.7,by+S_*0.045);g.fill();g.beginPath();g.moveTo(bx,by);g.lineTo(bx,by-S_*0.16);g.lineTo(bx+w*0.8,by-S_*0.02);g.fill();}
+    else if(d==='arch'){const c=col();g.strokeStyle=css(c,alpha);g.lineWidth=S_*0.03;g.beginPath();g.arc(S_*0.5,S_*0.82,S_*0.32,3.14159,6.28318);g.stroke();g.fillStyle=css(c,alpha);g.fillRect(S_*0.14,S_*0.82,S_*0.03,S_*0.18);g.fillRect(S_*0.83,S_*0.82,S_*0.03,S_*0.18);}
+  });
+  if(spec.anchor){const r=S_*AN.r,c=mix(pal[2],pushEl,0.28);const gl=g.createRadialGradient(S_*fx,S_*fy,r*0.2,S_*fx,S_*fy,r*2);gl.addColorStop(0,css(c,0.7));gl.addColorStop(1,css(c,0));g.fillStyle=gl;g.fillRect(0,0,S_,S_);g.fillStyle=css(c);g.beginPath();g.arc(S_*fx,S_*fy,r,0,6.2832);g.fill();g.strokeStyle=css(mix(c,pushBg,0.7));g.lineWidth=S_*0.012;g.beginPath();g.arc(S_*fx,S_*fy,r*1.25,0,6.2832);g.stroke();}
+  if(comp==='symmetric'){g.save();g.translate(S_,0);g.scale(-1,1);g.drawImage(cv,0,0,S_/2,S_,0,0,S_/2,S_);g.restore();}
+  return cv;
+}
+/* ---------- measuring an image: plain pixel statistics ---------- */
+function analyze(cv,spec){
+  const N=96,t=document.createElement('canvas');t.width=t.height=N;const g=t.getContext('2d');g.drawImage(cv,0,0,N,N);
+  const d=g.getImageData(0,0,N,N).data,P=N*N,L=new Float32Array(P);let sum=0;
+  for(let i=0;i<P;i++){L[i]=(0.2126*d[4*i]+0.7152*d[4*i+1]+0.0722*d[4*i+2])/255;sum+=L[i];}
+  const mean=sum/P;let v=0;for(let i=0;i<P;i++)v+=(L[i]-mean)*(L[i]-mean);const std=Math.sqrt(v/P),contrast=Math.min(1,std/0.25);
+  const bins=new Map();
+  for(let i=0;i<P;i++){const k=(d[4*i]>>6)*16+(d[4*i+1]>>6)*4+(d[4*i+2]>>6);let b=bins.get(k);if(!b){b={n:0,r:0,g:0,b:0};bins.set(k,b);}b.n++;b.r+=d[4*i];b.g+=d[4*i+1];b.b+=d[4*i+2];}
+  const dom=[...bins.values()].sort((a,b)=>b.n-a.n).slice(0,6).map(b=>[b.r/b.n,b.g/b.n,b.b/b.n]);
+  const target=(spec.palette||[]).map(hex2rgb).filter(Boolean);let md=0;
+  target.forEach(tc=>{let best=1e9;dom.forEach(dc=>{best=Math.min(best,Math.hypot(tc[0]-dc[0],tc[1]-dc[1],tc[2]-dc[2]));});md+=best/441.67;});
+  md=target.length?md/target.length:0;const paletteMatch=Math.max(0,1-md/0.35);
+  let sx=0,sy=0,sw=0,edges=0,ar=0;
+  for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++){
+    const i=y*N+x,gx=-L[i-N-1]-2*L[i-1]-L[i+N-1]+L[i-N+1]+2*L[i+1]+L[i+N+1],gy=-L[i-N-1]-2*L[i-N]-L[i-N+1]+L[i+N-1]+2*L[i+N]+L[i+N+1],mag=Math.hypot(gx,gy);
+    if(mag>0.35)edges++;const w=Math.abs(L[i]-mean)+mag*0.5;sx+=w*x;sy+=w*y;sw+=w;
+  }
+  const cx=sw?sx/sw/N:0.5,cy=sw?sy/sw/N:0.5,busy=Math.min(1,(edges/P)/0.12);
+  const comp=spec.composition||'thirds';let dist;
+  if(comp==='centered'||comp==='symmetric')dist=Math.hypot(cx-0.5,cy-0.5)/0.35;
+  else if(comp==='thirds')dist=Math.min(...[[1/3,1/3],[2/3,1/3],[1/3,2/3],[2/3,2/3]].map(p=>Math.hypot(cx-p[0],cy-p[1])))/0.3;
+  else dist=Math.abs((cx+cy)-1)/0.5;
+  const balance=Math.max(0,1-dist);
+  let sd=0;for(let y=0;y<N;y++)for(let x=0;x<N/2;x++)sd+=Math.abs(L[y*N+x]-L[y*N+(N-1-x)]);const symmetry=1-sd/(P/2);
+  return{contrast,paletteMatch,balance,busy,symmetry,cx,cy,mean,dom};
+}
+function codeIssues(m){
+  const out=[];
+  if(m.paletteMatch<0.55)out.push({code:'palette',msg:'Palette match is '+m.paletteMatch.toFixed(2)+', so the colors drift from the brief.',fix:'Use only the brief\'s colors.'});
+  if(m.contrast<0.35)out.push({code:'contrast',msg:'Contrast is '+m.contrast.toFixed(2)+', so the image looks flat.',fix:'Separate light and dark more.'});
+  if(m.balance<0.5)out.push({code:'balance',msg:'The visual weight sits off the planned composition (balance '+m.balance.toFixed(2)+').',fix:'Anchor a strong focal shape at the planned spot.'});
+  if(m.busy>0.7)out.push({code:'busy',msg:'The image is busy (edge level '+m.busy.toFixed(2)+').',fix:'Use fewer elements.'});
+  if(m.busy<0.12)out.push({code:'flat',msg:'The image is nearly empty (edge level '+m.busy.toFixed(2)+').',fix:'Add one more element.'});
+  return out;
+}
+function scoreOf(m){const busyOk=Math.max(0,1-Math.abs(m.busy-0.4)/0.6);return 0.35*m.paletteMatch+0.25*m.contrast+0.25*m.balance+0.15*busyOk;}
+function applyFixes(spec,issues){
+  const s=JSON.parse(JSON.stringify(spec));
+  issues.forEach(i=>{
+    if(i.code==='palette')s.strict=true;
+    else if(i.code==='contrast')s.contrastBoost=(s.contrastBoost||0)+1;
+    else if(i.code==='balance')s.anchor=true;
+    else if(i.code==='busy')s.density=Math.max(1,(s.density||3)-1);
+    else if(i.code==='flat')s.density=Math.min(5,(s.density||3)+1);
+  });
+  return s;
+}
+/* ---------- the SD-Turbo backend (experimental, not tested here) ---------- */
+const SD={state:'idle',msg:'',sess:null,tok:null,ort:null,abort:null,file:0,pct:0};
+const isMobile=()=>/iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent||'');
+function toF16(a){const o=new Uint16Array(a.length),f=new Float32Array(1),u=new Uint32Array(f.buffer);for(let i=0;i<a.length;i++){f[0]=a[i];const x=u[0],s=(x>>>16)&0x8000;const e=((x>>>23)&0xff)-127+15,m=x&0x7fffff;if(e<=0)o[i]=s;else if(e>=31)o[i]=s|0x7c00;else o[i]=s|(e<<10)|(m>>>13);}return o;}
+function tensorF32(t){if(t.type==='float16'){const u=t.data instanceof Uint16Array?t.data:new Uint16Array(t.data.buffer.slice(t.data.byteOffset,t.data.byteOffset+t.data.byteLength));const o=new Float32Array(u.length);for(let i=0;i<u.length;i++)o[i]=f16(u[i]);return o;}return t.data;}
+function randn(n,seed){const R=mulberry32(seed>>>0),o=new Float32Array(n);for(let i=0;i<n;i+=2){const u=Math.max(R(),1e-9),v=R(),r=Math.sqrt(-2*Math.log(u));o[i]=r*Math.cos(6.2832*v);if(i+1<n)o[i+1]=r*Math.sin(6.2832*v);}return o;}
+const nap=ms=>new Promise(r=>setTimeout(r,ms));
+async function probeSize(url,signal){
+  try{
+    const r=await fetch(url,{headers:{Range:'bytes=0-0'},signal});
+    if(r.status!==206){try{r.body&&r.body.cancel();}catch(e){}return null;}
+    const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||'');
+    try{await r.arrayBuffer();}catch(e){}
+    return m?+m[1]:null;
+  }catch(e){if(e&&e.name==='AbortError')throw e;return null;}
+}
+/* A big download that survives a flaky connection: it asks for the file in pieces, retries a piece that fails from the byte where it stopped, and shows real progress. If the server cannot do pieces it falls back to one stream. */
+async function fetchBig(url,onProg,signal){
+  let cache=null;
+  try{if(typeof caches!=='undefined'){cache=await caches.open('art-sd-v1');const hit=await cache.match(url);if(hit){onProg(1,'from your browser cache');return await hit.arrayBuffer();}}}catch(e){cache=null;}
+  const say=(got,len)=>onProg(len?got/len:0,(got/1048576).toFixed(0)+(len?' of '+(len/1048576).toFixed(0):'')+' MB');
+  const total=await probeSize(url,signal);let buf,got=0;
+  if(total){
+    buf=new Uint8Array(total);const CH=32*1048576;
+    while(got<total){
+      const end=Math.min(total,got+CH)-1;let ok=false,lastErr=null;
+      for(let attempt=0;attempt<5&&!ok;attempt++){
+        try{
+          const r=await fetch(url,{headers:{Range:'bytes='+got+'-'+end},signal});
+          if(r.status!==206)throw new Error('The server did not honor a range request ('+r.status+')');
+          const rd=r.body.getReader();
+          while(true){const{done,value}=await rd.read();if(done)break;if(got+value.length>total)throw new Error('The server sent too much data');buf.set(value,got);got+=value.length;say(got,total);}
+          if(got<=end)throw new Error('The connection ended early');
+          ok=true;
+        }catch(e){if(e&&e.name==='AbortError')throw e;lastErr=e;SD.msg='Connection problem, retrying from '+(got/1048576).toFixed(0)+' MB...';await nap(500*(attempt+1));}
+      }
+      if(!ok)throw lastErr||new Error('A piece of the download failed');
+    }
+  }else{
+    const r=await fetch(url,{signal});if(!r.ok)throw new Error('Could not download '+url+' ('+r.status+')');
+    const len=+(r.headers.get('content-length')||0);
+    if(len&&r.body&&r.body.getReader){buf=new Uint8Array(len);const rd=r.body.getReader();while(true){const{done,value}=await rd.read();if(done)break;buf.set(value,got);got+=value.length;say(got,len);}}
+    else buf=new Uint8Array(await r.arrayBuffer());
+  }
+  if(cache){try{await cache.put(url,new Response(buf,{headers:{'content-type':'application/octet-stream'}}));}catch(e){}}   // keeping a copy is optional: a full disk must not break the load
+  return buf.buffer;
+}
+async function sdLoad(){
+  SD.state='loading';SD.msg='Loading the runtime...';SD.file=0;SD.pct=0;SD.abort=new AbortController();draw();
+  try{
+    const ORT='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    const ort=await import(ORT+'ort.webgpu.min.mjs');ort.env.wasm.wasmPaths=ORT;
+    SD.msg='Loading the tokenizer...';draw();
+    const tf=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');tf.env.allowLocalModels=false;
+    SD.tok=await tf.AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch16');
+    const base='https://huggingface.co/schmuell/sd-turbo-ort-web/resolve/main/';
+    const defs={text_encoder:{url:'text_encoder/model.onnx',fd:{batch_size:1}},unet:{url:'unet/model.onnx',fd:{batch_size:1,num_channels:4,height:64,width:64,sequence_length:77}},vae_decoder:{url:'vae_decoder/model.onnx',fd:{batch_size:1,num_channels_latent:4,height_latent:64,width_latent:64}}};
+    SD.sess={};
+    let fi=0;
+    for(const k of Object.keys(defs)){
+      fi++;SD.file=fi;SD.pct=0;
+      let buf=await fetchBig(base+defs[k].url,(f,t)=>{SD.pct=f;SD.msg='Downloading '+k+': '+t;if(Math.random()<0.25)draw();},SD.abort.signal);
+      SD.pct=1;SD.msg='Preparing '+k+' on the GPU...';draw();
+      SD.sess[k]=await ort.InferenceSession.create(buf,{executionProviders:['webgpu'],enableMemPattern:false,enableCpuMemArena:false,freeDimensionOverrides:defs[k].fd});
+      buf=null;
+    }
+    SD.ort=ort;SD.state='ready';SD.msg='Ready.';
+  }catch(e){
+    if(e&&e.name==='AbortError'){SD.state='idle';SD.msg='Stopped. Any file that finished downloading stays in your browser cache.';throw new Error('SD_STOPPED');}
+    const em=String((e&&e.message)||e);let hint='';
+    if(/dynamically imported module|importing a module script/i.test(em))hint=' The runtime could not be loaded from the internet. Check your connection and any content blocker, then try again.';
+    else if(/network error|failed to fetch|load failed|networkerror/i.test(em))hint=' The download was interrupted. Very large files often fail on phones or unstable connections, so try a desktop computer on Wi-Fi.';
+    else if((e&&e.name==='RangeError')||/memory|allocation/i.test(em))hint=' The browser ran out of memory. SD-Turbo needs a desktop computer with a strong GPU.';
+    SD.state='error';SD.msg='SD-Turbo could not load: '+em+'.'+hint;throw new Error(SD.msg);
+  }
+}
+async function sdRun(sess,feeds){
+  try{return await sess.run(feeds);}
+  catch(e){
+    if(!/float16|tensor\(float/i.test(String((e&&e.message)||e)))throw e;
+    const f={};Object.keys(feeds).forEach(k=>{const t=feeds[k];f[k]=(t.type==='float32')?new SD.ort.Tensor('float16',toF16(t.data),t.dims):t;});
+    return await sess.run(f);
+  }
+}
+async function sdGenerate(spec){
+  if(SD.state!=='ready')throw new Error('Load the SD-Turbo backend first (the button under Backend).');
+  const ort=SD.ort;
+  const enc=await SD.tok(spec.prompt,{padding:true,max_length:77,truncation:true,return_tensor:false});
+  const ids=new Int32Array(77);const src=Array.from(enc.input_ids).slice(0,77);src.forEach((v,i)=>{ids[i]=Number(v);});
+  const te=await sdRun(SD.sess.text_encoder,{input_ids:new ort.Tensor('int32',ids,[1,77])});
+  const hid=new ort.Tensor('float32',tensorF32(te.last_hidden_state),te.last_hidden_state.dims);
+  const sigma=14.6146,n=4*64*64,lat=randn(n,spec.seed),scaled=new Float32Array(n);
+  for(let i=0;i<n;i++){lat[i]*=sigma;scaled[i]=lat[i]/Math.sqrt(sigma*sigma+1);}
+  const un=await sdRun(SD.sess.unet,{sample:new ort.Tensor('float32',scaled,[1,4,64,64]),timestep:new ort.Tensor('int64',BigInt64Array.from([999n]),[1]),encoder_hidden_states:hid});
+  const eps=tensorF32(un.out_sample),x0=new Float32Array(n);
+  for(let i=0;i<n;i++)x0[i]=(lat[i]-sigma*eps[i])/0.18215;
+  const vae=await sdRun(SD.sess.vae_decoder,{latent_sample:new ort.Tensor('float32',x0,[1,4,64,64])});
+  const px=tensorF32(vae.sample),W=512,cv=document.createElement('canvas');cv.width=cv.height=W;
+  const g=cv.getContext('2d'),im=g.createImageData(W,W);
+  for(let i=0;i<W*W;i++){for(let c=0;c<3;c++){const v=px[c*W*W+i]/2+0.5;im.data[4*i+c]=Math.max(0,Math.min(255,Math.round(v*255)));}im.data[4*i+3]=255;}
+  g.putImageData(im,0,0);return cv;
+}
+async function generate(spec){
+  if(S.backend==='sdturbo'){const cv=await sdGenerate(spec);return cv;}
+  return renderCanvas(spec,288);
+}
+/* ---------- the agents ---------- */
+function note(agent,text){S.log.push({agent,text});}
+async function ask(agent,sys,user,temp,max){
+  need();S.n++;S.prog=agent;draw();await new Promise(r=>setTimeout(r,0));
+  const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,max_tokens:max||220});
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  note(agent,text.slice(0,300));return text;
+}
+async function runDirector(){
+  const t=await ask('Creative director','You are the creative director of an art team. Turn the brief into constraints. Reply with ONE JSON object only.','Brief: '+S.brief+'\nReturn: {"title":"short title","mood":"two words","palette":["#RRGGBB","#RRGGBB","#RRGGBB","#RRGGBB"],"composition":"centered or thirds or diagonal or symmetric","must":["one thing"],"avoid":["one thing"]}',0.2,200);
+  const o=firstJson(t);let d=null;
+  if(o&&Array.isArray(o.palette)){
+    const pal=o.palette.map(x=>String(x).trim()).filter(x=>hex2rgb(x)).slice(0,5);
+    if(pal.length>=3)d={title:String(o.title||S.brief).slice(0,50),mood:String(o.mood||'').slice(0,40),palette:pal.map(x=>x.startsWith('#')?x:'#'+x),composition:COMPS.indexOf(o.composition)>=0?o.composition:'thirds',must:(Array.isArray(o.must)?o.must:[]).map(String).slice(0,3),avoid:(Array.isArray(o.avoid)?o.avoid:[]).map(String).slice(0,3),source:'model'};
+  }
+  if(!d){d=fallbackDirector(S.brief);note('Creative director','(the reply was not usable, so a simple rule set the constraints)');}
+  S.director=d;
+}
+async function runConcept(lens){
+  const D=S.director;
+  const t=await ask(lens.name+' artist','You are a concept artist with a '+lens.name.toLowerCase()+' lens: '+lens.desc+'. Reply with ONE JSON object only.','Brief: '+S.brief+'\nMood: '+D.mood+'. Composition: '+D.composition+'. Must have: '+D.must.join(', ')+'. Avoid: '+D.avoid.join(', ')+'.\nReturn: {"concept":"one sentence","elements":["3 to 5 simple things to draw, one word each"],"twist":"one short idea"}',0.8,200);
+  const o=firstJson(t);
+  if(o&&typeof o.concept==='string'&&o.concept.length>5&&Array.isArray(o.elements)&&o.elements.length)return{concept:o.concept.slice(0,200),elements:o.elements.map(x=>String(x).toLowerCase().slice(0,20)).slice(0,5),twist:String(o.twist||'').slice(0,100),source:'model'};
+  note(lens.name+' artist','(the reply was not usable, so a simple rule wrote the concept)');
+  return fallbackConcept(S.brief,lens);
+}
+async function runPrompt(concept,issues,prev){
+  const D=S.director;
+  const t=await ask(issues?'Prompt engineer (revising)':'Prompt engineer','You are a prompt engineer for an image model. Reply with ONE JSON object only.','Concept: '+concept.concept+'\nElements: '+concept.elements.join(', ')+'\nPalette: '+D.palette.map(colorName).join(', ')+'. Avoid: '+D.avoid.join(', ')+'.'+(issues&&issues.length?'\nFix these problems found by measurement: '+issues.map(i=>i.msg+' '+i.fix).join(' '):'')+'\nReturn: {"prompt":"one line for the image model","negative":"things to avoid","density":3}',0.3,160);
+  const o=firstJson(t);
+  if(o&&typeof o.prompt==='string'&&o.prompt.length>5)return{prompt:o.prompt.slice(0,300),negative:String(o.negative||'').slice(0,200),density:Math.max(1,Math.min(5,parseInt(o.density,10)||3))};
+  note('Prompt engineer','(the reply was not usable, so a simple template wrote the prompt)');
+  return{prompt:concept.concept+', '+D.palette.map(colorName).join(', ')+' palette, '+D.composition+' composition',negative:D.avoid.join(', '),density:prev?prev.density:3};
+}
+async function runCritic(variant,spec,m,issues){
+  const D=S.director;
+  const t=await ask('Critic','You are a rival art critic. Find what misses the brief. You see only the brief, the prompt and measurements. Reply with ONE JSON object only.','Brief: '+S.brief+'\nMood: '+D.mood+'. Must have: '+D.must.join(', ')+'.\nPrompt used: '+spec.prompt+'\nMeasurements from 0 to 1: palette match '+m.paletteMatch.toFixed(2)+', contrast '+m.contrast.toFixed(2)+', balance '+m.balance.toFixed(2)+', busyness '+m.busy.toFixed(2)+'.\nReturn: {"opinion":["up to 2 short suggestions"],"verdict":"keep or revise"}',0.2,140);
+  const o=firstJson(t);
+  if(o&&Array.isArray(o.opinion))return{opinion:o.opinion.map(String).slice(0,2),verdict:o.verdict==='revise'?'revise':'keep'};
+  return{opinion:[],verdict:issues.length?'revise':'keep'};
+}
+async function renderStep(label,spec){
+  S.prog='Drawing: '+label;draw();await new Promise(r=>setTimeout(r,0));
+  const t0=performance.now(),cv=await generate(spec),m=analyze(cv,spec),img=cv.toDataURL('image/png');
+  return{img,m,issues:codeIssues(m),score:scoreOf(m),spec,ms:performance.now()-t0};
+}
+async function runTeam(){
+  need();
+  if(S.backend==='sdturbo'&&SD.state!=='ready')throw new Error('Load the SD-Turbo backend first, or switch to the procedural canvas.');
+  S.mode='team';S.log=[];S.variants=[];S.curator=null;S.choice=null;S.n=0;S.total=1+9+(S.rounds*6);
+  await runDirector();if(S.stop)return;
+  const baseSeed=hash(S.brief);
+  for(let li=0;li<LENSES.length&&!S.stop;li++){
+    const lens=LENSES[li],v={lens,rounds:[],concept:null};S.variants.push(v);
+    v.concept=await runConcept(lens);if(S.stop)break;
+    const pe=await runPrompt(v.concept,null,null);if(S.stop)break;
+    const spec={prompt:pe.prompt,negative:pe.negative,seed:baseSeed+li*7919,palette:S.director.palette,composition:S.director.composition,elements:v.concept.elements,density:pe.density,strict:false,contrastBoost:0,anchor:false};
+    const r0=await renderStep(lens.name+' first try',spec);if(S.stop)break;
+    r0.crit=await runCritic(v,spec,r0.m,r0.issues);v.rounds.push(r0);
+  }
+  for(let round=1;round<=S.rounds&&!S.stop;round++){
+    for(const v of S.variants){
+      if(S.stop)break;const last=v.rounds[v.rounds.length-1];
+      if(!last.issues.length)continue;
+      const pe=await runPrompt(v.concept,last.issues,last.spec);if(S.stop)break;
+      const spec=applyFixes(Object.assign({},last.spec,{prompt:pe.prompt,negative:pe.negative}),last.issues);
+      if(S.backend!=='sdturbo')spec.density=last.issues.some(i=>i.code==='busy'||i.code==='flat')?spec.density:last.spec.density;
+      const r=await renderStep(v.lens.name+' revision '+round,spec);if(S.stop)break;
+      r.crit=await runCritic(v,spec,r.m,r.issues);r.fixed=last.issues.map(i=>i.code);v.rounds.push(r);
+    }
+  }
+  if(S.stop)return;
+  S.variants.forEach(v=>{v.best=v.rounds.reduce((a,b)=>b.score>a.score?b:a);v.bestIndex=v.rounds.indexOf(v.best);});
+  S.curator=S.variants.map((v,i)=>({i,score:v.best.score})).sort((a,b)=>b.score-a.score);
+}
+/* ---------- drawing the page ---------- */
+const pc=v=>Math.round(v*100);
+function bar(name,v,good){return '<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><div class="small" style="width:78px;flex:none">'+name+'</div><div style="flex:1;background:var(--line);border-radius:6px;height:10px"><div style="width:'+pc(v)+'%;height:10px;border-radius:6px;background:'+(good?'#2E7D5B':'#E3A21A')+'"></div></div><div class="small" style="width:30px;text-align:right">'+pc(v)+'</div></div>';}
+function metricsView(m){return bar('Palette',m.paletteMatch,m.paletteMatch>=0.55)+bar('Contrast',m.contrast,m.contrast>=0.35)+bar('Balance',m.balance,m.balance>=0.5)+bar('Busyness',m.busy,m.busy<=0.7&&m.busy>=0.12);}
+function progBar(pct){return '<div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+Math.min(100,Math.max(0,pct*100)).toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';}
+function busyBox(){
+  if(SD.state==='loading')return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>Loading SD-Turbo: file '+(SD.file||'...')+' of 3</b><span class="small">'+esc(SD.msg)+'</span></div>'+progBar(SD.pct);
+  if(S.mode==='sd')return '<div style="display:flex;justify-content:space-between;gap:8px"><b>SD-Turbo</b><span class="small">'+esc(SD.msg||S.prog||'Working...')+'</span></div>';
+  return counter();
+}
+function counter(){const pct=Math.min(100,S.total?S.n/S.total*100:0);return '<div style="display:flex;justify-content:space-between;gap:8px"><b>Model call '+S.n+' of up to '+S.total+'</b><span class="small">'+esc(S.prog||'')+'</span></div><div style="background:rgba(0,0,0,.12);border-radius:6px;height:8px;margin-top:6px"><div style="width:'+pct.toFixed(1)+'%;height:8px;border-radius:6px;background:#0E6F8E"></div></div>';}
+function variantCard(v,i){
+  if(!v.concept)return '<div class="box" style="margin-bottom:12px"><b>'+esc(v.lens.name)+'</b> <span class="small muted">is thinking...</span></div>';
+  if(!v.rounds.length)return '<div class="box" style="margin-bottom:12px"><b>'+esc(v.lens.name)+'</b><p style="margin:6px 0">'+esc(v.concept.concept)+'</p><span class="small muted">is drawing...</span></div>';
+  const best=v.best||v.rounds[v.rounds.length-1];
+  const rank=S.curator?S.curator.findIndex(c=>c.i===i)+1:0;
+  let h='<div class="box" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b>'+esc(v.lens.name)+'</b>'+(rank?chip('Curator rank '+rank,rank===1?'good':''):'')+'</div>'+
+    '<div class="small muted">'+esc(v.lens.desc)+'</div><p style="margin:6px 0">'+esc(v.concept.concept)+'</p>'+
+    '<div class="row" style="gap:4px;flex-wrap:wrap">'+v.concept.elements.map(e=>'<span class="chip">'+esc(e)+'</span>').join('')+(v.concept.source==='fallback'?chip('rule-based concept','warn'):'')+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:flex-start">'+v.rounds.map((r,k)=>'<div style="text-align:center"><img src="'+r.img+'" style="width:'+(v.rounds.length>2?96:136)+'px;height:'+(v.rounds.length>2?96:136)+'px;border-radius:8px;border:'+(r===best?'3px solid #2E7D5B':'1px solid #CBD8DD')+'"><div class="small muted">'+(k===0?'First try':'Revision '+k)+'<br>score '+pc(r.score)+'</div></div>').join('')+'</div>'+
+    '<div style="margin-top:8px"><div class="small"><b>Best version:</b> '+(v.bestIndex===undefined?'':(v.bestIndex===0?'the first try':'revision '+v.bestIndex))+'</div>'+metricsView(best.m)+'</div>';
+  const iss=best.issues;
+  h+=(iss.length?'<div class="small" style="margin-top:6px"><b>Measured problems left:</b><ul style="margin:4px 0 0 18px">'+iss.map(x=>'<li>'+esc(x.msg)+'</li>').join('')+'</ul></div>':'<div class="small" style="margin-top:6px;color:#2E7D5B"><b>No measured problems.</b></div>');
+  h+=(v.rounds.length>1?'<div class="small muted" style="margin-top:4px">Fixes applied between tries: '+v.rounds.slice(1).map(r=>(r.fixed||[]).join(', ')).join(' then ')+'.</div>':'');
+  h+=(best.crit&&best.crit.opinion.length?'<div class="small" style="margin-top:6px"><b>The critic\'s opinion</b> (a small model, not measured): '+best.crit.opinion.map(esc).join(' ')+'</div>':'');
+  h+='<details style="margin-top:6px"><summary class="small">Prompt and settings</summary><div class="small muted" style="margin-top:4px">'+esc(best.spec.prompt)+'<br>Negative: '+esc(best.spec.negative||'none')+'<br>Seed '+best.spec.seed+', density '+best.spec.density+(best.spec.strict?', strict palette':'')+(best.spec.contrastBoost?', contrast boost '+best.spec.contrastBoost:'')+(best.spec.anchor?', anchored focal shape':'')+'</div></details>';
+  h+='<div class="row" style="margin-top:8px">'+btn('pick',i,S.choice===i?'Your pick':'I pick this one',S.choice===i?'':'ghost sm')+'<a class="btn ghost sm" download="art-'+v.lens.id+'.png" href="'+best.img+'">Download</a></div></div>';
+  return h;
+}
+const QA=[
+ ['Why not just let one agent do everything?','Different lenses give different concepts, and a critic that sees only measurements judges differently from the artist who made the image. That separation is the point of a team.'],
+ ['What do the measurements mean?','They are plain pixel statistics: how close the dominant colors are to the brief, how much light and dark differ, where the visual weight sits compared with the planned composition, and how busy the edges are. They check the brief. They do not measure beauty.'],
+ ['What does a revision do?','The prompt engineer rewrites the prompt with the measured problems in view, and the code adjusts the drawing settings for the problem it found, such as forcing the palette or boosting contrast. Then the image is measured again.'],
+ ['What is the backend contract?','A backend takes a spec (prompt, negative prompt, seed, palette, composition, elements, density) and returns a canvas. The procedural canvas and SD-Turbo both follow it, so another image engine can be added the same way.']
+];
+function sdBox(){
+  if(S.backend!=='sdturbo')return '';
+  return '<div class="box" style="margin-top:8px"><b>SD-Turbo (experimental)</b><p class="small muted">Runs a real image model on WebGPU through ONNX Runtime Web. It downloads several gigabytes the first time (the unet file alone is about 1.6 GB), needs a strong desktop GPU and a lot of memory, and will probably fail on a phone. I could not test it from here.</p>'+
+    '<div class="row">'+btn('sdtest','',SD.state==='ready'?'Make a test image':'Load SD-Turbo and make a test image','',S.busy||SD.state==='loading')+chip(SD.state,SD.state==='ready'?'good':(SD.state==='error'?'bad':''))+'</div>'+(SD.msg?'<p class="small muted" style="margin-top:6px">'+esc(SD.msg)+'</p>':'')+(SD.test?'<img src="'+SD.test+'" style="width:150px;border-radius:8px;margin-top:6px">':'')+'</div>';
+}
+function render(){
+  let h='<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+(LLM.ready()?' <span class="small muted">'+esc(LLM.modelId)+'</span>':LLM.ui()+'<p class="small muted" style="margin-top:8px">A chat model run by WebLLM on WebGPU. It plays the director, the concept artists, the prompt engineer and the critic.</p>')+'</div>';
+  h+='<h3>1  The brief</h3><textarea class="editor" id="brief" data-act="brief" rows="2">'+esc(S.brief)+'</textarea><div class="row" style="margin-top:6px">'+PRESETS.map((p,i)=>btn('preset',i,p.split(' ').slice(0,4).join(' ')+'...','ghost sm',S.busy)).join('')+'</div>';
+  h+='<h3>2  Backend and settings</h3><div class="row">'+tog('backend','canvas','Procedural canvas (works everywhere)',S.backend==='canvas')+tog('backend','sdturbo','SD-Turbo (WebGPU, experimental)',S.backend==='sdturbo')+'</div>'+sdBox()+
+    '<div class="row" style="margin-top:8px"><span class="small muted">Revision rounds</span><select data-act="rounds">'+[0,1,2].map(v=>'<option'+(S.rounds===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
+    '<p class="small muted">The procedural canvas draws simple generative art from the plan. It is not an AI image model, but it lets the whole team run anywhere and be measured.</p>';
+  h+='<div class="row" style="margin-top:12px">'+btn('run','','Assemble the team','',S.busy)+btn('reset','','Clear','ghost',S.busy)+'</div>';
+  if(S.busy)h+='<div class="status warn" style="margin-top:10px">'+busyBox()+'</div>';
+  if(S.director){
+    const D=S.director;
+    h+='<h3>The director\'s plan</h3><div class="box"><b>'+esc(D.title)+'</b> '+(D.source==='fallback'?chip('rule-based plan','warn'):'')+'<div class="small muted">Mood: '+esc(D.mood)+'. Composition: '+esc(D.composition)+'.</div><div style="display:flex;gap:6px;margin:8px 0">'+D.palette.map(p=>'<div style="width:38px;height:38px;border-radius:8px;background:'+esc(p)+';border:1px solid #CBD8DD" title="'+esc(p)+'"></div>').join('')+'</div><div class="small">Must have: '+esc(D.must.join(', ')||'nothing in particular')+'. Avoid: '+esc(D.avoid.join(', ')||'nothing in particular')+'.</div></div>';
+  }
+  if(S.variants.length){
+    h+='<h3>The team\'s variants</h3>'+S.variants.map(variantCard).join('');
+    if(S.curator){
+      h+='<div class="status ok"><b>The curator\'s ranking</b> (by the measured score only): '+S.curator.map((c,k)=>(k+1)+'. '+esc(S.variants[c.i].lens.name)+' ('+pc(c.score)+')').join('; ')+'.'+(S.choice!==null?' <b>You picked the '+esc(S.variants[S.choice].lens.name)+'</b>'+(S.curator[0].i===S.choice?', which is also the curator\'s top choice.':', which is not the curator\'s top choice, so your taste and the measurements disagree. The measurements only check the brief.'):' Pick the one you like best. Your choice is the real test.')+'</div>';
+    }
+  }
+  if(S.log.length)h+='<details style="margin-top:10px"><summary class="small">Team log ('+S.log.length+' messages)</summary>'+S.log.map(l=>'<div class="box small" style="margin-top:4px"><b>'+esc(l.agent)+':</b> '+esc(l.text)+'</div>').join('')+'</details>';
+  return h+renderKnowledgeGraphSection()+qa(QA)+toast();
+}
+function toast(){
+  const base='position:fixed;left:10px;right:10px;bottom:10px;z-index:50;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);';
+  if(S.err)return '<div style="'+base+'background:#FBE9E5;border:1px solid #B3412E"><b>That did not work</b><div class="small" style="margin-top:4px">'+esc(S.err)+'</div><div style="margin-top:8px">'+btn('dismiss','','Dismiss','ghost sm')+'</div></div>';
+  if(S.busy)return '<div style="'+base+'background:#FFF3D6;border:1px solid #E3A21A">'+busyBox()+'<div style="margin-top:8px">'+btn('stop','',SD.state==='loading'?'Stop the download':'Stop','ghost sm')+'</div></div>';
+  return '';
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+
+function renderKnowledgeGraphSection(){
+  return '<div class="panel" style="margin:16px 0;padding:16px;">' +
+    '<h3>Art Studio Knowledge Graph</h3>' +
+    '<p class="small muted">Live interactive epistemic graph: Art Director (Palette & Mood), Concept Artists (3 distinct visual lenses), Prompt Engineer (Density & Modifiers), Critic (Issue pruning), and Curator (Quality ranking). Click any node to inspect agent role & decisions.</p>' +
+    '<div style="position:relative;background:#0A1017;border-radius:10px;overflow:hidden;border:1px solid #CBD4DB;margin:10px 0;">' +
+    '<canvas id="cvsArtKG" width="1000" height="360" style="width:100%;height:360px;display:block;cursor:pointer;"></canvas>' +
+    '</div>' +
+    '<div class="row small muted" style="margin-top:6px;flex-wrap:wrap;gap:8px;">' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E6F8E;margin-right:4px;"></i>Art Director</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:4px;"></i>Concept Artists</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16A34A;margin-right:4px;"></i>Prompt Engineer</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9333EA;margin-right:4px;"></i>Renderer / Canvas</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;"></i>Critic</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563EB;margin-right:4px;"></i>Curator</span>' +
+    '</div></div>';
+}
+
+
+let artKgSimNodes = [];
+let artKgSimLinks = [];
+let artSelectedNode = null;
+
+function buildArtKnowledgeGraph(){
+  const D = (typeof S !== 'undefined' && S.director) ? S.director : {palette:['#1B365D','#F46A4E','#E8C547'], mood:'Atmospheric', tone:'Vibrant'};
+  const topV = (typeof S !== 'undefined' && S.variants && S.variants.length > 0) ? S.variants[0] : null;
+  const lensName = topV ? topV.concept.lens : 'Cinematic Concept';
+
+  artKgSimNodes = [
+    {id:'d1', label:'Director Palette: ' + (D.palette?D.palette.slice(0,2).join(', '):'#1B365D'), role:'director', x:180, y:120, roleName:'Art Director', info:'Defines harmonic color scheme, lighting direction, and aesthetic constraints.'},
+    {id:'d2', label:'Mood: ' + (D.mood||'Evocative'), role:'director', x:260, y:60, roleName:'Creative Lead', info:'Establishes emotional tone, visual hierarchy, and atmospheric density.'},
+    {id:'a1', label:lensName + ' Lens', role:'artist', x:480, y:100, highlight:true, roleName:'Concept Artist', info:'Interprets the director brief through distinct aesthetic stylings.'},
+    {id:'a2', label:'Composition Geometry', role:'artist', x:420, y:190, roleName:'Layout Artist', info:'Calculates rule-of-thirds focal anchors and silhouette depth.'},
+    {id:'pe1', label:'Synthesized Prompt & Modifiers', role:'prompt', x:770, y:90, roleName:'Prompt Engineer', info:'Constructs dense token weighting, lighting cues, and negative tokens.'},
+    {id:'gen1', label:'Generative Canvas Layer', role:'renderer', x:870, y:160, roleName:'Procedural / SD Renderer', info:'Synthesizes visual artifact with specular passes and texture filters.'},
+    {id:'cr1', label:'Critic Style Audit', role:'critic', x:770, y:280, roleName:'Visual Critic', info:'Scans for color clash, compositional imbalance, and brief non-adherence.'},
+    {id:'cr2', label:'[PRUNED] Clashing Artifacts', role:'critic', x:880, y:240, roleName:'Critique Revision', info:'Pruned incoherent color bleeding and over-saturated artifacts.'},
+    {id:'cur1', label:'Curator Ranked #1 Variant', role:'curator', x:620, y:220, roleName:'Curator Lead', info:'Selects top-rated visual candidate based on fidelity and aesthetic cohesion.'}
+  ];
+
+  artKgSimLinks = [
+    {source:'d1', target:'d2', label:'SETS_MOOD', type:'normal'},
+    {source:'d1', target:'a1', label:'COMMISSIONS', type:'normal'},
+    {source:'a1', target:'a2', label:'DESIGNS', type:'normal'},
+    {source:'a1', target:'pe1', label:'INFORMS_PROMPT', type:'bridge'},
+    {source:'pe1', target:'gen1', label:'RENDERS', type:'normal'},
+    {source:'gen1', target:'cr1', label:'AUDITED_BY', type:'normal'},
+    {source:'cr1', target:'cr2', label:'PRUNED', type:'refuted'},
+    {source:'a2', target:'cur1', label:'CURATED', type:'bridge'},
+    {source:'gen1', target:'cur1', label:'AWARDED', type:'bridge'}
+  ];
+
+  artKgSimLinks.forEach(l => {
+    l.sourceNode = artKgSimNodes.find(n => n.id === l.source);
+    l.targetNode = artKgSimNodes.find(n => n.id === l.target);
+  });
+}
+
+function updateArtKgPhysics(){
+  const W=1000, H=360;
+  for(let i=0;i<artKgSimNodes.length;i++){
+    for(let j=i+1;j<artKgSimNodes.length;j++){
+      const a=artKgSimNodes[i], b=artKgSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<125){
+        const f=(125-dist)/dist * 0.08;
+        a.x -= dx*f; a.y -= dy*f;
+        b.x += dx*f; b.y += dy*f;
+      }
+    }
+  }
+  artKgSimLinks.forEach(l => {
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(dist-110)*0.035;
+    l.sourceNode.x += dx/dist*f; l.sourceNode.y += dy/dist*f;
+    l.targetNode.x -= dx/dist*f; l.targetNode.y -= dy/dist*f;
+  });
+  artKgSimNodes.forEach(n => {
+    n.x = Math.max(50, Math.min(W-50, n.x));
+    n.y = Math.max(40, Math.min(H-40, n.y));
+  });
+}
+
+const ART_KG_COLORS = {
+  director:'#0E6F8E', artist:'#D97706', prompt:'#16A34A', renderer:'#9333EA', critic:'#DC2626', curator:'#2563EB'
+};
+
+function drawArtKgLoop(){
+  const cv = document.getElementById('cvsArtKG');
+  if(cv){
+    const g = cv.getContext('2d'), W=cv.width, H=cv.height;
+    g.fillStyle = '#0A1017';
+    g.fillRect(0,0,W,H);
+
+    updateArtKgPhysics();
+
+    artKgSimLinks.forEach(l => {
+      if(!l.sourceNode||!l.targetNode)return;
+      g.beginPath();
+      g.moveTo(l.sourceNode.x, l.sourceNode.y);
+      g.lineTo(l.targetNode.x, l.targetNode.y);
+      if(l.type==='refuted'){
+        g.strokeStyle='#DC2626'; g.setLineDash([5,4]); g.lineWidth=2;
+      }else if(l.type==='bridge'){
+        g.strokeStyle='#16A34A'; g.setLineDash([]); g.lineWidth=3;
+      }else{
+        g.strokeStyle='#2A3E54'; g.setLineDash([]); g.lineWidth=1.5;
+      }
+      g.stroke();
+      g.setLineDash([]);
+      const mx=(l.sourceNode.x+l.targetNode.x)/2, my=(l.sourceNode.y+l.targetNode.y)/2;
+      g.fillStyle='#8FA3AD'; g.font='9px sans-serif'; g.textAlign='center';
+      g.fillText(l.label, mx, my-4);
+    });
+
+    artKgSimNodes.forEach(n => {
+      const col = ART_KG_COLORS[n.role] || '#0E6F8E';
+      const isSel = artSelectedNode && artSelectedNode.id === n.id;
+      const rad = (n.highlight || isSel) ? 14 : 10;
+      if(n.highlight || isSel){
+        g.beginPath(); g.arc(n.x, n.y, rad+6, 0, 6.2832);
+        g.fillStyle = isSel ? 'rgba(37, 99, 235, 0.35)' : 'rgba(217, 119, 6, 0.28)'; g.fill();
+      }
+      g.beginPath(); g.arc(n.x, n.y, rad, 0, 6.2832);
+      g.fillStyle = col; g.fill();
+      g.strokeStyle = '#FFFFFF'; g.lineWidth = isSel ? 2.5 : 1.8; g.stroke();
+
+      g.fillStyle = '#E5EEF5'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+      g.fillText(n.label, n.x, n.y + rad + 14);
+    });
+
+    // Event Annotation Callout Banner & Pointer
+    const targetNodeId = (artSelectedNode && artSelectedNode.id) || 'cr2';
+    const targetNode = artKgSimNodes.find(n => n.id === targetNodeId) || artKgSimNodes[0];
+
+    g.fillStyle = 'rgba(23, 34, 43, 0.94)';
+    g.fillRect(16, 16, 430, 76);
+    g.strokeStyle = '#4FC3E8'; g.lineWidth = 1.5;
+    g.strokeRect(16, 16, 430, 76);
+
+    g.fillStyle = '#4FC3E8'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left';
+    g.fillText('EVENT ANNOTATION: ' + (artSelectedNode ? 'INSPECTING ' + artSelectedNode.roleName.toUpperCase() : 'MULTI-LENS DIVERGENCE & CRITIC PRUNING'), 28, 36);
+
+    g.fillStyle = '#FFFFFF'; g.font = 'bold 12px sans-serif';
+    g.fillText(artSelectedNode ? artSelectedNode.label : 'Artifact Critique & Visual Consensus Bridge', 28, 54);
+
+    g.fillStyle = '#99AAB9'; g.font = '11px sans-serif';
+    g.fillText(artSelectedNode ? artSelectedNode.info : 'Red dashed edge shows clashing colors pruned by Critic. Green bridge crowns top concept.', 28, 72);
+
+    if(targetNode){
+      g.beginPath();
+      g.moveTo(446, 54);
+      g.lineTo(targetNode.x, targetNode.y - 18);
+      g.strokeStyle = 'rgba(79, 195, 232, 0.7)';
+      g.lineWidth = 1.8;
+      g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
+
+      g.beginPath();
+      g.arc(targetNode.x, targetNode.y, 22 + Math.sin(Date.now()*0.006)*4, 0, 6.2832);
+      g.strokeStyle = '#4FC3E8';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
+  requestAnimationFrame(drawArtKgLoop);
+}
+
+function initArtKgInteraction(){
+  const cv = document.getElementById('cvsArtKG');
+  if(!cv)return;
+  cv.addEventListener('click', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    const hit = artKgSimNodes.find(n => Math.hypot(n.x - x, n.y - y) < 24);
+    if(hit){
+      artSelectedNode = hit;
+    }else{
+      artSelectedNode = null;
+    }
+  });
+}
+
+const draw=app({
+  render,
+  act:{
+    preset:v=>{S.brief=PRESETS[+v];},
+    run:()=>guard(runTeam),
+    reset:()=>{S.variants=[];S.director=null;S.curator=null;S.choice=null;S.log=[];S.err='';},
+    pick:v=>{S.choice=+v;},
+    sdtest:()=>{
+      if(SD.state!=='ready'&&isMobile()&&!confirm('This looks like a phone. SD-Turbo needs several gigabytes of download and a lot of memory, and will most likely fail here. Load it anyway?'))return;
+      return guard(async()=>{S.mode='sd';try{if(SD.state!=='ready')await sdLoad();}catch(e){if(e&&e.message==='SD_STOPPED')return;throw e;}SD.msg='Generating a test image...';draw();const t0=performance.now(),cv=await sdGenerate({prompt:'a red circle on a blue background, flat illustration',seed:7});SD.test=cv.toDataURL('image/png');SD.msg='Test image made in '+((performance.now()-t0)/1000).toFixed(1)+' s.';});
+    },
+    dismiss:()=>{S.err='';},
+    stop:()=>{S.stop=true;if(SD.state==='loading'&&SD.abort)SD.abort.abort();},
+    backend:v=>{S.backend=v;},
+    ...LLM.act
+  },
+  change:{rounds:t=>{S.rounds=+t.value;},...LLM.change},
+  input:{brief:t=>{S.brief=t.value;}},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+buildArtKnowledgeGraph();
+requestAnimationFrame(drawArtKgLoop);
+setTimeout(initArtKgInteraction, 200);
+draw();
+</script>
+</body>
+</html>
