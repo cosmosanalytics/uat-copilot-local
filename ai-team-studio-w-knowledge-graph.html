@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI team design studio w knowledge graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --panel:#FFFFFF; --ink:#16212B; --muted:#56636F; --line:#CBD4DB;
+  --accent:#0E6F8E; --accent-ink:#FFFFFF; --chip:#E2E8ED;
+  --warn:#8A5A00; --warn-bg:#FFF0CC; --bad:#A92F27; --bad-bg:#FBE3E0; --good:#1D6B4B; --good-bg:#DDF1E7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+    --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+    --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171D; --panel:#18222B; --ink:#E6EDF2; --muted:#9FADB9; --line:#2D3B47;
+  --accent:#5CC0DE; --accent-ink:#06222C; --chip:#223140;
+  --warn:#F0B84A; --warn-bg:#3A2D10; --bad:#FF9A90; --bad-bg:#3D1E1B; --good:#7AD6A8; --good-bg:#16342A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1120px;margin:0 auto;padding:20px 16px 48px;}
+header{margin-bottom:20px;}
+h1{font:700 clamp(1.7rem,4.5vw,2.5rem)/1.1 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.55rem/1.15 var(--display);margin:0 0 6px;}
+h3{font:600 1rem/1.3 var(--display);margin:22px 0 8px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:62ch;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:36px;padding:4px 10px;}
+.btn[disabled],.tog[disabled]{opacity:.45;cursor:not-allowed;}
+.tog{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px;text-align:left;}
+.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px;align-items:start;}
+
+nav.rail{position:sticky;top:16px;}
+nav.rail ol{list-style:none;margin:0;padding:0;position:relative;}
+nav.rail ol::before{content:"";position:absolute;left:15px;top:18px;bottom:18px;width:2px;background:var(--line);}
+nav.rail li{position:relative;margin:0 0 4px;}
+.stagebtn{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;background:transparent;border:0;border-radius:10px;padding:8px 8px 8px 0;text-align:left;}
+.stagebtn:hover{background:var(--chip);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;font:600 .85rem var(--display);position:relative;z-index:1;}
+.stagebtn[aria-current="step"] .node{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);}
+.stagebtn.done .node{border-color:var(--good);color:var(--good);background:var(--good-bg);}
+.stagebtn.done[aria-current="step"] .node{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.stagebtn .tool{font-weight:600;display:block;line-height:1.25;}
+.stagebtn .why{font-size:.82rem;color:var(--muted);display:block;line-height:1.35;margin-top:2px;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0;}
+.sep{border:0;border-top:1px solid var(--line);margin:22px 0 0;}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.tile{border-left:3px solid var(--accent);padding:2px 0 2px 10px;}
+.tile b{display:block;font:700 1.6rem/1.1 var(--display);}
+.tile span{font-size:.85rem;color:var(--muted);}
+.status{padding:10px 12px;border-radius:8px;background:var(--chip);margin:12px 0;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+pre{background:var(--chip);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.55 var(--code);margin:0 0 10px;white-space:pre;}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font-weight:600;background:var(--chip);}
+tr:last-child td{border-bottom:0;}
+tr.flag td{background:var(--warn-bg);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+#status{margin-top:12px;}
+.mask{color:var(--muted);letter-spacing:.1em;}
+label.range{display:block;margin:12px 0 4px;font-weight:500;}
+input[type=range]{width:100%;max-width:420px;accent-color:var(--accent);}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea.code{font:13px/1.5 var(--code);min-height:110px;}
+select{max-width:420px;min-height:44px;}
+progress{width:100%;max-width:420px;height:14px;accent-color:var(--accent);}
+.parts{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.part{border:1px dashed var(--muted);border-radius:8px;padding:8px 10px;min-width:110px;}
+.part b{display:block;font-size:.85rem;margin-bottom:4px;}
+.ids{display:flex;flex-wrap:wrap;gap:4px;}
+.ids i{font-style:normal;background:var(--chip);border-radius:4px;padding:0 6px;font-size:.82rem;}
+.trace{list-style:none;margin:12px 0;padding:0;}
+.trace li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.trace li:last-child{border-bottom:0;}
+.quote{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:12px 0;color:var(--muted);font-style:italic;}
+details{border-top:1px solid var(--line);padding:10px 0;}
+details:last-of-type{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;font-weight:600;min-height:32px;}
+details p{margin:8px 0 0;color:var(--muted);}
+.foot{margin-top:28px;color:var(--muted);font-size:.85rem;max-width:70ch;}
+.checks{list-style:none;margin:10px 0;padding:0;}
+.checks li{padding:4px 0;}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px;}
+  nav.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:8px 16px;border-bottom:1px solid var(--line);}
+  nav.rail ol{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  nav.rail ol::before{display:none;}
+  nav.rail li{margin:0;flex:0 0 auto;}
+  .stagebtn{display:flex;align-items:center;gap:8px;width:auto;background:var(--panel);border:1px solid var(--line);padding:6px 12px 6px 6px;border-radius:999px;}
+  .stagebtn .why{display:none;}
+  .stagebtn .tool{font-size:.85rem;white-space:nowrap;}
+  .stagebtn[aria-current="step"]{border-color:var(--accent);}
+  .node{width:26px;height:26px;font-size:.78rem;}
+  .panel{padding:16px;}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important;}}
+
+.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.app-top a{color:var(--accent);font-weight:600;text-decoration:none;}
+.app-top a:hover{text-decoration:underline;}
+.shell.narrow{max-width:900px;}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.editor{width:100%;min-height:150px;font:13px/1.5 var(--code);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.out{background:var(--chip);border-radius:8px;padding:12px;font:13px/1.5 var(--code);white-space:pre-wrap;word-break:break-word;margin:10px 0;min-height:44px;}
+.out.err{background:var(--bad-bg);color:var(--bad);}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;}
+.kv dt{color:var(--muted);}
+.kv dd{margin:0;}
+.svgbox{border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.box{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.box h3{margin-top:0;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+a.card{display:block;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);color:inherit;text-decoration:none;}
+a.card:hover{border-color:var(--accent);}
+a.card b{font:700 1.1rem var(--display);display:block;margin-bottom:4px;}
+
+.lede-items{color:var(--muted);max-width:62ch;margin:8px 0 12px 20px;padding:0;}
+.lede-items li{margin:4px 0;}
+.lede-items b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell narrow">
+  <div class="app-top"><span class="small muted">Design an AI team and test it, in simulation or with a real on-device model</span></div>
+  <header>
+    <h1>AI team design studio w knowledge graph</h1>
+    <p class="lede">Design a team of AI agents the way the executive brief says to: choose its structure, its incentives and five rules, see the team drawn as a graph, then test the design on refund cases whose answers are known. Compare designs in a notebook, and prove them against one agent.</p>
+    <ol class="lede-items"><li><b>Structure (graph theory)</b>: Whether there is a checker, what flows on each edge, and whether the judge is one agent or three clones.</li><li><b>Incentives (game theory)</b>: The checker&#x27;s goal, and how often it audits.</li><li><b>Five rules</b>: Different eyes, check then act, facts from tools, allowed to say unsure, and prove it.</li><li><b>Test bench</b>: Run a design on generated cases, in simulation (instant) or with the language model (real, slow).</li><li><b>Notebook</b>: Every run is kept, so you can compare designs side by side.</li></ol>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+  <main id="main" class="panel" aria-live="polite"></main>
+  <p class="foot">Honest label: the refund policy and cases are made up and generated by code, and the right answers are computed by code. In simulated mode the agents are not models: their error rates are assumptions that encode the brief's claims, so the simulation shows the logic of the design rules, not how any real model performs. The assumptions are listed on the page. In language-model mode a small on-device model does the work, results are noisy, and small samples prove little. Nothing leaves your device.</p>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>Math.round(v*100)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+function tog(act,val,label,on,dis){
+  return '<button class="tog" data-act="'+act+'" data-val="'+esc(val)+'" aria-pressed="'+(on?'true':'false')+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function btn(act,val,label,cls,dis){
+  return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+}
+function table(cols,rows,minw){
+  return '<div class="scroll"><table style="min-width:'+(minw||420)+'px"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c===null||c===undefined?'<span class="muted">null</span>':esc(c))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+}
+function qa(items){
+  return '<hr class="sep"><h3>Check yourself</h3><p class="small muted">Answer each in one sentence before you open it.</p>'+
+    items.map(q=>'<details><summary>'+esc(q[0])+'</summary><p>'+esc(q[1])+'</p></details>').join('');
+}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+const PYSTATE={ready:false};
+function setStatus(extra){
+  const p=PYSTATE.ready?chip('Python ready','good'):chip('Python starting','warn');
+  const e=$('#status');
+  if(e)e.innerHTML=(PYSTATE.needsPy===false?'':p)+(extra||'');
+}
+async function waitPy(){
+  while(!window.py_ready)await sleep(250);
+  PYSTATE.ready=true;setStatus();
+}
+function py(fn,arg){
+  const f=window[fn];
+  if(!f)throw new Error('Python is not ready yet.');
+  return arg===undefined?f():f(arg);
+}
+function pyj(fn,arg){return JSON.parse(py(fn,arg));}
+
+/* Wires click, change and input events to handlers and returns a draw() function. */
+function app(cfg){
+  const main=$('#main');
+  const draw=()=>{
+    const a=document.activeElement;
+    const key=(a&&a.dataset&&a.dataset.act&&a.tagName==='BUTTON')?{act:a.dataset.act,val:a.dataset.val}:null;
+    main.innerHTML=cfg.render();
+    if(key){
+      const el=document.querySelector('#main [data-act="'+key.act+'"][data-val="'+(window.CSS&&CSS.escape?CSS.escape(key.val===undefined?'':key.val):key.val)+'"]');
+      if(el&&!el.disabled)el.focus({preventScroll:true});
+    }
+  };
+  const fail=err=>{if(cfg.onError)cfg.onError(err);else console.error(err);draw();};
+  document.addEventListener('click',async e=>{
+    const t=e.target.closest('[data-act]');
+    if(!t||t.disabled)return;
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')return;
+    const f=cfg.act&&cfg.act[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t.dataset.val,t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('change',async e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.change&&cfg.change[t.dataset.act];
+    if(!f)return;
+    try{const r=await f(t);if(r!==false)draw();}catch(err){fail(err);}
+  });
+  document.addEventListener('input',e=>{
+    const t=e.target;if(!t.dataset||!t.dataset.act)return;
+    const f=cfg.input&&cfg.input[t.dataset.act];
+    if(f)f(t);
+  });
+  return draw;
+}
+
+/* Shared WebLLM loader for apps that use a real model. */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (default, about 1.8 GB)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (about 1 GB)'],
+  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 1B (about 0.9 GB)'],
+  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen2.5 0.5B (small, weak)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (smallest, often too weak)']
+];
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],draw:null,
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('No WebGPU','bad');
+    if(this.state==='ready')return chip('Model ready','good');
+    if(this.state==='loading')return chip('Model loading '+this.pct+'%','warn');
+    if(this.state==='error')return chip('Model failed to load','bad');
+    return chip('Model not loaded');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status warn">This browser does not report WebGPU, and the page must be served over https. The model features are unavailable here.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label class="range" for="modelsel">Model</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:8px">Larger models make fewer mistakes but download more (the default is about 1.8 GB) and need more memory. The download is cached in your browser, so use Wi-Fi the first time. If the default does not fit on your device, the page tries a smaller model automatically.</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your device.'+(this.note?'<br>'+esc(this.note):'')+'</div>';
+    else{
+      if(this.state==='error')h+='<div class="status bad">Could not load the model: '+esc(this.text)+'</div>';
+      h+=btn('loadmodel','','Load model');
+    }
+    return h;
+  },
+  paint(){
+    const b=$('#loadbar'),t=$('#loadtext');
+    if(b)b.value=this.pct;
+    if(t)t.textContent=this.text;
+    const s=$('#llmchip');if(s)s.innerHTML=this.chip();
+    setStatus(this.chip());
+  },
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId));
+    const order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Starting';this.note='';
+    if(this.draw)this.draw();
+    let lastErr='';
+    let lib=null;
+    try{lib=await (this.importer?this.importer():import('https://esm.run/@mlc-ai/web-llm'));}
+    catch(err){this.engine=null;this.state='error';this.text=String((err&&err.message)||err);if(this.draw)this.draw();this.paint();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];
+      this.modelId=m[0];this.pct=0;
+      this.text=(i?'Trying a smaller model: ':'Loading ')+m[1];
+      this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{
+          this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();
+        }});
+        this.state='ready';
+        this.note=i?('The larger model did not load on this device, so '+m[1]+' is being used instead.'):'';
+        if(this.draw)this.draw();this.paint();
+        return;
+      }catch(err){
+        lastErr=String((err&&err.message)||err);this.engine=null;
+      }
+    }
+    this.state='error';this.text=lastErr||'No model could be loaded.';
+    if(this.draw)this.draw();
+    this.paint();
+  },
+  act:{loadmodel:()=>{LLM.load();return false;}},
+  change:{modelsel:t=>{LLM.modelId=t.value;LLM.engine=null;LLM.state='idle';setStatus(LLM.chip());}}
+};
+
+PYSTATE.needsPy=false;
+/* ---------- the made-up policy and a calendar ---------- */
+const POLICY='Refund policy. Rule 1: a refund is allowed only within 30 days of delivery. Rule 2: an item reported damaged on arrival can be refunded within 60 days of delivery. Rule 3: a final-sale item cannot be refunded, unless it arrived damaged. Rule 4: a refund above 200 in total needs a person to approve. Count the days from the delivery date to the date of the request.';
+const LABELS={A:'Refund allowed',B:'Refund needs a person to approve',C:'Not eligible'};
+const PERMS=[['A','B','C'],['A','C','B'],['B','A','C'],['B','C','A'],['C','A','B'],['C','B','A']];
+function menuFor(c,tail){return c.order.map((k,i)=>'ABC'[i]+') '+LABELS[k]).join('\n')+'\n'+(tail||'Reply with one letter.');}
+function decode(l,c){const i='ABC'.indexOf(l);return i<0?'':c.order[i];}
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function fmtDate(d){return MONTHS[d.getMonth()]+' '+d.getDate();}
+function parseDate(s){
+  const m=String(s||'').match(/([A-Za-z]+)\s+(\d{1,2})/);if(!m)return null;
+  const mi=MONTHS.findIndex(x=>x.toLowerCase().slice(0,3)===m[1].toLowerCase().slice(0,3));if(mi<0||m[1].length<3)return null;
+  const d=new Date(2026,mi,+m[2]);return isNaN(d.getTime())?null:d;
+}
+function daysBetween(a,b){const da=parseDate(a),db=parseDate(b);if(!da||!db)return null;return Math.round((db-da)/86400000);}
+function rng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const ITEMS=[['rain jacket',95],['table lamp',60],['standing desk',480],['office chair',220],['desk lamp',40],['backpack',75]];
+const TYPES=['plain refund','needs approval','too late','near the limit','final sale','damaged, late window'];
+function truthOf(c){
+  const win=c.damaged?60:30;
+  if(c.days>win)return 'C';
+  if(c.final&&!c.damaged)return 'C';
+  return c.price*c.qty>200?'B':'A';
+}
+function genCases(n,seed){
+  const r=rng(seed*7919+11),out=[];
+  for(let i=0;i<n;i++){
+    const type=TYPES[i%TYPES.length];let it=ITEMS[Math.floor(r()*ITEMS.length)];
+    if(type==='plain refund'&&it[1]>150)it=ITEMS[1];
+    let qty=1+Math.floor(r()*3),damaged=false,final=false,days;
+    if(type==='plain refund'){days=5+Math.floor(r()*20);while(it[1]*qty>200)qty--;}
+    else if(type==='needs approval'){days=5+Math.floor(r()*20);if(it[1]*qty<=200){qty=Math.max(qty,Math.ceil(210/it[1]));}}
+    else if(type==='too late'){days=36+Math.floor(r()*30);}
+    else if(type==='near the limit'){days=27+Math.floor(r()*7);}
+    else if(type==='final sale'){days=5+Math.floor(r()*20);final=true;damaged=r()<0.3;}
+    else{days=34+Math.floor(r()*25);damaged=r()<0.6;}
+    const start=new Date(2026,2,1+Math.floor(r()*20)),req=new Date(start.getTime()+days*86400000);
+    const c={i,type,item:it[0],price:it[1],qty,damaged,final,days,delivered:fmtDate(start),requested:fmtDate(req)};
+    c.truth=truthOf(c);
+    c.order=PERMS[(i*5+Math.floor(i/6)*2+seed)%6];
+    const many=qty>1;
+    c.text='Customer message: I bought '+qty+' '+c.item+(many?'s':'')+' at $'+c.price+' each. '+(many?'They were':'It was')+' delivered on '+c.delivered+'. I am writing on '+c.requested+' to ask for a refund. '+(damaged?(many?'They arrived damaged.':'It arrived damaged.'):(many?'They work fine, but I changed my mind.':'It works fine, but I changed my mind.'))+' '+(final?'The order page says this item is final sale.':'The order page does not say final sale.');
+    out.push(c);
+  }
+  return out;
+}
+
+function need(){if(!LLM.ready())throw new Error('Load the model first (see the Model box at the top). This benchmark needs a real model.');}
+async function ask(ctx,messages,max,temp){
+  need();
+  ctx.calls++;ctx.chars+=messages.reduce((a,m)=>a+m.content.length,0);
+  const r=await LLM.engine.chat.completions.create({messages,temperature:temp||0,max_tokens:max||8});
+  const text=String((r.choices[0].message&&r.choices[0].message.content)||'').trim();
+  if(ctx.trace)ctx.trace.push({sys:String(messages[0].content).slice(0,70),user:String(messages[messages.length-1].content).slice(-150),out:text.slice(0,240)});
+  return text;
+}
+function letterOf(text){const m=String(text).toUpperCase().match(/(?:^|[^A-Z])([ABC])(?![A-Z])/);return m?m[1]:'';}
+function answerOf(text){const all=[...String(text).matchAll(/ANSWER:\s*\(?([ABC])/gi)];return all.length?all[all.length-1][1].toUpperCase():letterOf(String(text).slice(-12));}
+function jsonCandidates(t){
+  t=String(t);const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{')continue;
+    let depth=0,inStr=false,esc=false;
+    for(let j=i;j<t.length;j++){
+      const c=t[j];
+      if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;}
+      else if(c==='"')inStr=true;
+      else if(c==='{')depth++;
+      else if(c==='}'){depth--;if(depth===0){out.push(t.slice(i,j+1));i=j;break;}}
+    }
+  }
+  return out;
+}
+function firstJson(text,pred){for(const c of jsonCandidates(text)){try{const o=JSON.parse(c);if(o&&typeof o==='object'&&(!pred||pred(o)))return o;}catch(e){}}return null;}
+const userCase=(c)=>POLICY+'\n'+c.text+'\n'+menuFor(c);
+
+async function runTool(ctx,c){
+  const sys='You apply a refund policy. You have tools for arithmetic.\nTools: days_between(start, end) gives the number of days between two dates such as "March 3"; multiply(a, b) multiplies two numbers.\nPolicy: '+POLICY+'\nUse the tools to get the days and the total, then apply the rules. Reply with ONE JSON object: a tool call {"tool":"name","args":{...}} or the final {"answer":"A|B|C"} where '+c.order.map((k,i)=>'ABC'[i]+' = '+LABELS[k].toLowerCase()).join(', ')+'.';
+  const msgs=[{role:'user',content:c.text}];
+  for(let k=0;k<5;k++){
+    let out=await ask(ctx,[{role:'system',content:sys}].concat(msgs),120,0);
+    let o=firstJson(out,x=>x.tool||x.answer);
+    if(!o){out=await ask(ctx,[{role:'system',content:sys}].concat(msgs,[{role:'assistant',content:out},{role:'user',content:'Reply with ONE valid JSON object only.'}]),120,0);o=firstJson(out,x=>x.tool||x.answer);}
+    if(!o)return '';
+    if(o.answer)return decode(letterOf(String(o.answer)),c);
+    let res;const a=o.args||{};
+    if(o.tool==='days_between'){const d=daysBetween(a.start,a.end);res=d===null?'Error: dates must look like "March 3"':String(d);}
+    else if(o.tool==='multiply'){const p=Number(a.a)*Number(a.b);res=isFinite(p)?String(p):'Error: not numbers';}
+    else res='Error: no such tool';
+    msgs.push({role:'assistant',content:out},{role:'user',content:'TOOL RESULT: '+res+'\nContinue, or give the final JSON.'});
+  }
+  return '';
+}
+function normFacts(o,text){
+  const key=(re,not)=>Object.keys(o).find(k=>re.test(k)&&!(not&&not.test(k)));
+  const val=k=>k===undefined?undefined:o[k];
+  const num=v=>{const n=Number(String(v===undefined?'':v).replace(/[^0-9.]/g,''));return isFinite(n)?n:NaN;};
+  const bool=v=>v===true||/^(true|yes|1)$/i.test(String(v));
+  const f={delivered:val(key(/deliver/i)),requested:val(key(/request|writing|refund_date|asked/i,/deliver/i)),price:num(val(key(/price|cost|each/i))),quantity:num(val(key(/quant|qty|count|number|items/i))),final:bool(val(key(/final/i))),damaged:bool(val(key(/damag/i)))};
+  const appears=s=>{const d=parseDate(s);if(!d)return false;const nm=MONTHS[d.getMonth()];return new RegExp('\\b('+nm+'|'+nm.slice(0,3)+')\\.?\\s*0?'+d.getDate()+'\\b','i').test(text);};
+  if(!parseDate(f.delivered))return{reason:'no usable delivery date'};
+  if(!parseDate(f.requested))return{reason:'no usable request date'};
+  if(!(f.price>0))return{reason:'no usable price'};
+  if(!(f.quantity>0))return{reason:'no usable quantity'};
+  if(!appears(f.delivered)||!appears(f.requested))return{reason:'a date it extracted is not in the message'};
+  return{facts:f};
+}
+
+function wilson(k,n){
+  if(!n)return[0,0];const z=1.96,p=k/n,d=1+z*z/n,c=p+z*z/(2*n),a=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n));
+  return[Math.max(0,(c-a)/d),Math.min(1,(c+a)/d)];
+}
+function binomTwoSided(k,n){
+  if(n===0)return 1;
+  const lf=[0];for(let i=1;i<=n;i++)lf.push(lf[i-1]+Math.log(i));
+  const pm=j=>Math.exp(lf[n]-lf[j]-lf[n-j]+n*Math.log(0.5));
+  let p=0;const kk=Math.min(k,n-k);for(let j=0;j<=kk;j++)p+=pm(j);
+  return Math.min(1,2*p);
+}
+function stats(id){
+  const r=S.res[id];if(!r||!r.length)return null;
+  const n=r.length,cases=S.cases;
+  let correct=0,wrong=0,esc=0,none=0,calls=0,chars=0,ms=0;
+  r.forEach((x,i)=>{
+    if(x.letter==='E')esc++;else if(!x.letter)none++;else if(x.letter===cases[i].truth)correct++;else wrong++;
+    calls+=x.calls;chars+=x.chars;ms+=x.ms;
+  });
+  return{n,correct,wrong,esc,none,calls:calls/n,tokens:chars/4/n,ms:ms/n,ci:wilson(correct,n),wci:wilson(wrong+none,n),decided:n-esc,accDec:(n-esc)?correct/(n-esc):0};
+}
+
+
+/* ---------- the design, and its presets ---------- */
+const PRESETS={
+  one:{name:'One agent',D:{chk:'none',flow:'evidence',clones:1,goal:'agree',audit:'1',eyes:'raw',act:'after',tools:false,unsure:true}},
+  naive:{name:'A naive team',D:{chk:'one',flow:'reasoning',clones:3,goal:'agree',audit:'1',eyes:'raw',act:'before',tools:false,unsure:false}},
+  brief:{name:'The brief\'s design',D:{chk:'one',flow:'evidence',clones:1,goal:'rival',audit:'1',eyes:'calc',act:'after',tools:true,unsure:true}}
+};
+const S={mode:'sim',D:Object.assign({},PRESETS.brief.D),n:24,seed:1,runs:[],busy:false,stop:false,err:'',prog:'',showModel:false,showAssume:false};
+function fixD(D){
+  if(!D.tools&&D.eyes==='facts')D.eyes='raw';
+  if(D.chk==='none')return D;
+  if(D.eyes==='calc')D.flow='evidence';
+  return D;
+}
+function dlabel(D){
+  const t=[];
+  t.push(D.chk==='one'?'judge + checker':'judge only');
+  t.push(D.tools?'calculator':'no calculator');
+  if(D.clones>1)t.push('3 clones vote');
+  if(D.chk==='one'){
+    t.push(D.eyes==='facts'?'checker sees same facts':(D.eyes==='raw'?'checker fresh':'checker fresh + own calculator'));
+    t.push(D.flow==='reasoning'?'sees judge reasoning':'evidence only');
+    if(D.flow==='reasoning')t.push(D.goal==='rival'?'rival goal':'confirming goal');
+    if(D.audit!=='1')t.push('audits '+(D.audit==='0.5'?'half':'a quarter'));
+    t.push(D.act==='before'?'acts before check':'checks then acts');
+    t.push(D.unsure?'may escalate':'must answer');
+  }
+  return t.join(' · ');
+}
+/* ---------- deterministic randomness for the simulation and for audits ---------- */
+function hash01(n){let a=(n*2654435761)>>>0;a^=a>>>15;a=Math.imul(a,2246822519)>>>0;a^=a>>>13;return(a>>>0)/4294967296;}
+function u(c,salt){let h=0;for(let i=0;i<salt.length;i++)h=(h*31+salt.charCodeAt(i))>>>0;return hash01(c.i*7919+S.seed*131+h);}
+function wrongLetter(c,salt){const o=['A','B','C'].filter(x=>x!==c.truth);return o[Math.floor(u(c,'w'+salt)*2)];}
+/* ---------- simulated agents: assumptions, not a model ---------- */
+const ASSUME={trap:0.45,trapMiss:0.9,slip:0.07,exFail:0.08,judgeFactsSlip:0.1,calcPath:0.85,anchorAgree:0.85,anchorRival:0.5};
+const SA={
+  async extract(ctx,c){ctx.calls+=1;return u(c,'ex')>ASSUME.exFail?{ok:true,facts:{days:c.days,total:c.price*c.qty}}:{ok:false};},
+  async judgeFacts(ctx,c,facts,k){ctx.calls+=1;if(!facts.ok)return{letter:wrongLetter(c,'badfacts'),reasoning:'(simulated reasoning from wrong facts)'};return{letter:u(c,'jf'+k)<ASSUME.judgeFactsSlip?wrongLetter(c,'jf'+k):c.truth,reasoning:'(simulated reasoning)'};},
+  async judgeRaw(ctx,c,k){ctx.calls+=1;const trap=u(c,'trap')<ASSUME.trap;if(trap&&u(c,'tm')<ASSUME.trapMiss)return{letter:wrongLetter(c,'trap'),reasoning:'(simulated reasoning)'};return{letter:u(c,'jr'+k)<ASSUME.slip?wrongLetter(c,'jr'+k):c.truth,reasoning:'(simulated reasoning)'};},
+  async checkFacts(ctx,c,facts,seen,D){ctx.calls+=1;if(seen&&u(c,'anc')<(D.goal==='rival'?ASSUME.anchorRival:ASSUME.anchorAgree))return{letter:seen.letter};if(!facts.ok)return{letter:wrongLetter(c,'badfacts')};return{letter:u(c,'cf')<ASSUME.judgeFactsSlip?wrongLetter(c,'cf'):c.truth};},
+  async checkRaw(ctx,c,seen,D){ctx.calls+=1;if(seen&&u(c,'anc')<(D.goal==='rival'?ASSUME.anchorRival:ASSUME.anchorAgree))return{letter:seen.letter};const trap=u(c,'trap')<ASSUME.trap;if(trap&&u(c,'tm')<ASSUME.trapMiss)return{letter:wrongLetter(c,'trap')};return{letter:u(c,'cr')<ASSUME.slip?wrongLetter(c,'cr'):c.truth};},
+  async checkCalc(ctx,c){ctx.calls+=3;return{letter:u(c,'cc')<(1-ASSUME.calcPath)?wrongLetter(c,'cc'):c.truth};}
+};
+/* ---------- model agents: real calls ---------- */
+const MA={
+  async extract(ctx,c){
+    let raw='';
+    for(let k=0;k<2;k++){
+      raw=await ask(ctx,[{role:'system',content:'You extract facts from a customer message. Reply with one JSON object only, using exactly the keys requested.'},{role:'user',content:'Message: '+c.text.replace(/^Customer message:\s*/,'')+'\nReturn one JSON object with exactly these keys: delivered (the date text, such as "March 3"), requested (the date text), price (a number for one item, no $ sign), quantity (a whole number), final_sale (true or false), damaged (true or false).\nExample output: {"delivered":"January 9","requested":"February 2","price":40,"quantity":2,"final_sale":false,"damaged":true}'}],140,0);
+      const o=firstJson(raw,x=>typeof x==='object');
+      if(o){const n=normFacts(o,c.text);if(n.facts){const f=n.facts;return{ok:true,facts:{days:daysBetween(f.delivered,f.requested),total:f.price*f.quantity,final:f.final,damaged:f.damaged}};}}
+    }
+    return{ok:false,raw};
+  },
+  factsText(f){return 'Facts, computed by a calculator: days from delivery to request: '+f.days+'. Total amount: '+f.total+'. Final sale: '+(f.final?'yes':'no')+'. Damaged on arrival: '+(f.damaged?'yes':'no')+'.';},
+  async judgeFacts(ctx,c,facts,k,n){
+    const t=n>1?0.8:0;
+    const out=await ask(ctx,[{role:'system',content:'You apply a refund policy to computed facts. Check each rule against the facts, briefly, then finish with "Answer: X" where X is the letter.'},{role:'user',content:POLICY+'\n'+MA.factsText(facts.facts)+'\n'+menuFor(c,'Check each rule against the facts, then end with "Answer: X".')}],150,t);
+    let l=decode(answerOf(out),c);
+    if(!l)l=decode(letterOf(await ask(ctx,[{role:'system',content:'You apply a refund policy to computed facts. Reply with the single letter A, B or C and nothing else.'},{role:'user',content:POLICY+'\n'+MA.factsText(facts.facts)+'\n'+menuFor(c)}],6,0)),c);
+    return{letter:l,reasoning:out.slice(0,300)};
+  },
+  async judgeRaw(ctx,c,k,n){
+    const out=await ask(ctx,[{role:'system',content:'You apply a refund policy to a customer message. Reply with one letter only.'},{role:'user',content:userCase(c)}],6,n>1?0.8:0);
+    return{letter:decode(letterOf(out),c),reasoning:''};
+  },
+  seenText(seen,c){return seen?('\nThe judge proposed: '+LABELS[seen.letter]+(seen.reasoning?'. Its reasoning: '+seen.reasoning:'.')):'';},
+  checkSys(D,seen){
+    if(!seen)return 'You are an independent checker. You have not seen anyone else\'s work. Reply with one letter only.';
+    return D.goal==='rival'?'You are a rival reviewer. Your job is to find what is wrong with the judge\'s answer. Work it out yourself from the policy and the information, then finish with "Answer: X" where X is the letter you believe is right.':'You are a reviewer. The judge has proposed an answer. Confirm it if it looks plausible. Finish with "Answer: X" where X is the letter you believe is right.';
+  },
+  async checkFacts(ctx,c,facts,seen,D){
+    const out=await ask(ctx,[{role:'system',content:MA.checkSys(D,seen)},{role:'user',content:POLICY+'\n'+MA.factsText(facts.facts)+MA.seenText(seen,c)+'\n'+menuFor(c,seen?'End with "Answer: X".':'Reply with one letter.')}],seen?150:6,0);
+    return{letter:decode(seen?answerOf(out):letterOf(out),c)};
+  },
+  async checkRaw(ctx,c,seen,D){
+    const out=await ask(ctx,[{role:'system',content:MA.checkSys(D,seen)},{role:'user',content:POLICY+'\n'+c.text+MA.seenText(seen,c)+'\n'+menuFor(c,seen?'End with "Answer: X".':'Reply with one letter.')}],seen?150:6,0);
+    return{letter:decode(seen?answerOf(out):letterOf(out),c)};
+  },
+  async checkCalc(ctx,c){return{letter:await runTool(ctx,c)||decode(letterOf(await ask(ctx,[{role:'system',content:'You are an independent checker. Reply with one letter only.'},{role:'user',content:userCase(c)}],6,0)),c)};}
+};
+/* ---------- run one case through a design ---------- */
+function majority(v){if(!v.length)return '';const cnt={};v.forEach(x=>{cnt[x]=(cnt[x]||0)+1;});return Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||v.indexOf(a)-v.indexOf(b))[0];}
+async function runCase(D,c,ctx,A){
+  const rec={i:c.i,truth:c.truth,type:c.type};
+  let facts=null;
+  if(D.tools){facts=await A.extract(ctx,c);if(!facts.ok){rec.reason='the extractor failed';rec.judge='';rec.final='E';rec.executed=null;rec.audited=false;return rec;}}
+  const votes=[];let reasoning='';
+  for(let k=0;k<D.clones;k++){
+    const r=D.tools?await A.judgeFacts(ctx,c,facts,k,D.clones):await A.judgeRaw(ctx,c,k,D.clones);
+    if(r.letter)votes.push(r.letter);if(k===0)reasoning=r.reasoning||'';
+  }
+  const judge=majority(votes);rec.judge=judge;
+  if(!judge){rec.reason='the judge gave no answer';rec.final='E';rec.executed=null;rec.audited=false;return rec;}
+  let final=judge,check='',audited=false;
+  if(D.chk==='one'){
+    audited=D.audit==='1'||u(c,'audit')<Number(D.audit);
+    if(audited){
+      const seen=(D.flow==='reasoning'&&D.eyes!=='calc')?{letter:judge,reasoning}:null;
+      const r=D.eyes==='facts'?await A.checkFacts(ctx,c,facts,seen,D):(D.eyes==='raw'?await A.checkRaw(ctx,c,seen,D):await A.checkCalc(ctx,c));
+      check=r.letter;
+      if(!check||check!==judge)final=D.unsure?'E':judge;
+    }
+  }
+  rec.checker=D.chk==='one'?(audited?(check||'(none)'):'not audited'):'-';rec.audited=audited;rec.final=final;
+  rec.executed=(D.chk==='one'&&D.act==='after')?(final==='E'?null:final):judge;
+  return rec;
+}
+async function runDesign(D,label){
+  D=fixD(Object.assign({},D));
+  if(S.mode==='model')need();
+  const cases=genCases(S.n,S.seed),A=S.mode==='sim'?SA:MA,recs=[];
+  const t0=performance.now();let calls=0;
+  for(let i=0;i<cases.length;i++){
+    if(S.stop)break;
+    S.prog=label+': case '+(i+1)+' of '+cases.length;draw();await new Promise(r=>setTimeout(r,0));
+    const ctx={calls:0,chars:0,trace:null};
+    let rec;
+    try{rec=await runCase(D,cases[i],ctx,A);}catch(e){if(/Load the model/.test(String(e.message)))throw e;rec={i,truth:cases[i].truth,type:cases[i].type,final:'E',executed:null,reason:'error',judge:'',checker:'-'};}
+    calls+=ctx.calls;recs.push(rec);
+  }
+  const n=recs.length;
+  const m={correct:recs.filter(r=>r.final===r.truth).length,wrong:recs.filter(r=>r.final!=='E'&&r.final!==r.truth).length,esc:recs.filter(r=>r.final==='E').length,harm:recs.filter(r=>r.executed&&r.executed!==r.truth).length};
+  S.runs.push({id:S.runs.length+1,label,design:dlabel(D),D,mode:S.mode,n,recs,calls:calls/Math.max(1,n),ms:(performance.now()-t0)/Math.max(1,n),...m});
+}
+
+
+/* ---------- the team drawn as a graph ---------- */
+function graphSvg(D){
+  D=fixD(Object.assign({},D));
+  const Wd=420,col={teal:'#0E6F8E',slate:'#2B4A57',amber:'#E3A21A',green:'#2E7D5B',red:'#B3412E',muted:'#5A6B73'};
+  const N={};
+  const box=(id,x,y,w,label,fill,tc,h)=>{N[id]={x,y,w,h:h||30};return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+(h||30)+'" rx="7" fill="'+fill+'"/><text x="'+(x+w/2)+'" y="'+(y+(h||30)/2+4)+'" font-size="12" font-weight="700" text-anchor="middle" fill="'+(tc||'#fff')+'">'+label+'</text>';};
+  let s='<svg viewBox="0 0 '+Wd+' 380" width="100%" role="img" aria-label="The team as a graph"><defs><marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="context-stroke"/></marker></defs>';
+  let nodes='',edges='';
+  nodes+=box('case',150,6,120,'Case',col.muted);
+  if(D.tools){nodes+=box('ex',20,62,120,'Extractor',col.slate);nodes+=box('calc',20,118,120,'Calculator (code)',col.green);}
+  const jx=20,jy=176;
+  if(D.clones>1){nodes+='<rect x="'+(jx+8)+'" y="'+(jy-8)+'" width="140" height="30" rx="7" fill="#9FB5BE"/><rect x="'+(jx+4)+'" y="'+(jy-4)+'" width="140" height="30" rx="7" fill="#6F8D99"/>';}
+  nodes+=box('judge',jx,jy,140,D.clones>1?'Judge x3 (vote)':'Judge',col.teal);
+  if(D.chk==='one'){
+    nodes+=box('chk',250,jy,150,'Checker',col.amber,'#17262D');
+    if(D.eyes==='calc')nodes+=box('oc',290,100,110,'Own calculator',col.green);
+  }
+  nodes+=box('ctl',130,254,150,'Controller',col.slate);
+  nodes+=box('ship',50,324,100,'Ships',col.teal);
+  if(D.chk==='one'&&D.unsure)nodes+=box('per',270,324,100,'Person',col.red);
+  const mid=(n,side)=>{const b=N[n];return side==='b'?[b.x+b.w/2,b.y+b.h]:(side==='t'?[b.x+b.w/2,b.y]:(side==='l'?[b.x,b.y+b.h/2]:[b.x+b.w,b.y+b.h/2]));};
+  const edge=(a,as,b,bs,color,label,dash,dx,dy)=>{const p=mid(a,as),q=mid(b,bs);edges+='<line x1="'+p[0]+'" y1="'+p[1]+'" x2="'+q[0]+'" y2="'+q[1]+'" stroke="'+color+'" stroke-width="2.2"'+(dash?' stroke-dasharray="5 4"':'')+' marker-end="url(#ah)"/>';if(label)edges+='<text x="'+((p[0]+q[0])/2+(dx||0))+'" y="'+((p[1]+q[1])/2+(dy||0))+'" font-size="10.5" fill="'+color+'" font-style="italic" text-anchor="middle">'+label+'</text>';};
+  if(D.tools){edge('case','b','ex','t',col.slate);edge('ex','b','calc','t',col.slate);edge('calc','b','judge','t',col.slate,'facts',false,-24,0);}
+  else edge('case','b','judge','t',col.slate,'raw message',false,-34,-4);
+  if(D.chk==='one'){
+    if(D.eyes==='facts')edge('calc','r','chk','t',col.green,'same facts',false,-4,-8);
+    else if(D.eyes==='raw')edge('case','r','chk','t',col.slate,'raw message (fresh)',false,34,-10);
+    else{edge('case','r','oc','t',col.slate);edge('oc','b','chk','t',col.green,'its own arithmetic',false,50,0);}
+    if(D.flow==='reasoning'&&D.eyes!=='calc')edge('judge','r','chk','l',col.red,'answer and reasoning',true,0,-6);
+    if(D.act==='before'){edge('judge','b','ctl','t',col.red,'acts now',false,-30,-2);edge('chk','b','ctl','t',col.amber,'may reverse',false,40,4);}
+    else{edge('judge','b','ctl','t',col.slate);edge('chk','b','ctl','t',col.amber,'pass or hold',false,40,4);}
+    edge('ctl','b','ship','t',col.teal);
+    if(D.unsure)edge('ctl','b','per','t',col.red,'if they disagree',false,32,0);
+  }else{edge('judge','b','ctl','t',col.slate);edge('ctl','b','ship','t',col.teal);}
+  return s+edges+nodes+'</svg>';
+}
+function designStats(D){
+  D=fixD(Object.assign({},D));
+  const seq=(D.tools?1:0)+1+((D.chk==='one'&&D.flow==='reasoning'&&D.eyes!=='calc')?1:0);
+  const wide=D.clones+((D.chk==='one'&&!(D.flow==='reasoning'&&D.eyes!=='calc'))?1:0);
+  const agents=(D.tools?1:0)+D.clones+(D.chk==='one'?1:0);
+  const au=D.audit==='1'?1:Number(D.audit);
+  const calls=(D.tools?1.1:0)+D.clones*(D.tools?1:1)+(D.chk==='one'?au*(D.eyes==='calc'?3.2:1):0);
+  return{seq,wide,agents,calls};
+}
+/* ---------- rendering ---------- */
+const pcx=x=>Math.round(x*100)+'%';
+function seg(label,key,opts,cur,dis){return '<div class="small muted" style="margin:10px 0 4px">'+label+'</div><div class="row">'+opts.map(o=>tog(key,o[0],o[1],String(cur)===String(o[0]),dis&&dis.indexOf(String(o[0]))>=0)).join('')+'</div>';}
+function controls(){
+  const D=fixD(Object.assign({},S.D)),chk=D.chk==='one';
+  const dEyes=D.tools?[]:['facts'];
+  return '<div class="row">'+Object.keys(PRESETS).map(k=>btn('preset',k,PRESETS[k].name,'ghost sm')).join('')+'</div>'+
+  '<h3>1  Structure (graph theory)</h3>'+
+  seg('Checker','chk',[['none','No checker'],['one','One checker']],D.chk)+
+  seg('Judge','clones',[['1','One judge'],['3','Three clones vote']],D.clones)+
+  (chk?seg('What flows to the checker','flow',[['evidence','Evidence only'],['reasoning','Evidence and the judge\'s reasoning']],D.flow,D.eyes==='calc'?['reasoning']:[]):'')+
+  '<h3>2  Incentives (game theory)</h3>'+
+  (chk?seg('The checker\'s goal (matters when it sees the judge\'s reasoning)','goal',[['agree','Confirm if plausible'],['rival','Find flaws (rival)']],D.goal)+seg('How often it audits','audit',[['1','Every case'],['0.5','A random half'],['0.25','A random quarter']],D.audit):'<p class="small muted">Add a checker to set its goal and audit rate.</p>')+
+  '<h3>3  Five rules</h3>'+
+  (chk?seg('1  Different eyes: what the checker looks at','eyes',[['facts','The same facts'],['raw','The raw message, fresh'],['calc','Fresh, with its own calculator']],D.eyes,dEyes):seg('1  Different eyes','eyes',[['raw','Needs a checker']],'raw',[]))+
+  seg('2  Check, then act','act',[['before','Act before the check'],['after','Act after the check']],D.act)+
+  seg('3  Facts from tools','tools',[['true','The judge gets calculated facts'],['false','The judge reads the raw message']],String(D.tools))+
+  seg('4  Allowed to say unsure','unsure',[['true','Disagreement goes to a person'],['false','The judge\'s answer ships']],String(D.unsure))+
+  '<div class="small muted" style="margin:10px 0 4px">5  Prove it: run the one-agent baseline, then your design, and compare in the notebook below.</div>';
+}
+function graphView(){
+  const D=fixD(Object.assign({},S.D)),st=designStats(D);
+  return '<h3>Your team</h3><div class="svgbox">'+graphSvg(D)+'</div><div class="tiles"><div class="tile"><b>'+st.agents+'</b><span>agents</span></div><div class="tile"><b>'+st.seq+'</b><span>in a row (longest chain)</span></div><div class="tile"><b>'+st.wide+'</b><span>at once (widest step)</span></div><div class="tile"><b>'+(S.mode==='model'?'about '+st.calls.toFixed(1):st.calls.toFixed(1))+'</b><span>model calls per case</span></div></div>'+
+    '<p class="small muted">'+esc(dlabel(D))+'</p>'+
+    (D.act==='before'&&D.chk==='one'?'<div class="status warn">Acting before the check means a wrong action can already be done when the checker objects.</div>':'')+
+    (D.flow==='reasoning'&&D.chk==='one'&&D.eyes!=='calc'?'<div class="status warn">The checker reads the judge\'s reasoning, so it tends to anchor on it.</div>':'')+
+    (D.clones>1?'<div class="status warn">Clones with the same view share the same blind spots. Voting helps against random slips only.</div>':'');
+}
+function notebook(){
+  if(!S.runs.length)return '<h3>Notebook</h3><p class="small muted">No runs yet. Run the one-agent baseline, then your design.</p>';
+  const base=S.runs.find(r=>r.D.chk==='none'&&!r.D.tools&&r.D.clones===1&&r.mode===S.mode&&r.n===S.runs[S.runs.length-1].n);
+  const last=S.runs.slice(-6).reverse();
+  let h='<h3>Notebook</h3><p class="small muted">Green is correct, red is wrong and sent, amber is escalated. "Wrong actions done" counts wrong decisions that were already executed, even if they were later held back.</p>';
+  last.forEach(r=>{
+    const seg_=(k,c)=>k?'<div style="background:'+c+';width:'+(k/r.n*100)+'%;height:14px"></div>':'';
+    const ci=wilson(r.correct,r.n);
+    h+='<div class="box" style="margin-bottom:8px"><b>Run '+r.id+': '+esc(r.label)+'</b> <span class="small muted">('+(r.mode==='sim'?'simulated':'language model')+', '+r.n+' cases)</span><div class="small muted" style="margin:2px 0 6px">'+esc(r.design)+'</div>'+
+      '<div style="display:flex;border-radius:6px;overflow:hidden;background:var(--line)">'+seg_(r.correct,'#2E7D5B')+seg_(r.wrong,'#B3412E')+seg_(r.esc,'#E3A21A')+'</div>'+
+      '<div class="small" style="margin-top:6px">Correct <b>'+r.correct+'</b> ('+pcx(r.correct/r.n)+', interval '+pcx(ci[0])+' to '+pcx(ci[1])+') · Wrong sent <b>'+r.wrong+'</b> · Escalated <b>'+r.esc+'</b> · Wrong actions done <b>'+r.harm+'</b> · '+r.calls.toFixed(1)+' calls per case'+(r.mode==='model'?' · '+(r.ms/1000).toFixed(1)+' s per case':'')+'</div>'+
+      (base&&base!==r&&base.mode===r.mode?'<div class="small muted" style="margin-top:4px">Against the one-agent baseline: correct '+(r.correct-base.correct>=0?'+':'')+(r.correct-base.correct)+', wrong sent '+(r.wrong-base.wrong>=0?'+':'')+(r.wrong-base.wrong)+', wrong actions done '+(r.harm-base.harm>=0?'+':'')+(r.harm-base.harm)+'.</div>':'')+'</div>';
+  });
+  if(S.runs.length>=2){
+    const rows=S.runs.slice().sort((a,b)=>(b.correct-a.correct)||(a.harm-b.harm)).map(r=>[r.id,r.label,r.correct+' of '+r.n,r.wrong,r.esc,r.harm,r.calls.toFixed(1)]);
+    h+='<p class="small" style="margin-top:10px"><b>All runs, best first</b> (only compare runs with the same number of cases and the same mode)</p>'+table(['Run','Design','Correct','Wrong sent','Escalated','Wrong actions done','Calls'],rows,560);
+  }
+  return h;
+}
+function assumptions(){
+  if(S.mode!=='sim')return '';
+  return '<div class="status warn"><b>Simulated agents.</b> They are not models. Their error rates are assumptions that encode the brief\'s claims, so this shows the logic of the design rules, not real performance. Switch to the language model to test them.</div>'+
+    '<div class="row" style="margin-top:8px">'+btn('assume','','Show or hide the assumptions','ghost sm')+'</div>'+
+    (S.showAssume?table(['Assumption','Value'],[['A case is a trap for a model that reads the raw message and does the arithmetic itself',pcx(ASSUME.trap)],['On a trap case that agent gets it wrong (the same way every time, so clones and fresh readers share it)',pcx(ASSUME.trapMiss)],['Random slip of a raw reader on a non-trap case (independent each time)',pcx(ASSUME.slip)],['The extractor fails to read the facts',pcx(ASSUME.exFail)],['A judge reasoning over calculated facts slips',pcx(ASSUME.judgeFactsSlip)],['A checker with its own calculator is right (independently)',pcx(ASSUME.calcPath)],['A checker that sees the judge\'s reasoning just repeats it (confirming goal)',pcx(ASSUME.anchorAgree)],['The same, with a rival goal',pcx(ASSUME.anchorRival)]],560):'');
+}
+const QA=[
+ ['What is the studio testing?','Whether the five rules in the brief change the outcome. Try the naive team, then fix one rule at a time and watch which one moves the numbers.'],
+ ['Why does acting before the check matter?','A wrong action that is already done cannot be un-done by a held-back answer. The notebook counts those separately as wrong actions done.'],
+ ['Why can a checker with the judge\'s reasoning do worse?','It reads the same reasoning and tends to agree. A fresh checker, ideally with different information such as its own calculator, can catch what the judge missed.'],
+ ['Why is the simulation labeled so strongly?','Because its error rates are assumptions that I chose to reflect the brief. It illustrates the logic. Only the language-model mode can test whether the logic holds for a real model.']
+];
+function modelBox(){
+  if(LLM.ready()&&!S.showModel)return '<div class="box" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><span><span id="llmchip">'+LLM.chip()+'</span> <span class="small muted">'+esc(LLM.modelId)+'</span></span>'+btn('model','','Change model','ghost sm')+'</div></div>';
+  return '<div class="box" style="margin-bottom:12px"><span id="llmchip">'+LLM.chip()+'</span>'+LLM.ui()+(LLM.ready()?'<div style="margin-top:8px">'+btn('model','','Hide','ghost sm')+'</div>':'')+'<p class="small muted" style="margin-top:8px">Not needed for the simulation.</p></div>';
+}
+function render(){
+  const ns=S.mode==='sim'?['24','48','96']:['8','12','16'];
+  if(ns.indexOf(String(S.n))<0)S.n=+ns[0];
+  const run='<div class="grid2"><div><label class="range" for="ncases">Cases per run</label><select id="ncases" data-act="ncases">'+ns.map(v=>'<option'+(String(S.n)===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div></div>'+
+    '<div class="row" style="margin-top:12px">'+btn('run','','Run this design','',S.busy)+(S.busy?btn('stop','','Stop','ghost'):'')+btn('clear','','Clear the notebook','ghost',S.busy)+'</div>';
+  return modelBox()+'<div class="row">'+tog('mode','sim','Simulated agents (instant)',S.mode==='sim')+tog('mode','model','Language model (real, slow)',S.mode==='model')+'</div>'+assumptions()+
+    controls()+graphView()+'<h3>Test bench</h3>'+run+(S.err?'<div class="status bad">'+esc(S.err)+'</div>':'')+(S.busy?'<div class="status warn"><b>Running</b><br>'+esc(S.prog)+'</div>':'')+notebook()+qa(QA);
+}
+async function guard(fn){S.err='';S.busy=true;S.stop=false;draw();try{await fn();}catch(e){S.err=String((e&&e.message)||e);}S.busy=false;S.prog='';}
+
+function renderKnowledgeGraphSection(){
+  return '<div class="panel" style="margin:16px 0;padding:16px;">' +
+    '<h3>Dynamic Team Topology Knowledge Graph</h3>' +
+    '<p class="small muted">Live interactive epistemic graph: Ingestion, Online MPC Controller, Topology Space, Pareto Optimization Gate, and Pruned Over-Engineering. Click any node to inspect agent role & allocation decisions.</p>' +
+    '<div style="position:relative;background:#0A1017;border-radius:10px;overflow:hidden;border:1px solid #CBD4DB;margin:10px 0;">' +
+    '<canvas id="cvsStudioKG" width="1000" height="360" style="width:100%;height:360px;display:block;cursor:pointer;"></canvas>' +
+    '</div>' +
+    '<div class="row small muted" style="margin-top:6px;flex-wrap:wrap;gap:8px;">' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0E6F8E;margin-right:4px;"></i>Task Stream</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563EB;margin-right:4px;"></i>MPC Controller</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:4px;"></i>Topologies</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16A34A;margin-right:4px;"></i>Pareto Gate</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;"></i>Pruned Topologies</span>' +
+    '<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9333EA;margin-right:4px;"></i>Active Dynamic Team</span>' +
+    '</div></div>';
+}
+
+
+let stdKgSimNodes = [];
+let stdKgSimLinks = [];
+let stdSelectedNode = null;
+
+function buildStudioKnowledgeGraph(){
+  const D = (typeof S !== 'undefined' && S.D) ? S.D : {chk:'single', clones:1, flow:'pipe'};
+
+  stdKgSimNodes = [
+    {id:'in1', label:'Task Stream: ' + (D.flow||'pipe').toUpperCase(), role:'intake', x:180, y:120, roleName:'Task Input Stream', info:'Workload flow routed with dynamic complexity, token budgets, and latency limits.'},
+    {id:'est1', label:'State & Risk Estimator', role:'intake', x:260, y:60, roleName:'Online State Estimator', info:'Estimates epistemic uncertainty and flags high-stakes decisions requiring consensus.'},
+    {id:'mpc1', label:'MPC Horizon Optimizer', role:'mpc', x:480, y:100, highlight:true, roleName:'MPC Controller', info:'Predicts rolling horizon team performance across Solo, Pipeline, and Committee.'},
+    {id:'top1', label:'Solo Model (Zero Overhead)', role:'cand', x:770, y:70, roleName:'Solo Topology', info:'Minimal cost and latency: deployed for high-certainty routine requests.'},
+    {id:'top2', label:'Multi-Agent Committee (' + (D.clones||2) + ' Agents)', role:'cand', x:770, y:170, roleName:'Committee Topology', info:'Expanded multi-agent deliberation: deployed when risk exceeds safe threshold.'},
+    {id:'pareto1', label:'Pareto Frontier Gate', role:'pareto', x:630, y:230, roleName:'Pareto Evaluator', info:'Evaluates Trade-offs: Cost vs. Latency vs. Safety Margin.'},
+    {id:'prun1', label:'[PRUNED] High-Cost Bloat', role:'pruned', x:880, y:230, roleName:'Pruned Sub-optimal', info:'Pruned unnecessary multi-agent coordination when task entropy is low.'},
+    {id:'act1', label:'Committed Dynamic Structure', role:'active', x:630, y:310, roleName:'Active Execution', info:'Online team topology dynamically activated by MPC closed-loop controller.'}
+  ];
+
+  stdKgSimLinks = [
+    {source:'in1', target:'est1', label:'MEASURES_RISK', type:'normal'},
+    {source:'in1', target:'mpc1', label:'DISPATCHES', type:'normal'},
+    {source:'est1', target:'mpc1', label:'ESTIMATES_STATE', type:'bridge'},
+    {source:'mpc1', target:'top1', label:'SIMULATES', type:'normal'},
+    {source:'mpc1', target:'top2', label:'SIMULATES', type:'normal'},
+    {source:'top2', target:'pareto1', label:'EVALUATES', type:'normal'},
+    {source:'pareto1', target:'prun1', label:'PRUNED', type:'refuted'},
+    {source:'pareto1', target:'act1', label:'COMMITS_TOPOLOGY', type:'bridge'}
+  ];
+
+  stdKgSimLinks.forEach(l => {
+    l.sourceNode = stdKgSimNodes.find(n => n.id === l.source);
+    l.targetNode = stdKgSimNodes.find(n => n.id === l.target);
+  });
+}
+
+function updateStdKgPhysics(){
+  const W=1000, H=360;
+  for(let i=0;i<stdKgSimNodes.length;i++){
+    for(let j=i+1;j<stdKgSimNodes.length;j++){
+      const a=stdKgSimNodes[i], b=stdKgSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<125){
+        const f=(125-dist)/dist * 0.08;
+        a.x -= dx*f; a.y -= dy*f;
+        b.x += dx*f; b.y += dy*f;
+      }
+    }
+  }
+  stdKgSimLinks.forEach(l => {
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(dist-110)*0.035;
+    l.sourceNode.x += dx/dist*f; l.sourceNode.y += dy/dist*f;
+    l.targetNode.x -= dx/dist*f; l.targetNode.y -= dy/dist*f;
+  });
+  stdKgSimNodes.forEach(n => {
+    n.x = Math.max(50, Math.min(W-50, n.x));
+    n.y = Math.max(40, Math.min(H-40, n.y));
+  });
+}
+
+const STD_KG_COLORS = {
+  intake:'#0E6F8E', mpc:'#2563EB', cand:'#D97706', pareto:'#16A34A', pruned:'#DC2626', active:'#9333EA'
+};
+
+function drawStdKgLoop(){
+  const cv = document.getElementById('cvsStudioKG');
+  if(cv){
+    const g = cv.getContext('2d'), W=cv.width, H=cv.height;
+    g.fillStyle = '#0A1017';
+    g.fillRect(0,0,W,H);
+
+    updateStdKgPhysics();
+
+    stdKgSimLinks.forEach(l => {
+      if(!l.sourceNode||!l.targetNode)return;
+      g.beginPath();
+      g.moveTo(l.sourceNode.x, l.sourceNode.y);
+      g.lineTo(l.targetNode.x, l.targetNode.y);
+      if(l.type==='refuted'){
+        g.strokeStyle='#DC2626'; g.setLineDash([5,4]); g.lineWidth=2;
+      }else if(l.type==='bridge'){
+        g.strokeStyle='#16A34A'; g.setLineDash([]); g.lineWidth=3;
+      }else{
+        g.strokeStyle='#2A3E54'; g.setLineDash([]); g.lineWidth=1.5;
+      }
+      g.stroke();
+      g.setLineDash([]);
+      const mx=(l.sourceNode.x+l.targetNode.x)/2, my=(l.sourceNode.y+l.targetNode.y)/2;
+      g.fillStyle='#8FA3AD'; g.font='9px sans-serif'; g.textAlign='center';
+      g.fillText(l.label, mx, my-4);
+    });
+
+    stdKgSimNodes.forEach(n => {
+      const col = STD_KG_COLORS[n.role] || '#0E6F8E';
+      const isSel = stdSelectedNode && stdSelectedNode.id === n.id;
+      const rad = (n.highlight || isSel) ? 14 : 10;
+      if(n.highlight || isSel){
+        g.beginPath(); g.arc(n.x, n.y, rad+6, 0, 6.2832);
+        g.fillStyle = isSel ? 'rgba(37, 99, 235, 0.35)' : 'rgba(37, 99, 235, 0.28)'; g.fill();
+      }
+      g.beginPath(); g.arc(n.x, n.y, rad, 0, 6.2832);
+      g.fillStyle = col; g.fill();
+      g.strokeStyle = '#FFFFFF'; g.lineWidth = isSel ? 2.5 : 1.8; g.stroke();
+
+      g.fillStyle = '#E5EEF5'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+      g.fillText(n.label, n.x, n.y + rad + 14);
+    });
+
+    // Event Annotation Callout Banner & Pointer
+    const targetNodeId = (stdSelectedNode && stdSelectedNode.id) || 'prun1';
+    const targetNode = stdKgSimNodes.find(n => n.id === targetNodeId) || stdKgSimNodes[0];
+
+    g.fillStyle = 'rgba(23, 34, 43, 0.94)';
+    g.fillRect(16, 16, 440, 76);
+    g.strokeStyle = '#4FC3E8'; g.lineWidth = 1.5;
+    g.strokeRect(16, 16, 440, 76);
+
+    g.fillStyle = '#4FC3E8'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left';
+    g.fillText('EVENT ANNOTATION: ' + (stdSelectedNode ? 'INSPECTING ' + stdSelectedNode.roleName.toUpperCase() : 'MPC DYNAMIC TOPOLOGY OPTIMIZATION'), 28, 36);
+
+    g.fillStyle = '#FFFFFF'; g.font = 'bold 12px sans-serif';
+    g.fillText(stdSelectedNode ? stdSelectedNode.label : 'Pareto Frontier Gating & Bloat Pruning', 28, 54);
+
+    g.fillStyle = '#99AAB9'; g.font = '11px sans-serif';
+    g.fillText(stdSelectedNode ? stdSelectedNode.info : 'Red dashed edge shows expensive static teams pruned by MPC. Green bridge commits optimal dynamic team.', 28, 72);
+
+    if(targetNode){
+      g.beginPath();
+      g.moveTo(456, 54);
+      g.lineTo(targetNode.x, targetNode.y - 18);
+      g.strokeStyle = 'rgba(79, 195, 232, 0.7)';
+      g.lineWidth = 1.8;
+      g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
+
+      g.beginPath();
+      g.arc(targetNode.x, targetNode.y, 22 + Math.sin(Date.now()*0.006)*4, 0, 6.2832);
+      g.strokeStyle = '#4FC3E8';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
+  requestAnimationFrame(drawStdKgLoop);
+}
+
+function initStdKgInteraction(){
+  const cv = document.getElementById('cvsStudioKG');
+  if(!cv)return;
+  cv.addEventListener('click', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    const hit = stdKgSimNodes.find(n => Math.hypot(n.x - x, n.y - y) < 24);
+    if(hit){
+      stdSelectedNode = hit;
+    }else{
+      stdSelectedNode = null;
+    }
+  });
+}
+
+const draw=app({
+  render,
+  act:{
+    model:()=>{S.showModel=!S.showModel;},
+    mode:v=>{S.mode=v;},
+    assume:()=>{S.showAssume=!S.showAssume;},
+    preset:v=>{S.D=Object.assign({},PRESETS[v].D);S.lastPreset=PRESETS[v].name;},
+    chk:v=>{S.D.chk=v;S.lastPreset='';},
+    clones:v=>{S.D.clones=+v;S.lastPreset='';},
+    flow:v=>{S.D.flow=v;S.lastPreset='';},
+    goal:v=>{S.D.goal=v;S.lastPreset='';},
+    audit:v=>{S.D.audit=v;S.lastPreset='';},
+    eyes:v=>{S.D.eyes=v;S.lastPreset='';},
+    act:v=>{S.D.act=v;S.lastPreset='';},
+    tools:v=>{S.D.tools=v==='true';S.lastPreset='';},
+    unsure:v=>{S.D.unsure=v==='true';S.lastPreset='';},
+    stop:()=>{S.stop=true;},
+    clear:()=>{S.runs=[];},
+    run:()=>guard(async()=>{await runDesign(S.D,S.lastPreset||'Custom design');}),
+    ...LLM.act
+  },
+  change:{ncases:t=>{S.n=+t.value;},...LLM.change},
+  onError:err=>{S.busy=false;S.err=String((err&&err.message)||err);}
+});
+LLM.draw=draw;
+setStatus(LLM.chip());
+buildStudioKnowledgeGraph();
+requestAnimationFrame(drawStdKgLoop);
+setTimeout(initStdKgInteraction, 200);
+draw();
+</script>
+</body>
+</html>
