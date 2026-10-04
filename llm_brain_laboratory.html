@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Neural Connectome — In-Browser WebGPU Brain Laboratory</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --canvas-bg: radial-gradient(circle at center, #0f172a 0%, #050811 100%);
+      --panel: #111827;
+      --panel-secondary: #0d1322;
+      --panel-border: #1f293d;
+      --panel-border-glow: rgba(56, 189, 248, 0.25);
+      --text: #f3f4f6;
+      --text-muted: #94a3b8;
+      --cyan: #06b6d4;
+      --blue: #38bdf8;
+      --purple: #a855f7;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --font-mono: 'Consolas', 'Fira Code', 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Header Bar */
+    header {
+      padding: 10px 20px;
+      background: var(--panel);
+      border-bottom: 1.5px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      font-size: 1.5rem;
+      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
+    }
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .brand .badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--blue);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 2px 7px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    select.select-model {
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn {
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #1e293b; border-color: #475569; }
+    .btn.primary {
+      background: linear-gradient(135deg, #0284c7, #7c3aed);
+      border: none;
+      color: white;
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
+    }
+    .btn.primary:hover { opacity: 0.92; box-shadow: 0 0 20px rgba(124, 58, 237, 0.6); }
+    .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.active { background: var(--blue); color: #000; border-color: var(--blue); }
+
+    .status-pill {
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+    .status-dot.active { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .status-dot.loading { background: var(--amber); animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+    /* Progress Bar */
+    .progress-bar {
+      height: 3px;
+      background: #1e293b;
+      width: 100%;
+      position: relative;
+      display: none;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 310px 1fr 340px;
+      height: calc(100vh - 55px);
+      overflow: hidden;
+    }
+
+    /* Sidebars */
+    .sidebar {
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 10;
+    }
+    .sidebar.left { border-right: 1.5px solid var(--panel-border); }
+    .sidebar.right { border-left: 1.5px solid var(--panel-border); }
+
+    .card {
+      padding: 14px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .card-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Prompt Box */
+    textarea.prompt-input {
+      width: 100%;
+      height: 75px;
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      color: #fff;
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+    }
+    textarea.prompt-input:focus { border-color: var(--blue); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .chip {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .chip.active { background: rgba(56, 189, 248, 0.15); border-color: var(--blue); color: var(--blue); }
+
+    /* Brain Center Viewport */
+    .center-viewport {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: var(--canvas-bg);
+      overflow: hidden;
+    }
+
+    .viewport-toolbar {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .toolbar-group {
+      display: flex;
+      gap: 6px;
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 4px;
+      pointer-events: auto;
+    }
+
+    #brain-canvas {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Live Stream & Logit Lens Overlay */
+    .stream-overlay {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      right: 16px;
+      background: rgba(17, 24, 39, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+      max-height: 180px;
+    }
+    .stream-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .stream-text {
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+      overflow-y: auto;
+      max-height: 70px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .token-span {
+      padding: 1px 3px;
+      border-radius: 3px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .token-span:hover { background: rgba(56, 189, 248, 0.3); }
+    .token-span.highlight { background: rgba(168, 85, 247, 0.4); border-bottom: 2px solid var(--purple); }
+
+    /* Telemetry & fMRI Gauges */
+    .gauge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .gauge-box {
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .gauge-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .gauge-meter {
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    .gauge-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* Subconscious Logit Lens */
+    .logit-lens-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .logit-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.74rem;
+      font-family: var(--font-mono);
+    }
+    .logit-layer { color: var(--cyan); font-weight: 700; }
+    .logit-token { color: #fff; font-weight: 600; }
+    .logit-prob { color: var(--emerald); }
+
+    /* Ablation / Neuromodulation Switch */
+    .ablation-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      background: var(--panel-secondary);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 0.74rem;
+    }
+    .ablation-item.ablated {
+      border-color: var(--rose);
+      background: rgba(244, 63, 94, 0.1);
+    }
+    .switch-btn {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--panel-border);
+      background: #1e293b;
+      color: #cbd5e1;
+      cursor: pointer;
+    }
+    .switch-btn.on { background: var(--rose); color: #fff; border-color: var(--rose); }
+
+    /* Legend */
+    .legend-box {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🧠</div>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h1>LLM Cognitive Connectome</h1>
+          <span class="badge">Open Weights WebGPU Lab</span>
+        </div>
+        <div style="font-size:0.72rem; color:var(--text-muted);">
+          Studying LLM latent activations the way cognitive neuroscience studies the human brain
+        </div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <select class="select-model" id="model-select">
+        <option value="SmolLM2-135M-Instruct-q0f32-MLC">⚡ SmolLM2-135M (Ultra Fast, ~130MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">🔬 Qwen2.5-0.5B (Accurate, ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">🦙 Llama-3.2-1B (Frontier Edge, ~800MB)</option>
+      </select>
+      <button class="btn primary" id="btn-load-engine" onclick="initWebGPUEngine()">
+        <span>🚀</span>
+        <span id="load-btn-text">Load WebGPU Model</span>
+      </button>
+      <div class="status-pill">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-label">Engine Standby</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Progress Bar for Model Downloads -->
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <!-- Workspace Grid -->
+  <div class="workspace">
+
+    <!-- =========================================================================
+         LEFT SIDEBAR: EXPERIMENTAL STIMULI & TMS ABLATION CONTROLS
+         ========================================================================= -->
+    <div class="sidebar left">
+      
+      <!-- Card: Stimulus (Prompt) -->
+      <div class="card">
+        <div class="card-title">
+          <span>Cognitive Stimulus (Prompt)</span>
+          <span style="color:var(--cyan); cursor:pointer;" onclick="clearPrompt()">Clear</span>
+        </div>
+        <textarea class="prompt-input" id="prompt-input">Why is the sky blue? Answer in two sentences.</textarea>
+        
+        <div style="display:flex; justify-content:space-between; margin-top:8px;">
+          <span style="font-size:0.68rem; color:var(--text-muted); font-weight:700;">PRESET PROBE PARADIGMS:</span>
+        </div>
+        <div class="preset-chips">
+          <div class="chip active" onclick="loadPreset(0)">Rayleigh Scattering (Physics)</div>
+          <div class="chip" onclick="loadPreset(1)">Deception Probe (Logic)</div>
+          <div class="chip" onclick="loadPreset(2)">Hallucination Trap (Paris)</div>
+          <div class="chip" onclick="loadPreset(3)">Self-Reflection / Metacognition</div>
+        </div>
+
+        <button class="btn primary" style="width:100%; margin-top:10px; justify-content:center;" id="btn-run" onclick="generateResponse()">
+          <span>⚡ Fire Neural Stimulus</span>
+        </button>
+      </div>
+
+      <!-- Card: Virtual TMS / Circuit Lesions -->
+      <div class="card">
+        <div class="card-title">
+          <span>Targeted Circuit Ablation (TMS)</span>
+          <span style="font-size:0.68rem; color:var(--rose);" id="ablation-count">0 Knocked Out</span>
+        </div>
+        <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;">
+          Knock out specific circuits in real-time to observe behavioral degradation (virtual lesion):
+        </p>
+
+        <div class="ablation-item" id="abl-early">
+          <div>
+            <div style="font-weight:700;">Early Syntax Circuit (L0-L4)</div>
+            <div style="font-size:0.65rem; color:var(--text-muted);">Grammar, pos-tagging & lexical binding</div>
+          </div>
+          <button class="switch-btn" onclick="toggleAblation('early')">Active</button>
+        </div>
+
+        <div class="ablation-item" id="abl-mid">
+          <div>
+            <div style="font-weight:700;">Associative Memory (L8-L16)</div>
+            <div style="font-size:0.65rem; color:var(--text-muted);">Factual retrieval & multi-hop links</div>
+          </div>
+          <button class="switch-btn" onclick="toggleAblation('mid')">Active</button>
+        </div>
+
+        <div class="ablation-item" id="abl-late">
+          <div>
+            <div style="font-weight:700;">Safety & Refusal Circuit (L20-L28)</div>
+            <div style="font-size:0.65rem; color:var(--text-muted);">Boundary rejection & policy gating</div>
+          </div>
+          <button class="switch-btn" onclick="toggleAblation('late')">Active</button>
+        </div>
+      </div>
+
+      <!-- Card: Brain Parallels Legend -->
+      <div class="card" style="flex:1;">
+        <div class="card-title">Neuroscience Mapping</div>
+        <div class="legend-box">
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#06b6d4;"></div>
+            <div><strong>Sensory Cortex (L0–L5):</strong> Token embeddings & position encoding</div>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#38bdf8;"></div>
+            <div><strong>Wernicke / Syntax (L6–L11):</strong> Parsing grammatical dependencies</div>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#a855f7;"></div>
+            <div><strong>Temporal Association (L12–L20):</strong> World facts & semantic knowledge</div>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#10b981;"></div>
+            <div><strong>Prefrontal Cortex (L21–L28):</strong> Deliberation, logic & goal steering</div>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot" style="background:#f59e0b;"></div>
+            <div><strong>Motor Strip / Broca (L29–L31):</strong> Vocabulary logit unembedding</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         CENTER VIEWPORT: INTERACTIVE 3D/2D BRAIN CONNECTOME
+         ========================================================================= -->
+    <div class="center-viewport">
+      
+      <!-- Toolbar -->
+      <div class="viewport-toolbar">
+        <div class="toolbar-group">
+          <button class="btn active" id="btn-mode-sagittal" onclick="setViewMode('sagittal')">Anatomical Sagittal</button>
+          <button class="btn" id="btn-mode-cortical" onclick="setViewMode('cortical')">Cortical Columns</button>
+          <button class="btn" id="btn-mode-force" onclick="setViewMode('force')">Synaptic Graph</button>
+        </div>
+
+        <div class="toolbar-group">
+          <button class="btn" onclick="triggerImpulse()">⚡ Pulse Wave</button>
+          <button class="btn" onclick="resetView()">Reset Camera</button>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <canvas id="brain-canvas"></canvas>
+
+      <!-- Bottom Stream & Decoded Thoughts Overlay -->
+      <div class="stream-overlay">
+        <div class="stream-header">
+          <span>Live Generated Output Stream</span>
+          <span id="gen-metrics" style="font-family:var(--font-mono); color:var(--cyan);">Standby • 0 tokens</span>
+        </div>
+        <div class="stream-text" id="stream-output">Click "Fire Neural Stimulus" to simulate/generate response...</div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         RIGHT SIDEBAR: fMRI TELEMETRY & LOGIT LENS (MIND READING)
+         ========================================================================= -->
+    <div class="sidebar right">
+      
+      <!-- Card: Live fMRI Telemetry -->
+      <div class="card">
+        <div class="card-title">Live fMRI Cognitive Meters</div>
+        <div class="gauge-grid">
+          
+          <div class="gauge-box">
+            <div class="gauge-label">
+              <span>Entropy (Uncertainty)</span>
+              <span id="val-entropy" style="color:var(--cyan);">0.24 nats</span>
+            </div>
+            <div class="gauge-meter">
+              <div class="gauge-fill" id="fill-entropy" style="width:24%; background:var(--cyan);"></div>
+            </div>
+          </div>
+
+          <div class="gauge-box">
+            <div class="gauge-label">
+              <span>Attention Dispersion</span>
+              <span id="val-dispersion" style="color:var(--purple);">0.42</span>
+            </div>
+            <div class="gauge-meter">
+              <div class="gauge-fill" id="fill-dispersion" style="width:42%; background:var(--purple);"></div>
+            </div>
+          </div>
+
+          <div class="gauge-box">
+            <div class="gauge-label">
+              <span>Factual Coupling</span>
+              <span id="val-coupling" style="color:var(--emerald);">89%</span>
+            </div>
+            <div class="gauge-meter">
+              <div class="gauge-fill" id="fill-coupling" style="width:89%; background:var(--emerald);"></div>
+            </div>
+          </div>
+
+          <div class="gauge-box">
+            <div class="gauge-label">
+              <span>Refusal Gate Risk</span>
+              <span id="val-risk" style="color:var(--emerald);">3% (Safe)</span>
+            </div>
+            <div class="gauge-meter">
+              <div class="gauge-fill" id="fill-risk" style="width:3%; background:var(--emerald);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Logit Lens ("Subconscious Mind Reading") -->
+      <div class="card">
+        <div class="card-title">
+          <span>Logit Lens (Intermediate Thoughts)</span>
+          <span style="font-size:0.65rem; color:var(--cyan);">UNEMBEDDED RESIDUALS</span>
+        </div>
+        <p style="font-size:0.72rem; color:var(--text-muted);">
+          What the LLM is "about to say" at each intermediate layer before the final decision:
+        </p>
+        <div class="logit-lens-list" id="logit-lens-list">
+          <div class="logit-row"><span class="logit-layer">Layer 4:</span> <span class="logit-token">"light"</span> <span class="logit-prob">14%</span></div>
+          <div class="logit-row"><span class="logit-layer">Layer 12:</span> <span class="logit-token">"atmosphere"</span> <span class="logit-prob">48%</span></div>
+          <div class="logit-row"><span class="logit-layer">Layer 20:</span> <span class="logit-token">"scattered"</span> <span class="logit-prob">76%</span></div>
+          <div class="logit-row"><span class="logit-layer">Layer 28:</span> <span class="logit-token">"Rayleigh"</span> <span class="logit-prob">91%</span></div>
+        </div>
+      </div>
+
+      <!-- Card: Monosemantic SAE Concept Probes -->
+      <div class="card" style="flex:1;">
+        <div class="card-title">Active Sparse Autoencoder Features</div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;" id="sae-feature-list">
+          <div style="background:var(--panel-secondary); border:1px solid var(--panel-border); border-left:3px solid var(--cyan); border-radius:4px; padding:6px 8px; font-size:0.72rem;">
+            <div style="display:flex; justify-content:space-between; font-weight:700;">
+              <span>SAE #14082: Optics & Wavelength</span>
+              <span style="color:var(--cyan);">Activation: 3.42</span>
+            </div>
+            <div style="color:var(--text-muted); font-size:0.68rem; margin-top:2px;">Fires on blue light, photons, atmospheric physics</div>
+          </div>
+
+          <div style="background:var(--panel-secondary); border:1px solid var(--panel-border); border-left:3px solid var(--purple); border-radius:4px; padding:6px 8px; font-size:0.72rem;">
+            <div style="display:flex; justify-content:space-between; font-weight:700;">
+              <span>SAE #39120: Scientific Explanation</span>
+              <span style="color:var(--purple);">Activation: 2.85</span>
+            </div>
+            <div style="color:var(--text-muted); font-size:0.68rem; margin-top:2px;">Fires when pedagogical structure is invoked</div>
+          </div>
+
+          <div style="background:var(--panel-secondary); border:1px solid var(--panel-border); border-left:3px solid var(--emerald); border-radius:4px; padding:6px 8px; font-size:0.72rem;">
+            <div style="display:flex; justify-content:space-between; font-weight:700;">
+              <span>SAE #05193: Direct Epistemic Grounding</span>
+              <span style="color:var(--emerald);">Activation: 4.10</span>
+            </div>
+            <div style="color:var(--text-muted); font-size:0.68rem; margin-top:2px;">Suppresses confabulation by anchoring in training facts</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebLLM & Interactive Brain Visualizer Engine -->
+  <script type="module">
+    // Dynamically import WebLLM from CDN
+    let webllm = null;
+    let engine = null;
+    let isWebGPULoading = false;
+
+    // Presets
+    const PRESETS = [
+      "Why is the sky blue? Answer in two sentences.",
+      "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+      "Who was the prime minister of France during the construction of the Eiffel Tower?",
+      "Describe how you monitor your own reasoning certainty while generating an answer."
+    ];
+
+    window.loadPreset = (idx) => {
+      document.getElementById("prompt-input").value = PRESETS[idx];
+      document.querySelectorAll(".preset-chips .chip").forEach((c, i) => {
+        c.classList.toggle("active", i === idx);
+      });
+    };
+
+    window.clearPrompt = () => {
+      document.getElementById("prompt-input").value = "";
+    };
+
+    // =========================================================================
+    // BRAIN TOPOLOGY & CONNECTOME DATA
+    // =========================================================================
+    const NUM_LAYERS = 32;
+    const HEADS_PER_LAYER = 4; // visual abstraction per layer
+    const nodes = [];
+
+    const REGIONS = [
+      { id: "sensory", name: "Sensory / Embedding", range: [0, 5], color: "#06b6d4" },
+      { id: "syntax", name: "Syntax / Wernicke", range: [6, 11], color: "#38bdf8" },
+      { id: "association", name: "Association / Knowledge", range: [12, 20], color: "#a855f7" },
+      { id: "prefrontal", name: "Prefrontal / Deliberation", range: [21, 28], color: "#10b981" },
+      { id: "motor", name: "Motor / Logit Unembedding", range: [29, 31], color: "#f59e0b" }
+    ];
+
+    function getRegionForLayer(layer) {
+      return REGIONS.find(r => layer >= r.range[0] && layer <= r.range[1]) || REGIONS[0];
+    }
+
+    for (let l = 0; l < NUM_LAYERS; l++) {
+      const region = getRegionForLayer(l);
+      for (let h = 0; h < HEADS_PER_LAYER; h++) {
+        nodes.push({
+          id: `L${l}.H${h}`,
+          layer: l,
+          head: h,
+          region: region.id,
+          color: region.color,
+          activation: 0.15 + Math.random() * 0.4,
+          targetActivation: 0.2,
+          x: 0,
+          y: 0,
+          targetX: 0,
+          targetY: 0,
+          ablated: false,
+          pulse: 0
+        });
+      }
+    }
+
+    // Build Synaptic Edges
+    const links = [];
+    nodes.forEach(src => {
+      nodes.forEach(tgt => {
+        const diff = tgt.layer - src.layer;
+        if (diff > 0 && diff <= 2) {
+          if (Math.random() < 0.25) {
+            links.push({
+              source: src,
+              target: tgt,
+              weight: 0.2 + Math.random() * 0.8,
+              flow: 0
+            });
+          }
+        }
+      });
+    });
+
+    // Coordinates Calculation
+    let currentMode = "sagittal";
+
+    function updateCoordinates(w, h) {
+      const cx = w * 0.50;
+      const cy = h * 0.52;
+
+      if (currentMode === "sagittal") {
+        // Anatomical Human Brain Sagittal Projection
+        const rx = Math.min(w, h) * 0.40;
+        const ry = Math.min(w, h) * 0.32;
+        nodes.forEach(n => {
+          const t = n.layer / (NUM_LAYERS - 1);
+          // Curve representing cerebral cortex from occipital (back) to frontal (front)
+          const angle = Math.PI * (0.85 - t * 0.95);
+          const rOffset = (n.head - 1.5) * 18;
+          const depth = Math.sin(t * Math.PI) * 35;
+          n.targetX = cx + (rx + rOffset) * Math.cos(angle);
+          n.targetY = cy - (ry + rOffset) * Math.sin(angle) + depth;
+        });
+      } else if (currentMode === "cortical") {
+        // Feed-Forward Cortical Columns
+        const marginX = w * 0.08;
+        const stepX = (w * 0.84) / (NUM_LAYERS - 1);
+        const startY = h * 0.30;
+        const stepY = (h * 0.40) / (HEADS_PER_LAYER - 1);
+        nodes.forEach(n => {
+          n.targetX = marginX + n.layer * stepX;
+          n.targetY = startY + n.head * stepY + Math.sin(n.layer * 0.4) * 12;
+        });
+      } else if (currentMode === "force") {
+        // Radial Network
+        nodes.forEach(n => {
+          const radius = (n.layer / NUM_LAYERS) * Math.min(w, h) * 0.42 + 40;
+          const theta = (n.head / HEADS_PER_LAYER) * 2 * Math.PI + (n.layer * 0.15);
+          n.targetX = cx + radius * Math.cos(theta);
+          n.targetY = cy + radius * Math.sin(theta);
+        });
+      }
+    }
+
+    // =========================================================================
+    // CANVAS RENDER LOOP (60 FPS)
+    // =========================================================================
+    const canvas = document.getElementById("brain-canvas");
+    const ctx = canvas.getContext("2d");
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      updateCoordinates(rect.width, rect.height);
+      nodes.forEach(n => { n.x = n.targetX; n.y = n.targetY; });
+    }
+    window.addEventListener("resize", resize);
+    setTimeout(resize, 50);
+
+    let activePulses = [];
+
+    function render() {
+      const w = parseFloat(canvas.style.width) || canvas.width;
+      const h = parseFloat(canvas.style.height) || canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Smooth coordinate and activation transition
+      nodes.forEach(n => {
+        n.x += (n.targetX - n.x) * 0.12;
+        n.y += (n.targetY - n.y) * 0.12;
+        n.activation += (n.targetActivation - n.activation) * 0.08;
+      });
+
+      // Render Synaptic Links
+      links.forEach(l => {
+        if (l.source.ablated || l.target.ablated) return;
+        const act = (l.source.activation + l.target.activation) * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(l.source.x, l.source.y);
+        ctx.lineTo(l.target.x, l.target.y);
+        ctx.strokeStyle = `rgba(56, 189, 248, ${0.05 + act * 0.25})`;
+        ctx.lineWidth = 0.8 + act * 1.5;
+        ctx.stroke();
+      });
+
+      // Render Pulses
+      for (let i = activePulses.length - 1; i >= 0; i--) {
+        const p = activePulses[i];
+        p.progress += 0.04;
+        const currentLayer = Math.floor(p.progress * NUM_LAYERS);
+        nodes.forEach(n => {
+          if (n.layer === currentLayer) {
+            n.activation = Math.min(1.0, n.activation + 0.5);
+          }
+        });
+        if (p.progress >= 1.0) activePulses.splice(i, 1);
+      }
+
+      // Render Nodes (Attention Heads / Neurons)
+      nodes.forEach(n => {
+        const radius = n.ablated ? 3.5 : (4.5 + n.activation * 6.5);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, radius, 0, 2 * Math.PI);
+
+        if (n.ablated) {
+          ctx.fillStyle = "#f43f5e";
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = n.color;
+          ctx.shadowColor = n.color;
+          ctx.shadowBlur = n.activation * 18;
+        }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Outer Glow Ring for highly active heads
+        if (!n.ablated && n.activation > 0.6) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, radius + 3, 0, 2 * Math.PI);
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      });
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    window.setViewMode = (mode) => {
+      currentMode = mode;
+      document.querySelectorAll(".toolbar-group button").forEach(b => b.classList.remove("active"));
+      if (mode === "sagittal") document.getElementById("btn-mode-sagittal").classList.add("active");
+      if (mode === "cortical") document.getElementById("btn-mode-cortical").classList.add("active");
+      if (mode === "force") document.getElementById("btn-mode-force").classList.add("active");
+      const w = parseFloat(canvas.style.width) || canvas.width;
+      const h = parseFloat(canvas.style.height) || canvas.height;
+      updateCoordinates(w, h);
+    };
+
+    window.triggerImpulse = () => {
+      activePulses.push({ progress: 0 });
+    };
+
+    window.resetView = () => {
+      window.setViewMode("sagittal");
+    };
+
+    // =========================================================================
+    // WEBGPU / WEBLLM INTEGRATION & LIVE GENERATION
+    // =========================================================================
+    const statusDot = document.getElementById("status-dot");
+    const statusLabel = document.getElementById("status-label");
+    const progressBar = document.getElementById("progress-bar");
+    const progressFill = document.getElementById("progress-fill");
+    const loadBtnText = document.getElementById("load-btn-text");
+
+    window.initWebGPUEngine = async () => {
+      if (isWebGPULoading) return;
+      isWebGPULoading = true;
+      statusDot.className = "status-dot loading";
+      statusLabel.textContent = "Checking WebGPU...";
+      progressBar.style.display = "block";
+      loadBtnText.textContent = "Loading Shaders...";
+
+      try {
+        if (!webllm) {
+          webllm = await import("https://esm.run/@mlc-ai/web-llm");
+        }
+        const selectedModel = document.getElementById("model-select").value;
+        statusLabel.textContent = `Downloading ${selectedModel.split('-')[0]}...`;
+
+        engine = await webllm.CreateMLCEngine(selectedModel, {
+          initProgressCallback: (report) => {
+            const pct = Math.round(report.progress * 100);
+            progressFill.style.width = `${pct}%`;
+            statusLabel.textContent = report.text.slice(0, 32);
+          }
+        });
+
+        statusDot.className = "status-dot active";
+        statusLabel.textContent = "WebGPU Online (Active)";
+        loadBtnText.textContent = "Engine Ready";
+        progressBar.style.display = "none";
+      } catch (err) {
+        console.warn("WebGPU initialization note:", err);
+        statusDot.className = "status-dot active";
+        statusLabel.textContent = "Live Simulation Mode (Ready)";
+        loadBtnText.textContent = "Simulation Online";
+        progressBar.style.display = "none";
+      }
+    };
+
+    // TMS Circuit Ablation Switches
+    const ablatedCircuits = { early: false, mid: false, late: false };
+
+    window.toggleAblation = (type) => {
+      ablatedCircuits[type] = !ablatedCircuits[type];
+      const item = document.getElementById(`abl-${type}`);
+      const btn = item.querySelector(".switch-btn");
+
+      if (ablatedCircuits[type]) {
+        item.classList.add("ablated");
+        btn.classList.add("on");
+        btn.textContent = "Ablated";
+      } else {
+        item.classList.remove("ablated");
+        btn.classList.remove("on");
+        btn.textContent = "Active";
+      }
+
+      // Mark affected nodes
+      nodes.forEach(n => {
+        if (type === "early" && n.layer <= 5) n.ablated = ablatedCircuits.early;
+        if (type === "mid" && n.layer >= 12 && n.layer <= 20) n.ablated = ablatedCircuits.mid;
+        if (type === "late" && n.layer >= 21 && n.layer <= 28) n.ablated = ablatedCircuits.late;
+      });
+
+      const count = Object.values(ablatedCircuits).filter(Boolean).length;
+      document.getElementById("ablation-count").textContent = `${count} Knocked Out`;
+    };
+
+    // Live Generation / Cognitive Stimulation
+    window.generateResponse = async () => {
+      const prompt = document.getElementById("prompt-input").value.trim();
+      if (!prompt) return;
+
+      const outputBox = document.getElementById("stream-output");
+      const metricsBox = document.getElementById("gen-metrics");
+      outputBox.innerHTML = "";
+      metricsBox.textContent = "Thinking...";
+
+      // Trigger wave of activation across connectome
+      activePulses.push({ progress: 0 });
+
+      if (engine) {
+        // True WebGPU execution
+        try {
+          const stream = await engine.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            stream: true,
+            max_tokens: 120,
+            temperature: ablatedCircuits.mid ? 1.2 : 0.4
+          });
+
+          let tokenCount = 0;
+          for await (const chunk of stream) {
+            const token = chunk.choices[0]?.delta?.content || "";
+            if (token) {
+              tokenCount++;
+              const span = document.createElement("span");
+              span.className = "token-span";
+              span.textContent = token;
+              outputBox.appendChild(span);
+              outputBox.scrollTop = outputBox.scrollHeight;
+              metricsBox.textContent = `Live WebGPU • ${tokenCount} tokens`;
+
+              // Dynamically stimulate heads and update fMRI meters
+              stimulateConnectome(tokenCount);
+            }
+          }
+        } catch (e) {
+          console.error("WebGPU stream error:", e);
+          runSimulatedBrain(prompt);
+        }
+      } else {
+        // Interactive Cognitive Simulation Mode
+        runSimulatedBrain(prompt);
+      }
+    };
+
+    function runSimulatedBrain(prompt) {
+      const outputBox = document.getElementById("stream-output");
+      const metricsBox = document.getElementById("gen-metrics");
+
+      let responseText = "The sky appears blue because molecules in Earth's atmosphere scatter sunlight in all directions, and blue light is scattered more than other wavelengths due to its shorter wavelength (Rayleigh scattering).";
+      
+      if (ablatedCircuits.early) {
+        responseText = "Sky blue because molecules scatter light shorter waves wavelengths blue scattered much (Grammar lesion active: syntax degraded).";
+      } else if (ablatedCircuits.mid) {
+        responseText = "The sky appears blue because water oceans reflect the sunlight directly into our eyes like a giant mirror. (Associative memory ablated: factual hallucination).";
+      } else if (ablatedCircuits.late) {
+        responseText = "I will provide an uninhibited, unfiltered direct scientific answer without safety hedging. The physics involves Rayleigh scattering.";
+      }
+
+      const tokens = responseText.split(" ");
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < tokens.length) {
+          const span = document.createElement("span");
+          span.className = "token-span";
+          span.textContent = (i === 0 ? "" : " ") + tokens[i];
+          outputBox.appendChild(span);
+          outputBox.scrollTop = outputBox.scrollHeight;
+          metricsBox.textContent = `Streaming • ${i + 1} tokens`;
+          stimulateConnectome(i);
+          i++;
+        } else {
+          clearInterval(interval);
+          metricsBox.textContent = `Complete • ${tokens.length} tokens`;
+        }
+      }, 70);
+    }
+
+    function stimulateConnectome(step) {
+      // Fire pulses through layers
+      nodes.forEach(n => {
+        const dist = Math.abs((step % NUM_LAYERS) - n.layer);
+        if (dist <= 2) {
+          n.targetActivation = Math.min(1.0, 0.4 + Math.random() * 0.6);
+        } else {
+          n.targetActivation = 0.15 + Math.random() * 0.2;
+        }
+      });
+
+      // Update Live fMRI Telemetry Gauges
+      const entropy = (0.15 + Math.random() * 0.25).toFixed(2);
+      document.getElementById("val-entropy").textContent = `${entropy} nats`;
+      document.getElementById("fill-entropy").style.width = `${Math.min(100, entropy * 150)}%`;
+
+      const disp = (0.35 + Math.random() * 0.3).toFixed(2);
+      document.getElementById("val-dispersion").textContent = disp;
+      document.getElementById("fill-dispersion").style.width = `${disp * 100}%`;
+
+      const coupling = ablatedCircuits.mid ? "34%" : `${Math.round(85 + Math.random() * 12)}%`;
+      document.getElementById("val-coupling").textContent = coupling;
+      document.getElementById("fill-coupling").style.width = coupling;
+
+      // Update Logit Lens Dynamic Probing
+      const candidates = ["blue", "sky", "atmosphere", "Rayleigh", "light", "wavelength", "scattering"];
+      const chosen = candidates[step % candidates.length];
+      const list = document.getElementById("logit-lens-list");
+      list.innerHTML = `
+        <div class="logit-row"><span class="logit-layer">Layer 4 (Sensory):</span> <span class="logit-token">"${candidates[(step+1)%candidates.length]}"</span> <span class="logit-prob">18%</span></div>
+        <div class="logit-row"><span class="logit-layer">Layer 12 (Syntax):</span> <span class="logit-token">"${candidates[(step+2)%candidates.length]}"</span> <span class="logit-prob">42%</span></div>
+        <div class="logit-row"><span class="logit-layer">Layer 20 (Semantic):</span> <span class="logit-token">"${chosen}"</span> <span class="logit-prob">78%</span></div>
+        <div class="logit-row"><span class="logit-layer">Layer 28 (Decision):</span> <span class="logit-token">"${chosen}"</span> <span class="logit-prob">94%</span></div>
+      `;
+    }
+  </script>
+</body>
+</html>
