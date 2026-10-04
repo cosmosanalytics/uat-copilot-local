@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What Do Agents Know? Restaurant Team Knowledge Graph</title>
+<style>
+:root{
+  --bg:#ECEFF2; --panel:#FFFFFF; --ink:#16222D; --muted:#536474; --line:#CBD6E0;
+  --accent:#006A80; --accent-ink:#FFFFFF; --chip:#E2E8EE;
+  --warn:#8C5900; --warn-bg:#FFF1D6; --bad:#A82B2B; --bad-bg:#FCE4E2; --good:#186E46; --good-bg:#DCF3E7;
+  --graph-bg:#F8FAFC; --graph-border:#CBD5E1; --graph-edge:#94A3B8; --graph-node-txt:#1E293B;
+  --chef:#D97706; --nutrition:#16A34A; --finance:#0284C7; --manager:#9333EA;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+html[data-theme="dark"]{
+  --bg:#0F171F;--panel:#17222B;--ink:#E5EEF5;--muted:#99AAB9;--line:#2A3A49;--accent:#4FC3E8;--accent-ink:#041F28;--chip:#213140;
+  --warn:#F0BA43;--warn-bg:#3A2D0E;--bad:#FF968F;--bad-bg:#3D1D1C;--good:#70DBA0;--good-bg:#153728;
+  --graph-bg:#0A1017; --graph-border:#2A3A49; --graph-edge:#2A3E54; --graph-node-txt:#E5EEF5;
+  --chef:#F59E0B; --nutrition:#22C55E; --finance:#38BDF8; --manager:#C084FC;
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body);-webkit-text-size-adjust:100%;}
+.shell{max-width:1080px;margin:0 auto;padding:22px 16px 52px;}
+h1{font:700 clamp(1.6rem,4vw,2.3rem)/1.15 var(--display);margin:0 0 8px;letter-spacing:-0.01em;}
+h2{font:700 1.25rem/1.2 var(--display);margin:0 0 10px;}
+h3{font:600 1rem/1.3 var(--display);margin:14px 0 6px;}
+p{margin:0 0 12px;}
+.lede{color:var(--muted);max-width:76ch;font-size:1.02rem;}
+.muted{color:var(--muted);}
+.small{font-size:.875rem;}
+button{font:inherit;color:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 15px;font-weight:600;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--chip);}
+.btn.sm{min-height:34px;padding:4px 12px;font-size:.85rem;}
+.btn[disabled]{opacity:.45;cursor:not-allowed;}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.status{padding:10px 14px;border-radius:8px;background:var(--chip);margin:10px 0;font-size:.9rem;}
+.status.ok{background:var(--good-bg);color:var(--good);}
+.status.warn{background:var(--warn-bg);color:var(--warn);}
+.status.bad{background:var(--bad-bg);color:var(--bad);}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.76rem;font-weight:600;background:var(--chip);}
+.chip.good{background:var(--good-bg);color:var(--good);}
+.chip.bad{background:var(--bad-bg);color:var(--bad);}
+.chip.warn{background:var(--warn-bg);color:var(--warn);}
+textarea,select,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;}
+textarea{resize:vertical;min-height:75px;}
+select{max-width:440px;min-height:42px;}
+progress{width:100%;height:10px;accent-color:var(--accent);}
+
+/* Graph & Layout */
+.graph-container{position:relative;background:var(--graph-bg);border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:10px 0;}
+canvas#cvsGraph{width:100%;height:460px;display:block;}
+.timeline-bar{display:flex;gap:6px;margin:12px 0 16px;overflow-x:auto;padding-bottom:4px;}
+.timeline-step{flex:1;min-width:130px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:.82rem;cursor:pointer;}
+.timeline-step.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);background:var(--chip);}
+.timeline-step .turn{font-weight:700;color:var(--accent);font-size:.75rem;}
+.timeline-step .label{font-weight:600;display:block;margin-top:2px;}
+.timeline-step .type{color:var(--muted);font-size:.75rem;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);}
+.card.best{box-shadow:0 0 0 2px var(--good);}
+.card h3{margin-top:0;}
+.agent-msg{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.87rem;}
+.agent-msg b{min-width:150px;color:var(--ink);}
+.agent-msg span{color:var(--muted);word-break:break-word;}
+.foot{margin-top:28px;color:var(--muted);font-size:.84rem;max-width:76ch;}
+
+/* Legend */
+.legend-item{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;margin-right:12px;}
+.legend-dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="small muted">Simple Everyday Example: Restaurant Team Planning a Menu · WebGPU & WebLLM</div>
+      <button class="btn ghost sm" data-act="toggletheme" id="themeBtn">☀️ Light Mode</button>
+    </div>
+    <h1>Can LLMs Map What an Agent Knows?</h1>
+    <p class="lede">See how a Knowledge Graph tracks what four different AI agents know when opening a new restaurant: <b>Head Chef</b> (recipes), <b>Nutritionist</b> (health & allergies), <b>Accountant</b> (budget & food costs), and <b>Manager</b> (customer feedback). Watch in real-time as debates inject new facts, prune bad recipes, and build consensus dishes!</p>
+
+    <!-- Timeline Playback Slider -->
+    <div class="timeline-bar" id="timelineBar" aria-label="Dialogue Turn Timeline">
+      <div class="timeline-step active" data-turn="0"><span class="turn">TURN 0</span><span class="label">Separate Domains</span><span class="type">Initial Knowledge</span></div>
+      <div class="timeline-step" data-turn="1"><span class="turn">TURN 1</span><span class="label">New Fact Shared</span><span class="type">Knowledge Injection</span></div>
+      <div class="timeline-step" data-turn="2"><span class="turn">TURN 2</span><span class="label">Mistake Corrected</span><span class="type">Belief Disproof & Pruning</span></div>
+      <div class="timeline-step" data-turn="3"><span class="turn">TURN 3</span><span class="label">Menu Consensus</span><span class="type">Agreement Bridge</span></div>
+      <div class="timeline-step" data-turn="4"><span class="turn">TURN 4</span><span class="label">Fake Rumor Caught</span><span class="type">Contagion Audit</span></div>
+    </div>
+    <div id="status" class="row" aria-live="polite"></div>
+  </header>
+
+  <main id="main" aria-live="polite"></main>
+
+  <section class="panel" id="graphPanel" aria-label="Dynamic Knowledge Graph Viewer">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2>Live Knowledge Map: What Each Agent Knows & Believes</h2>
+      <div class="row">
+        <button class="btn ghost sm" data-act="prevturn">◀ Prev Turn</button>
+        <button class="btn ghost sm" data-act="nextturn">Next Turn ▶</button>
+        <button class="btn ghost sm" data-act="resetphys">Reset Layout</button>
+      </div>
+    </div>
+
+    <div class="graph-container">
+      <canvas id="cvsGraph" width="1040" height="460"></canvas>
+    </div>
+
+    <!-- Agent & Edge Legend -->
+    <div class="row" style="margin-top:8px;" id="graphLegend">
+      <span class="legend-item"><span class="legend-dot" style="background:#D97706;"></span><b>Chef Agent:</b> Flavors & Cooking</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#16A34A;"></span><b>Nutritionist Agent:</b> Allergies & Calories</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#0284C7;"></span><b>Accountant Agent:</b> Food Cost & Pricing</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#9333EA;"></span><b>Manager Agent:</b> Reviews & Speed</span>
+      <span class="legend-item" style="margin-left:14px;color:#DC2626;"><b>Dashed Red:</b> [Refuted / Cut]</span>
+      <span class="legend-item" style="color:#16A34A;"><b>Thick Green:</b> [Agreed Dish]</span>
+    </div>
+  </section>
+
+  <p class="foot">Runs client-side in your browser. Each bubble represents a fact or recipe. Colored lines show how the team discusses ingredients, cuts unprofitable items, and creates winning menu specials.</p>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const esc=s=>s===null||s===undefined?'':String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HAS_GPU=!!(navigator&&navigator.gpu);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function btn(act,val,label,cls,dis){return '<button class="btn '+(cls||'')+'" data-act="'+act+'" data-val="'+esc(val===undefined?'':val)+'"'+(dis?' disabled':'')+'>'+label+'</button>';}
+function chip(t,cls){return '<span class="chip '+(cls||'')+'">'+esc(t)+'</span>';}
+function setStatus(x){const e=$('#status');if(e)e.innerHTML=x||'';}
+
+/* ================= Easy Restaurant Team Turns ================= */
+const TURNS=[
+  {
+    turn:0,
+    title:'Turn 0: Everyone in Their Own Silo',
+    desc:'The restaurant is planning its opening menu. Each team member knows their own job, but has not talked to the others yet. The Chef knows tasty recipes, the Nutritionist knows allergies, the Accountant knows wholesale ingredient prices, and the Manager knows table turnover speed.',
+    event:'Initial state: 4 completely separate knowledge bubbles. No collaboration yet.',
+    nodes:[
+      {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
+      {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
+      {id:'n3',label:'Flambé Technique',agent:'Chef',cluster:'Cooking',x:230,y:200},
+      {id:'n4',label:'Beef Wholesale $14/lb',agent:'Accountant',cluster:'Finance',x:780,y:110},
+      {id:'n5',label:'Target Meal Margin 70%',agent:'Accountant',cluster:'Finance',x:860,y:180},
+      {id:'n6',label:'Monthly Rent $8,000',agent:'Accountant',cluster:'Finance',x:740,y:210},
+      {id:'n7',label:'Dairy & Lactose Allergy',agent:'Nutritionist',cluster:'Health',x:210,y:350},
+      {id:'n8',label:'Low-Calorie Salads',agent:'Nutritionist',cluster:'Health',x:330,y:380},
+      {id:'n9',label:'Table Wait Time < 15 min',agent:'Manager',cluster:'Service',x:780,y:350},
+      {id:'n10',label:'Kitchen Prep Speed',agent:'Manager',cluster:'Service',x:880,y:300}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'USES_SAUCE',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES_SKILL',type:'normal'},
+      {source:'n4',target:'n5',label:'IMPACTS_MARGIN',type:'normal'},
+      {source:'n5',target:'n6',label:'PAYS_FOR',type:'normal'},
+      {source:'n7',target:'n8',label:'PROMOTES',type:'normal'},
+      {source:'n9',target:'n10',label:'DEPENDS_ON',type:'normal'}
+    ]
+  },
+  {
+    turn:1,
+    title:'Turn 1: Sharing Facts (Knowledge Injection)',
+    desc:'The Accountant informs the Chef that beef prices jumped 40% this week. The Chef learns this new financial constraint and realizes Truffle Butter Steak will now lose money unless altered.',
+    event:'The Accountant shares price data with the Chef. A cross-domain link forms!',
+    nodes:[
+      {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
+      {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
+      {id:'n3',label:'Flambé Technique',agent:'Chef',cluster:'Cooking',x:230,y:200},
+      {id:'n4',label:'Beef Wholesale $14/lb',agent:'Accountant',cluster:'Finance',x:750,y:110},
+      {id:'n5',label:'Target Meal Margin 70%',agent:'Accountant',cluster:'Finance',x:850,y:180},
+      {id:'n6',label:'Monthly Rent $8,000',agent:'Accountant',cluster:'Finance',x:720,y:210},
+      {id:'n11',label:'Beef Price Spike (+40%)',agent:'Accountant->Chef',cluster:'Shared',x:500,y:130,highlight:true},
+      {id:'n7',label:'Dairy & Lactose Allergy',agent:'Nutritionist',cluster:'Health',x:210,y:350},
+      {id:'n8',label:'Low-Calorie Salads',agent:'Nutritionist',cluster:'Health',x:330,y:380},
+      {id:'n9',label:'Table Wait Time < 15 min',agent:'Manager',cluster:'Service',x:780,y:350},
+      {id:'n10',label:'Kitchen Prep Speed',agent:'Manager',cluster:'Service',x:880,y:300}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'USES_SAUCE',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES_SKILL',type:'normal'},
+      {source:'n4',target:'n11',label:'TRIGGERS',type:'injected'},
+      {source:'n11',target:'n1',label:'THREATENS_PROFIT',type:'injected'},
+      {source:'n4',target:'n5',label:'IMPACTS_MARGIN',type:'normal'},
+      {source:'n5',target:'n6',label:'PAYS_FOR',type:'normal'},
+      {source:'n7',target:'n8',label:'PROMOTES',type:'normal'},
+      {source:'n9',target:'n10',label:'DEPENDS_ON',type:'normal'}
+    ]
+  },
+  {
+    turn:2,
+    title:'Turn 2: Catching a Mistake (Belief Disproof & Pruning)',
+    desc:'The Chef believed "Cream sauce makes everyone happy." But the Nutritionist reviews customer cards and shows that 35% of guests are lactose intolerant. The Chef\'s assumption is disproved, and the cream recipe is cut!',
+    event:'The Nutritionist disproves a false assumption. The old recipe connection is cut in red.',
+    nodes:[
+      {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
+      {id:'n2',label:'Rich Cream Sauce',agent:'Chef',cluster:'Cooking',x:280,y:90},
+      {id:'n3',label:'Flambé Technique',agent:'Chef',cluster:'Cooking',x:230,y:200},
+      {id:'n4',label:'Beef Wholesale $14/lb',agent:'Accountant',cluster:'Finance',x:730,y:110},
+      {id:'n5',label:'Target Meal Margin 70%',agent:'Accountant',cluster:'Finance',x:850,y:180},
+      {id:'n6',label:'Monthly Rent $8,000',agent:'Accountant',cluster:'Finance',x:720,y:210},
+      {id:'n11',label:'Beef Price Spike (+40%)',agent:'Accountant->Chef',cluster:'Shared',x:500,y:130},
+      {id:'n7',label:'Dairy & Lactose Allergy',agent:'Nutritionist',cluster:'Health',x:210,y:350},
+      {id:'n8',label:'Low-Calorie Salads',agent:'Nutritionist',cluster:'Health',x:330,y:380},
+      {id:'n12',label:'35% Guest Intolerance',agent:'Nutritionist',cluster:'Health',x:270,y:260,highlight:true},
+      {id:'n9',label:'Table Wait Time < 15 min',agent:'Manager',cluster:'Service',x:760,y:350},
+      {id:'n10',label:'Kitchen Prep Speed',agent:'Manager',cluster:'Service',x:880,y:280}
+    ],
+    links:[
+      {source:'n1',target:'n2',label:'[REFUTED] EVERYONE_LOVES',type:'refuted'},
+      {source:'n12',target:'n2',label:'REJECTS_DAIRY',type:'refuted'},
+      {source:'n7',target:'n12',label:'CONFIRMS',type:'normal'},
+      {source:'n1',target:'n3',label:'REQUIRES_SKILL',type:'normal'},
+      {source:'n4',target:'n11',label:'TRIGGERS',type:'injected'},
+      {source:'n11',target:'n1',label:'THREATENS_PROFIT',type:'injected'},
+      {source:'n4',target:'n5',label:'IMPACTS_MARGIN',type:'normal'},
+      {source:'n7',target:'n8',label:'PROMOTES',type:'normal'},
+      {source:'n9',target:'n10',label:'DEPENDS_ON',type:'normal'}
+    ]
+  },
+  {
+    turn:3,
+    title:'Turn 3: Reaching Agreement (Consensus Bridge)',
+    desc:'The Chef, Nutritionist, and Accountant work together to invent a brand new signature dish: "Herb-Crusted Salmon with Quinoa". It has high margins (Accountant happy), zero dairy (Nutritionist happy), and is delicious (Chef happy)!',
+    event:'A strong green consensus bridge connects Cooking, Health, and Finance!',
+    nodes:[
+      {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
+      {id:'n3',label:'Flambé Technique',agent:'Chef',cluster:'Cooking',x:230,y:200},
+      {id:'n4',label:'Beef Wholesale $14/lb',agent:'Accountant',cluster:'Finance',x:730,y:110},
+      {id:'n5',label:'Target Meal Margin 70%',agent:'Accountant',cluster:'Finance',x:850,y:180},
+      {id:'n13',label:'Herb Salmon & Quinoa',agent:'All-Consensus',cluster:'Menu Special',x:480,y:250,highlight:true},
+      {id:'n7',label:'Dairy & Lactose Allergy',agent:'Nutritionist',cluster:'Health',x:210,y:350},
+      {id:'n8',label:'Low-Calorie Salads',agent:'Nutritionist',cluster:'Health',x:330,y:380},
+      {id:'n9',label:'Table Wait Time < 15 min',agent:'Manager',cluster:'Service',x:760,y:350},
+      {id:'n10',label:'Kitchen Prep Speed',agent:'Manager',cluster:'Service',x:880,y:280}
+    ],
+    links:[
+      {source:'n1',target:'n3',label:'REQUIRES_SKILL',type:'normal'},
+      {source:'n1',target:'n13',label:'REPLACED_BY',type:'bridge'},
+      {source:'n7',target:'n13',label:'SAFE_FOR_ALLERGIES',type:'bridge'},
+      {source:'n5',target:'n13',label:'HITS_75%_PROFIT',type:'bridge'},
+      {source:'n9',target:'n10',label:'DEPENDS_ON',type:'normal'},
+      {source:'n7',target:'n8',label:'PROMOTES',type:'normal'}
+    ]
+  },
+  {
+    turn:4,
+    title:'Turn 4: Stopping a False Rumor (Contagion Alert)',
+    desc:'The Manager heard a fake TikTok rumor: "Cooking with zero oil makes steaks cook in 30 seconds!" The Manager suggested it to the kitchen. The Knowledge Graph immediately flags this unverified rumor in bright red before the kitchen ruins dinner service!',
+    event:'Contagion warning: Fake rumor detected and stopped before causing real damage.',
+    nodes:[
+      {id:'n1',label:'Truffle Butter Steak',agent:'Chef',cluster:'Cooking',x:200,y:120},
+      {id:'n13',label:'Herb Salmon & Quinoa',agent:'All-Consensus',cluster:'Menu Special',x:480,y:250},
+      {id:'n14',label:'[UNVERIFIED RUMOR] 30s Oil-Free Cooking',agent:'CONTAGION',cluster:'Fake Rumor',x:610,y:320,contagion:true},
+      {id:'n9',label:'Table Wait Time < 15 min',agent:'Manager',cluster:'Service',x:760,y:350},
+      {id:'n10',label:'Kitchen Prep Speed',agent:'Manager',cluster:'Service',x:880,y:280},
+      {id:'n7',label:'Dairy & Lactose Allergy',agent:'Nutritionist',cluster:'Health',x:210,y:350},
+      {id:'n5',label:'Target Meal Margin 70%',agent:'Accountant',cluster:'Finance',x:850,y:180}
+    ],
+    links:[
+      {source:'n1',target:'n13',label:'REPLACED_BY',type:'bridge'},
+      {source:'n7',target:'n13',label:'SAFE_FOR_ALLERGIES',type:'bridge'},
+      {source:'n5',target:'n13',label:'HITS_75%_PROFIT',type:'bridge'},
+      {source:'n9',target:'n14',label:'BELIEVES_RUMOR',type:'contagion'},
+      {source:'n14',target:'n10',label:'CLAIMS_FASTER_PREP',type:'contagion'},
+      {source:'n1',target:'n14',label:'[REJECTED_BY_CHEF]',type:'refuted'}
+    ]
+  }
+];
+
+const PRESETS=[
+  'How did the Accountant convince the Chef to stop serving expensive steak?',
+  'Why did the team cut the cream sauce recipe from the menu?',
+  'Show how the team agreed on the Herb Salmon & Quinoa signature dish.'
+];
+
+/* ================= 2. WebLLM Engine ================= */
+const MODELS=[
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 3B (Recommended)'],
+  ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5 1.5B (~1 GB)'],
+  ['SmolLM2-360M-Instruct-q4f16_1-MLC','SmolLM2 360M (Fastest)']
+];
+
+const LLM={
+  state:'idle',pct:0,text:'',engine:null,modelId:MODELS[0][0],
+  ready(){return this.state==='ready'&&!!this.engine;},
+  chip(){
+    if(!HAS_GPU)return chip('Simulation Ready (No GPU)','good');
+    if(this.state==='ready')return chip('On-Device Model Active','good');
+    if(this.state==='loading')return chip('Loading '+this.pct+'%','warn');
+    return chip('Model Standby');
+  },
+  ui(){
+    if(!HAS_GPU)return '<div class="status ok">Running in fast, interactive simulation mode. No large download needed.</div>';
+    const opts=MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===this.modelId?' selected':'')+'>'+esc(m[1])+'</option>').join('');
+    let h='<label style="font-weight:600;display:block;margin-bottom:6px" for="modelsel">Optional: Run On-Device AI Model (WebGPU)</label><select id="modelsel" data-act="modelsel"'+(this.state==='loading'?' disabled':'')+'>'+opts+'</select>'+
+      '<p class="small muted" style="margin-top:6px">Runs 100% in your browser. Or click any button below to explore instantly with built-in data!</p>';
+    if(this.state==='loading')h+='<progress id="loadbar" max="100" value="'+this.pct+'"></progress><p class="small muted" id="loadtext">'+esc(this.text)+'</p>';
+    else if(this.state==='ready')h+='<div class="status ok">Model ready on your GPU ('+esc(this.modelId)+').</div>';
+    else{h+=btn('loadmodel','','Initialize On-Device Model');}
+    return h;
+  },
+  paint(){const b=$('#loadbar'),t=$('#loadtext');if(b)b.value=this.pct;if(t)t.textContent=this.text;setStatus(LLM.chip()+(S.busy?chip('Analyzing: '+S.prog,'warn'):''));},
+  async load(){
+    const start=Math.max(0,MODELS.findIndex(m=>m[0]===this.modelId)),order=MODELS.slice(start);
+    this.state='loading';this.pct=0;this.text='Initializing WebGPU';draw();
+    let lib=null;
+    try{lib=await import('https://esm.run/@mlc-ai/web-llm');}
+    catch(err){this.state='idle';draw();return;}
+    for(let i=0;i<order.length;i++){
+      const m=order[i];this.modelId=m[0];this.pct=0;this.text='Loading '+m[1];this.paint();
+      try{
+        this.engine=await lib.CreateMLCEngine(m[0],{initProgressCallback:p=>{this.pct=Math.round((p.progress||0)*100);this.text=p.text||'';this.paint();}});
+        this.state='ready';draw();this.paint();return;
+      }catch(err){this.engine=null;}
+    }
+    this.state='idle';draw();this.paint();
+  }
+};
+
+/* ================= 3. State & Logic ================= */
+const S={
+  prompt:PRESETS[0],
+  currentTurn:0,
+  useModel:true,busy:false,err:'',prog:'',log:[],
+  analysis:null
+};
+
+function note(a,t){S.log.push({agent:a,text:t});}
+
+function getSimpleAnalysis(turnIdx){
+  const text=[
+    "Silos: The Chef, Nutritionist, Accountant, and Manager are not communicating yet. Each agent only knows their own area.",
+    "Fact Sharing: The Accountant warned the Chef about high beef prices. The Chef learned a new fact and connected costs to recipes.",
+    "Mistake Fixed: The Nutritionist proved that 35% of guests are lactose intolerant. The Chef removed the heavy cream sauce.",
+    "Team Agreement: Everyone agreed on 'Herb-Crusted Salmon'. It's healthy, profitable, and fast to cook—a win for the whole team!",
+    "Rumor Caught: The Manager brought in a fake online rumor about 30-second cooking. The graph caught the bad idea before the kitchen burned dinner!"
+  ];
+  return text[turnIdx] || text[0];
+}
+
+async function runSimpleAnalysis(){
+  S.busy=true;S.err='';S.log=[];S.prog='Checking Team Knowledge';draw();
+  try{
+    if(LLM.ready()&&S.useModel){
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000));
+      const completionPromise = LLM.engine.chat.completions.create({
+        messages:[
+          {role:'system',content:'You explain a team knowledge graph in simple, friendly terms for a restaurant opening.'},
+          {role:'user',content:'Question: '+S.prompt+'\nTurn info: '+TURNS[S.currentTurn].title+' - '+TURNS[S.currentTurn].desc}
+        ],
+        temperature:0.3,max_tokens:120
+      });
+      const r = await Promise.race([completionPromise, timeoutPromise]);
+      const text = String((r && r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content)||'').trim();
+      note('Team Assistant', text || getSimpleAnalysis(S.currentTurn));
+      S.analysis = text || getSimpleAnalysis(S.currentTurn);
+    }else{
+      note('Team Assistant', getSimpleAnalysis(S.currentTurn));
+      S.analysis = getSimpleAnalysis(S.currentTurn);
+    }
+  }catch(e){
+    S.analysis = getSimpleAnalysis(S.currentTurn);
+  }
+  S.busy=false;S.prog='';
+  draw();
+}
+
+/* ================= 4. Force-Directed Canvas Visualization ================= */
+const AGENT_COLORS={
+  'Chef':'#D97706',
+  'Nutritionist':'#16A34A',
+  'Accountant':'#0284C7',
+  'Manager':'#9333EA',
+  'Accountant->Chef':'#D97706',
+  'All-Consensus':'#16A34A',
+  'CONTAGION':'#DC2626'
+};
+
+let activeSimNodes=[];
+let activeSimLinks=[];
+
+function initPhysicsNodes(turnIdx){
+  const tData=TURNS[turnIdx];
+  activeSimNodes = tData.nodes.map(n=>({
+    ...n,
+    vx:(Math.random()-0.5)*0.8,
+    vy:(Math.random()-0.5)*0.8
+  }));
+  activeSimLinks = tData.links.map(l=>({
+    ...l,
+    sourceNode: activeSimNodes.find(n=>n.id===l.source),
+    targetNode: activeSimNodes.find(n=>n.id===l.target)
+  }));
+}
+
+function updatePhysics(){
+  const W=1040, H=460;
+  for(let i=0;i<activeSimNodes.length;i++){
+    for(let j=i+1;j<activeSimNodes.length;j++){
+      const a=activeSimNodes[i], b=activeSimNodes[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<140){
+        const force=(140-dist)/dist * 0.08;
+        a.x -= dx*force; a.y -= dy*force;
+        b.x += dx*force; b.y += dy*force;
+      }
+    }
+  }
+  activeSimLinks.forEach(l=>{
+    if(!l.sourceNode||!l.targetNode)return;
+    const dx=l.targetNode.x-l.sourceNode.x, dy=l.targetNode.y-l.sourceNode.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const targetDist = l.type==='bridge'? 120 : 90;
+    const force=(dist - targetDist)*0.035;
+    l.sourceNode.x += dx/dist*force;
+    l.sourceNode.y += dy/dist*force;
+    l.targetNode.x -= dx/dist*force;
+    l.targetNode.y -= dy/dist*force;
+  });
+  activeSimNodes.forEach(n=>{
+    n.x=clamp(n.x, 70, W-70);
+    n.y=clamp(n.y, 40, H-40);
+  });
+}
+
+function drawGraph(){
+  const cv=$('#cvsGraph');if(!cv)return;
+  const g=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const isDark = (document && document.documentElement && document.documentElement.getAttribute) ? (document.documentElement.getAttribute('data-theme')==='dark') : false;
+
+  g.fillStyle = isDark ? '#0A1017' : '#F8FAFC';
+  g.fillRect(0,0,W,H);
+
+  g.strokeStyle = isDark ? '#16222F' : '#E2E8F0';
+  g.lineWidth = 1;
+  for(let x=40;x<W;x+=80){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();}
+  for(let y=40;y<H;y+=80){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+
+  updatePhysics();
+
+  // Links
+  activeSimLinks.forEach(l=>{
+    if(!l.sourceNode||!l.targetNode)return;
+    g.beginPath();
+    g.moveTo(l.sourceNode.x, l.sourceNode.y);
+    g.lineTo(l.targetNode.x, l.targetNode.y);
+
+    if(l.type==='refuted'){
+      g.strokeStyle='#DC2626';g.setLineDash([5,4]);g.lineWidth=2.2;
+    }else if(l.type==='bridge'){
+      g.strokeStyle='#16A34A';g.setLineDash([]);g.lineWidth=3.5;
+    }else if(l.type==='contagion'){
+      g.strokeStyle='#EF4444';g.setLineDash([3,3]);g.lineWidth=2.2;
+    }else if(l.type==='injected'){
+      g.strokeStyle='#D97706';g.setLineDash([]);g.lineWidth=2.2;
+    }else{
+      g.strokeStyle=isDark ? '#2A3E54' : '#94A3B8';g.setLineDash([]);g.lineWidth=1.5;
+    }
+    g.stroke();
+    g.setLineDash([]);
+
+    const midX=(l.sourceNode.x+l.targetNode.x)/2;
+    const midY=(l.sourceNode.y+l.targetNode.y)/2;
+    g.fillStyle=isDark ? '#94A3B8' : '#475569';
+    g.font='10px sans-serif';
+    g.textAlign='center';
+    g.fillText(l.label, midX, midY-4);
+  });
+
+  // Nodes
+  activeSimNodes.forEach(n=>{
+    const col=AGENT_COLORS[n.agent]||'#0284C7';
+    const radius = n.highlight||n.contagion ? 13 : 10;
+
+    if(n.highlight){
+      g.beginPath();g.arc(n.x,n.y,radius+7,0,6.2832);
+      g.fillStyle=isDark ? 'rgba(34, 197, 94, 0.25)' : 'rgba(22, 163, 74, 0.2)';
+      g.fill();
+    }else if(n.contagion){
+      g.beginPath();g.arc(n.x,n.y,radius+8,0,6.2832);
+      g.fillStyle='rgba(220, 38, 38, 0.28)';g.fill();
+    }
+
+    g.beginPath();g.arc(n.x,n.y,radius,0,6.2832);
+    g.fillStyle=col;g.fill();
+    g.strokeStyle='#FFFFFF';g.lineWidth=2;g.stroke();
+
+    g.fillStyle=isDark ? '#E5EEF5' : '#0F172A';
+    g.font='bold 11px sans-serif';
+    g.textAlign='center';
+    g.fillText(n.label, n.x, n.y+radius+14);
+
+    g.fillStyle=isDark ? '#8FA3AD' : '#64748B';
+    g.font='9px sans-serif';
+    g.fillText('['+n.cluster+']', n.x, n.y-radius-4);
+  });
+
+  requestAnimationFrame(drawGraph);
+}
+
+/* ================= 5. UI Rendering ================= */
+function setTurn(turnIdx){
+  S.currentTurn=clamp(turnIdx,0,TURNS.length-1);
+  initPhysicsNodes(S.currentTurn);
+  updateTimelineUI();
+  S.analysis = getSimpleAnalysis(S.currentTurn);
+  draw();
+}
+
+function updateTimelineUI(){
+  $$('.timeline-step').forEach((el,idx)=>{
+    if(idx===S.currentTurn)el.classList.add('active');
+    else el.classList.remove('active');
+  });
+}
+
+function render(){
+  const cur=TURNS[S.currentTurn];
+  let h='<section class="panel"><h2>1. Team Knowledge Engine</h2>'+LLM.ui()+'</section>';
+
+  h+='<section class="panel"><h2>2. Ask About Team Decisions</h2>';
+  h+='<label style="font-weight:600;display:block;margin-bottom:6px" for="prompt">What do you want to understand?</label>';
+  h+='<textarea id="prompt" maxlength="400">'+esc(S.prompt)+'</textarea>';
+  h+='<div class="row" style="margin:10px 0 14px">'+PRESETS.map((p,i)=>btn('preset',i,p.slice(0,38)+'…','ghost sm')).join('')+'</div>';
+  h+='<div class="row">'+btn('runaudit','','Explain What the Team Knows',null,S.busy)+btn('nextturn','','Advance to Next Turn ▶','ghost',S.busy)+'</div>';
+  h+='</section>';
+
+  h+='<section class="panel"><h2>3. Current Step: '+esc(cur.title)+'</h2>';
+  h+='<p>'+esc(cur.desc)+'</p>';
+  h+='<div class="status ok"><b>What Just Happened in the Graph:</b> '+esc(cur.event)+'</div>';
+  h+='<div class="cards" style="margin-top:14px;">';
+  h+='<div class="card"><h3>Facts on the Board</h3><p class="small"><b>Active Items:</b> '+cur.nodes.length+' facts / recipes<br><b>Team Connections:</b> '+cur.links.length+' active discussions</p></div>';
+  h+='<div class="card"><h3>Graph Type</h3><p class="small"><b>Current Event:</b> '+chip(cur.title.split(':')[1]||cur.title,'good')+'<br><b>Status:</b> Healthy & tracked</p></div>';
+  h+='</div>';
+  h+='</section>';
+
+  if(S.busy||S.err||S.log.length||S.analysis){
+    h+='<section class="panel"><h2>4. Team Knowledge Summary</h2>';
+    if(S.busy)h+='<div class="status warn">Analyzing knowledge map…</div>';
+    if(S.analysis)h+='<div class="status ok"><b>What the Graph Shows:</b> '+esc(S.analysis)+'</div>';
+    if(S.log.length)h+='<details open><summary>Agent Messages ('+S.log.length+')</summary>'+S.log.map(l=>'<div class="agent-msg"><b>'+esc(l.agent)+'</b><span>'+esc(l.text)+'</span></div>').join('')+'</details>';
+    h+='</section>';
+  }
+
+  return h;
+}
+
+function draw(){
+  const a=document.activeElement,keep=a&&a.id==='prompt'?{s:a.selectionStart}:null;
+  $('#main').innerHTML=render();
+  if(keep){const el=$('#prompt');if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s);}catch(e){}}}
+  setStatus(LLM.chip()+(S.busy?chip('Analyzing','warn'):''));
+}
+
+/* ================= 6. Event Listeners ================= */
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-act], [data-turn]');
+  if(!t||t.disabled||t.tagName==='SELECT'||t.tagName==='TEXTAREA')return;
+
+  if(t.dataset.turn!==undefined){
+    setTurn(+t.dataset.turn);
+    return;
+  }
+
+  const v=t.dataset.val, act=t.dataset.act;
+  if(act==='loadmodel'){LLM.load();return;}
+  if(act==='toggletheme'){
+    const docEl=document.documentElement;
+    const isDark=docEl.getAttribute('data-theme')==='dark';
+    const nextTheme=isDark?'light':'dark';
+    docEl.setAttribute('data-theme',nextTheme);
+    try{localStorage.setItem('restaurant_kg_theme',nextTheme);}catch(ex){}
+    const btnEl=$('#themeBtn');
+    if(btnEl)btnEl.textContent=nextTheme==='dark'?'🌙 Dark Mode':'☀️ Light Mode';
+    return;
+  }
+  if(act==='preset'){S.prompt=PRESETS[+v];draw();return;}
+  if(act==='prevturn'){setTurn(S.currentTurn-1);return;}
+  if(act==='nextturn'){setTurn(S.currentTurn+1);return;}
+  if(act==='resetphys'){initPhysicsNodes(S.currentTurn);return;}
+  if(act==='runaudit'){runSimpleAnalysis();return;}
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.id==='modelsel'){LLM.modelId=e.target.value;LLM.engine=null;LLM.state='idle';draw();}
+});
+document.addEventListener('input',e=>{if(e.target.id==='prompt')S.prompt=e.target.value;});
+
+// Startup: Default to light mode
+(function initTheme(){
+  let pref = 'light';
+  try{ pref = localStorage.getItem('restaurant_kg_theme') || 'light'; }catch(e){}
+  if(document && document.documentElement && document.documentElement.setAttribute){
+    document.documentElement.setAttribute('data-theme', pref);
+  }
+  const btnEl = $('#themeBtn');
+  if(btnEl) btnEl.textContent = pref==='dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+})();
+
+initPhysicsNodes(0);
+S.analysis = getSimpleAnalysis(0);
+draw();
+updateTimelineUI();
+drawGraph();
+</script>
+</body>
+</html>
