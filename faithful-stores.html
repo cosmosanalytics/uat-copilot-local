@@ -394,7 +394,7 @@ async function extractFacts(chunk){
   return{facts:[],usable:false};
 }
 async function buildStores(){
-  need();S.n=0;S.note='';S.ans=null;S.hl=[];
+  need();S.n=0;S.note='';S.ans=null;S.hl=[];S.sel=null;
   const orig=S.orig,sent=splitSentences(orig);
   const lastHead=[...sent].reverse().find(s=>s.kind==='heading');
   const parsedEnd=(S.defDrop&&lastHead)?lastHead.start:orig.length;
@@ -477,8 +477,104 @@ async function askQuestion(){
   const ok=checks.length>0&&checks.every(c=>c.status!=='missing');
   S.ans={q,recs:recs.map(r=>({id:r.c.id,score:r.score})),facts:facts.map(f=>f.f.id),draft,checks,ok,warn:ok&&checks.some(c=>!c.inRetrieved||c.status==='normalized'),stale:hashStr(S.orig)!==b.hash};
 }
+/* ================= the two maps ================= */
+const SEC_COL=['#7A8A92','#0E6F8E','#A66A00','#6B4FBB','#2E7D5B','#B3412E','#E5603F'];
+const secCol=n=>SEC_COL[n%SEC_COL.length];
+function chunkSec(b,c){const s=b.sent.find(x=>x.start>=c.start&&x.end<=c.end&&x.sec>0)||b.sent.find(x=>c.start>=x.start&&c.start<=x.end);return s?s.sec:0;}
+function factSec(b,f){const s=b.sent.find(x=>f.start>=x.start&&f.start<x.end);return s?s.sec:0;}
+function mkVec(b,text){const t=tf(toks(text)),v={};let n=0;Object.keys(t).forEach(k=>{if(b.idf[k]){v[k]=t[k]*b.idf[k];n+=v[k]*v[k];}});return{vec:v,norm:Math.sqrt(n)||1};}
+function cosSp(a,b){let d=0;Object.keys(a.vec).forEach(k=>{if(b.vec[k])d+=a.vec[k]*b.vec[k];});return d/(a.norm*b.norm);}
+function mds2(D){
+  const n=D.length;if(n===0)return[];if(n===1)return[[0,0]];
+  const D2=D.map(r=>r.map(x=>x*x)),rm=D2.map(r=>r.reduce((a,x)=>a+x,0)/n),tm=rm.reduce((a,x)=>a+x,0)/n;
+  const B=D2.map((r,i)=>r.map((x,j)=>-0.5*(x-rm[i]-rm[j]+tm)));
+  const top=M_=>{let v=Array.from({length:n},(_,i)=>Math.sin(i*1.7+1)+0.5);for(let it=0;it<300;it++){const w=M_.map(r=>r.reduce((a,x,j)=>a+x*v[j],0));const nm=Math.sqrt(w.reduce((a,x)=>a+x*x,0))||1;v=w.map(x=>x/nm);}
+    const lam=M_.map(r=>r.reduce((a,x,j)=>a+x*v[j],0)).reduce((a,x,i)=>a+x*v[i],0);let big=0;v.forEach((x,i)=>{if(Math.abs(x)>Math.abs(v[big]))big=i;});if(v[big]<0)v=v.map(x=>-x);return{v,lam};};
+  const e1=top(B),B2=B.map((r,i)=>r.map((x,j)=>x-e1.lam*e1.v[i]*e1.v[j])),e2=top(B2);
+  const s1=Math.sqrt(Math.max(e1.lam,0)),s2=Math.sqrt(Math.max(e2.lam,0));
+  return B.map((_,i)=>[e1.v[i]*s1,e2.v[i]*s2]);
+}
+function fitPoints(pts,W,H,pad){
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
+  const sc=Math.min((W-2*pad)/((mxx-mnx)||1),(H-2*pad)/((mxy-mny)||1)),cx=(mnx+mxx)/2,cy=(mny+mxy)/2;
+  return pts.map(p=>[W/2+(p[0]-cx)*sc,H/2-(p[1]-cy)*sc]);
+}
+function selInfo(b){
+  const sel=S.sel,out={chunks:new Set(),facts:new Set()};if(!sel)return out;
+  if(sel[0]==='C'){const c=b.chunks.find(x=>x.id===sel);if(c){out.chunks.add(c.id);b.facts.forEach(f=>{if(f.status==='verified'&&f.start>=c.start&&f.end<=c.end)out.facts.add(f.id);});}}
+  else{const f=b.facts.find(x=>x.id===sel);if(f){out.facts.add(f.id);if(f.status==='verified')b.chunks.forEach(c=>{if(f.start>=c.start&&f.end<=c.end)out.chunks.add(c.id);});}}
+  return out;
+}
+function vectorMapSvg(b){
+  const W=340,H=250,ans=S.ans,si=selInfo(b);
+  let items=S.vzoom==='sentences'?b.sent.filter(s=>s.kind!=='title').map(s=>({id:s.id,kind:'sent',v:mkVec(b,s.text.replace(/^\d+(\.\d+)?\s+/,'')),sec:s.sec,s})):b.chunks.map(c=>({id:c.id,kind:'chunk',v:{vec:c.vec,norm:c.norm},sec:chunkSec(b,c),c}));
+  const q=(ans&&ans.q)?{id:'Q',kind:'q',v:mkVec(b,ans.q)}:null;if(q)items.push(q);
+  const D=items.map((x,i)=>items.map((y,j)=>i===j?0:Math.max(0,1-cosSp(x.v,y.v)))),pts=fitPoints(mds2(D),W,H,28);
+  const pos={};items.forEach((it,i)=>{pos[it.id]=pts[i];});
+  const retr=new Set(ans?ans.recs.map(r=>r.id):[]);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Vector map"><rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" rx="10" fill="#FFFFFF" stroke="#D5DEE2"/>';
+  for(let gx=18;gx<W;gx+=28)for(let gy=18;gy<H;gy+=28)svg+='<circle cx="'+gx+'" cy="'+gy+'" r="0.9" fill="#E7ECEF"/>';
+  if(q&&S.vzoom==='chunks')ans.recs.forEach(r=>{const a=pos.Q,z=pos[r.id];if(a&&z)svg+='<line x1="'+a[0].toFixed(1)+'" y1="'+a[1].toFixed(1)+'" x2="'+z[0].toFixed(1)+'" y2="'+z[1].toFixed(1)+'" stroke="#E5603F" stroke-width="1.6" stroke-dasharray="4 3"/>';});
+  items.forEach(it=>{
+    const p=pos[it.id];if(!p)return;const x=p[0].toFixed(1),y=p[1].toFixed(1);
+    if(it.kind==='q'){svg+='<path d="'+starPath(p[0],p[1],10)+'" fill="#E5603F"/><text x="'+x+'" y="'+(p[1]+22).toFixed(1)+'" font-size="9" font-weight="700" text-anchor="middle" fill="#E5603F">question</text>';return;}
+    if(it.kind==='chunk'){
+      const c=it.c,cut=c.embedEnd<c.end,r=6+Math.min(8,c.text.length/40),on=si.chunks.has(c.id),hit=retr.has(c.id);
+      svg+='<g data-act="sel" data-val="'+c.id+'" style="cursor:pointer">'+(on?'<circle cx="'+x+'" cy="'+y+'" r="'+(r+6)+'" fill="none" stroke="#17262D" stroke-width="2"/>':'')+(hit?'<circle cx="'+x+'" cy="'+y+'" r="'+(r+3.5)+'" fill="none" stroke="#E5603F" stroke-width="2.4"/>':'')+'<circle cx="'+x+'" cy="'+y+'" r="'+r.toFixed(1)+'" fill="'+secCol(it.sec)+'" fill-opacity="0.85"'+(cut?' stroke="#B3412E" stroke-width="2" stroke-dasharray="3 2"':'')+'/><text x="'+x+'" y="'+(p[1]+3.2).toFixed(1)+'" font-size="9" font-weight="700" text-anchor="middle" fill="#fff">'+c.id+'</text></g>';
+    }else{
+      const s=it.s,inR=ans&&ans.recs.some(r=>{const c=b.chunks.find(z=>z.id===r.id);return c&&s.start>=c.start&&s.end<=c.end;});
+      const m=/^(\d+(?:\.\d+)?)/.exec(s.text);
+      svg+='<circle cx="'+x+'" cy="'+y+'" r="'+(inR?6:4.5)+'" fill="'+secCol(it.sec)+'"'+(inR?' stroke="#E5603F" stroke-width="2"':'')+'/><text x="'+(p[0]+7).toFixed(1)+'" y="'+(p[1]+3).toFixed(1)+'" font-size="7.5" fill="#17262D">'+(m?m[1]:s.id)+'</text>';
+    }
+  });
+  return svg+'</svg>';
+}
+function starPath(cx,cy,r){let d='';for(let i=0;i<10;i++){const a=Math.PI/2+i*Math.PI/5,rr=i%2===0?r:r*0.42;d+=(i===0?'M':'L')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy-rr*Math.sin(a)).toFixed(1);}return d+'Z';}
+function forceLayout(n,edges,W,H){
+  const pos=Array.from({length:n},(_,i)=>[W/2+Math.cos(2*Math.PI*i/Math.max(n,1)+0.3)*W*0.32,H/2+Math.sin(2*Math.PI*i/Math.max(n,1)+0.3)*H*0.32]);
+  for(let it=0;it<320;it++){
+    const f=pos.map(()=>[0,0]);
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const dx=pos[i][0]-pos[j][0],dy=pos[i][1]-pos[j][1],d2=dx*dx+dy*dy+0.05,d=Math.sqrt(d2),fr=5200/d2;f[i][0]+=dx/d*fr;f[i][1]+=dy/d*fr;f[j][0]-=dx/d*fr;f[j][1]-=dy/d*fr;}
+    edges.forEach(e=>{const dx=pos[e.b][0]-pos[e.a][0],dy=pos[e.b][1]-pos[e.a][1],d=Math.sqrt(dx*dx+dy*dy)+0.05,fs=(d-(e.len||60))*0.05;f[e.a][0]+=dx/d*fs;f[e.a][1]+=dy/d*fs;f[e.b][0]-=dx/d*fs;f[e.b][1]-=dy/d*fs;});
+    for(let i=0;i<n;i++){f[i][0]+=(W/2-pos[i][0])*0.012;f[i][1]+=(H/2-pos[i][1])*0.012;pos[i][0]=Math.min(W-52,Math.max(52,pos[i][0]+Math.max(-6,Math.min(6,f[i][0]))));pos[i][1]=Math.min(H-22,Math.max(22,pos[i][1]+Math.max(-6,Math.min(6,f[i][1]))));}
+  }
+  return pos;
+}
+function graphModel(b){
+  const nodes=[],idx={},edges=[];
+  const node=(label,kind,extra)=>{const key=kind+':'+label.toLowerCase();if(idx[key]===undefined){idx[key]=nodes.length;nodes.push(Object.assign({key,label,kind},extra||{}));}return idx[key];};
+  b.facts.forEach(f=>{
+    const a=node(f.s,'entity'),z=node(f.o,'entity',f.status==='quarantined'?{bad:true}:{});
+    edges.push({a,b:z,f,kind:'fact',len:84});
+  });
+  if(S.gchunks)b.chunks.forEach(c=>{
+    const mine=b.facts.filter(f=>f.chunkId===c.id&&f.status==='verified');if(!mine.length)return;
+    const ci=node(c.id,'chunk',{c});const seen=new Set();
+    mine.forEach(f=>{const si=idx['entity:'+f.s.toLowerCase()];if(si!==undefined&&!seen.has(si)){seen.add(si);edges.push({a:ci,b:si,kind:'from',len:52});}});
+  });
+  return{nodes,edges};
+}
+function graphMapSvg(b){
+  const g=graphModel(b),W=340,n=g.nodes.length,H=n<=14?260:(n<=26?400:460),si=selInfo(b),ans=S.ans,retr=new Set(ans?ans.facts:[]);
+  if(!n)return '<p class="small muted">No facts yet.</p>';
+  const pos=forceLayout(n,g.edges,W,H);
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Graph map"><rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" rx="10" fill="#FFFFFF" stroke="#D5DEE2"/>';
+  g.edges.forEach(e=>{
+    const A=pos[e.a],Z=pos[e.b],x1=A[0].toFixed(1),y1=A[1].toFixed(1),x2=Z[0].toFixed(1),y2=Z[0].toFixed(1);
+    if(e.kind==='from'){const on=si.chunks.has(g.nodes[e.a].label);svg+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(on?'#17262D':'#B8C4CB')+'" stroke-width="'+(on?1.8:1)+'" stroke-dasharray="3 3"/>';return;}
+    const f=e.f,bad=f.status==='quarantined',col=bad?'#B3412E':secCol(factSec(b,f)),on=si.facts.has(f.id),hit=retr.has(f.id),w=on?4.2:(hit?3.4:2);
+    const ddx=Z[0]-A[0],ddy=Z[1]-A[1],dl=Math.sqrt(ddx*ddx+ddy*ddy)||1,off=(ddx>=0?-1:1)*7,mx=((A[0]+Z[0])/2+(-ddy/dl)*off*0.4).toFixed(1),my=((A[1]+Z[1])/2+(ddx/dl)*off+0.0).toFixed(1);
+    svg+='<g data-act="'+(bad?'noop':'sel')+'" data-val="'+f.id+'" style="cursor:pointer">'+(hit?'<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#E5603F" stroke-opacity="0.35" stroke-width="'+(w+5)+'"/>':'')+'<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="'+w+'"'+(bad?' stroke-dasharray="5 3"':'')+'/><line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="transparent" stroke-width="14"/><text x="'+mx+'" y="'+my+'" font-size="7.6" text-anchor="middle" fill="'+col+'" stroke="#fff" stroke-width="3" paint-order="stroke">'+esc(f.r.slice(0,16))+(bad?' (quarantined)':'')+'</text></g>';
+  });
+  g.nodes.forEach((nd,i)=>{
+    const p=pos[i],x=p[0].toFixed(1),y=p[1].toFixed(1);
+    if(nd.kind==='chunk'){const c=nd.c,on=si.chunks.has(c.id);svg+='<g data-act="sel" data-val="'+c.id+'" style="cursor:pointer">'+(on?'<rect x="'+(p[0]-11)+'" y="'+(p[1]-11)+'" width="22" height="22" rx="5" fill="none" stroke="#17262D" stroke-width="2"/>':'')+'<rect x="'+(p[0]-8)+'" y="'+(p[1]-8)+'" width="16" height="16" rx="4" fill="'+secCol(chunkSec(b,c))+'"/><text x="'+x+'" y="'+(p[1]+3)+'" font-size="8" font-weight="700" text-anchor="middle" fill="#fff">'+c.id+'</text></g>';return;}
+    svg+='<circle cx="'+x+'" cy="'+y+'" r="5.5" fill="'+(nd.bad?'#FBE9E5':'#523A9B')+'"'+(nd.bad?' stroke="#B3412E" stroke-width="2"':'')+'/><text x="'+x+'" y="'+(p[1]+15).toFixed(1)+'" font-size="8.6" font-weight="700" text-anchor="middle" fill="#17262D" stroke="#fff" stroke-width="3" paint-order="stroke">'+esc(nd.label.length>17?nd.label.slice(0,16)+'...':nd.label)+'</text>';
+  });
+  return svg+'</svg>';
+}
 /* ================= the page ================= */
-S.edit=ORIG_V3;S.vn=3;
+S.edit=ORIG_V3;S.vn=3;S.sel=null;S.vzoom='chunks';S.gchunks=true;
 const PRESETS=['Can I send this back after three weeks?','Do big refunds need approval?','How long does shipping take?'];
 function origHtml(text,hl){
   const pts=new Set([0,text.length]);hl.forEach(h=>{pts.add(h.start);pts.add(h.end);});
@@ -493,6 +589,18 @@ function modelBox(){
 }
 const spanLabel=(b,start,end)=>{const a=labelAt(b.sent,start),z=labelAt(b.sent,Math.max(start,end-1));return(a===z?a:a+' to '+z)+' · '+start+'-'+end;};
 const rcpt=(b,start,end,col)=>'<button class="btn ghost sm" data-act="show" data-val="'+start+'-'+end+'" style="font-size:11px;padding:2px 8px;min-height:0">receipt '+spanLabel(b,start,end)+'</button>';
+function selPanel(b){
+  if(!S.sel)return '<div class="small muted" style="margin-top:6px">Tap a chunk dot, a source square or a fact line to see its receipt and its partner in the other store.</div>';
+  const si=selInfo(b),v=S.sel;
+  if(v[0]==='C'){
+    const c=b.chunks.find(x=>x.id===v);if(!c)return '';
+    const fs=b.facts.filter(f=>si.facts.has(f.id));
+    return '<div class="box" style="margin-top:8px;border-left:6px solid #17262D"><b>Chunk '+c.id+'</b> <span class="small muted">'+spanLabel(b,c.start,c.end)+'</span><div class="small" style="white-space:pre-wrap;margin:4px 0">'+esc(c.text)+'</div><div class="small"><b>Facts built from it</b> ('+fs.length+')'+(fs.length?':':'. None, so nothing in the graph points back to this chunk.')+'</div>'+fs.map(f=>'<div class="small">'+f.id+': '+esc(f.s)+' <span style="color:#523A9B">'+esc(f.r)+'</span> '+esc(f.o)+'</div>').join('')+'<div class="row" style="margin-top:6px">'+btn('show',c.start+'-'+c.end,'Show it in the original','ghost sm')+'</div></div>';
+  }
+  const f=b.facts.find(x=>x.id===v);if(!f)return '';
+  const chs=b.chunks.filter(c=>si.chunks.has(c.id));
+  return '<div class="box" style="margin-top:8px;border-left:6px solid #17262D"><b>Fact '+f.id+'</b>: '+esc(f.s)+' <span style="color:#523A9B">'+esc(f.r)+'</span> '+esc(f.o)+'<div class="small muted" style="margin:3px 0">"'+esc(f.quote)+'"</div><div class="small">'+spanLabel(b,f.start,f.end)+'. Comes from '+(chs.length?'chunk '+chs.map(c=>c.id).join(', '):'no single chunk')+'.</div><div class="row" style="margin-top:6px">'+btn('show',f.start+'-'+f.end,'Show it in the original','ghost sm')+'</div></div>';
+}
 function vectorCards(b){
   return b.chunks.map(c=>{
     const cut=c.embedEnd<c.end,k=c.embedEnd-c.start;
@@ -534,7 +642,9 @@ function render(){
     const g1=rc.stale?'fail':((rc.cBad||rc.fBad)?'fail':'pass'),g2=(cv.notWhole||cv.notEmbedded)?'fail':(cv.noFact||b.unusable?'warn':'pass');
     const sc=s=>'<span style="flex-shrink:0;white-space:nowrap">'+chip(s,s==='pass'?'good':(s==='warn'?'warn':'bad'))+'</span>';
     h+='<h3>3  The two stores</h3><p class="small muted">Built from the original '+b.ver+', cut '+(b.mode==='fixed'?'by fixed size':'by section')+', limit '+b.limit+' characters. Tap a receipt to see its span in the original.</p>'+
-      '<div class="small"><b>Vector store: '+b.chunks.length+' chunks</b> <span class="muted">(similarity here is a stand-in)</span></div>'+vectorCards(b)+
+      '<div class="small" style="margin-top:6px"><b>Vector map</b> <span class="muted">closer means more similar in the stand-in search. A red dashed outline means cut off by the limit.</span></div><div class="row" style="margin:4px 0">'+tog('vzoom','chunks','Chunks',S.vzoom==='chunks')+tog('vzoom','sentences','Sentences',S.vzoom==='sentences')+'</div>'+vectorMapSvg(b)+
+      '<div class="small" style="margin-top:10px"><b>Graph map</b> <span class="muted">dots are entities, lines are facts, squares are the chunks they came from. Tap a square or a line to see its receipt in the original and its partner in the other map.</span></div><div class="row" style="margin:4px 0">'+tog('gchunks','on','Show source chunks',S.gchunks)+tog('gchunks','off','Facts only',!S.gchunks)+'</div>'+graphMapSvg(b)+selPanel(b)+
+      '<div class="small" style="margin-top:12px"><b>Vector store: '+b.chunks.length+' chunks</b> <span class="muted">(similarity here is a stand-in)</span></div>'+vectorCards(b)+
       '<div class="small" style="margin-top:8px"><b>Graph store: '+b.facts.filter(f=>f.status==='verified').length+' facts</b>'+(b.facts.some(f=>f.status==='quarantined')?' <span style="color:#B3412E">and '+b.facts.filter(f=>f.status==='quarantined').length+' quarantined</span>':'')+'</div>'+graphCards(b);
     h+='<h3>4  The guards</h3><div class="box" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>Guard 1: receipts on everything</b>'+sc(g1)+'</div><div class="small" style="margin-top:4px">'+rc.cOk+' of '+rc.chunks+' chunks and '+rc.fOk+' of '+rc.facts+' verified facts match the current original.'+(rc.stale?' <b style="color:#B3412E">The original has changed since the build.</b>':'')+(rc.quarantined?' '+rc.quarantined+' fact'+(rc.quarantined>1?'s were':' was')+' quarantined because its quote is not in the original.':'')+'</div></div>'+
       '<div class="box" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>Guard 2: coverage checks</b>'+sc(g2)+'</div><div class="small" style="margin:4px 0">'+(cv.dropped?cv.dropped+' sentence'+(cv.dropped>1?'s were':' was')+' dropped before indexing. ':'')+(cv.notWhole-cv.dropped>0?(cv.notWhole-cv.dropped)+' not whole inside one chunk. ':'')+(cv.notEmbedded?cv.notEmbedded+' cut off by the model limit. ':'')+(cv.noFact?cv.noFact+' of '+cv.clauses+' clauses produced no fact, so review them. ':'')+(!cv.notWhole&&!cv.notEmbedded&&!cv.noFact?'Every sentence is whole, embedded and has a fact.':'')+(b.unusable?' The model gave no usable reply for '+b.unusable+' chunk'+(b.unusable>1?'s':'')+'.':'')+(b.engine==='llm'&&rc.quarantined?' A model often paraphrases its quotes. The guard keeps those facts out until a quote matches the original exactly.':'')+'</div>'+coverageGrid(cv)+'</div>';
@@ -570,6 +680,10 @@ const draw=app({
     build:()=>guard(buildStores),
     ask:()=>guard(askQuestion),
     preset:v=>{S.q=PRESETS[+v];},
+    sel:v=>{const b=S.built;if(!b)return;if(S.sel===v){S.sel=null;S.hl=[];return;}S.sel=v;const x=v[0]==='C'?b.chunks.find(c=>c.id===v):b.facts.find(f=>f.id===v);S.hl=x?[{start:x.start,end:x.end}]:[];},
+    noop:()=>{},
+    vzoom:v=>{S.vzoom=v;},
+    gchunks:v=>{S.gchunks=v==='on';},
     show:v=>{const [a,b]=String(v).split('-');S.hl=[{start:+a,end:+b}];setTimeout(()=>{const e=document.getElementById('orig');if(e&&e.scrollIntoView)e.scrollIntoView({behavior:'smooth',block:'center'});},50);},
     edit14:()=>{S.vn=4;setOrig(ORIG_V4,'v4');},
     restore:()=>{S.vn=3;setOrig(ORIG_V3,'v3');},
