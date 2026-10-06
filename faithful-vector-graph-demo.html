@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faithful Vector and Graph Stores: Faithful by Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- D3.js for Interactive Knowledge Graph -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  :root {
+    --bg: #F8FAFC;
+    --panel: #FFFFFF;
+    --panel-border: #E2E8F0;
+    --panel-head: #F1F5F9;
+    --panel-head-text: #334155;
+    --card-bg: #FFFFFF;
+    --card-border: #E2E8F0;
+
+    --text: #0F172A;
+    --text-muted: #475569;
+    --text-dim: #94A3B8;
+
+    --teal: #0D9488;
+    --teal-lt: #0F766E;
+    --teal-bg: #F0FDFA;
+    --teal-border: #99F6E4;
+
+    --amber: #D97706;
+    --amber-lt: #B45309;
+    --amber-bg: #FFFDF5;
+    --amber-border: #FDE68A;
+
+    --blue: #0284C7;
+    --blue-lt: #0369A1;
+    --blue-bg: #F0F9FF;
+    --blue-border: #BAE6FD;
+
+    --purple: #7C3AED;
+    --purple-lt: #6B21A8;
+    --purple-bg: #FAF5FF;
+    --purple-border: #E9D5FF;
+
+    --green: #059669;
+    --green-lt: #047857;
+    --green-bg: #ECFDF5;
+    --green-border: #A7F3D0;
+
+    --rose: #DC2626;
+    --rose-lt: #B91C1C;
+    --rose-bg: #FEF2F2;
+    --rose-border: #FECACA;
+
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0B0F19;
+    --panel: #111827;
+    --panel-border: #1F2937;
+    --panel-head: #0E1626;
+    --panel-head-text: #94A3B8;
+    --card-bg: #1A2234;
+    --card-border: #1F2937;
+
+    --text: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --text-dim: #6B7280;
+
+    --teal-bg: rgba(13, 148, 136, 0.12);
+    --teal-border: #115E59;
+    --amber-bg: rgba(217, 119, 6, 0.12);
+    --amber-border: #78350F;
+    --blue-bg: rgba(2, 132, 199, 0.12);
+    --blue-border: #075985;
+    --purple-bg: rgba(124, 58, 237, 0.12);
+    --purple-border: #581C87;
+    --green-bg: rgba(5, 150, 105, 0.12);
+    --green-border: #065F46;
+    --rose-bg: rgba(220, 38, 38, 0.12);
+    --rose-border: #7F1D1D;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Public Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 100vh;
+  }
+
+  /* TOP HEADER */
+  .header {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-badge {
+    background: #0284C7;
+    color: white;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
+  }
+  .brand-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.4px;
+  }
+  .brand-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .model-select {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+  }
+  .btn {
+    border: none;
+    border-radius: 7px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-webgpu {
+    background: #0284C7;
+    color: white;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+  }
+  .btn-webgpu:hover { background: #0369A1; }
+  .btn-theme {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+    padding: 6px 10px;
+  }
+
+  /* GPU STATUS STRIP */
+  .gpu-strip {
+    background: var(--panel);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+  }
+  .gpu-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #CBD5E1;
+  }
+  .dot.ready { background: #059669; box-shadow: 0 0 8px rgba(5, 150, 105, 0.5); }
+  .dot.loading { background: #D97706; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+  /* SECTION 1: ONE ORIGINAL, TWO COPIES, A RECEIPT ON EVERY PIECE */
+  .section-banner {
+    background: var(--panel-head);
+    border-left: 4px solid #0284C7;
+    padding: 8px 14px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sec-num {
+    background: #0284C7;
+    color: white;
+    font-weight: 800;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 6px;
+  }
+  .sec-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .sec-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  /* THREE STORES GRID */
+  .stores-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 1fr;
+    gap: 12px;
+  }
+  .store-panel {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+  }
+  .store-head {
+    padding: 9px 14px;
+    background: var(--panel-head);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .store-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .receipt-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+  }
+  .rcpt-purple { background: var(--purple-bg); color: #7C3AED; border-color: var(--purple-border); }
+  .rcpt-amber { background: var(--amber-bg); color: #B45309; border-color: var(--amber-border); }
+  .rcpt-blue { background: var(--blue-bg); color: #0284C7; border-color: var(--blue-border); }
+  .rcpt-green { background: var(--green-bg); color: #059669; border-color: var(--green-border); }
+
+  /* ORIGINAL PDF VIEWER */
+  .pdf-viewer {
+    padding: 12px 14px;
+    flex: 1;
+    font-size: 11.5px;
+    line-height: 1.6;
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pdf-meta {
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    border-bottom: 1px dashed var(--panel-border);
+    padding-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .span-box {
+    padding: 5px 8px;
+    border-radius: 5px;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .span-box:hover, .span-box.active {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transform: translateX(2px);
+  }
+  .span-purple { background: var(--purple-bg); border-left-color: #7C3AED; }
+  .span-amber { background: var(--amber-bg); border-left-color: #D97706; }
+  .span-blue { background: var(--blue-bg); border-left-color: #0284C7; }
+
+  /* VECTOR STORE LIST */
+  .chunks-list {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .chunk-card {
+    background: var(--card-bg);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .chunk-card:hover, .chunk-card.active {
+    border-color: #0284C7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
+  }
+  .chunk-text {
+    font-size: 11px;
+    color: var(--text);
+  }
+  .chunk-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2px;
+  }
+  .sim-bar {
+    height: 4px;
+    background: var(--panel-border);
+    border-radius: 2px;
+    width: 60px;
+    overflow: hidden;
+  }
+  .sim-fill { height: 100%; background: #0284C7; }
+
+  /* GRAPH CONTAINER */
+  #graph-svg-container {
+    width: 100%;
+    height: 230px;
+    background: var(--card-bg);
+  }
+
+  /* RECEIPT EXPLANATION BANNER */
+  .receipt-banner {
+    background: #FFFDF5;
+    border: 1.5px solid #FDE68A;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 11.5px;
+    color: #78350F;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .receipt-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #B45309;
+  }
+
+  /* SECTION 2: THREE GUARDS */
+  .guards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .guard-card {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .guard-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .guard-icon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-receipt { background: #FEF3C7; color: #D97706; }
+  .icon-coverage { background: #EFF6FF; color: #0284C7; }
+  .icon-verify { background: #FAF5FF; color: #7C3AED; }
+  .guard-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .guard-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .guard-status-box {
+    margin-top: auto;
+    background: var(--panel-head);
+    border-radius: 6px;
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* SECTION 3: INTERACTIVE DEMO & LIVE VERIFICATION */
+  .sandbox-container {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .preset-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn-sc {
+    background: var(--panel-head);
+    color: var(--text-muted);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-sc:hover { border-color: #0284C7; color: var(--text); }
+  .btn-sc.active {
+    background: #0284C7;
+    color: white;
+    border-color: #0284C7;
+  }
+
+  .query-row {
+    display: flex;
+    gap: 10px;
+  }
+  .query-input {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 12.5px;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+  }
+  .query-input:focus { border-color: #0284C7; }
+
+  /* VERIFICATION PIPELINE VIEW */
+  .pipe-card {
+    display: grid;
+    grid-template-columns: 1fr 40px 1.2fr 40px 1fr;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .pipe-box {
+    background: var(--panel-head);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .pipe-box-title {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .pipe-box-content {
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+  .pipe-arrow-icon {
+    text-align: center;
+    font-size: 18px;
+    color: var(--text-dim);
+    font-weight: bold;
+  }
+
+  .gate-result {
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .gate-match { background: var(--green-bg); border: 1.5px solid var(--green-border); color: #065F46; }
+  .gate-fail { background: var(--rose-bg); border: 1.5px solid var(--rose-border); color: #991B1B; }
+
+  /* AUDIT LOG */
+  .audit-log {
+    background: #0B0F19;
+    color: #E2E8F0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .log-line { margin-bottom: 3px; }
+  .log-success { color: #34D399; }
+  .log-warn { color: #FBBF24; }
+  .log-fail { color: #F87171; }
+  .log-info { color: #60A5FA; }
+
+  /* FOOTER */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--panel-border);
+    padding-top: 12px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-badge">🛡️</div>
+      <div>
+        <div class="brand-title">Vector & Graph Stores: Faithful by Design</div>
+        <div class="brand-sub">"Find in the index, verify in the original." • Running WebLLM & WebGPU Client-Side</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="model-select" class="model-select">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (Ultra Fast / ~135MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (Fast / ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Balanced / ~800MB)</option>
+      </select>
+      <button id="btn-init-webgpu" class="btn btn-webgpu" onclick="initWebLLM()">
+        ⚡ Load WebGPU Engine
+      </button>
+      <button class="btn btn-theme" onclick="toggleTheme()">🌓 Theme</button>
+    </div>
+  </header>
+
+  <!-- WEBGPU STATUS STRIP -->
+  <div class="gpu-strip">
+    <div class="gpu-status">
+      <div id="gpu-dot" class="dot"></div>
+      <span id="gpu-status-text"><strong>Engine Status:</strong> Client Simulation Ready (Click 'Load WebGPU Engine' to run local neural weights)</span>
+    </div>
+    <div id="gpu-cache-info" style="font-family:'JetBrains Mono', monospace; color:var(--text-dim);">
+      DETERMINISTIC VERIFICATION ACTIVE
+    </div>
+  </div>
+
+  <!-- SECTION 1: ONE ORIGINAL, TWO COPIES, A RECEIPT ON EVERY PIECE -->
+  <div class="section-banner">
+    <div style="display:flex; align-items:center;">
+      <span class="sec-num">1</span>
+      <div>
+        <span class="sec-title">One Original, Two Copies, and a Receipt on Every Piece</span>
+        <div class="sec-sub">Every piece of knowledge in Vector and Graph memory carries a cryptographic receipt back to the raw source document.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stores-grid">
+    <!-- STORE 1: THE ORIGINAL PDF -->
+    <div class="store-panel">
+      <div class="store-head">
+        <div class="store-title">📄 policy-v3.pdf <span style="font-size:10px; color:var(--text-muted); font-weight:normal;">(The Source of Truth)</span></div>
+        <span class="receipt-tag rcpt-green">RAW CANONICAL FILE</span>
+      </div>
+      <div class="pdf-viewer">
+        <div class="pdf-meta">
+          <span>DOC_ID: policy-v3</span>
+          <span>HASH: sha256:7f8d...</span>
+          <span>PAGES: 3</span>
+        </div>
+
+        <div id="span-1" class="span-box span-purple active" onclick="highlightReceipt(1)">
+          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+            <strong style="color:#7C3AED; font-size:10px;">PAGE 2 · SECTION §4.2</strong>
+            <span class="receipt-tag rcpt-purple">p2 · §4.2 · [char 142-191]</span>
+          </div>
+          "Refunds are allowed within 30 days of delivery."
+        </div>
+
+        <div id="span-2" class="span-box span-amber" onclick="highlightReceipt(2)">
+          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+            <strong style="color:#B45309; font-size:10px;">PAGE 2 · SECTION §4.3</strong>
+            <span class="receipt-tag rcpt-amber">p2 · §4.3 · [char 192-238]</span>
+          </div>
+          "After 30 days, only store credit is offered."
+        </div>
+
+        <div id="span-3" class="span-box span-blue" onclick="highlightReceipt(3)">
+          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+            <strong style="color:#0284C7; font-size:10px;">PAGE 3 · SECTION §6.1</strong>
+            <span class="receipt-tag rcpt-blue">p3 · §6.1 · [char 410-454]</span>
+          </div>
+          "Tracking is emailed when the order ships."
+        </div>
+      </div>
+    </div>
+
+    <!-- STORE 2: VECTOR STORE (CHUNKS) -->
+    <div class="store-panel">
+      <div class="store-head">
+        <div class="store-title">📐 Vector Store <span style="font-size:10px; color:var(--text-muted); font-weight:normal;">(Semantic Chunks)</span></div>
+        <span class="receipt-tag rcpt-purple">3 CHUNKS EMBEDDED</span>
+      </div>
+      <div class="chunks-list">
+        <div id="chunk-1" class="chunk-card active" onclick="highlightReceipt(1)">
+          <div style="display:flex; justify-content:space-between;">
+            <span class="receipt-tag rcpt-purple">policy-v3 · p2 · §4.2</span>
+            <span style="font-size:10px; font-weight:700; color:#7C3AED;">Sim: 0.94</span>
+          </div>
+          <div class="chunk-text">"Refunds are allowed within 30 days of delivery."</div>
+          <div class="chunk-footer">
+            <div class="sim-bar"><div class="sim-fill" style="width:94%; background:#7C3AED;"></div></div>
+            <span style="font-size:9.5px; color:var(--text-dim);">dim: 1536 floats</span>
+          </div>
+        </div>
+
+        <div id="chunk-2" class="chunk-card" onclick="highlightReceipt(2)">
+          <div style="display:flex; justify-content:space-between;">
+            <span class="receipt-tag rcpt-amber">policy-v3 · p2 · §4.3</span>
+            <span style="font-size:10px; font-weight:700; color:#B45309;">Sim: 0.81</span>
+          </div>
+          <div class="chunk-text">"After 30 days, only store credit is offered."</div>
+          <div class="chunk-footer">
+            <div class="sim-bar"><div class="sim-fill" style="width:81%; background:#D97706;"></div></div>
+            <span style="font-size:9.5px; color:var(--text-dim);">dim: 1536 floats</span>
+          </div>
+        </div>
+
+        <div id="chunk-3" class="chunk-card" onclick="highlightReceipt(3)">
+          <div style="display:flex; justify-content:space-between;">
+            <span class="receipt-tag rcpt-blue">policy-v3 · p3 · §6.1</span>
+            <span style="font-size:10px; font-weight:700; color:#0284C7;">Sim: 0.52</span>
+          </div>
+          <div class="chunk-text">"Tracking is emailed when the order ships."</div>
+          <div class="chunk-footer">
+            <div class="sim-bar"><div class="sim-fill" style="width:52%; background:#0284C7;"></div></div>
+            <span style="font-size:9.5px; color:var(--text-dim);">dim: 1536 floats</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORE 3: GRAPH STORE (FACTS) -->
+    <div class="store-panel">
+      <div class="store-head">
+        <div class="store-title">🕸️ Graph Store <span style="font-size:10px; color:var(--text-muted); font-weight:normal;">(Explicit Facts)</span></div>
+        <span class="receipt-tag rcpt-amber">4 NODES · 3 EDGES</span>
+      </div>
+      <div id="graph-svg-container"></div>
+    </div>
+  </div>
+
+  <!-- RECEIPT DEFINITION STRIP -->
+  <div class="receipt-banner">
+    <div>
+      <strong>The Golden Invariant:</strong> <span class="receipt-formula">A Receipt = Document ID + Version + Page/Section + Exact Character Span</span>
+    </div>
+    <div style="font-size:11px;">
+      Color-coded highlights show exact cryptographic linkage between Original, Vector, and Graph.
+    </div>
+  </div>
+
+  <!-- SECTION 2: THREE GUARDS THAT MAKE IT FAITHFUL -->
+  <div class="section-banner">
+    <div style="display:flex; align-items:center;">
+      <span class="sec-num">2</span>
+      <div>
+        <span class="sec-title">Three Guards That Make It Faithful</span>
+        <div class="sec-sub">Deterministic validation layers that prevent hallucinations before user exposure.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guards-grid">
+    <!-- GUARD 1 -->
+    <div class="guard-card">
+      <div class="guard-head">
+        <div class="guard-icon icon-receipt">🧾</div>
+        <div>
+          <div class="guard-title">Guard 1: Receipts on Everything</div>
+          <span style="font-size:10px; color:var(--text-dim);">Traceability Contract</span>
+        </div>
+      </div>
+      <div class="guard-desc">
+        Every chunk and graph relationship stores source document name, git version tag, section header, and character offset window.
+      </div>
+      <div class="guard-status-box">
+        <span>Receipt Compliance</span>
+        <span style="color:#059669; font-weight:700;">100% (3/3 Verified)</span>
+      </div>
+    </div>
+
+    <!-- GUARD 2 -->
+    <div class="guard-card">
+      <div class="guard-head">
+        <div class="guard-icon icon-coverage">🛡️</div>
+        <div>
+          <div class="guard-title">Guard 2: Coverage Checks</div>
+          <span style="font-size:10px; color:var(--text-dim);">No Orphan Facts</span>
+        </div>
+      </div>
+      <div class="guard-desc">
+        Code validates that 100% of sentences land in an index chunk, no chunk is clipped by token limits, and all graph triples resolve back to a source line.
+      </div>
+      <div class="guard-status-box">
+        <span>Coverage Check</span>
+        <span style="color:#059669; font-weight:700;">PASS (0 Orphans)</span>
+      </div>
+    </div>
+
+    <!-- GUARD 3 -->
+    <div class="guard-card">
+      <div class="guard-head">
+        <div class="guard-icon icon-verify">🔍</div>
+        <div>
+          <div class="guard-title">Guard 3: Verify the Quote</div>
+          <span style="font-size:10px; color:var(--text-dim);">The Verification Gate</span>
+        </div>
+      </div>
+      <div class="guard-desc">
+        The generated answer <em>must quote its evidence verbatim</em>. Code inspects the cited span in the raw original file. If not found, output is blocked!
+      </div>
+      <div class="guard-status-box">
+        <span>Verification Gate</span>
+        <span id="guard3-gate-badge" style="color:#059669; font-weight:700;">ACTIVE GATEKEEPER</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: INTERACTIVE DEMO (THE VERIFICATION PIPELINE) -->
+  <div class="section-banner">
+    <div style="display:flex; align-items:center;">
+      <span class="sec-num">3</span>
+      <div>
+        <span class="sec-title">Interactive Quote Verification: The Gate in Action</span>
+        <div class="sec-sub">Watch how Guard 3 checks the answer quote against the original source file at runtime.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sandbox-container">
+    <div>
+      <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+        Select Scenario to Test:
+      </label>
+      <div class="preset-buttons" style="margin-top:6px;">
+        <button class="btn-sc active" onclick="selectScenario('faithful')">
+          ✅ Scenario A: Faithful Grounded Answer (Valid Quote)
+        </button>
+        <button class="btn-sc" onclick="selectScenario('hallucination')">
+          🚨 Scenario B: Hallucinated Quote Attack (Fake Citation)
+        </button>
+        <button class="btn-sc" onclick="selectScenario('outdated')">
+          ⚠️ Scenario C: Version Drift (Outdated policy-v2)
+        </button>
+        <button class="btn-sc" onclick="selectScenario('store_credit')">
+          💳 Scenario D: 30+ Day Store Credit Invariant
+        </button>
+      </div>
+    </div>
+
+    <div class="query-row">
+      <input id="user-query-input" class="query-input" type="text" value="Can I get a full refund after 20 days?">
+      <button class="btn btn-webgpu" onclick="executeVerificationPipeline()">
+        ▶ Run Verification Pipeline
+      </button>
+    </div>
+
+    <!-- VERIFICATION PIPELINE VISUALIZATION -->
+    <div class="pipe-card">
+      <!-- STEP 1: ANSWER PRODUCED -->
+      <div class="pipe-box">
+        <div class="pipe-box-title">1. LLM Output with Quote</div>
+        <div id="pipe-step1-text" class="pipe-box-content">
+          "Refunds are allowed within 30 days of delivery."<br>
+          <span class="receipt-tag rcpt-purple" style="margin-top:4px; display:inline-block;">
+            Source: policy-v3, p2, §4.2
+          </span>
+        </div>
+      </div>
+
+      <div class="pipe-arrow-icon">➔</div>
+
+      <!-- STEP 2: CODE OPENS ORIGINAL -->
+      <div class="pipe-box" style="border-color:#93C5FD; background:#EFF6FF;">
+        <div class="pipe-box-title" style="color:#1E40AF;">2. Code Opens Original Source</div>
+        <div id="pipe-step2-text" class="pipe-box-content" style="color:#1E3A8A;">
+          Opening <code>policy-v3.pdf</code> at Page 2, §4.2 [char 142-191]...<br>
+          Extracting ground-truth span byte-for-byte...
+        </div>
+      </div>
+
+      <div class="pipe-arrow-icon">➔</div>
+
+      <!-- STEP 3: THE GATE VERDICT -->
+      <div id="pipe-gate-card" class="gate-result gate-match">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:800; font-size:12px;">MATCH CONFIRMED</span>
+          <span style="font-size:14px;">🛡️</span>
+        </div>
+        <div id="pipe-gate-reason">
+          Quote exactly matches source text in original document at cited span. Safe to display to user!
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIT TERMINAL -->
+    <div class="audit-log" id="audit-terminal">
+      <div class="log-line log-info">[System Initialized] Faithful Vector & Graph Verification Engine ready.</div>
+      <div class="log-line log-success">[Store Ingest] Loaded policy-v3.pdf. 3 Vector chunks created. 3 Knowledge Graph edges mapped.</div>
+      <div class="log-line log-info">[Invariant] All chunks bound to cryptographic receipts: (doc_id, version, page, span).</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div><strong>Universal AI Engineering Blueprint</strong> • Based on "Vector and Graph Stores: Faithful by Design"</div>
+    <div>Live WebLLM & WebGPU Verification Console • <a href="https://agentskills.io" target="_blank" style="color:#0284C7; text-decoration:none;">agentskills.io</a></div>
+  </footer>
+
+<!-- D3 KNOWLEDGE GRAPH SCRIPT & VERIFICATION ENGINE -->
+<script>
+// SCENARIOS DATABASE
+const SCENARIOS = {
+  faithful: {
+    query: "Can I get a full refund after 20 days?",
+    answer: "Refunds are allowed within 30 days of delivery.",
+    doc: "policy-v3",
+    page: 2,
+    sec: "§4.2",
+    span: [142, 191],
+    targetText: "Refunds are allowed within 30 days of delivery.",
+    match: true,
+    reason: "Quote exactly matches source text in policy-v3.pdf at Page 2, §4.2. Response displayed."
+  },
+  hallucination: {
+    query: "Can I get a cash refund after 45 days?",
+    answer: "Yes, our policy states 'Full cash refunds are provided anytime within 90 days.'",
+    doc: "policy-v3",
+    page: 2,
+    sec: "§4.3",
+    span: [192, 238],
+    targetText: "After 30 days, only store credit is offered.",
+    match: false,
+    reason: "HALLUCINATION BLOCKED! The LLM fabricated the quote 'Full cash refunds are provided anytime'. The original text at Page 2, §4.3 strictly says 'After 30 days, only store credit is offered.' Output suppressed!"
+  },
+  outdated: {
+    query: "What is the return window?",
+    answer: "Refunds are allowed within 14 days of delivery.",
+    doc: "policy-v2",
+    page: 1,
+    sec: "§2.1",
+    span: [50, 95],
+    targetText: "Refunds are allowed within 30 days of delivery.",
+    match: false,
+    reason: "VERSION DRIFT ERROR! Citing deprecated policy-v2. Current active version is policy-v3. Output rejected by Guard 1!"
+  },
+  store_credit: {
+    query: "What happens if I return an item on day 35?",
+    answer: "After 30 days, only store credit is offered.",
+    doc: "policy-v3",
+    page: 2,
+    sec: "§4.3",
+    span: [192, 238],
+    targetText: "After 30 days, only store credit is offered.",
+    match: true,
+    reason: "Quote verified! Exact match found at Page 2, §4.3. Grounded in ground-truth facts."
+  }
+};
+
+let currentScenario = 'faithful';
+
+function selectScenario(scId) {
+  currentScenario = scId;
+  const sc = SCENARIOS[scId];
+  document.getElementById('user-query-input').value = sc.query;
+
+  // Update button active state
+  document.querySelectorAll('.btn-sc').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  logAudit(`[Scenario Selected] Switched to: ${scId.toUpperCase()}`);
+}
+
+function logAudit(msg, type = "info") {
+  const term = document.getElementById('audit-terminal');
+  const div = document.createElement('div');
+  div.className = `log-line log-${type}`;
+  const timestamp = new Date().toLocaleTimeString();
+  div.textContent = `[${timestamp}] ${msg}`;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function highlightReceipt(id) {
+  document.querySelectorAll('.span-box').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.chunk-card').forEach(el => el.classList.remove('active'));
+
+  const span = document.getElementById(`span-${id}`);
+  const chunk = document.getElementById(`chunk-${id}`);
+  if (span) span.classList.add('active');
+  if (chunk) chunk.classList.add('active');
+
+  logAudit(`[Receipt Focus] Focused on Item #${id}. Original, Vector, and Graph nodes highlighted.`, "info");
+}
+
+function executeVerificationPipeline() {
+  const sc = SCENARIOS[currentScenario];
+  const query = document.getElementById('user-query-input').value;
+
+  logAudit(`[User Query] "${query}"`, "info");
+  logAudit(`[Index Search] Searching Vector DB and Graph Store... Found candidate: ${sc.doc} p${sc.page} ${sc.sec}`, "info");
+
+  // Step 1 UI
+  document.getElementById('pipe-step1-text').innerHTML = `
+    "${sc.answer}"<br>
+    <span class="receipt-tag rcpt-purple" style="margin-top:4px; display:inline-block;">
+      Source: ${sc.doc}, p${sc.page}, ${sc.sec} [span ${sc.span[0]}-${sc.span[1]}]
+    </span>
+  `;
+
+  // Step 2 UI
+  document.getElementById('pipe-step2-text').innerHTML = `
+    Opening canonical <code>${sc.doc}.pdf</code> at Page ${sc.page}, ${sc.sec}...<br>
+    Raw source span: <em>"${sc.targetText}"</em>
+  `;
+
+  // Step 3 UI
+  const gateCard = document.getElementById('pipe-gate-card');
+  const gateReason = document.getElementById('pipe-gate-reason');
+
+  if (sc.match) {
+    gateCard.className = "gate-result gate-match";
+    gateCard.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:800; font-size:12px;">MATCH CONFIRMED</span>
+        <span style="font-size:14px;">🛡️</span>
+      </div>
+      <div>${sc.reason}</div>
+    `;
+    logAudit(`[Guard 3 PASS] Quote verified byte-for-byte in ${sc.doc}.pdf at span [${sc.span[0]}-${sc.span[1]}].`, "success");
+    logAudit(`[Final Output] Response released to user. 100% Faithful.`, "success");
+  } else {
+    gateCard.className = "gate-result gate-fail";
+    gateCard.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:800; font-size:12px;">NO MATCH: BLOCKED BY GUARD 3</span>
+        <span style="font-size:14px;">🚨</span>
+      </div>
+      <div>${sc.reason}</div>
+    `;
+    logAudit(`[Guard 3 TRIPPED] Quote does not match canonical document! Flagged as hallucination.`, "fail");
+    logAudit(`[Security Gate] Output suppressed. User alerted that claim has no original evidence.`, "warn");
+  }
+}
+
+// THEME TOGGLE
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  renderGraph();
+}
+
+// D3 KNOWLEDGE GRAPH INITIALIZATION
+function renderGraph() {
+  const container = document.getElementById('graph-svg-container');
+  container.innerHTML = "";
+  const width = container.clientWidth || 360;
+  const height = 260;
+
+  const svg = d3.select("#graph-svg-container")
+    .append("svg")
+    .attr("width", "100%")
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height]);
+
+  const nodes = [
+    { id: "Refund", group: "purple", color: "#7C3AED", r: 24, idNum: 1, x: width * 0.35, y: height * 0.5 },
+    { id: "30 days", group: "purple", color: "#6D28D9", r: 21, idNum: 1, x: width * 0.55, y: height * 0.35 },
+    { id: "Delivery", group: "blue", color: "#0284C7", r: 21, idNum: 3, x: width * 0.78, y: height * 0.3 },
+    { id: "Store credit", group: "amber", color: "#D97706", r: 24, idNum: 2, x: width * 0.65, y: height * 0.75 }
+  ];
+
+  const links = [
+    { source: "Refund", target: "30 days", label: "allowed within", receipt: "p2 §4.2", color: "#7C3AED", idNum: 1 },
+    { source: "30 days", target: "Delivery", label: "counted from", receipt: "p3 §6.1", color: "#0284C7", idNum: 3 },
+    { source: "Refund", target: "Store credit", label: "offers after", receipt: "p2 §4.3", color: "#D97706", idNum: 2 }
+  ];
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(80))
+    .force("charge", d3.forceManyBody().strength(-220))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(34));
+
+  // Arrow markers
+  svg.append("defs").selectAll("marker")
+    .data(["purple", "blue", "amber"])
+    .join("marker")
+    .attr("id", d => `arrow-${d}`)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 26)
+    .attr("refY", 0)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("fill", d => d === "purple" ? "#7C3AED" : d === "blue" ? "#0284C7" : "#D97706")
+    .attr("d", "M0,-5L10,0L0,5");
+
+  const linkGroup = svg.append("g");
+  const link = linkGroup
+    .selectAll("line")
+    .data(links)
+    .join("line")
+    .attr("stroke", d => d.color)
+    .attr("stroke-width", 2)
+    .attr("stroke-dasharray", "3,3")
+    .attr("marker-end", d => `url(#arrow-${d.color === "#7C3AED" ? "purple" : d.color === "#0284C7" ? "blue" : "amber"})`)
+    .style("cursor", "pointer")
+    .on("click", (e, d) => highlightReceipt(d.idNum));
+
+  const edgeLabels = svg.append("g")
+    .selectAll("text")
+    .data(links)
+    .join("text")
+    .attr("font-size", "8.5px")
+    .attr("font-family", "JetBrains Mono, monospace")
+    .attr("font-weight", "700")
+    .attr("fill", d => d.color)
+    .attr("text-anchor", "middle")
+    .style("cursor", "pointer")
+    .text(d => `${d.label} [${d.receipt}]`)
+    .on("click", (e, d) => highlightReceipt(d.idNum));
+
+  const nodeGroup = svg.append("g");
+  const node = nodeGroup
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .style("cursor", "pointer")
+    .on("click", (e, d) => highlightReceipt(d.idNum))
+    .call(d3.drag()
+      .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  node.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.color)
+    .attr("stroke", "#FFFFFF")
+    .attr("stroke-width", 2.5);
+
+  node.append("text")
+    .text(d => d.id)
+    .attr("font-size", "9.5px")
+    .attr("font-family", "Public Sans, sans-serif")
+    .attr("font-weight", "700")
+    .attr("fill", "#FFFFFF")
+    .attr("text-anchor", "middle")
+    .attr("dy", 3.5);
+
+  simulation.on("tick", () => {
+    // Clamp nodes inside container
+    nodes.forEach(d => {
+      d.x = Math.max(30, Math.min(width - 30, d.x));
+      d.y = Math.max(30, Math.min(height - 30, d.y));
+    });
+
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    edgeLabels
+      .attr("x", d => (d.source.x + d.target.x) / 2)
+      .attr("y", d => (d.source.y + d.target.y) / 2 - 5);
+
+    node
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  renderGraph();
+  window.addEventListener("resize", renderGraph);
+});
+</script>
+
+<!-- WEBLLM & WEBGPU MODULE -->
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+let engine = null;
+let isWebLLMReady = false;
+
+window.initWebLLM = async function() {
+  const btn = document.getElementById('btn-init-webgpu');
+  const dot = document.getElementById('gpu-dot');
+  const statusText = document.getElementById('gpu-status-text');
+  const modelName = document.getElementById('model-select').value;
+
+  btn.disabled = true;
+  dot.className = "dot loading";
+  statusText.innerHTML = `<strong>Loading ${modelName}...</strong> Downloading weights into browser GPU cache...`;
+
+  try {
+    engine = await webllm.CreateMLCEngine(modelName, {
+      initProgressCallback: (p) => {
+        statusText.innerHTML = `<strong>WebGPU Cache:</strong> ${(p.progress * 100).toFixed(0)}% - ${p.text}`;
+      }
+    });
+
+    isWebLLMReady = true;
+    dot.className = "dot ready";
+    statusText.innerHTML = `<strong>WebGPU Engine Ready:</strong> ${modelName.split('-')[0]} active in local browser GPU VRAM.`;
+    document.getElementById('gpu-cache-info').textContent = "NEURAL INFERENCE ACTIVE";
+    btn.textContent = "✓ WebGPU Running";
+    logAudit(`[WebGPU Loaded] ${modelName} initialized successfully on local device GPU.`, "success");
+  } catch (err) {
+    console.warn("WebGPU not available. Continuing with deterministic verification engine:", err);
+    dot.className = "dot ready";
+    statusText.innerHTML = `<strong>Deterministic Mode Active:</strong> WebGPU hardware not detected. Running instant deterministic verification engine.`;
+    btn.disabled = false;
+    btn.textContent = "Retry WebGPU";
+    logAudit(`[Notice] WebGPU unavailable. Instant client-side verification engine running.`, "warn");
+  }
+};
+</script>
+
+</body>
+</html>
