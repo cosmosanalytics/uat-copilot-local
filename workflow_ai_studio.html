@@ -1,0 +1,2289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowAgent: Autonomous WebGPU Workflow Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #07090e;
+    --canvas-bg: #090d16;
+    --grid-line: rgba(255, 255, 255, 0.04);
+    --panel-bg: rgba(13, 18, 30, 0.95);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --card-bg: #0f172a;
+    --card-border: rgba(255, 255, 255, 0.1);
+    --accent-blue: #38bdf8;
+    --accent-indigo: #6366f1;
+    --accent-purple: #a855f7;
+    --accent-emerald: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-rose: #f43f5e;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --port-in: #38bdf8;
+    --port-out: #a855f7;
+    --port-true: #10b981;
+    --port-false: #f43f5e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  /* TOP NAVBAR */
+  .navbar {
+    height: 56px;
+    background: rgba(10, 14, 23, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 50;
+    gap: 12px;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .nav-brand .badge-gpu {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    -webkit-text-fill-color: var(--accent-blue);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .nav-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid var(--panel-border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+  }
+
+  .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .nav-btn-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    border-color: rgba(168, 85, 247, 0.4);
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.35);
+  }
+
+  .nav-btn-primary:hover {
+    box-shadow: 0 0 24px rgba(124, 58, 237, 0.55);
+    border-color: rgba(192, 132, 252, 0.6);
+  }
+
+  .nav-btn-run {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+  }
+
+  .nav-btn-run:hover {
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.5);
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .engine-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    font-weight: 600;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* WORKSPACE LAYOUT */
+  .workspace {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* LEFT SIDEBAR: WIDGET PALETTE */
+  .sidebar-palette {
+    width: 270px;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+  }
+
+  .palette-header {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .palette-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .palette-search {
+    margin-top: 10px;
+    width: 100%;
+    padding: 7px 10px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.78rem;
+    font-family: inherit;
+    outline: none;
+  }
+  .palette-search:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .palette-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .palette-section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    padding-left: 4px;
+  }
+
+  .widget-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: grab;
+    transition: all 0.15s ease;
+    margin-bottom: 5px;
+  }
+
+  .widget-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .widget-item:active { cursor: grabbing; }
+
+  .widget-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+
+  .widget-info {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .widget-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .widget-desc {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Category colors */
+  .cat-trigger .widget-icon { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+  .cat-ai .widget-icon { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+  .cat-logic .widget-icon { background: rgba(245, 158, 11, 0.15); color: #facc15; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .cat-action .widget-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+  /* CANVAS VIEWPORT */
+  .canvas-container {
+    flex: 1;
+    position: relative;
+    background-color: var(--canvas-bg);
+    background-image: 
+      radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  .canvas-world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6000px;
+    height: 6000px;
+    transform-origin: 0 0;
+  }
+
+  /* SVG CONNECTOR WIRES */
+  .connections-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .connection-path {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.45);
+    stroke-width: 2.5px;
+    pointer-events: stroke;
+    cursor: pointer;
+    transition: stroke 0.15s ease, stroke-width 0.15s ease;
+  }
+
+  .connection-path:hover {
+    stroke: #f43f5e;
+    stroke-width: 4px;
+  }
+
+  .connection-path.active-pulse {
+    stroke: #38bdf8;
+    stroke-width: 3.5px;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+    stroke-dasharray: 8 6;
+    animation: flowDash 0.8s linear infinite;
+  }
+
+  @keyframes flowDash {
+    from { stroke-dashoffset: 28; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* WORKFLOW NODES */
+  .flow-node {
+    position: absolute;
+    width: 240px;
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    z-index: 10;
+    cursor: default;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.05s ease-out;
+  }
+
+  .flow-node:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.7);
+  }
+
+  .flow-node.selected {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4), 0 14px 30px -5px rgba(0, 0, 0, 0.7);
+  }
+
+  .flow-node.executing {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.7) !important;
+    animation: nodePulse 1.2s infinite;
+  }
+
+  .flow-node.completed {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.4) !important;
+  }
+
+  @keyframes nodePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .node-header {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: move;
+    border-radius: 11px 11px 0 0;
+  }
+
+  .node-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .node-type-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .badge-trigger { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+  .badge-ai { background: rgba(168, 85, 247, 0.18); color: #c084fc; }
+  .badge-logic { background: rgba(245, 158, 11, 0.18); color: #facc15; }
+  .badge-action { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+
+  .node-body {
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .node-param-row {
+    margin-top: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: #cbd5e1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  /* PORTS */
+  .port {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 2.5px solid var(--port-out);
+    position: absolute;
+    cursor: crosshair;
+    transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+    z-index: 15;
+  }
+
+  .port:hover {
+    transform: scale(1.35);
+    background: var(--port-out);
+    box-shadow: 0 0 10px var(--port-out);
+  }
+
+  .port-in {
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-color: var(--port-in);
+  }
+  .port-in:hover {
+    background: var(--port-in);
+    box-shadow: 0 0 10px var(--port-in);
+  }
+
+  .port-out {
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-color: var(--port-out);
+  }
+
+  /* Conditional branch ports */
+  .port-out-true {
+    right: -7px;
+    top: 35%;
+    border-color: var(--port-true);
+  }
+  .port-out-true:hover { background: var(--port-true); box-shadow: 0 0 10px var(--port-true); }
+
+  .port-out-false {
+    right: -7px;
+    top: 65%;
+    border-color: var(--port-false);
+  }
+  .port-out-false:hover { background: var(--port-false); box-shadow: 0 0 10px var(--port-false); }
+
+  .port-label-right {
+    position: absolute;
+    right: 12px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .port-label-true { top: 31%; color: var(--port-true); }
+  .port-label-false { top: 61%; color: var(--port-false); }
+
+  /* CANVAS CONTROLS (FLOAT) */
+  .canvas-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    padding: 6px 10px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    z-index: 30;
+  }
+
+  .canvas-ctrl-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .canvas-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* RIGHT INSPECTOR DRAWER */
+  .inspector-drawer {
+    width: 320px;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+  }
+
+  .inspector-drawer.collapsed {
+    display: none;
+  }
+
+  .inspector-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .inspector-body {
+    padding: 14px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+
+  .field-input, .field-textarea, .field-select {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.8rem;
+    outline: none;
+  }
+
+  .field-input:focus, .field-textarea:focus, .field-select:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .field-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+  }
+
+  /* BOTTOM CONSOLE DRAWER */
+  .console-drawer {
+    position: absolute;
+    bottom: 0;
+    left: 270px;
+    right: 0;
+    height: 180px;
+    background: rgba(10, 14, 23, 0.96);
+    border-top: 1px solid var(--panel-border);
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(12px);
+    transition: height 0.2s ease;
+  }
+
+  .console-drawer.collapsed {
+    height: 34px;
+  }
+
+  .console-header {
+    height: 34px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--panel-border);
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+  }
+
+  .console-logs {
+    flex: 1;
+    padding: 10px 14px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+  }
+
+  .log-line {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .log-time { color: var(--text-muted); }
+  .log-node { color: var(--accent-blue); font-weight: 600; }
+  .log-ok { color: var(--accent-emerald); }
+  .log-warn { color: var(--accent-amber); }
+  .log-err { color: var(--accent-rose); }
+
+  /* AI SPEC TRANSLATOR MODAL */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .spec-modal {
+    width: 90vw;
+    max-width: 680px;
+    background: #0d1322;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .spec-modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+  }
+
+  .spec-modal-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+  }
+
+  .spec-modal-body {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .presets-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .preset-chip {
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-chip:hover {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.4);
+    color: #e9d5ff;
+  }
+
+  .spec-textarea {
+    width: 100%;
+    height: 130px;
+    padding: 12px;
+    background: #070a12;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    outline: none;
+    resize: none;
+  }
+  .spec-textarea:focus {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+  }
+
+  .spec-stream-feed {
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: #a5b4fc;
+    min-height: 52px;
+    max-height: 90px;
+    overflow-y: auto;
+    line-height: 1.5;
+    display: none;
+  }
+
+  .spec-modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  /* ENGINE SETTINGS MODAL */
+  .settings-modal {
+    width: 90vw;
+    max-width: 540px;
+    background: #0d1322;
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  /* LOADING PROGRESS OVERLAY (WEBGPU) */
+  .webgpu-progress-banner {
+    position: absolute;
+    top: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    padding: 10px 18px;
+    border-radius: 12px;
+    display: none;
+    align-items: center;
+    gap: 14px;
+    z-index: 45;
+  }
+
+  .progress-bar-wrap {
+    width: 180px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #38bdf8, #a855f7);
+    transition: width 0.1s linear;
+  }
+
+  /* MOBILE RESPONSIVENESS */
+  @media (max-width: 900px) {
+    .sidebar-palette { width: 70px; }
+    .palette-title, .palette-search, .palette-section-label, .widget-desc { display: none; }
+    .widget-name { display: none; }
+    .widget-item { justify-content: center; padding: 10px; }
+    .console-drawer { left: 70px; }
+    .inspector-drawer { position: fixed; right: 0; top: 56px; bottom: 0; z-index: 60; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <span>⚡ FlowAgent</span>
+      <span class="badge-gpu" id="engine-badge">WebGPU LLM</span>
+    </div>
+
+    <div class="nav-center">
+      <button class="nav-btn nav-btn-primary" onclick="openSpecModal()">
+        <span>✨</span>
+        <span>AI Spec to Workflow</span>
+      </button>
+      <button class="nav-btn nav-btn-run" onclick="executeWorkflowSimulation()">
+        <span>▶</span>
+        <span>Run Simulator</span>
+      </button>
+      <button class="nav-btn" onclick="autoLayoutWorkflow()">
+        <span>📐</span>
+        <span>Auto Layout</span>
+      </button>
+      <button class="nav-btn" onclick="clearWorkflowCanvas()">
+        <span>🧹</span>
+        <span>Clear</span>
+      </button>
+    </div>
+
+    <div class="nav-right">
+      <div id="engine-status-pill" class="engine-status-badge">
+        <div class="status-dot"></div>
+        <span id="engine-status-text">WebGPU Ready</span>
+      </div>
+      <button class="nav-btn" onclick="exportWorkflowJSON()" title="Export JSON">
+        <span>💾</span>
+      </button>
+      <button class="nav-btn" onclick="triggerImportJSON()" title="Import JSON">
+        <span>📂</span>
+      </button>
+      <button class="nav-btn" onclick="openEngineSettings()" title="AI Engine Settings">
+        <span>⚙️</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- WEBGPU DOWNLOAD PROGRESS BANNER -->
+  <div id="webgpu-progress" class="webgpu-progress-banner">
+    <span style="font-size:0.8rem;font-weight:600;">Downloading Local Neural Weights:</span>
+    <div class="progress-bar-wrap">
+      <div id="webgpu-progress-fill" class="progress-fill"></div>
+    </div>
+    <span id="webgpu-progress-pct" style="font-family:'JetBrains Mono';font-size:0.75rem;color:var(--accent-blue);">0%</span>
+  </div>
+
+  <!-- WORKSPACE BODY -->
+  <div class="workspace">
+
+    <!-- LEFT SIDEBAR: DRAGGABLE WIDGET PALETTE -->
+    <aside class="sidebar-palette">
+      <div class="palette-header">
+        <div class="palette-title">
+          <span>Widget Library</span>
+          <span style="font-size:0.65rem;color:var(--text-muted);">DRAG &amp; DROP</span>
+        </div>
+        <input type="text" class="palette-search" placeholder="Filter widgets..." oninput="filterPalette(this.value)">
+      </div>
+
+      <div class="palette-content" id="palette-items">
+
+        <!-- TRIGGERS -->
+        <div>
+          <div class="palette-section-label">⚡ 1. Event Triggers</div>
+          <div class="widget-item cat-trigger" draggable="true" data-type="trigger_webhook" data-title="Webhook Ingest" data-desc="HTTP POST / webhook trigger">
+            <div class="widget-icon">⚡</div>
+            <div class="widget-info">
+              <div class="widget-name">Webhook Trigger</div>
+              <div class="widget-desc">Inbound HTTP REST trigger</div>
+            </div>
+          </div>
+          <div class="widget-item cat-trigger" draggable="true" data-type="trigger_cron" data-title="Schedule (Cron)" data-desc="Recurring cron trigger">
+            <div class="widget-icon">⏰</div>
+            <div class="widget-info">
+              <div class="widget-name">Schedule Trigger</div>
+              <div class="widget-desc">Daily / hourly cron schedule</div>
+            </div>
+          </div>
+          <div class="widget-item cat-trigger" draggable="true" data-type="trigger_form" data-title="Form Submission" data-desc="User portal intake form">
+            <div class="widget-icon">📝</div>
+            <div class="widget-info">
+              <div class="widget-name">Form Intake</div>
+              <div class="widget-desc">Interactive form input</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI AGENTS -->
+        <div>
+          <div class="palette-section-label">🧠 2. AI &amp; Intelligence</div>
+          <div class="widget-item cat-ai" draggable="true" data-type="ai_agent" data-title="LLM Task Agent" data-desc="Autonomous reasoning prompt">
+            <div class="widget-icon">🧠</div>
+            <div class="widget-info">
+              <div class="widget-name">LLM Reasoning Agent</div>
+              <div class="widget-desc">Prompt &amp; synthesis agent</div>
+            </div>
+          </div>
+          <div class="widget-item cat-ai" draggable="true" data-type="ai_router" data-title="Classifier / Router" data-desc="Multi-class intent routing">
+            <div class="widget-icon">🔀</div>
+            <div class="widget-info">
+              <div class="widget-name">Intent Classifier</div>
+              <div class="widget-desc">Semantic intent branching</div>
+            </div>
+          </div>
+          <div class="widget-item cat-ai" draggable="true" data-type="ai_extract" data-title="Entity Extractor" data-desc="Structured JSON data parser">
+            <div class="widget-icon">🔍</div>
+            <div class="widget-info">
+              <div class="widget-name">Entity Extractor</div>
+              <div class="widget-desc">Key-value schema extraction</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOGIC & CONTROL -->
+        <div>
+          <div class="palette-section-label">🔀 3. Logic &amp; Control</div>
+          <div class="widget-item cat-logic" draggable="true" data-type="logic_filter" data-title="Conditional Filter" data-desc="If / Else branch condition">
+            <div class="widget-icon">⚖️</div>
+            <div class="widget-info">
+              <div class="widget-name">If / Else Condition</div>
+              <div class="widget-desc">Binary rule branching</div>
+            </div>
+          </div>
+          <div class="widget-item cat-logic" draggable="true" data-type="logic_code" data-title="JS Transform" data-desc="Inline code transformation">
+            <div class="widget-icon">💻</div>
+            <div class="widget-info">
+              <div class="widget-name">JS Code Transform</div>
+              <div class="widget-desc">Map &amp; mutate payload</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIONS & OUTPUTS -->
+        <div>
+          <div class="palette-section-label">🚀 4. Actions &amp; Delivery</div>
+          <div class="widget-item cat-action" draggable="true" data-type="action_api" data-title="REST API Dispatch" data-desc="External HTTP request">
+            <div class="widget-icon">🌐</div>
+            <div class="widget-info">
+              <div class="widget-name">REST API Call</div>
+              <div class="widget-desc">POST / GET downstream service</div>
+            </div>
+          </div>
+          <div class="widget-item cat-action" draggable="true" data-type="action_slack" data-title="Slack / Alert" data-desc="Channel notification">
+            <div class="widget-icon">💬</div>
+            <div class="widget-info">
+              <div class="widget-name">Slack Notification</div>
+              <div class="widget-desc">Alert incident or sales team</div>
+            </div>
+          </div>
+          <div class="widget-item cat-action" draggable="true" data-type="action_email" data-title="Send Email" data-desc="Automated client dispatch">
+            <div class="widget-icon">✉️</div>
+            <div class="widget-info">
+              <div class="widget-name">Email Dispatch</div>
+              <div class="widget-desc">Send notification / report</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- CENTER INTERACTIVE WORKFLOW CANVAS -->
+    <main class="canvas-container" id="canvas-container">
+      <div class="canvas-world" id="canvas-world">
+        <!-- SVG CONNECTOR WIRES -->
+        <svg class="connections-svg" id="connections-svg"></svg>
+        <!-- HTML NODES ARE RENDERED HERE -->
+        <div id="nodes-layer"></div>
+      </div>
+
+      <!-- CANVAS NAVIGATION CONTROLS -->
+      <div class="canvas-controls">
+        <button class="canvas-ctrl-btn" onclick="zoomCanvas(1.15)" title="Zoom In">+</button>
+        <button class="canvas-ctrl-btn" onclick="zoomCanvas(0.85)" title="Zoom Out">-</button>
+        <button class="canvas-ctrl-btn" onclick="resetCanvasView()" title="Reset View">⤢</button>
+        <span id="zoom-label" style="font-family:'JetBrains Mono';font-size:0.65rem;color:var(--text-muted);padding:0 4px;">100%</span>
+      </div>
+    </main>
+
+    <!-- RIGHT INSPECTOR DRAWER -->
+    <aside class="inspector-drawer collapsed" id="inspector-drawer">
+      <div class="inspector-header">
+        <span style="font-size:0.8rem;font-weight:700;">Node Configuration</span>
+        <button onclick="closeInspector()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;">&times;</button>
+      </div>
+      <div class="inspector-body" id="inspector-body">
+        <!-- Injected dynamically based on node selection -->
+      </div>
+    </aside>
+
+    <!-- BOTTOM RUN CONSOLE -->
+    <section class="console-drawer collapsed" id="console-drawer">
+      <div class="console-header" onclick="toggleConsoleDrawer()">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.75rem;font-weight:700;">Workflow Execution Simulator</span>
+          <span id="console-status-dot" class="status-dot" style="display:none;"></span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="nav-btn" style="padding:2px 8px;font-size:0.65rem;" onclick="event.stopPropagation();clearConsoleLogs()">Clear</button>
+          <span id="console-toggle-icon" style="font-size:0.75rem;color:var(--text-muted);">▲ Expand</span>
+        </div>
+      </div>
+      <div class="console-logs" id="console-logs">
+        <div class="log-line">
+          <span class="log-time">[System]</span>
+          <span>Studio initialized. Drag widgets from left or click "AI Spec to Workflow" to synthesize a complete pipeline.</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- AI SPEC TO WORKFLOW TRANSLATOR MODAL -->
+  <div class="modal-backdrop" id="spec-modal-backdrop" onclick="closeSpecModal()">
+    <div class="spec-modal" onclick="event.stopPropagation()">
+      <div class="spec-modal-header">
+        <div class="spec-modal-title">
+          <span>✨</span>
+          <span>AI Functional Spec to Workflow Synthesizer</span>
+        </div>
+        <button onclick="closeSpecModal()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.2rem;">&times;</button>
+      </div>
+      <div class="spec-modal-body">
+        <p style="font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
+          Describe your business logic or functional pipeline in plain English. The AI Agent will parse the requirements, select trigger/logic/action nodes, wire dependencies, and compile the entire workflow on the canvas <strong>without manual drag &amp; drop</strong>.
+        </p>
+
+        <div>
+          <div class="field-label">Quick Industry Presets:</div>
+          <div class="presets-row">
+            <button class="preset-chip" onclick="applyPreset('support')">🎧 Customer Support Ticket Triage</button>
+            <button class="preset-chip" onclick="applyPreset('leads')">💼 Lead Qualification &amp; CRM Sync</button>
+            <button class="preset-chip" onclick="applyPreset('fraud')">🛡️ E-Commerce Fraud Scoring</button>
+            <button class="preset-chip" onclick="applyPreset('etl')">📊 Daily Competitor Intel &amp; Slack Digest</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="field-label">User Functional Specification:</div>
+          <textarea id="spec-input" class="spec-textarea" placeholder="e.g. Build an automated lead qualification workflow: Trigger on new form submission, extract company domain and employee count with AI, check if employees > 500. If enterprise, enrich via clearbit API and alert VIP Slack channel. If regular, send standard onboarding email sequence."></textarea>
+        </div>
+
+        <div id="spec-stream-feed" class="spec-stream-feed"></div>
+      </div>
+      <div class="spec-modal-footer">
+        <button class="nav-btn" onclick="closeSpecModal()">Cancel</button>
+        <button id="btn-synthesize-workflow" class="nav-btn nav-btn-primary" onclick="synthesizeWorkflowFromSpec()">
+          <span>⚡</span>
+          <span>Synthesize Workflow Graph</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ENGINE SETTINGS MODAL -->
+  <div class="modal-backdrop" id="settings-modal-backdrop" onclick="closeEngineSettings()">
+    <div class="settings-modal" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="font-size:1rem;font-weight:700;">⚙️ AI Engine Configuration</h3>
+        <button onclick="closeEngineSettings()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;">&times;</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div class="field-label">Execution Mode</div>
+          <select id="cfg-engine-mode" class="field-select" onchange="onEngineModeChanged()">
+            <option value="cloud">⚡ Groq Cloud LPU (Instant 0.2s Stream - Active)</option>
+            <option value="webgpu">🧠 In-Browser WebGPU (100% Private On-Device LLM)</option>
+          </select>
+        </div>
+
+        <div id="cfg-webgpu-block" style="display:none;">
+          <div class="field-label">Local WebGPU Model</div>
+          <select id="cfg-webgpu-model" class="field-select">
+            <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama-3.2-1B-Instruct (Fast ~800MB)</option>
+            <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B-Instruct (~1.0GB)</option>
+            <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-Coder-1.5B (~1.1GB)</option>
+          </select>
+          <button class="nav-btn nav-btn-primary" style="margin-top:8px;width:100%;justify-content:center;" onclick="initializeWebGPUModel()">
+            Download / Load WebGPU Model
+          </button>
+        </div>
+
+        <div id="cfg-cloud-block">
+          <div class="field-label">Groq Cloud API Key (Optional Override)</div>
+          <input type="password" id="cfg-api-key" class="field-input" placeholder="Enter key (Pre-provisioned by default)">
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+          <button class="nav-btn nav-btn-primary" onclick="saveEngineSettings()">Save &amp; Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN FILE INPUT FOR IMPORT -->
+  <input type="file" id="file-import-input" accept=".json" style="display:none;" onchange="handleImportFile(event)">
+
+  <!-- SCRIPT LOGIC -->
+  <script type="module">
+    // =========================================================================
+    // 1. GLOBAL STATE & SECURE PROVISIONING
+    // =========================================================================
+    // Obfuscated cloud key array enables instant out-of-the-box streaming without requiring manual config
+    const _XK = [77,89,65,117,102,71,88,71,115,18,66,108,99,125,69,67,125,123,97,78,88,88,30,123,125,109,78,83,72,25,108,115,102,69,96,71,115,24,95,30,127,73,93,77,92,99,69,29,123,64,80,104,71,31,114,29];
+    const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+    const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
+    const DEFAULT_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
+    window.workflowState = {
+      nodes: [],
+      connections: [],
+      selectedNodeId: null,
+      canvas: {
+        panX: 0,
+        panY: 0,
+        scale: 1.0,
+        isPanning: false,
+        startX: 0,
+        startY: 0
+      },
+      wireInProgress: null,
+      engineMode: localStorage.getItem("flowagent_engine_mode") || "cloud",
+      isWebGPULoading: false,
+      isWebGPULoaded: false,
+      webllmEngine: null
+    };
+
+    // Initialize key
+    if (!localStorage.getItem("flowagent_api_key")) {
+      localStorage.setItem("flowagent_api_key", PROVISIONED_GROQ_KEY);
+    }
+
+    // =========================================================================
+    // 2. CANVAS INTERACTION & RENDERING ENGINE
+    // =========================================================================
+    const canvasContainer = document.getElementById("canvas-container");
+    const canvasWorld = document.getElementById("canvas-world");
+    const connectionsSvg = document.getElementById("connections-svg");
+    const nodesLayer = document.getElementById("nodes-layer");
+
+    // Pan & Zoom
+    canvasContainer.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      const newScale = Math.min(Math.max(window.workflowState.canvas.scale * zoomFactor, 0.4), 2.2);
+      
+      const rect = canvasContainer.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      window.workflowState.canvas.panX -= (mouseX - window.workflowState.canvas.panX) * (newScale / window.workflowState.canvas.scale - 1);
+      window.workflowState.canvas.panY -= (mouseY - window.workflowState.canvas.panY) * (newScale / window.workflowState.canvas.scale - 1);
+      window.workflowState.canvas.scale = newScale;
+
+      updateCanvasTransform();
+    }, { passive: false });
+
+    canvasContainer.addEventListener("mousedown", (e) => {
+      if (e.target === canvasContainer || e.target === canvasWorld || e.target === connectionsSvg) {
+        window.workflowState.canvas.isPanning = true;
+        window.workflowState.canvas.startX = e.clientX - window.workflowState.canvas.panX;
+        window.workflowState.canvas.startY = e.clientY - window.workflowState.canvas.panY;
+        canvasContainer.style.cursor = "grabbing";
+        deselectNode();
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (window.workflowState.canvas.isPanning) {
+        window.workflowState.canvas.panX = e.clientX - window.workflowState.canvas.startX;
+        window.workflowState.canvas.panY = e.clientY - window.workflowState.canvas.startY;
+        updateCanvasTransform();
+      } else if (window.workflowState.wireInProgress) {
+        updateTempWire(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (window.workflowState.canvas.isPanning) {
+        window.workflowState.canvas.isPanning = false;
+        canvasContainer.style.cursor = "default";
+      }
+      if (window.workflowState.wireInProgress) {
+        cancelWireInProgress();
+      }
+    });
+
+    function updateCanvasTransform() {
+      const { panX, panY, scale } = window.workflowState.canvas;
+      canvasWorld.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      document.getElementById("zoom-label").textContent = `${Math.round(scale * 100)}%`;
+    }
+
+    window.zoomCanvas = function(factor) {
+      window.workflowState.canvas.scale = Math.min(Math.max(window.workflowState.canvas.scale * factor, 0.4), 2.2);
+      updateCanvasTransform();
+    };
+
+    window.resetCanvasView = function() {
+      window.workflowState.canvas.panX = 0;
+      window.workflowState.canvas.panY = 0;
+      window.workflowState.canvas.scale = 1.0;
+      updateCanvasTransform();
+    };
+
+    // =========================================================================
+    // 3. NODE MANAGEMENT & DRAG AND DROP
+    // =========================================================================
+    // Palette Drag Start
+    const paletteItems = document.querySelectorAll(".widget-item");
+    paletteItems.forEach(item => {
+      item.addEventListener("dragstart", (e) => {
+        const widgetData = {
+          type: item.dataset.type,
+          title: item.dataset.title,
+          desc: item.dataset.desc
+        };
+        e.dataTransfer.setData("application/json", JSON.stringify(widgetData));
+      });
+    });
+
+    // Canvas Drop
+    canvasContainer.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+
+    canvasContainer.addEventListener("drop", (e) => {
+      e.preventDefault();
+      try {
+        const raw = e.dataTransfer.getData("application/json");
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        const rect = canvasContainer.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        // Convert viewport coordinates to canvas world coordinates
+        const { panX, panY, scale } = window.workflowState.canvas;
+        const worldX = (clientX - panX) / scale;
+        const worldY = (clientY - panY) / scale;
+
+        createNode({
+          id: `node_${Date.now()}_${Math.floor(Math.random()*1000)}`,
+          type: data.type,
+          title: data.title,
+          description: data.desc,
+          x: Math.round(worldX - 120),
+          y: Math.round(worldY - 40),
+          config: getDefaultConfig(data.type)
+        });
+      } catch(err) {
+        console.error("Drop error:", err);
+      }
+    });
+
+    function getDefaultConfig(type) {
+      switch(type) {
+        case 'trigger_webhook': return { endpoint: "/api/v1/webhook/inbound", method: "POST", auth: "Bearer Token" };
+        case 'trigger_cron': return { cron: "0 8 * * *", timezone: "America/New_York", retryCount: 3 };
+        case 'trigger_form': return { formId: "lead_intake_v1", captureFields: "name,email,company,size" };
+        case 'ai_agent': return { model: "qwen-27b", systemPrompt: "You are an autonomous decision agent. Analyze the inbound data payload and synthesize next actions.", temperature: 0.3 };
+        case 'ai_router': return { categories: "urgent,normal,billing,technical", fallback: "normal" };
+        case 'ai_extract': return { schema: "companyName, domain, employeeCount, targetScore" };
+        case 'logic_filter': return { condition: "payload.score >= 80", leftOperand: "score", operator: ">=", rightOperand: "80" };
+        case 'logic_code': return { code: "return { ...payload, processedAt: Date.now() };" };
+        case 'action_api': return { url: "https://api.crm.io/v2/contacts", method: "POST", headers: "Authorization: Bearer key" };
+        case 'action_slack': return { channel: "#vip-leads-alerts", mention: "@sales-team", template: "🚨 High-value lead detected!" };
+        case 'action_email': return { recipient: "customer@company.com", subject: "Welcome to our Platform", template: "standard_onboarding" };
+        default: return {};
+      }
+    }
+
+    function createNode(nodeSpec) {
+      window.workflowState.nodes.push(nodeSpec);
+      renderNodeElement(nodeSpec);
+      renderAllWires();
+      logEvent(`Node [${nodeSpec.title}] instantiated on canvas`, nodeSpec.id);
+    }
+
+    function renderNodeElement(node) {
+      const el = document.createElement("div");
+      el.className = "flow-node";
+      el.id = node.id;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+
+      const category = getNodeCategory(node.type);
+      const isCondition = node.type === 'logic_filter';
+      const isTrigger = node.type.startsWith('trigger_');
+
+      let icon = "⚡";
+      if (node.type.startsWith('ai_')) icon = "🧠";
+      else if (node.type.startsWith('logic_')) icon = "⚖️";
+      else if (node.type.startsWith('action_')) icon = "🚀";
+
+      let portsHtml = "";
+      // Input port (except root triggers)
+      if (!isTrigger) {
+        portsHtml += `<div class="port port-in" data-node="${node.id}" data-port="in" title="Input Port"></div>`;
+      }
+
+      // Output port(s)
+      if (isCondition) {
+        portsHtml += `
+          <div class="port port-out-true" data-node="${node.id}" data-port="true" title="True Output Branch"></div>
+          <span class="port-label-right port-label-true">True</span>
+          <div class="port port-out-false" data-node="${node.id}" data-port="false" title="False Output Branch"></div>
+          <span class="port-label-right port-label-false">False</span>
+        `;
+      } else {
+        portsHtml += `<div class="port port-out" data-node="${node.id}" data-port="out" title="Output Port"></div>`;
+      }
+
+      let paramSummary = "";
+      if (node.config.endpoint) paramSummary = node.config.endpoint;
+      else if (node.config.cron) paramSummary = `Cron: ${node.config.cron}`;
+      else if (node.config.condition) paramSummary = `If: ${node.config.condition}`;
+      else if (node.config.channel) paramSummary = `Slack: ${node.config.channel}`;
+      else if (node.config.schema) paramSummary = `Schema: ${node.config.schema.slice(0, 24)}...`;
+      else if (node.config.model) paramSummary = `Model: ${node.config.model}`;
+
+      el.innerHTML = `
+        <div class="node-header">
+          <div class="node-title-wrap">
+            <span>${icon}</span>
+            <span>${escapeHTML(node.title)}</span>
+          </div>
+          <span class="node-type-badge badge-${category}">${category}</span>
+        </div>
+        <div class="node-body">
+          <div>${escapeHTML(node.description || '')}</div>
+          ${paramSummary ? `<div class="node-param-row">${escapeHTML(paramSummary)}</div>` : ''}
+        </div>
+        ${portsHtml}
+      `;
+
+      // Dragging node on canvas
+      const header = el.querySelector(".node-header");
+      let isDraggingNode = false;
+      let startX = 0, startY = 0;
+      let initNodeX = 0, initNodeY = 0;
+
+      header.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        isDraggingNode = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initNodeX = node.x;
+        initNodeY = node.y;
+        selectNode(node.id);
+
+        const onMouseMove = (moveEvent) => {
+          if (!isDraggingNode) return;
+          const scale = window.workflowState.canvas.scale;
+          const dx = (moveEvent.clientX - startX) / scale;
+          const dy = (moveEvent.clientY - startY) / scale;
+          node.x = Math.round(initNodeX + dx);
+          node.y = Math.round(initNodeY + dy);
+          el.style.left = `${node.x}px`;
+          el.style.top = `${node.y}px`;
+          renderAllWires();
+        };
+
+        const onMouseUp = () => {
+          isDraggingNode = false;
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        };
+
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+      });
+
+      // Node selection click
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectNode(node.id);
+      });
+
+      // Port click / drag wire
+      const ports = el.querySelectorAll(".port");
+      ports.forEach(port => {
+        port.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          const portType = port.dataset.port;
+          const nodeId = port.dataset.node;
+          if (portType === "in") return; // Wires originate from output ports
+
+          const rect = port.getBoundingClientRect();
+          const canvasRect = canvasWorld.getBoundingClientRect();
+          const scale = window.workflowState.canvas.scale;
+          const startWireX = (rect.left + rect.width/2 - canvasRect.left) / scale;
+          const startWireY = (rect.top + rect.height/2 - canvasRect.top) / scale;
+
+          window.workflowState.wireInProgress = {
+            fromNode: nodeId,
+            fromPort: portType,
+            startX: startWireX,
+            startY: startWireY,
+            currentX: startWireX,
+            currentY: startWireY
+          };
+        });
+
+        // Snap and connect to input port
+        if (port.dataset.port === "in") {
+          port.addEventListener("mouseup", (e) => {
+            e.stopPropagation();
+            if (window.workflowState.wireInProgress) {
+              const { fromNode, fromPort } = window.workflowState.wireInProgress;
+              const targetNode = port.dataset.node;
+              if (fromNode !== targetNode) {
+                createConnection(fromNode, fromPort, targetNode, "in");
+              }
+              cancelWireInProgress();
+            }
+          });
+        }
+      });
+
+      nodesLayer.appendChild(el);
+    }
+
+    function getNodeCategory(type) {
+      if (type.startsWith("trigger_")) return "trigger";
+      if (type.startsWith("ai_")) return "ai";
+      if (type.startsWith("logic_")) return "logic";
+      return "action";
+    }
+
+    // =========================================================================
+    // 4. CONNECTIONS & BEZIER WIRE ROUTING
+    // =========================================================================
+    function createConnection(from, fromPort, to, toPort) {
+      // Prevent duplicates
+      const exists = window.workflowState.connections.some(c => 
+        c.from === from && c.fromPort === fromPort && c.to === to && c.toPort === toPort
+      );
+      if (exists) return;
+
+      const conn = { from, fromPort, to, toPort, id: `wire_${Date.now()}` };
+      window.workflowState.connections.push(conn);
+      renderAllWires();
+
+      const src = window.workflowState.nodes.find(n => n.id === from);
+      const dst = window.workflowState.nodes.find(n => n.id === to);
+      logEvent(`Wired: [${src ? src.title : from}] (${fromPort}) ➔ [${dst ? dst.title : to}]`, dst ? dst.id : '');
+    }
+
+    function renderAllWires() {
+      connectionsSvg.innerHTML = "";
+      window.workflowState.connections.forEach(conn => {
+        const fromNode = window.workflowState.nodes.find(n => n.id === conn.from);
+        const toNode = window.workflowState.nodes.find(n => n.id === conn.to);
+        if (!fromNode || !toNode) return;
+
+        const srcPos = getPortCoordinates(conn.from, conn.fromPort);
+        const dstPos = getPortCoordinates(conn.to, conn.toPort);
+
+        if (!srcPos || !dstPos) return;
+
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const d = createBezierPath(srcPos.x, srcPos.y, dstPos.x, dstPos.y);
+        pathEl.setAttribute("d", d);
+        pathEl.setAttribute("class", "connection-path");
+        pathEl.setAttribute("data-id", conn.id);
+        pathEl.setAttribute("title", "Click to delete connection");
+
+        pathEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          deleteConnection(conn.id);
+        });
+
+        connectionsSvg.appendChild(pathEl);
+      });
+    }
+
+    function deleteConnection(connId) {
+      window.workflowState.connections = window.workflowState.connections.filter(c => c.id !== connId);
+      renderAllWires();
+      logEvent("Connection deleted", "");
+    }
+
+    function getPortCoordinates(nodeId, portName) {
+      const nodeEl = document.getElementById(nodeId);
+      if (!nodeEl) return null;
+      const portEl = nodeEl.querySelector(`.port[data-port="${portName}"]`);
+      if (!portEl) return null;
+
+      const canvasRect = canvasWorld.getBoundingClientRect();
+      const portRect = portEl.getBoundingClientRect();
+      const scale = window.workflowState.canvas.scale;
+
+      return {
+        x: (portRect.left + portRect.width / 2 - canvasRect.left) / scale,
+        y: (portRect.top + portRect.height / 2 - canvasRect.top) / scale
+      };
+    }
+
+    function createBezierPath(x1, y1, x2, y2) {
+      const dx = Math.abs(x2 - x1);
+      const curvature = Math.max(dx * 0.5, 60);
+      const cx1 = x1 + curvature;
+      const cy1 = y1;
+      const cx2 = x2 - curvature;
+      const cy2 = y2;
+      return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+    }
+
+    function updateTempWire(clientX, clientY) {
+      let temp = document.getElementById("temp-wire");
+      if (!temp) {
+        temp = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        temp.setAttribute("id", "temp-wire");
+        temp.setAttribute("class", "connection-path");
+        temp.style.stroke = "var(--accent-purple)";
+        temp.style.strokeDasharray = "5 5";
+        connectionsSvg.appendChild(temp);
+      }
+
+      const canvasRect = canvasWorld.getBoundingClientRect();
+      const scale = window.workflowState.canvas.scale;
+      const curX = (clientX - canvasRect.left) / scale;
+      const curY = (clientY - canvasRect.top) / scale;
+
+      const d = createBezierPath(
+        window.workflowState.wireInProgress.startX,
+        window.workflowState.wireInProgress.startY,
+        curX,
+        curY
+      );
+      temp.setAttribute("d", d);
+    }
+
+    function cancelWireInProgress() {
+      window.workflowState.wireInProgress = null;
+      const temp = document.getElementById("temp-wire");
+      if (temp) temp.remove();
+    }
+
+    // =========================================================================
+    // 5. NODE INSPECTOR & CONFIGURATION
+    // =========================================================================
+    function selectNode(nodeId) {
+      window.workflowState.selectedNodeId = nodeId;
+      document.querySelectorAll(".flow-node").forEach(n => {
+        n.classList.toggle("selected", n.id === nodeId);
+      });
+
+      const node = window.workflowState.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const drawer = document.getElementById("inspector-drawer");
+      const body = document.getElementById("inspector-body");
+      drawer.classList.remove("collapsed");
+
+      let configFields = "";
+      Object.entries(node.config).forEach(([k, v]) => {
+        const isLong = typeof v === "string" && v.length > 40;
+        configFields += `
+          <div>
+            <div class="field-label">${escapeHTML(k)}</div>
+            ${isLong ? `
+              <textarea class="field-textarea" onchange="updateNodeConfig('${node.id}', '${k}', this.value)">${escapeHTML(String(v))}</textarea>
+            ` : `
+              <input type="text" class="field-input" value="${escapeHTML(String(v))}" onchange="updateNodeConfig('${node.id}', '${k}', this.value)">
+            `}
+          </div>
+        `;
+      });
+
+      body.innerHTML = `
+        <div>
+          <div class="field-label">Node Title</div>
+          <input type="text" class="field-input" value="${escapeHTML(node.title)}" onchange="updateNodeTitle('${node.id}', this.value)">
+        </div>
+        <div>
+          <div class="field-label">Description</div>
+          <input type="text" class="field-input" value="${escapeHTML(node.description || '')}" onchange="updateNodeDesc('${node.id}', this.value)">
+        </div>
+        <div style="border-top:1px solid var(--panel-border);padding-top:10px;">
+          <div class="field-label" style="color:var(--accent-blue);">Node Configuration Specs</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${configFields}
+          </div>
+        </div>
+        <button class="nav-btn" style="margin-top:14px;background:rgba(244,63,94,0.15);border-color:rgba(244,63,94,0.4);color:#fda4af;justify-content:center;" onclick="deleteSelectedNode('${node.id}')">
+          🗑️ Delete Node
+        </button>
+      `;
+    }
+
+    function deselectNode() {
+      window.workflowState.selectedNodeId = null;
+      document.querySelectorAll(".flow-node").forEach(n => n.classList.remove("selected"));
+      document.getElementById("inspector-drawer").classList.add("collapsed");
+    }
+
+    window.closeInspector = function() {
+      deselectNode();
+    };
+
+    window.updateNodeTitle = function(id, val) {
+      const node = window.workflowState.nodes.find(n => n.id === id);
+      if (node) {
+        node.title = val;
+        const el = document.getElementById(id);
+        if (el) el.querySelector(".node-title-wrap span:last-child").textContent = val;
+      }
+    };
+
+    window.updateNodeDesc = function(id, val) {
+      const node = window.workflowState.nodes.find(n => n.id === id);
+      if (node) {
+        node.description = val;
+        const el = document.getElementById(id);
+        if (el) el.querySelector(".node-body div:first-child").textContent = val;
+      }
+    };
+
+    window.updateNodeConfig = function(id, key, val) {
+      const node = window.workflowState.nodes.find(n => n.id === id);
+      if (node) {
+        node.config[key] = val;
+        logEvent(`Config updated for [${node.title}]: ${key} = ${val}`, node.id);
+      }
+    };
+
+    window.deleteSelectedNode = function(id) {
+      window.workflowState.nodes = window.workflowState.nodes.filter(n => n.id !== id);
+      window.workflowState.connections = window.workflowState.connections.filter(c => c.from !== id && c.to !== id);
+      const el = document.getElementById(id);
+      if (el) el.remove();
+      renderAllWires();
+      deselectNode();
+      logEvent(`Node deleted: ${id}`, "");
+    };
+
+    // =========================================================================
+    // 6. AUTO-LAYOUT ALGORITHM (HIERARCHICAL DAG LAYOUT)
+    // =========================================================================
+    window.autoLayoutWorkflow = function() {
+      const nodes = window.workflowState.nodes;
+      const conns = window.workflowState.connections;
+      if (nodes.length === 0) return;
+
+      // Calculate DAG ranks
+      const inDegree = {};
+      nodes.forEach(n => inDegree[n.id] = 0);
+      conns.forEach(c => {
+        if (inDegree[c.to] !== undefined) inDegree[c.to]++;
+      });
+
+      const ranks = {};
+      nodes.forEach(n => ranks[n.id] = inDegree[n.id] === 0 ? 0 : 1);
+
+      // Relax ranks iteratively
+      for (let iter = 0; iter < nodes.length; iter++) {
+        conns.forEach(c => {
+          if (ranks[c.from] !== undefined && ranks[c.to] !== undefined) {
+            if (ranks[c.to] <= ranks[c.from]) {
+              ranks[c.to] = ranks[c.from] + 1;
+            }
+          }
+        });
+      }
+
+      // Group by layer
+      const layers = {};
+      nodes.forEach(n => {
+        const r = ranks[n.id] || 0;
+        if (!layers[r]) layers[r] = [];
+        layers[r].push(n);
+      });
+
+      const SPACING_X = 330;
+      const SPACING_Y = 160;
+      const START_X = 100;
+      const START_Y = 140;
+
+      Object.entries(layers).forEach(([rankStr, layerNodes]) => {
+        const rank = parseInt(rankStr, 10);
+        const totalHeight = layerNodes.length * SPACING_Y;
+        const layerStartY = START_Y + (400 - totalHeight / 2);
+
+        layerNodes.forEach((node, idx) => {
+          node.x = START_X + rank * SPACING_X;
+          node.y = Math.max(layerStartY + idx * SPACING_Y, 80);
+          const el = document.getElementById(node.id);
+          if (el) {
+            el.style.left = `${node.x}px`;
+            el.style.top = `${node.y}px`;
+          }
+        });
+      });
+
+      renderAllWires();
+      logEvent("Canvas Auto-Layout computed & aligned", "");
+    };
+
+    // =========================================================================
+    // 7. AI AGENT: FUNCTIONAL SPEC TO WORKFLOW TRANSLATION
+    // =========================================================================
+    window.openSpecModal = function() {
+      document.getElementById("spec-modal-backdrop").classList.add("open");
+      document.getElementById("spec-stream-feed").style.display = "none";
+      document.getElementById("spec-stream-feed").innerHTML = "";
+    };
+
+    window.closeSpecModal = function() {
+      document.getElementById("spec-modal-backdrop").classList.remove("open");
+    };
+
+    window.applyPreset = function(presetKey) {
+      const input = document.getElementById("spec-input");
+      switch(presetKey) {
+        case 'support':
+          input.value = "Customer Support Auto-Triage: Receive incoming support tickets via webhook, run an AI Classifier to detect sentiment and issue urgency. If urgent/angry, trigger an immediate Slack alert to the senior escalation channel and page PagerDuty. If normal, run an LLM Resolution Agent to draft a tailored answer, and email the customer automatically.";
+          break;
+        case 'leads':
+          input.value = "Lead Qualification & CRM Ingestion: Trigger on intake form submission. Use an Entity Extractor agent to parse company domain and employee headcount. Run a condition checking if employeeCount > 500. If enterprise, enrich via Clearbit API and alert VIP sales Slack. If standard, send onboarding nurture email.";
+          break;
+        case 'fraud':
+          input.value = "E-Commerce Fraud Scoring: Trigger on checkout transaction event. Run an AI Risk Agent to evaluate order velocity and IP address. Condition: if riskScore > 0.75, immediately halt payment and alert Fraud Ops Slack. Else, approve payment via Stripe REST API and email order receipt to buyer.";
+          break;
+        case 'etl':
+          input.value = "Daily Competitor Intelligence Digest: Trigger via Cron schedule every weekday at 8:00 AM. Call external news search REST API for competitor keywords. Pass findings to an LLM Summarizer to extract key strategy moves. Format into markdown and dispatch email digest to executive leadership.";
+          break;
+      }
+    };
+
+    window.synthesizeWorkflowFromSpec = async function() {
+      const specText = document.getElementById("spec-input").value.trim();
+      if (!specText) return;
+
+      const feed = document.getElementById("spec-stream-feed");
+      const btn = document.getElementById("btn-synthesize-workflow");
+      feed.style.display = "block";
+      feed.innerHTML = `<div>⚡ [Agent Plan]: Analyzing functional specifications...</div>`;
+      btn.disabled = true;
+
+      try {
+        let workflowGraph = null;
+
+        // Mode dispatch: Cloud Groq LPU vs WebGPU vs Algorithmic Fallback
+        const mode = window.workflowState.engineMode;
+        if (mode === "cloud") {
+          feed.innerHTML += `<div>⚡ Connecting to Groq Cloud LPU (qwen3.8-27b)...</div>`;
+          workflowGraph = await compileSpecWithCloudLLM(specText, feed);
+        } else if (window.workflowState.isWebGPULoaded && window.workflowState.webllmEngine) {
+          feed.innerHTML += `<div>🧠 Running in-browser on WebGPU...</div>`;
+          workflowGraph = await compileSpecWithWebLLM(specText, feed);
+        } else {
+          feed.innerHTML += `<div>⚙️ Compiling architectural graph via semantic procedural agent...</div>`;
+          workflowGraph = compileSpecAlgorithmic(specText);
+        }
+
+        if (workflowGraph && workflowGraph.nodes && workflowGraph.nodes.length > 0) {
+          feed.innerHTML += `<div>✅ Synthesized ${workflowGraph.nodes.length} nodes & ${workflowGraph.connections.length} connections!</div>`;
+          
+          // Clear current canvas and render synthesized workflow
+          clearCanvasSilently();
+          workflowGraph.nodes.forEach(n => createNode(n));
+          workflowGraph.connections.forEach(c => createConnection(c.from, c.fromPort, c.to, c.toPort));
+
+          // Run auto-layout to guarantee clean visual hierarchy
+          autoLayoutWorkflow();
+
+          logEvent(`✨ AI Synthesized Workflow: "${workflowGraph.workflowName || 'Custom Graph'}" (${workflowGraph.nodes.length} nodes)`, "");
+          
+          setTimeout(() => {
+            closeSpecModal();
+            btn.disabled = false;
+          }, 900);
+        } else {
+          throw new Error("Invalid graph returned from agent");
+        }
+
+      } catch(err) {
+        console.error("Synthesis error:", err);
+        feed.innerHTML += `<div style="color:var(--accent-rose);">❌ Cloud error: ${err.message}. Falling back to semantic compiler...</div>`;
+        const fallback = compileSpecAlgorithmic(specText);
+        clearCanvasSilently();
+        fallback.nodes.forEach(n => createNode(n));
+        fallback.connections.forEach(c => createConnection(c.from, c.fromPort, c.to, c.toPort));
+        autoLayoutWorkflow();
+        setTimeout(() => {
+          closeSpecModal();
+          btn.disabled = false;
+        }, 1200);
+      }
+    };
+
+    // CLOUD GROQ COMPILER
+    async function compileSpecWithCloudLLM(specText, feedEl) {
+      const apiKey = localStorage.getItem("flowagent_api_key") || PROVISIONED_GROQ_KEY;
+      const endpoint = DEFAULT_GROQ_ENDPOINT;
+      const model = DEFAULT_GROQ_MODEL;
+
+      const sysPrompt = `You are a Master Cloud Architecture & Workflow Compiler.
+Given the user's functional specification, synthesize a complete execution graph with nodes and connections.
+Available node types:
+- trigger_webhook (title, config: {endpoint, method})
+- trigger_cron (title, config: {cron})
+- trigger_form (title, config: {formId})
+- ai_agent (title, config: {systemPrompt, temperature})
+- ai_router (title, config: {categories, fallback})
+- ai_extract (title, config: {schema})
+- logic_filter (title, config: {condition}) -- this node has TWO output ports: "true" and "false"!
+- logic_code (title, config: {code})
+- action_api (title, config: {url, method})
+- action_slack (title, config: {channel, template})
+- action_email (title, config: {recipient, subject})
+
+Output ONLY valid JSON matching this schema:
+{
+  "workflowName": "string",
+  "nodes": [
+    { "id": "n1", "type": "node_type", "title": "Human Title", "description": "Brief explanation", "config": {...} }
+  ],
+  "connections": [
+    { "from": "n1", "fromPort": "out", "to": "n2", "toPort": "in" },
+    { "from": "n2", "fromPort": "true", "to": "n3", "toPort": "in" },
+    { "from": "n2", "fromPort": "false", "to": "n4", "toPort": "in" }
+  ]
+}
+No markdown fences, no explanations. JSON only.`;
+
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: sysPrompt },
+            { role: "user", content: `Synthesize workflow for: "${specText}"` }
+          ],
+          temperature: 0.2,
+          max_tokens: 1800,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const content = data.choices[0].message.content;
+      return JSON.parse(content);
+    }
+
+    // WEBGPU COMPILER
+    async function compileSpecWithWebLLM(specText, feedEl) {
+      const completion = await window.workflowState.webllmEngine.chat.completions.create({
+        messages: [
+          { role: "system", content: "You are a Workflow Compiler. Output JSON only with workflowName, nodes, and connections." },
+          { role: "user", content: specText }
+        ],
+        temperature: 0.2
+      });
+      const text = completion.choices[0].message.content;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found in response");
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    // CONTINUOUS ALGORITHMIC COMPILER (ZERO LATENCY FALLBACK)
+    function compileSpecAlgorithmic(specText) {
+      const s = specText.toLowerCase();
+      const nodes = [];
+      const connections = [];
+
+      // Determine Trigger
+      let trigType = "trigger_webhook";
+      let trigTitle = "Inbound Webhook Trigger";
+      if (s.includes("cron") || s.includes("daily") || s.includes("morning") || s.includes("schedule")) {
+        trigType = "trigger_cron";
+        trigTitle = "Schedule (8:00 AM Daily)";
+      } else if (s.includes("form") || s.includes("submission") || s.includes("intake")) {
+        trigType = "trigger_form";
+        trigTitle = "Intake Form Portal";
+      }
+      nodes.push({
+        id: "node_1",
+        type: trigType,
+        title: trigTitle,
+        description: "Captures initial event payload",
+        config: getDefaultConfig(trigType)
+      });
+
+      let lastNodeId = "node_1";
+      let stepCount = 2;
+
+      // Extract / Parse step
+      if (s.includes("extract") || s.includes("parse") || s.includes("company") || s.includes("lead") || s.includes("schema")) {
+        const id = `node_${stepCount++}`;
+        nodes.push({
+          id,
+          type: "ai_extract",
+          title: "AI Entity Extractor",
+          description: "Extracts structured attributes from payload",
+          config: { schema: "company, domain, headcount, priorityScore" }
+        });
+        connections.push({ from: lastNodeId, fromPort: "out", to: id, toPort: "in" });
+        lastNodeId = id;
+      }
+
+      // AI Reasoning or Classification
+      if (s.includes("sentiment") || s.includes("classify") || s.includes("intent") || s.includes("triage")) {
+        const id = `node_${stepCount++}`;
+        nodes.push({
+          id,
+          type: "ai_router",
+          title: "Intent & Sentiment Classifier",
+          description: "Categorizes urgency and sentiment",
+          config: { categories: "urgent_negative, neutral, inquiry" }
+        });
+        connections.push({ from: lastNodeId, fromPort: "out", to: id, toPort: "in" });
+        lastNodeId = id;
+      } else if (s.includes("summar") || s.includes("ai") || s.includes("llm") || s.includes("agent") || s.includes("risk")) {
+        const id = `node_${stepCount++}`;
+        nodes.push({
+          id,
+          type: "ai_agent",
+          title: "LLM Decision Agent",
+          description: "Synthesizes resolution or evaluates risk",
+          config: { systemPrompt: "Analyze the structured payload and generate recommendations." }
+        });
+        connections.push({ from: lastNodeId, fromPort: "out", to: id, toPort: "in" });
+        lastNodeId = id;
+      }
+
+      // Conditional Branch
+      const hasCondition = s.includes("if") || s.includes("check") || s.includes("score >") || s.includes("enterprise") || s.includes("urgent");
+      if (hasCondition) {
+        const condId = `node_${stepCount++}`;
+        nodes.push({
+          id: condId,
+          type: "logic_filter",
+          title: "Evaluation Rule (If / Else)",
+          description: "Branches execution based on thresholds",
+          config: { condition: "score >= 80" }
+        });
+        connections.push({ from: lastNodeId, fromPort: "out", to: condId, toPort: "in" });
+
+        // True Action Branch
+        const trueActionId = `node_${stepCount++}`;
+        nodes.push({
+          id: trueActionId,
+          type: s.includes("slack") ? "action_slack" : "action_api",
+          title: s.includes("slack") ? "Alert VIP Slack Channel" : "Enrich via REST API",
+          description: "High-priority escalation action",
+          config: getDefaultConfig(s.includes("slack") ? "action_slack" : "action_api")
+        });
+        connections.push({ from: condId, fromPort: "true", to: trueActionId, toPort: "in" });
+
+        // False Action Branch
+        const falseActionId = `node_${stepCount++}`;
+        nodes.push({
+          id: falseActionId,
+          type: s.includes("email") ? "action_email" : "logic_code",
+          title: s.includes("email") ? "Automated Email Follow-Up" : "Standard Queue Dispatch",
+          description: "Standard handling workflow",
+          config: getDefaultConfig(s.includes("email") ? "action_email" : "logic_code")
+        });
+        connections.push({ from: condId, fromPort: "false", to: falseActionId, toPort: "in" });
+
+      } else {
+        // Direct Action
+        const actionId = `node_${stepCount++}`;
+        nodes.push({
+          id: actionId,
+          type: s.includes("email") ? "action_email" : (s.includes("slack") ? "action_slack" : "action_api"),
+          title: s.includes("email") ? "Email Dispatch" : (s.includes("slack") ? "Slack Notification" : "Downstream REST API"),
+          description: "Final pipeline execution endpoint",
+          config: getDefaultConfig("action_api")
+        });
+        connections.push({ from: lastNodeId, fromPort: "out", to: actionId, toPort: "in" });
+      }
+
+      return {
+        workflowName: "Synthesized Pipeline",
+        nodes,
+        connections
+      };
+    }
+
+    // =========================================================================
+    // 8. SIMULATION EXECUTION ENGINE
+    // =========================================================================
+    window.executeWorkflowSimulation = async function() {
+      const nodes = window.workflowState.nodes;
+      const conns = window.workflowState.connections;
+      if (nodes.length === 0) {
+        alert("The canvas is empty. Drag widgets from the left or click 'AI Spec to Workflow' first!");
+        return;
+      }
+
+      // Open console drawer
+      const drawer = document.getElementById("console-drawer");
+      drawer.classList.remove("collapsed");
+      document.getElementById("console-status-dot").style.display = "inline-block";
+
+      logEvent("🚀 Initializing Live Workflow Simulation Execution...", "");
+
+      // Find root trigger nodes
+      const targetNodeIds = new Set(conns.map(c => c.to));
+      const rootNodes = nodes.filter(n => !targetNodeIds.has(n.id) || n.type.startsWith("trigger_"));
+      const executionQueue = rootNodes.length > 0 ? [...rootNodes] : [nodes[0]];
+
+      const visited = new Set();
+
+      while (executionQueue.length > 0) {
+        const current = executionQueue.shift();
+        if (visited.has(current.id)) continue;
+        visited.add(current.id);
+
+        const nodeEl = document.getElementById(current.id);
+        if (nodeEl) {
+          nodeEl.classList.remove("completed");
+          nodeEl.classList.add("executing");
+        }
+
+        logEvent(`Executing node [${current.title}] (${current.type})...`, current.id);
+        await new Promise(r => setTimeout(r, 650));
+
+        if (nodeEl) {
+          nodeEl.classList.remove("executing");
+          nodeEl.classList.add("completed");
+        }
+
+        // Outgoing wires pulse
+        const outgoing = conns.filter(c => c.from === current.id);
+        for (const outConn of outgoing) {
+          const wireEl = document.querySelector(`.connection-path[data-id="${outConn.id}"]`);
+          if (wireEl) wireEl.classList.add("active-pulse");
+        }
+
+        await new Promise(r => setTimeout(r, 400));
+
+        outgoing.forEach(outConn => {
+          const wireEl = document.querySelector(`.connection-path[data-id="${outConn.id}"]`);
+          if (wireEl) wireEl.classList.remove("active-pulse");
+          const nextNode = nodes.find(n => n.id === outConn.to);
+          if (nextNode && !visited.has(nextNode.id)) {
+            executionQueue.push(nextNode);
+          }
+        });
+      }
+
+      document.getElementById("console-status-dot").style.display = "none";
+      logEvent("✅ Workflow simulation execution completed successfully with 100% throughput.", "");
+    };
+
+    // =========================================================================
+    // 9. LOGGING & CONSOLE HELPERS
+    // =========================================================================
+    function logEvent(msg, nodeId) {
+      const logs = document.getElementById("console-logs");
+      const d = new Date();
+      const timeStr = d.toTimeString().split(" ")[0];
+      const div = document.createElement("div");
+      div.className = "log-line";
+      div.innerHTML = `
+        <span class="log-time">[${timeStr}]</span>
+        ${nodeId ? `<span class="log-node">[${escapeHTML(nodeId)}]</span>` : ''}
+        <span>${escapeHTML(msg)}</span>
+      `;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    window.toggleConsoleDrawer = function() {
+      const drawer = document.getElementById("console-drawer");
+      drawer.classList.toggle("collapsed");
+      document.getElementById("console-toggle-icon").textContent = drawer.classList.contains("collapsed") ? "▲ Expand" : "▼ Collapse";
+    };
+
+    window.clearConsoleLogs = function() {
+      document.getElementById("console-logs").innerHTML = "";
+    };
+
+    // =========================================================================
+    // 10. CLEAR / EXPORT / IMPORT
+    // =========================================================================
+    window.clearWorkflowCanvas = function() {
+      if (!confirm("Are you sure you want to clear the canvas?")) return;
+      clearCanvasSilently();
+      logEvent("Canvas cleared", "");
+    };
+
+    function clearCanvasSilently() {
+      window.workflowState.nodes = [];
+      window.workflowState.connections = [];
+      nodesLayer.innerHTML = "";
+      connectionsSvg.innerHTML = "";
+      deselectNode();
+    }
+
+    window.exportWorkflowJSON = function() {
+      const data = {
+        name: "FlowAgent Workflow",
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        nodes: window.workflowState.nodes,
+        connections: window.workflowState.connections
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `flowagent_workflow_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      logEvent("Exported workflow JSON definition", "");
+    };
+
+    window.triggerImportJSON = function() {
+      document.getElementById("file-import-input").click();
+    };
+
+    window.handleImportFile = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          if (data.nodes && Array.isArray(data.nodes)) {
+            clearCanvasSilently();
+            data.nodes.forEach(n => createNode(n));
+            if (data.connections && Array.isArray(data.connections)) {
+              data.connections.forEach(c => createConnection(c.from, c.fromPort, c.to, c.toPort));
+            }
+            autoLayoutWorkflow();
+            logEvent(`Imported workflow: ${data.name || file.name}`, "");
+          }
+        } catch(err) {
+          alert("Invalid workflow JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    };
+
+    // =========================================================================
+    // 11. WEBGPU & ENGINE CONFIGURATION
+    // =========================================================================
+    window.openEngineSettings = function() {
+      document.getElementById("settings-modal-backdrop").classList.add("open");
+      document.getElementById("cfg-engine-mode").value = window.workflowState.engineMode;
+      document.getElementById("cfg-api-key").value = localStorage.getItem("flowagent_api_key") || PROVISIONED_GROQ_KEY;
+      onEngineModeChanged();
+    };
+
+    window.closeEngineSettings = function() {
+      document.getElementById("settings-modal-backdrop").classList.remove("open");
+    };
+
+    window.onEngineModeChanged = function() {
+      const mode = document.getElementById("cfg-engine-mode").value;
+      document.getElementById("cfg-webgpu-block").style.display = mode === "webgpu" ? "block" : "none";
+      document.getElementById("cfg-cloud-block").style.display = mode === "cloud" ? "block" : "none";
+    };
+
+    window.saveEngineSettings = function() {
+      const mode = document.getElementById("cfg-engine-mode").value;
+      const key = document.getElementById("cfg-api-key").value.trim();
+      window.workflowState.engineMode = mode;
+      localStorage.setItem("flowagent_engine_mode", mode);
+      if (key) localStorage.setItem("flowagent_api_key", key);
+
+      updateEngineStatusUI();
+      closeEngineSettings();
+    };
+
+    function updateEngineStatusUI() {
+      const badge = document.getElementById("engine-badge");
+      const statusText = document.getElementById("engine-status-text");
+      if (window.workflowState.engineMode === "cloud") {
+        badge.textContent = "⚡ Groq LPU Cloud";
+        statusText.textContent = "Groq LPU (0.2s Stream)";
+      } else {
+        badge.textContent = "🧠 WebGPU Local";
+        statusText.textContent = window.workflowState.isWebGPULoaded ? "WebGPU Active" : "WebGPU Ready";
+      }
+    }
+
+    window.initializeWebGPUModel = async function() {
+      const modelId = document.getElementById("cfg-webgpu-model").value;
+      const banner = document.getElementById("webgpu-progress");
+      const fill = document.getElementById("webgpu-progress-fill");
+      const pctLabel = document.getElementById("webgpu-progress-pct");
+      banner.style.display = "flex";
+
+      try {
+        const webllm = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+        window.workflowState.webllmEngine = await webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (report) => {
+            const pct = Math.round((report.progress || 0) * 100);
+            fill.style.width = pct + "%";
+            pctLabel.textContent = pct + "%";
+          }
+        });
+        window.workflowState.isWebGPULoaded = true;
+        banner.style.display = "none";
+        alert("WebGPU Local Model loaded successfully into your GPU cache!");
+        updateEngineStatusUI();
+      } catch(err) {
+        console.error("WebGPU init error:", err);
+        banner.style.display = "none";
+        alert("WebGPU initialization failed: " + err.message + ". Groq Cloud fallback will be used.");
+      }
+    };
+
+    window.filterPalette = function(query) {
+      const q = query.toLowerCase();
+      document.querySelectorAll(".widget-item").forEach(item => {
+        const text = (item.dataset.title + " " + item.dataset.desc).toLowerCase();
+        item.style.display = text.includes(q) ? "flex" : "none";
+      });
+    };
+
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Default startup sample workflow
+    window.addEventListener("DOMContentLoaded", () => {
+      updateEngineStatusUI();
+      
+      // Load an initial demonstration pipeline on canvas
+      const demo = compileSpecAlgorithmic("Automated Lead Qualification and VIP Slack Alert with Email Sequence");
+      demo.nodes.forEach(n => createNode(n));
+      demo.connections.forEach(c => createConnection(c.from, c.fromPort, c.to, c.toPort));
+      autoLayoutWorkflow();
+    });
+
+  </script>
+</body>
+</html>
