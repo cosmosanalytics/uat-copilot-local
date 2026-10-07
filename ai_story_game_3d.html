@@ -752,6 +752,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     let cameraAngleX = 0, cameraAngleY = 0.22;
     let targetCameraAngleX = 0;
     let screenShake = 0;
+    let dynamicCamDist = 14.0;
 
     // Realm and progress states
     let activeBiome = "aether"; // "aether", "city", "forest"
@@ -1268,6 +1269,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       currentSceneGraphJSON = spec;
       clearDynamicWorld();
 
+      activeBiome = "dynamic_world";
       aetherGroup.visible = false;
       cityGroup.visible = false;
       dynamicWorldGroup.visible = true;
@@ -1360,10 +1362,13 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         bbox.getSize(size);
         const maxDim = Math.max(size.x, size.y, size.z, 6);
 
-        // Position player in front of the center of the constructed model
+        // Focal point is the exact center of the constructed model
         playerPos.x = center.x;
-        playerPos.y = Math.max(center.y - size.y * 0.1, 1.2);
-        playerPos.z = center.z + Math.max(maxDim * 1.55, 12.0);
+        playerPos.y = center.y;
+        playerPos.z = center.z;
+
+        // Auto-scale camera orbit distance according to object bounding box
+        dynamicCamDist = Math.max(maxDim * 1.85, 14.0);
 
         // Directly face the subject
         cameraAngleX = 0;
@@ -1372,7 +1377,8 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       } else {
         playerPos.x = 0;
         playerPos.y = 1.2;
-        playerPos.z = 12;
+        playerPos.z = 0;
+        dynamicCamDist = 14.0;
         cameraAngleX = 0;
         targetCameraAngleX = 0;
         cameraAngleY = 0.22;
@@ -1447,12 +1453,13 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       // PARSE NOUN CONSTRUCTS
       const hasTeapot = p.includes("teapot") || p.includes("tea") || p.includes("kettle");
       const hasTurtle = p.includes("turtle") || p.includes("tortoise");
+      const hasHouse = p.includes("house") || p.includes("cottage") || p.includes("cabin") || p.includes("prairie") || p.includes("farm") || p.includes("homestead") || p.includes("barn") || p.includes("village");
+      const hasCastle = p.includes("castle") || p.includes("fortress") || p.includes("keep") || p.includes("citadel") || p.includes("tower");
       const hasCar = p.includes("car") || p.includes("vehicle") || p.includes("drive") || p.includes("truck") || p.includes("auto");
       const hasShip = p.includes("ship") || p.includes("boat") || p.includes("pirate");
       const hasDragon = p.includes("dragon") || p.includes("monster") || p.includes("beast");
       const hasSword = p.includes("sword") || p.includes("blade") || p.includes("weapon");
       const hasDonut = p.includes("donut") || p.includes("doughnut") || p.includes("candy");
-      const hasCastle = p.includes("castle") || p.includes("fortress") || p.includes("keep") || p.includes("tower");
 
       let baseY = 0;
 
@@ -1528,7 +1535,104 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         ];
       }
 
-      // 3. CAR & DRIVING ANATOMY
+      // 3. PRAIRIE HOUSE / HOMESTEAD ANATOMY
+      else if (hasHouse) {
+        realmTitle = "Little House on the Prairie";
+        const houseGroup = {
+          name: "prairie_homestead",
+          pos: [0, 1.8, 0],
+          children: [
+            // Timber Log Walls
+            { name: "house_body", geometry: "box", params: [7.2, 3.6, 8.0], pos: [0, 0, 0], material: { color: "#854d0e", roughness: 0.85 } },
+            // Pitched Gable Shingle Roof
+            { name: "shingle_roof", geometry: "cone", params: [6.4, 2.8, 4], pos: [0, 3.1, 0], rot: [0, Math.PI / 4, 0], material: { color: "#9a3412", roughness: 0.9, flatShading: true } },
+            // Fieldstone Chimney
+            { name: "chimney", geometry: "box", params: [1.2, 5.6, 1.2], pos: [2.9, 1.9, 1.6], material: { color: "#475569", roughness: 0.95, flatShading: true } },
+            // Front Door
+            { name: "front_door", geometry: "box", params: [1.4, 2.4, 0.15], pos: [0, -0.6, 4.08], material: { color: "#b45309", roughness: 0.7 } },
+            // Windows with warm light
+            { name: "window_left", geometry: "box", params: [1.1, 1.1, 0.15], pos: [-2.2, 0.3, 4.08], material: { color: "#fef08a", emissive: "#facc15", emissiveIntensity: 0.9 } },
+            { name: "window_right", geometry: "box", params: [1.1, 1.1, 0.15], pos: [2.2, 0.3, 4.08], material: { color: "#fef08a", emissive: "#facc15", emissiveIntensity: 0.9 } },
+            // Front Porch Deck
+            { name: "porch_deck", geometry: "box", params: [6.8, 0.35, 2.4], pos: [0, -1.6, 5.2], material: { color: "#78350f" } },
+            // Porch Columns
+            { name: "porch_post_l", geometry: "cylinder", params: [0.12, 0.12, 2.8, 8], pos: [-3.0, -0.2, 6.2], material: { color: "#78350f" } },
+            { name: "porch_post_r", geometry: "cylinder", params: [0.12, 0.12, 2.8, 8], pos: [3.0, -0.2, 6.2], material: { color: "#78350f" } },
+            { name: "porch_roof", geometry: "box", params: [6.8, 0.25, 2.4], pos: [0, 1.2, 5.2], rot: [-0.15, 0, 0], material: { color: "#9a3412" } }
+          ]
+        };
+        structures.push(houseGroup);
+
+        // Split-rail fence along prairie path
+        for (let x = -18; x <= 18; x += 6) {
+          if (Math.abs(x) < 4) continue; // Porch walkway opening
+          structures.push({ name: `fence_post_${x}`, geometry: "cylinder", params: [0.16, 0.16, 1.8, 8], pos: [x, 0.9, 9.2], material: { color: "#78350f" } });
+          structures.push({ name: `fence_rail_${x}`, geometry: "box", params: [5.6, 0.16, 0.16], pos: [x, 1.0, 9.2], material: { color: "#78350f" } });
+        }
+
+        // Prairie wildflowers & bushes
+        for (let i = 0; i < 24; i++) {
+          const angle = (i * Math.PI * 2) / 24;
+          const rad = 12 + Math.random() * 16;
+          structures.push({
+            name: `prairie_flower_${i}`,
+            geometry: "sphere",
+            params: [0.65, 8, 8],
+            pos: [Math.cos(angle) * rad, 0.35, Math.sin(angle) * rad],
+            material: { color: i % 3 === 0 ? "#facc15" : (i % 3 === 1 ? "#ec4899" : "#38bdf8"), roughness: 0.8 }
+          });
+        }
+
+        narrative = `A rustic timber homestead stands serenely upon the vast rolling grasslands of the prairie. Warm candlelight radiates from the porch windows under a clear, endless blue sky.`;
+        choices = [
+          "Step onto the wooden porch and knock on the timber door",
+          "Wander through the wildflowers along the split-rail prairie fence",
+          "Climb the fieldstone chimney roof to gaze out across the golden plains"
+        ];
+
+        groundCol = "#166534"; // Prairie green grassland
+        fogCol = "#bae6fd";    // Warm open sky
+        primCol = "#facc15";   // Golden sunlight
+        secCol = "#fbbf24";
+      }
+
+      // 4. CASTLE / CITADEL ANATOMY
+      else if (hasCastle) {
+        realmTitle = "The Ironstone Keep & Citadel";
+        const castleGroup = {
+          name: "castle_citadel",
+          pos: [0, 5.0, 0],
+          children: [
+            // Central Keep
+            { name: "central_keep", geometry: "box", params: [10.0, 10.0, 10.0], pos: [0, 0, 0], material: { color: "#475569", roughness: 0.9, flatShading: true } },
+            // 4 Corner Towers
+            { name: "tower_fl", geometry: "cylinder", params: [2.2, 2.2, 14.0, 16], pos: [-6.0, 2.0, -6.0], material: { color: "#334155", roughness: 0.9 } },
+            { name: "tower_fr", geometry: "cylinder", params: [2.2, 2.2, 14.0, 16], pos: [6.0, 2.0, -6.0], material: { color: "#334155", roughness: 0.9 } },
+            { name: "tower_bl", geometry: "cylinder", params: [2.2, 2.2, 14.0, 16], pos: [-6.0, 2.0, 6.0], material: { color: "#334155", roughness: 0.9 } },
+            { name: "tower_br", geometry: "cylinder", params: [2.2, 2.2, 14.0, 16], pos: [6.0, 2.0, 6.0], material: { color: "#334155", roughness: 0.9 } },
+            // Tower Conical Roofs
+            { name: "roof_fl", geometry: "cone", params: [2.8, 4.0, 16], pos: [-6.0, 11.0, -6.0], material: { color: "#991b1b" } },
+            { name: "roof_fr", geometry: "cone", params: [2.8, 4.0, 16], pos: [6.0, 11.0, -6.0], material: { color: "#991b1b" } },
+            { name: "roof_bl", geometry: "cone", params: [2.8, 4.0, 16], pos: [-6.0, 11.0, 6.0], material: { color: "#991b1b" } },
+            { name: "roof_br", geometry: "cone", params: [2.8, 4.0, 16], pos: [6.0, 11.0, 6.0], material: { color: "#991b1b" } },
+            // Arched Portcullis / Gate
+            { name: "gate", geometry: "box", params: [3.4, 4.5, 0.4], pos: [0, -2.75, 5.1], material: { color: "#1e293b", metalness: 0.8 } }
+          ]
+        };
+        structures.push(castleGroup);
+        narrative = `A towering medieval stone citadel rises from the bedrock, with four turreted spires and reinforced iron portcullis commanding the terrain.`;
+        choices = [
+          "Enter through the heavy reinforced iron portcullis",
+          "Climb the winding spiral staircase to the battlements of the highest tower",
+          "Scout the fortress ramparts to survey the approaching forces"
+        ];
+        groundCol = "#1e293b";
+        fogCol = "#0f172a";
+        primCol = "#94a3b8";
+        secCol = "#dc2626";
+      }
+
+      // 5. CAR & DRIVING ANATOMY
       else if (hasCar) {
         realmTitle = "Highway 101: Crimson Cyber-Cruiser";
         structures.push({
@@ -1680,6 +1784,10 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         particleStyle = "rising"; // Rising steam
         particleColor = "#ffffff";
         particleCount = 500;
+      } else if (hasHouse) {
+        particleStyle = "rising"; // Prairie pollen
+        particleColor = "#fef08a";
+        particleCount = 350;
       }
 
       return {
@@ -1791,11 +1899,11 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         // Camera interpolation & screen shake
         cameraAngleX += (targetCameraAngleX - cameraAngleX) * 0.08;
 
-        const camDist = (activeBiome === "city" || activeBiome.startsWith("dynamic_")) ? 11.0 : 9.5;
+        const camDist = activeBiome.startsWith("dynamic_") ? (dynamicCamDist || 14.0) : ((activeBiome === "city") ? 11.0 : 9.5);
         camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY) + shakeOffsetX;
-        camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + (activeBiome === "city" ? 3.0 : 2.0) + shakeOffsetY;
+        camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + (activeBiome === "city" ? 3.0 : 1.5) + shakeOffsetY;
         camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
-        camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 1.2), playerPos.z);
+        camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 0.8), playerPos.z);
       }
 
       // Animate Aether objects if active
