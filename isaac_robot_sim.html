@@ -46,6 +46,47 @@
       --font-mono: 'JetBrains Mono', monospace;
     }
 
+    [data-theme="light"] {
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: #f1f5f9;
+      --bg-hover: #e2e8f0;
+      --border-main: rgba(0, 0, 0, 0.10);
+      --border-focus: rgba(118, 185, 0, 0.65);
+      
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+    }
+
+    [data-theme="light"] .brand-title { color: #0f172a; }
+    [data-theme="light"] .brand-subtitle { background: rgba(0,0,0,0.04); color: #475569; border-color: rgba(0,0,0,0.1); }
+    [data-theme="light"] .math-box { background: #ffffff; border-color: rgba(0,0,0,0.08); color: #1e293b; }
+    [data-theme="light"] #hud-telemetry,
+    [data-theme="light"] .hud-btn,
+    [data-theme="light"] #hud-pip-sensor {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: rgba(0,0,0,0.12);
+      color: #334155;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    [data-theme="light"] .telem-v { color: #0f172a; }
+    [data-theme="light"] .chart-container { background: #ffffff; border-color: rgba(0,0,0,0.08); }
+    [data-theme="light"] .prompt-input-area { background: #ffffff; color: #0f172a; border-color: rgba(0,0,0,0.15); }
+    [data-theme="light"] .agent-output-block { background: #ffffff; border-color: rgba(0,0,0,0.10); color: #1e293b; }
+    [data-theme="light"] .chip { background: #ffffff; color: #334155; border-color: rgba(0,0,0,0.10); }
+    [data-theme="light"] .chip:hover { background: #e2e8f0; color: #0f172a; }
+    [data-theme="light"] footer#bottom-bar { background: #ffffff; border-color: rgba(0,0,0,0.10); color: #475569; }
+    [data-theme="light"] .engine-status-badge { background: #f1f5f9; border-color: rgba(0,0,0,0.12); color: #1e293b; }
+    [data-theme="light"] .ctrl-btn:not(.active):not(.dream):not(.warn) {
+      background: #ffffff;
+      color: #0f172a;
+      border-color: rgba(0,0,0,0.12);
+    }
+    [data-theme="light"] .ctrl-btn:not(.active):not(.dream):not(.warn):hover { background: #f1f5f9; }
+    [data-theme="light"] .torque-track { background: #e2e8f0; }
+    [data-theme="light"] .slider-input { background: #cbd5e1; }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); }
 
@@ -570,6 +611,11 @@
 
         <button class="ctrl-btn" onclick="resetEnvironment()">
           <span>🔄 Reset Env</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="btn-theme-toggle" class="ctrl-btn" onclick="toggleAppTheme()" title="Toggle Light / Dark Mode">
+          <span id="theme-icon">☀️ Light Mode</span>
         </button>
 
         <!-- Engine Status -->
@@ -1955,7 +2001,8 @@
       ctx.clearRect(0, 0, w, h);
 
       // Grid lines
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      ctx.strokeStyle = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)";
       ctx.lineWidth = 1;
       for (let y = 20; y < h; y += 30) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
@@ -2356,14 +2403,42 @@ window.customRewardFunction = function(eePos, targetPos, torques, velocities) {
       }
     }
 
+    function toggleAppTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const target = current === 'light' ? 'dark' : 'light';
+      setAppTheme(target);
+    }
+
+    function setAppTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const icon = document.getElementById('theme-icon');
+      if (icon) {
+        icon.textContent = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+      }
+      localStorage.setItem('isaac_sim_theme', theme);
+
+      // Update 3D scene background & floor
+      if (scene) {
+        const isLight = theme === 'light';
+        const bgColor = isLight ? 0xf8fafc : 0x0a0d12;
+        scene.background.setHex(bgColor);
+        if (scene.fog) scene.fog.color.setHex(bgColor);
+        if (floorMesh) {
+          floorMesh.material.color.setHex(isLight ? 0xe2e8f0 : 0x080c12);
+        }
+      }
+      drawMetricsChart();
+    }
+
     /* =====================================================================
        10. INITIALIZATION
        ===================================================================== */
     window.addEventListener('DOMContentLoaded', () => {
       init3DScene();
       initJointTorqueUI();
-      drawMetricsChart();
       renderMathFormulas();
+      const savedTheme = localStorage.getItem('isaac_sim_theme') || 'light';
+      setAppTheme(savedTheme);
       logIsaacEvent(`Isaac Sim Digital Twin ready. World Model initialized with latent state z ∈ ℝ¹⁶.`);
     });
   </script>
