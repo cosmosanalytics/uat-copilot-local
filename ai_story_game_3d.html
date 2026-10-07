@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronicles of the Aether: Real-Time Dynamic 3D Game (Three.js + WebGPU + WebLLM)</title>
+<title>Chronicles of the Aether: Infinite AI Narrative 3D Game (Three.js + WebGPU + WebLLM)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -35,7 +35,7 @@
     user-select: none;
   }
 
-  /* 3D CANVAS VIEWPORT (FULLSCREEN BACKGROUND) */
+  /* 3D CANVAS VIEWPORT */
   #game-canvas {
     position: absolute;
     top: 0;
@@ -188,7 +188,7 @@
     box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
   }
 
-  /* LEFT FLOATING TELEMETRY & WORLD MAP HUD */
+  /* LEFT FLOATING TELEMETRY & QUEST COMPASS */
   .left-hud {
     display: flex;
     flex-direction: column;
@@ -283,7 +283,7 @@
   /* BOTTOM NARRATIVE TERMINAL & PLAYER CHOICES */
   .bottom-hud {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 440px;
     gap: 16px;
     pointer-events: auto;
     align-items: flex-end;
@@ -297,7 +297,7 @@
     padding: 16px 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
     position: relative;
-    max-height: 220px;
+    max-height: 230px;
     display: flex;
     flex-direction: column;
   }
@@ -318,7 +318,7 @@
     line-height: 1.45;
     color: #F1F5F9;
     overflow-y: auto;
-    max-height: 130px;
+    max-height: 140px;
     white-space: pre-wrap;
     padding-right: 6px;
   }
@@ -338,10 +338,10 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
-    padding: 9px 12px;
+    padding: 8px 12px;
     color: #FFFFFF;
     font-family: 'Public Sans', sans-serif;
-    font-size: 0.8rem;
+    font-size: 0.79rem;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
@@ -363,7 +363,45 @@
     padding: 2px 6px;
     border-radius: 4px;
     color: var(--accent-cyan);
+    flex-shrink: 0;
   }
+
+  /* CUSTOM FREE-FORM PLAYER ACTION INPUT */
+  .custom-action-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .custom-input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-dark);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 0.78rem;
+    color: #FFFFFF;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .custom-input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+  }
+  .btn-custom-action {
+    background: linear-gradient(135deg, var(--accent-cyan) 0%, #0284C7 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-custom-action:hover { opacity: 0.92; }
 
   .controls-hint {
     position: absolute;
@@ -380,7 +418,7 @@
     .top-hud { flex-direction: column; align-items: stretch; }
     .bottom-hud { grid-template-columns: 1fr; }
     .left-hud { display: none; }
-    .narrative-console { max-height: 160px; }
+    .narrative-console { max-height: 150px; }
   }
 </style>
 </head>
@@ -408,7 +446,7 @@
         <div class="title-icon">⚔️</div>
         <div class="title-text">
           <h1>Chronicles of the Aether</h1>
-          <p>Real-Time Dynamic 3D World (Three.js + WebGPU + WebLLM)</p>
+          <p>Infinite AI Narrative 3D Game (Three.js + WebGPU + WebLLM)</p>
         </div>
       </div>
 
@@ -450,6 +488,10 @@
           <span id="structures-state" class="state-value">Ancient Monolith Core</span>
         </div>
         <div class="state-row">
+          <span class="state-label">Adventure Chapter:</span>
+          <span id="chapter-count" class="state-value">Chapter 1</span>
+        </div>
+        <div class="state-row">
           <span class="state-label">Aether Resonance:</span>
           <span id="resonance-level" class="state-value">78%</span>
         </div>
@@ -461,7 +503,7 @@
           <span>LIVE</span>
         </div>
         <div id="quest-goal" class="quest-goal">Investigate the Whispering Obelisk</div>
-        <div id="quest-desc" class="quest-desc">Volumetric runes circle the stone platform. Choose a path below to transform the 3D realm.</div>
+        <div id="quest-desc" class="quest-desc">Volumetric runes circle the stone platform. Choose a path or type your own custom action to morph the 3D world.</div>
       </div>
     </div>
 
@@ -475,7 +517,7 @@
         </div>
         <div id="story-stream" class="story-live-stream">You awaken on a suspended island of crystalline obsidian floating above a sea of violet nebulae. Before you stands an ancient monolith pulsing with azure light.
 
-Make a decision below: watch the entire 3D world, lighting, monolithic geometry, and sky transform in real time with each choice!</div>
+Choose an action below, or type your own custom command into the box to continuously evolve the saga!</div>
       </div>
 
       <div class="choices-container">
@@ -495,13 +537,19 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
           <span class="choice-key">[3]</span>
           <span id="choice-3-text">Shatter the binding seals: Trigger Cosmic Apex Transcendence</span>
         </button>
+
+        <!-- FREE-FORM CUSTOM PLAYER ACTION -->
+        <div class="custom-action-row">
+          <input type="text" id="custom-action-input" class="custom-input" placeholder="Or type any custom action (e.g., 'Commune with the ancient spirit')..." onkeydown="if(event.key==='Enter') executeCustomAction()">
+          <button id="btn-custom-action" class="btn-custom-action" onclick="executeCustomAction()">Act ➔</button>
+        </div>
       </div>
     </div>
 
   </div>
 
   <div class="controls-hint">
-    [W, A, S, D] Move &bull; [Drag Mouse] Orbit 3D Camera &bull; [1, 2, 3] Trigger Scene Transformation
+    [W, A, S, D] Move &bull; [Drag Mouse] Orbit 3D Camera &bull; [1, 2, 3] Select Choice &bull; Type any custom action
   </div>
 
   <!-- =========================================================================
@@ -561,13 +609,13 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         btnLabel.textContent = "Sim Mode";
         btnGpu.disabled = false;
         progressBar.style.display = "none";
-        engineTelemetry.textContent = "Procedural Neural Engine";
+        engineTelemetry.textContent = "Infinite Procedural Story Engine";
       }
     };
   </script>
 
   <!-- =========================================================================
-       THREE.JS DYNAMIC 3D SCENE & REAL-TIME TRANSFORMATION SYSTEM
+       THREE.JS DYNAMIC 3D SCENE & INFINITE STORY SYSTEM
        ========================================================================= -->
   <script>
     let scene, camera, renderer;
@@ -585,8 +633,9 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
     let targetCameraAngleX = 0;
     let screenShake = 0;
 
-    // Target colors for smooth lerp transitions
-    let currentRealmStage = 1; // 1: Sunken Obelisk, 2: Shattered Citadel, 3: Genesis Gateway
+    // Infinite Game Progress State
+    let currentChapter = 1;
+    let currentRealmStage = 1; // 1 to 6 visual archetypes
     let targetFogColor = new THREE.Color(0x090D16);
     let targetAmbientColor = new THREE.Color(0x1e1b4b);
     let targetDirLightColor = new THREE.Color(0x06B6D4);
@@ -633,7 +682,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       islandMesh.receiveShadow = true;
       scene.add(islandMesh);
 
-      // 2. SPLITTABLE ANCIENT MONOLITH (TOP + BOTTOM + CORE SINGULARITY)
+      // 2. SPLITTABLE ANCIENT MONOLITH
       const monoMat = new THREE.MeshStandardMaterial({
         color: 0x0284C7,
         emissive: 0x0369A1,
@@ -642,19 +691,17 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         metalness: 0.8
       });
 
-      // Monolith Bottom
       const monoBottomGeo = new THREE.BoxGeometry(2.4, 3.8, 2.4);
       monolithBottom = new THREE.Mesh(monoBottomGeo, monoMat);
       monolithBottom.position.set(0, 1.9, 0);
       scene.add(monolithBottom);
 
-      // Monolith Top (separates and levitates in Act 2)
       const monoTopGeo = new THREE.BoxGeometry(2.4, 3.8, 2.4);
       monolithTop = new THREE.Mesh(monoTopGeo, monoMat);
       monolithTop.position.set(0, 5.8, 0);
       scene.add(monolithTop);
 
-      // Core Glowing Singularity inside the Monolith
+      // Core Glowing Singularity
       const coreGeo = new THREE.SphereGeometry(1.1, 24, 24);
       const coreMat = new THREE.MeshStandardMaterial({
         color: 0xFFFFFF,
@@ -665,10 +712,10 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       });
       coreSingularity = new THREE.Mesh(coreGeo, coreMat);
       coreSingularity.position.set(0, 3.8, 0);
-      coreSingularity.scale.set(0.2, 0.2, 0.2); // Expands in Act 2
+      coreSingularity.scale.set(0.01, 0.01, 0.01);
       scene.add(coreSingularity);
 
-      // 3. SWIRLING 3D CELESTIAL PORTAL (ACTIVATES IN ACT 2)
+      // 3. SWIRLING 3D CELESTIAL PORTAL
       const portalGeo = new THREE.TorusGeometry(3.6, 0.35, 16, 64);
       const portalMat = new THREE.MeshStandardMaterial({
         color: 0xF59E0B,
@@ -679,7 +726,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       });
       portalTorus = new THREE.Mesh(portalGeo, portalMat);
       portalTorus.position.set(0, 4.2, 0);
-      portalTorus.scale.set(0.001, 0.001, 0.001); // Invisible in Act 1
+      portalTorus.scale.set(0.001, 0.001, 0.001);
       scene.add(portalTorus);
 
       const portalDiskGeo = new THREE.CircleGeometry(3.3, 32);
@@ -694,7 +741,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       portalEnergyDisk.scale.set(0.001, 0.001, 0.001);
       scene.add(portalEnergyDisk);
 
-      // 4. OVERHEAD CELESTIAL DYSON MANDALA (ACTIVATES IN ACT 3)
+      // 4. OVERHEAD CELESTIAL DYSON MANDALA
       const mandalaGroup = new THREE.Group();
       const ring1 = new THREE.Mesh(new THREE.RingGeometry(8, 8.4, 48), new THREE.MeshBasicMaterial({ color: 0x8B5CF6, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
       ring1.rotation.x = Math.PI / 2;
@@ -703,7 +750,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       mandalaGroup.add(ring1);
       mandalaGroup.add(ring2);
       mandalaGroup.position.set(0, 18, 0);
-      mandalaGroup.scale.set(0.001, 0.001, 0.001); // Spawns in Act 3
+      mandalaGroup.scale.set(0.001, 0.001, 0.001);
       scene.add(mandalaGroup);
       celestialMandala = mandalaGroup;
 
@@ -719,14 +766,14 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       lightBeamMesh.position.set(0, 30, 0);
       scene.add(lightBeamMesh);
 
-      // 6. PERIMETER COLOSSAL STONE SPIRES (EMERGE IN ACT 2)
+      // 6. PERIMETER COLOSSAL STONE SPIRES
       for (let i = 0; i < 4; i++) {
         const spireGeo = new THREE.ConeGeometry(1.5, 12, 6);
         const spireMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7, flatShading: true });
         const spire = new THREE.Mesh(spireGeo, spireMat);
         const angle = (i * Math.PI / 2) + 0.4;
         const rad = 13.5;
-        spire.position.set(Math.cos(angle) * rad, -10, Math.sin(angle) * rad); // Starts submerged
+        spire.position.set(Math.cos(angle) * rad, -10, Math.sin(angle) * rad);
         scene.add(spire);
         floatingSpires.push({ mesh: spire, targetY: -10, baseAngle: angle });
       }
@@ -757,7 +804,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         crystalRunes.push(rune);
       }
 
-      // 9. BACKGROUND DISTANT FLOATING ROCK ISLANDS
+      // 9. BACKGROUND FLOATING ROCKS
       for (let i = 0; i < 18; i++) {
         const rGeo = new THREE.DodecahedronGeometry(Math.random() * 3 + 1, 0);
         const rMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, flatShading: true });
@@ -808,6 +855,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
     }
 
     function onKeyDown(e) {
+      if (document.activeElement === document.getElementById("custom-action-input")) return;
       if (e.key === 'w' || e.key === 'W') moveForward = true;
       if (e.key === 's' || e.key === 'S') moveBackward = true;
       if (e.key === 'a' || e.key === 'A') moveLeft = true;
@@ -836,7 +884,6 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.3, cameraAngleY + deltaY * 0.006));
     }
 
-    // SPAWN GROUND SHOCKWAVE EXPANSION
     function spawnShockwave(hexColor) {
       const ringGeo = new THREE.RingGeometry(0.3, 0.9, 32);
       const ringMat = new THREE.MeshBasicMaterial({
@@ -853,18 +900,18 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
     }
 
     // -------------------------------------------------------------------------
-    // REAL-TIME 3D TRANSFORMATION HANDLER (ACT 1 -> ACT 2 -> ACT 3)
+    // 6 VISUAL REALM ARCHETYPES (MORPHS CYCLICALLY WITH INFINITE VARIATIONS)
     // -------------------------------------------------------------------------
     function transform3DRealm(stageIndex) {
       currentRealmStage = stageIndex;
-      screenShake = 0.45; // Immediate kinetic impact
-      targetCameraAngleX += Math.PI * 0.5; // Cinematic camera orbit sweep
+      screenShake = 0.5;
+      targetCameraAngleX += Math.PI * 0.45;
 
       const toast = document.getElementById("realm-toast");
       const toastText = document.getElementById("toast-text");
 
       if (stageIndex === 1) {
-        // ACT I: CYAN TWILIGHT VOID & THE OBSIDIAN MONOLITH
+        // CYAN TWILIGHT VOID
         targetFogColor.setHex(0x090D16);
         targetAmbientColor.setHex(0x1e1b4b);
         targetDirLightColor.setHex(0x06B6D4);
@@ -876,8 +923,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         monolithBottom.material.color.setHex(0x0284C7);
         monolithBottom.material.emissive.setHex(0x0369A1);
         crystalRunes.forEach(r => r.material.color.setHex(0x06B6D4));
-
-        floatingSpires.forEach(s => s.targetY = -10); // Submerge spires
+        floatingSpires.forEach(s => s.targetY = -10);
 
         spawnShockwave(0x06B6D4);
         toastText.textContent = "REALM SHIFT: The Sunken Obelisk (Cyan Twilight)";
@@ -885,7 +931,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         document.getElementById("world-alignment").textContent = "Cyan Twilight Void";
 
       } else if (stageIndex === 2) {
-        // ACT II: FIERY SOLAR STORM & THE SHATTERED CITADEL
+        // SOLAR RIFT STORM & CITADEL
         targetFogColor.setHex(0x2A0F03);
         targetAmbientColor.setHex(0x451A03);
         targetDirLightColor.setHex(0xF59E0B);
@@ -897,16 +943,15 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         monolithBottom.material.color.setHex(0xEA580C);
         monolithBottom.material.emissive.setHex(0xC2410C);
         crystalRunes.forEach(r => r.material.color.setHex(0xFBBF24));
-
-        floatingSpires.forEach(s => s.targetY = 4.5); // Spires rise 15m out of the void!
+        floatingSpires.forEach(s => s.targetY = 4.5);
 
         spawnShockwave(0xF59E0B);
         toastText.textContent = "REALM SHIFT: The Shattered Citadel (Solar Rift)";
         document.getElementById("structures-state").textContent = "Separated Monolith & Portal Gate";
-        document.getElementById("world-alignment").textContent = "Solar Nebula & Rift Storm";
+        document.getElementById("world-alignment").textContent = "Solar Nebula Storm";
 
       } else if (stageIndex === 3) {
-        // ACT III: AMETHYST HYPERSPACE & THE GENESIS GATEWAY
+        // AMETHYST HYPERSPACE & GENESIS MANDALA
         targetFogColor.setHex(0x1E0538);
         targetAmbientColor.setHex(0x3B0764);
         targetDirLightColor.setHex(0xA855F7);
@@ -918,13 +963,72 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         monolithBottom.material.color.setHex(0x8B5CF6);
         monolithBottom.material.emissive.setHex(0x7C3AED);
         crystalRunes.forEach(r => r.material.color.setHex(0xE879F9));
-
         floatingSpires.forEach(s => s.targetY = 7.0);
 
         spawnShockwave(0x8B5CF6);
         toastText.textContent = "REALM SHIFT: The Genesis Gateway (Cosmic Apex)";
         document.getElementById("structures-state").textContent = "Celestial Dyson Mandala Array";
         document.getElementById("world-alignment").textContent = "Amethyst Hyperspace Matrix";
+
+      } else if (stageIndex === 4) {
+        // VOID ECLIPSE & CRIMSON WARDEN
+        targetFogColor.setHex(0x1F0000);
+        targetAmbientColor.setHex(0x450A0A);
+        targetDirLightColor.setHex(0xEF4444);
+        targetPointLightColor.setHex(0xDC2626);
+
+        particleSystem.material.color.setHex(0xEF4444);
+        monolithTop.material.color.setHex(0xB91C1C);
+        monolithTop.material.emissive.setHex(0x7F1D1D);
+        monolithBottom.material.color.setHex(0x991B1B);
+        monolithBottom.material.emissive.setHex(0x450A0A);
+        crystalRunes.forEach(r => r.material.color.setHex(0xF87171));
+        floatingSpires.forEach(s => s.targetY = 9.0);
+
+        spawnShockwave(0xEF4444);
+        toastText.textContent = "REALM SHIFT: The Void Eclipse (Crimson Ward)";
+        document.getElementById("structures-state").textContent = "Overclocked Singularity Spire";
+        document.getElementById("world-alignment").textContent = "Blood Moon Void Eclipse";
+
+      } else if (stageIndex === 5) {
+        // CHRONO MATRIX & EMERALD TIME WEAVER
+        targetFogColor.setHex(0x022C22);
+        targetAmbientColor.setHex(0x064E3B);
+        targetDirLightColor.setHex(0x10B981);
+        targetPointLightColor.setHex(0x059669);
+
+        particleSystem.material.color.setHex(0x34D399);
+        monolithTop.material.color.setHex(0x059669);
+        monolithTop.material.emissive.setHex(0x047857);
+        monolithBottom.material.color.setHex(0x059669);
+        monolithBottom.material.emissive.setHex(0x047857);
+        crystalRunes.forEach(r => r.material.color.setHex(0x6EE7B7));
+        floatingSpires.forEach(s => s.targetY = 5.0);
+
+        spawnShockwave(0x10B981);
+        toastText.textContent = "REALM SHIFT: The Chrono-Matrix (Time Nexus)";
+        document.getElementById("structures-state").textContent = "Temporal Resonance Loom";
+        document.getElementById("world-alignment").textContent = "Emerald Chrono Distortion";
+
+      } else if (stageIndex === 6) {
+        // STAR FORGE & RADIANT SUPERNOVA
+        targetFogColor.setHex(0x172554);
+        targetAmbientColor.setHex(0x1E3A8A);
+        targetDirLightColor.setHex(0x38BDF8);
+        targetPointLightColor.setHex(0xFACC15);
+
+        particleSystem.material.color.setHex(0xFEF08A);
+        monolithTop.material.color.setHex(0x0284C7);
+        monolithTop.material.emissive.setHex(0x0369A1);
+        monolithBottom.material.color.setHex(0x0284C7);
+        monolithBottom.material.emissive.setHex(0x0369A1);
+        crystalRunes.forEach(r => r.material.color.setHex(0xFDE047));
+        floatingSpires.forEach(s => s.targetY = 11.0);
+
+        spawnShockwave(0xFACC15);
+        toastText.textContent = "REALM SHIFT: The Astral Star Forge";
+        document.getElementById("structures-state").textContent = "Radiant Supernova Crucible";
+        document.getElementById("world-alignment").textContent = "Stellar Ignition Matrix";
       }
 
       toast.classList.add("show");
@@ -932,7 +1036,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
     }
 
     // -------------------------------------------------------------------------
-    // 3D RENDER ANIMATION LOOP WITH KINETIC MORPHING
+    // 3D RENDER ANIMATION LOOP
     // -------------------------------------------------------------------------
     const clock = new THREE.Clock();
 
@@ -941,14 +1045,14 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // SMOOTH LERP WORLD LIGHTING & FOG
+      // Smooth color transitions
       scene.fog.color.lerp(targetFogColor, 0.05);
       renderer.setClearColor(scene.fog.color);
       ambientLight.color.lerp(targetAmbientColor, 0.05);
       directionalLight.color.lerp(targetDirLightColor, 0.05);
       pointLight.color.lerp(targetPointLightColor, 0.05);
 
-      // PLAYER MOVEMENT INTERPOLATION
+      // Player movement
       const speed = 7.0 * delta;
       if (moveForward) playerPos.z -= speed;
       if (moveBackward) playerPos.z += speed;
@@ -961,7 +1065,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         playerPos.z *= 13.5 / distFromCenter;
       }
 
-      // CAMERA INTERPOLATION & SHOCKWAVE SHAKE
+      // Camera interpolation & screen shake
       cameraAngleX += (targetCameraAngleX - cameraAngleX) * 0.08;
       let shakeOffsetX = 0, shakeOffsetY = 0;
       if (screenShake > 0) {
@@ -976,9 +1080,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
       camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
       camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
 
-      // --- DYNAMIC GEOMETRY MORPHING PER REALM STAGE ---
-
-      // 1. Monolith Top Separation & Singularity Core
+      // Monolith & Singularity morphing based on realm
       if (currentRealmStage === 1) {
         monolithTop.position.y += (5.8 - monolithTop.position.y) * 0.06;
         coreSingularity.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), 0.08);
@@ -986,8 +1088,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         portalEnergyDisk.material.opacity += (0.0 - portalEnergyDisk.material.opacity) * 0.08;
         celestialMandala.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
         lightBeamMesh.material.opacity += (0.0 - lightBeamMesh.material.opacity) * 0.08;
-      } else if (currentRealmStage === 2) {
-        // Monolith splits upward, revealing the singularity!
+      } else if (currentRealmStage === 2 || currentRealmStage === 4) {
         monolithTop.position.y += (8.4 - monolithTop.position.y) * 0.06;
         coreSingularity.scale.lerp(new THREE.Vector3(1.3, 1.3, 1.3), 0.08);
         coreSingularity.rotation.y = elapsed * 2.0;
@@ -998,8 +1099,7 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         portalEnergyDisk.rotation.z = -elapsed * 1.2;
         celestialMandala.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
         lightBeamMesh.material.opacity += (0.15 - lightBeamMesh.material.opacity) * 0.08;
-      } else if (currentRealmStage === 3) {
-        // Monolith levitates higher, celestial mandala activates!
+      } else {
         monolithTop.position.y += (10.2 - monolithTop.position.y) * 0.06;
         coreSingularity.scale.lerp(new THREE.Vector3(1.8, 1.8, 1.8), 0.08);
         portalTorus.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.08);
@@ -1012,31 +1112,31 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         lightBeamMesh.rotation.y = elapsed * 0.4;
       }
 
-      // 2. Colossal Spires Elevation
+      // Spires animation
       floatingSpires.forEach(s => {
         s.mesh.position.y += (s.targetY - s.mesh.position.y) * 0.05;
         s.mesh.rotation.y = elapsed * 0.2;
       });
 
-      // 3. Guardian Construct Animation
+      // Guardian Construct
       if (guardianMesh) {
-        const speedMultiplier = currentRealmStage === 2 ? 2.5 : (currentRealmStage === 3 ? 3.5 : 1.0);
+        const speedMultiplier = (currentRealmStage % 2 === 0) ? 2.5 : 1.2;
         guardianMesh.rotation.x = elapsed * 0.6 * speedMultiplier;
         guardianMesh.rotation.y = elapsed * 0.8 * speedMultiplier;
         guardianMesh.position.y = 5 + Math.cos(elapsed * 1.8) * 0.6;
       }
 
-      // 4. Orbiting Crystal Runes
+      // Orbiting Crystal Runes
       crystalRunes.forEach((rune, i) => {
-        const speedRune = currentRealmStage === 2 ? 1.6 : (currentRealmStage === 3 ? 2.2 : 0.8);
+        const speedRune = 0.8 + (currentRealmStage * 0.3);
         const angle = elapsed * speedRune + (i * Math.PI / 3);
-        const radius = (currentRealmStage === 2 ? 7.0 : (currentRealmStage === 3 ? 8.5 : 5.5)) + Math.sin(elapsed + i) * 0.5;
+        const radius = 5.5 + (currentRealmStage * 0.6) + Math.sin(elapsed + i) * 0.5;
         rune.position.set(Math.cos(angle) * radius, 3.8 + Math.sin(angle * 2) * 1.2, Math.sin(angle) * radius);
         rune.rotation.x = elapsed * 1.2;
         rune.rotation.y = elapsed * 1.8;
       });
 
-      // 5. Expand & Fade Shockwave Rings
+      // Shockwave rings
       for (let i = shockwaveRings.length - 1; i >= 0; i--) {
         const sw = shockwaveRings[i];
         sw.scale += delta * 16;
@@ -1049,13 +1149,13 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         }
       }
 
-      // 6. Background Floating Islands
+      // Background islands
       distantIslands.forEach(item => {
         item.mesh.position.y += Math.sin(elapsed * 2 + item.offset) * 0.015;
         item.mesh.rotation.y += item.speed;
       });
 
-      // 7. Aether Volumetric Particles Rotation
+      // Particles
       if (particleSystem) {
         particleSystem.rotation.y = elapsed * 0.06;
       }
@@ -1064,88 +1164,161 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
     }
 
     // -------------------------------------------------------------------------
-    // PROCEDURAL BRANCHING PLOT DB
+    // EXPANSIVE MULTI-CHAPTER SAGA & PROCEDURAL STORY GENERATION ENGINE
     // -------------------------------------------------------------------------
-    const BRANCHING_PLOT_DB = {
-      1: {
-        act: "Act I: The Discovery",
+    const SAGA_CHAPTERS = [
+      {
         realm: "The Sunken Obelisk",
         goal: "Investigate the Whispering Obelisk",
         desc: "Ancient stone runes circle the platform. Choose an attunement to shift the realm.",
+        story: "You awaken on an obsidian platform suspended over a cyan twilight void. The ancient monolith hums with primal resonance.\n\nAs you channel your intent, a kinetic shockwave ripples across the stone floor, and the surrounding void begins to bend to your command!",
         choices: [
-          { text: "Channel life energy: Ignite the Solar Storm & Citadel", stage: 2 },
-          { text: "Recite ancient glyphs: Unlock the Genesis Portal Rings", stage: 2 },
-          { text: "Shatter the binding seals: Trigger Cosmic Apex Transcendence", stage: 3 }
-        ],
-        story: "You awaken on an obsidian platform suspended over a cyan twilight void. The ancient monolith hums with primal resonance.\n\nAs you choose your action, a kinetic shockwave ripples across the stone floor, and the surrounding void begins to bend to your command!"
+          "Channel life energy: Ignite the Solar Storm & Citadel",
+          "Recite ancient glyphs: Unlock the Genesis Portal Rings",
+          "Shatter the binding seals: Trigger Cosmic Apex Transcendence"
+        ]
       },
-      2: {
-        act: "Act II: The Shattered Citadel",
-        realm: "The Citadel of Nebulae",
+      {
+        realm: "The Shattered Citadel",
         goal: "Navigate the Solar Rift Storm",
         desc: "Colossal stone spires rise from the abyss! The monolith splits open to reveal the glowing Core Singularity.",
+        story: "The realm violently shifts! Colossal stone spires erupt from the void, surrounding the sanctuary. Overhead, the sky turns into a tempest of blazing gold and solar crimson.\n\nThe ancient monolith splits apart, levitating in segmented rings to reveal a blinding Core Singularity and spinning energy portal!",
         choices: [
-          { text: "Step through the celestial portal into the core chamber", stage: 3 },
-          { text: "Summon the aether shields to withstand the storm", stage: 3 },
-          { text: "Absorb cosmic rift energy to awaken the Genesis Array", stage: 3 }
-        ],
-        story: "The realm violently shifts! Colossal stone spires erupt from the void, surrounding the sanctuary. Overhead, the sky turns into a tempest of blazing gold and solar crimson.\n\nThe ancient monolith splits apart, levitating in segmented rings to reveal a blinding Core Singularity and spinning energy portal!"
+          "Step through the celestial portal into the core chamber",
+          "Summon the aether shields to withstand the storm",
+          "Absorb cosmic rift energy to awaken the Genesis Array"
+        ]
       },
-      3: {
-        act: "Act III: The Genesis Gateway",
+      {
         realm: "The Genesis Gateway",
         goal: "Ascend the Celestial Dyson Mandala",
         desc: "The sky has evolved into an amethyst hyperspace matrix. A colossal rotating Dyson Mandala array shines overhead.",
+        story: "Transcendent violet hyperspace engulfs the entire world! A colossal celestial Dyson Mandala array manifests overhead, cascading divine light down upon the island.\n\nA vertical pillar of cosmic energy pierces the stratosphere. The entire 3D geometry of the universe has answered your command.",
         choices: [
-          { text: "Harmonize the universe with mortal kind", stage: 1 },
-          { text: "Ascend as eternal sovereign of the Aether", stage: 1 },
-          { text: "Reset the cosmic cycle and begin anew", stage: 1 }
-        ],
-        story: "Transcendent violet hyperspace engulfs the entire world! A colossal celestial Dyson Mandala array manifests overhead, cascading divine light down upon the island.\n\nA vertical pillar of cosmic energy pierces the stratosphere. The entire 3D geometry of the universe has answered your command."
+          "Challenge the Void Warden guarding the upper stratosphere",
+          "Harmonize with the Dyson Mandala to rewrite the laws of physics",
+          "Plunge through the ascension light beam to reach the Chrono-Nexus"
+        ]
+      },
+      {
+        realm: "The Crimson Void Eclipse",
+        goal: "Survive the Void Warden's Trial",
+        desc: "A blood-moon eclipse casts deep crimson shadows. The guardian construct evolves into a formidable battle entity.",
+        story: "The sky darkens into an ominous blood-moon eclipse! The floating islands tremble as gravitational anomalies distort the horizon.\n\nThe guardian construct expands, unleashing arcs of red lightning across the stone pillars. 'Few mortals dare cross the Threshold of Blood,' it bellows.",
+        choices: [
+          "Draw your stellar blade and parry the lightning barrage",
+          "Offer a tribute of pure cosmic resonance to calm the Warden",
+          "Weave a time-dilation bubble to slip past into the Chrono-Loom"
+        ]
+      },
+      {
+        realm: "The Chrono-Matrix Nexus",
+        goal: "Attune the Temporal Resonance Loom",
+        desc: "Emerald time streams spiral through the air. The platform vibrates with inverted gravity waves.",
+        story: "Time itself fractures into emerald ribbons of crystalline light! You watch past and future timelines echo simultaneously across the floating spires.\n\nFloating runes defy gravity, ascending into the emerald atmosphere like glowing green embers. A voice speaks from yesterday and tomorrow at once: 'Choose your destiny.'",
+        choices: [
+          "Lock the timeline: Crystallize the universe in permanent order",
+          "Unravel the timeline: Unleash infinite branching realities",
+          "Ignite the Astral Star Forge to forge a new celestial era"
+        ]
+      },
+      {
+        realm: "The Astral Star Forge",
+        goal: "Ignite the Radiant Supernova Crucible",
+        desc: "Blinding stellar rays erupt from the singularity core. The entire world becomes an engine of pure stellar creation.",
+        story: "A radiant supernova crucible ignites at the heart of the island! The spires blaze like golden beacons visible across multiple galaxies.\n\nYou have ascended beyond mortal limits. The Aether responds to your thoughts as naturally as breath. You stand at the center of a newly born universe.",
+        choices: [
+          "Seed new solar systems and cultivate emerging civilizations",
+          "Build an interdimensional beacon to summon other cosmic travelers",
+          "Begin a new cycle of discovery from the vantage point of a Creator"
+        ]
       }
-    };
+    ];
 
-    // EXECUTE DECISION & TRIGGER REAL 3D SCENE TRANSFORMATION
-    async function executePlayerChoice(choiceIndex) {
-      const chosenText = document.getElementById(`choice-${choiceIndex}-text`).textContent;
+    // Procedural Generator for Chapters 7 and beyond (Infinite continuation!)
+    function generateInfiniteChapter(chNum, prevAction) {
+      const realmNames = [
+        "The Singularity Horizon", "The Nebular Cathedral", "The Quantum Expanse", 
+        "The Starlight Sanctuary", "The Infinity Spire", "The Primordial Void",
+        "The Omniverse Core", "The Ethereal Pantheon"
+      ];
+      const realm = realmNames[(chNum - 1) % realmNames.length];
+      const stageIdx = ((chNum - 1) % 6) + 1;
 
-      for (let i = 1; i <= 3; i++) {
-        document.getElementById(`choice-${i}`).disabled = true;
-      }
-
-      // Next stage cycle: 1 -> 2 -> 3 -> 1
-      const nextStage = (currentRealmStage % 3) + 1;
-      
-      // TRIGGER THE REAL 3D SCENE TRANSFORMATION
-      transform3DRealm(nextStage);
-
-      // Update telemetry
-      document.getElementById("realm-phase").textContent = `ACT ${nextStage}`;
-      document.getElementById("resonance-level").textContent = `${Math.floor(65 + Math.random() * 34)}%`;
-
-      const storyEl = document.getElementById("story-stream");
-      storyEl.textContent = `[Decision: ${chosenText}]\n\nTransforming 3D geometry and synthesizing narrative...\n`;
-
-      if (window.isWebGPULoaded && window.engine) {
-        await generatePlotWithWebLLM(chosenText, nextStage);
-      } else {
-        await generateSimulatedPlot(nextStage, chosenText);
-      }
-
-      for (let i = 1; i <= 3; i++) {
-        document.getElementById(`choice-${i}`).disabled = false;
-      }
+      return {
+        stage: stageIdx,
+        realm: `${realm} (Sector ${Math.floor(chNum / 6) + 1})`,
+        goal: `Transcend Chapter ${chNum}: Master ${realm}`,
+        desc: `Cosmic reality continues to expand in response to: "${prevAction}". New astral structures emerge.`,
+        story: `Having resolved to '${prevAction}', the cosmos expands exponentially into ${realm}!\n\nTowering geometric fractals shimmer against the horizon. The singularity pulses with renewed cosmic authority as your journey reaches Chapter ${chNum}.\n\nWhat is your will, Architect of the Aether?`,
+        choices: [
+          `Harness the resonance of ${realm} to ascend further`,
+          `Commune with ancient celestial consciousnesses in this sector`,
+          `Construct an astral waypoint and expand your domain`
+        ]
+      };
     }
 
-    // SIMULATED NARRATIVE STREAMING
-    async function generateSimulatedPlot(actNum, playerAction) {
-      const plotNode = BRANCHING_PLOT_DB[actNum];
-      document.getElementById("realm-name").textContent = plotNode.realm;
-      document.getElementById("quest-goal").textContent = plotNode.goal;
-      document.getElementById("quest-desc").textContent = plotNode.desc;
+    // EXECUTE DECISION (BUTTON CLICK OR ENTER KEY)
+    async function executePlayerChoice(choiceIndex) {
+      const chosenText = document.getElementById(`choice-${choiceIndex}-text`).textContent;
+      await processAction(chosenText);
+    }
+
+    // EXECUTE FREE-FORM CUSTOM ACTION
+    async function executeCustomAction() {
+      const input = document.getElementById("custom-action-input");
+      const actionText = input.value.trim();
+      if (!actionText) return;
+      input.value = "";
+      await processAction(actionText);
+    }
+
+    async function processAction(actionText) {
+      // Disable interaction during generation
+      for (let i = 1; i <= 3; i++) document.getElementById(`choice-${i}`).disabled = true;
+      document.getElementById("btn-custom-action").disabled = true;
+
+      currentChapter++;
+      const stageIndex = ((currentChapter - 1) % 6) + 1;
+
+      // TRIGGER 3D TRANSFORMATION
+      transform3DRealm(stageIndex);
+
+      // Update UI Telemetry
+      document.getElementById("realm-phase").textContent = `ACT ${Math.min(3, Math.ceil(stageIndex / 2))}`;
+      document.getElementById("chapter-count").textContent = `Chapter ${currentChapter}`;
+      document.getElementById("resonance-level").textContent = `${Math.floor(70 + Math.random() * 29)}%`;
 
       const storyEl = document.getElementById("story-stream");
-      const fullText = `[Choice: ${playerAction}]\n\n` + plotNode.story;
+      storyEl.textContent = `[Player Action: ${actionText}]\n\nAdvancing to Chapter ${currentChapter}...\n`;
+
+      if (window.isWebGPULoaded && window.engine) {
+        await generatePlotWithWebLLM(actionText, currentChapter, stageIndex);
+      } else {
+        await generateProceduralPlot(currentChapter, actionText);
+      }
+
+      // Re-enable controls
+      for (let i = 1; i <= 3; i++) document.getElementById(`choice-${i}`).disabled = false;
+      document.getElementById("btn-custom-action").disabled = false;
+    }
+
+    // PROCEDURAL NARRATIVE STREAMING
+    async function generateProceduralPlot(chNum, playerAction) {
+      let chapterData;
+      if (chNum <= SAGA_CHAPTERS.length) {
+        chapterData = SAGA_CHAPTERS[chNum - 1];
+      } else {
+        chapterData = generateInfiniteChapter(chNum, playerAction);
+      }
+
+      document.getElementById("realm-name").textContent = chapterData.realm;
+      document.getElementById("quest-goal").textContent = chapterData.goal;
+      document.getElementById("quest-desc").textContent = chapterData.desc;
+
+      const storyEl = document.getElementById("story-stream");
+      const fullText = `[Action: ${playerAction}]\n\n` + chapterData.story;
 
       storyEl.textContent = "";
       const chars = fullText.split("");
@@ -1155,24 +1328,25 @@ Make a decision below: watch the entire 3D world, lighting, monolithic geometry,
         if (i % 3 === 0) await new Promise(r => setTimeout(r, 12));
       }
 
-      plotNode.choices.forEach((c, idx) => {
-        document.getElementById(`choice-${idx + 1}-text`).textContent = c.text;
+      chapterData.choices.forEach((c, idx) => {
+        document.getElementById(`choice-${idx + 1}-text`).textContent = c;
       });
     }
 
-    // WEBGPU STREAMING
-    async function generatePlotWithWebLLM(playerAction, nextStage) {
+    // WEBGPU STREAMING WITH LLM DIRECTED NARRATIVE
+    async function generatePlotWithWebLLM(playerAction, chNum, stageIndex) {
       const storyEl = document.getElementById("story-stream");
-      const plotNode = BRANCHING_PLOT_DB[nextStage];
-      document.getElementById("realm-name").textContent = plotNode.realm;
-      document.getElementById("quest-goal").textContent = plotNode.goal;
-      document.getElementById("quest-desc").textContent = plotNode.desc;
+      let chapterData = chNum <= SAGA_CHAPTERS.length ? SAGA_CHAPTERS[chNum - 1] : generateInfiniteChapter(chNum, playerAction);
 
-      const systemPrompt = `You are the Game Master of the 3D sci-fi game "Chronicles of the Aether".
-The player just triggered a physical 3D scene transformation into Act ${nextStage} (${plotNode.realm}).
-Player action: "${playerAction}".
-Describe the breathtaking physical metamorphosis of the 3D environment in 3 vivid sentences.
-Then provide exactly three bold next choices:
+      document.getElementById("realm-name").textContent = chapterData.realm;
+      document.getElementById("quest-goal").textContent = chapterData.goal;
+      document.getElementById("quest-desc").textContent = chapterData.desc;
+
+      const systemPrompt = `You are the Game Master of the infinite 3D sci-fi game "Chronicles of the Aether".
+The story is now in Chapter ${chNum} within the realm of "${chapterData.realm}".
+The player just took action: "${playerAction}".
+Synthesize the next thrilling 3-sentence narrative chapter describing the dramatic visual response of the 3D world.
+Then provide exactly 3 new choices:
 [CHOICE 1]: <action>
 [CHOICE 2]: <action>
 [CHOICE 3]: <action>`;
@@ -1181,14 +1355,14 @@ Then provide exactly three bold next choices:
         const completion = await window.engine.chat.completions.create({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Player chose: "${playerAction}". Describe the 3D transformation into ${plotNode.realm}.` }
+            { role: "user", content: `Player action: "${playerAction}". Continue Chapter ${chNum}.` }
           ],
           stream: true,
-          temperature: 0.65
+          temperature: 0.7
         });
 
         let accumulatedText = "";
-        storyEl.textContent = `[Choice: ${playerAction}]\n\n`;
+        storyEl.textContent = `[Action: ${playerAction}]\n\n`;
 
         for await (const chunk of completion) {
           const delta = chunk.choices[0]?.delta?.content || "";
@@ -1207,7 +1381,7 @@ Then provide exactly three bold next choices:
 
       } catch (err) {
         console.error("WebLLM error, falling back:", err);
-        await generateSimulatedPlot(nextStage, playerAction);
+        await generateProceduralPlot(chNum, playerAction);
       }
     }
 
