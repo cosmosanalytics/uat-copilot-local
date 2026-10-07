@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronicles of the Aether: Real-Time AI Narrative 3D Game (WebGPU + WebLLM)</title>
+<title>Chronicles of the Aether: Real-Time Dynamic 3D Game (Three.js + WebGPU + WebLLM)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -12,12 +12,13 @@
 <style>
   :root {
     --bg-dark: #090D16;
-    --panel-dark: rgba(15, 23, 42, 0.85);
-    --border-dark: rgba(255, 255, 255, 0.12);
+    --panel-dark: rgba(15, 23, 42, 0.88);
+    --border-dark: rgba(255, 255, 255, 0.15);
     --accent-cyan: #06B6D4;
     --accent-purple: #8B5CF6;
     --accent-amber: #F59E0B;
     --accent-emerald: #10B981;
+    --accent-rose: #EF4444;
     --text-main: #F8FAFC;
     --text-muted: #94A3B8;
   }
@@ -56,7 +57,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 20px 24px;
+    padding: 16px 20px;
   }
 
   /* TOP STATUS & ENGINE BAR */
@@ -65,6 +66,7 @@
     justify-content: space-between;
     align-items: center;
     pointer-events: auto;
+    gap: 12px;
   }
 
   .game-title-card {
@@ -166,7 +168,7 @@
     transition: width 0.2s;
   }
 
-  /* CENTER PLAY AREA: CROSSHAIR & INTERACTION NOTICES */
+  /* CENTER RETICLE */
   .center-reticle {
     position: absolute;
     top: 50%;
@@ -185,21 +187,6 @@
     border-radius: 50%;
     box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
   }
-  .interact-prompt {
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid var(--accent-cyan);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.72rem;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent-cyan);
-    display: none;
-    animation: pulse 1s infinite alternate;
-  }
-  @keyframes pulse {
-    from { transform: scale(0.96); opacity: 0.8; }
-    to { transform: scale(1.04); opacity: 1; }
-  }
 
   /* LEFT FLOATING TELEMETRY & WORLD MAP HUD */
   .left-hud {
@@ -215,7 +202,7 @@
     backdrop-filter: blur(16px);
     border: 1px solid var(--border-dark);
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   }
   .card-header-label {
@@ -242,13 +229,12 @@
     color: #FFFFFF;
   }
 
-  /* PLOT EVOLUTION LOG / QUEST CHRONICLE */
   .quest-card {
     background: var(--panel-dark);
     backdrop-filter: blur(16px);
     border: 1px solid var(--border-dark);
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   }
   .quest-goal {
@@ -260,30 +246,58 @@
     line-height: 1.25;
   }
   .quest-desc {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--text-muted);
     line-height: 1.35;
+  }
+
+  /* REALM TRANSITION ALERT OVERLAY */
+  .realm-alert-toast {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    border: 1.5px solid var(--accent-cyan);
+    border-radius: 30px;
+    padding: 8px 24px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .realm-alert-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(10px);
   }
 
   /* BOTTOM NARRATIVE TERMINAL & PLAYER CHOICES */
   .bottom-hud {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 400px;
     gap: 16px;
     pointer-events: auto;
     align-items: flex-end;
   }
 
-  /* NARRATIVE STREAMING CONSOLE */
   .narrative-console {
     background: var(--panel-dark);
     backdrop-filter: blur(20px);
     border: 1.5px solid var(--border-dark);
     border-radius: 14px;
-    padding: 18px 22px;
+    padding: 16px 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
     position: relative;
-    max-height: 240px;
+    max-height: 220px;
     display: flex;
     flex-direction: column;
   }
@@ -300,24 +314,21 @@
     margin-bottom: 8px;
   }
   .story-live-stream {
-    font-size: 0.95rem;
-    line-height: 1.5;
+    font-size: 0.92rem;
+    line-height: 1.45;
     color: #F1F5F9;
     overflow-y: auto;
-    max-height: 140px;
+    max-height: 130px;
     white-space: pre-wrap;
     padding-right: 6px;
   }
-  .story-live-stream::-webkit-scrollbar { width: 4px; }
-  .story-live-stream::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
-  /* DYNAMIC AI PLAYER CHOICES */
   .choices-container {
     background: var(--panel-dark);
     backdrop-filter: blur(20px);
     border: 1.5px solid var(--border-dark);
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -327,10 +338,10 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
-    padding: 10px 14px;
+    padding: 9px 12px;
     color: #FFFFFF;
     font-family: 'Public Sans', sans-serif;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
@@ -354,15 +365,22 @@
     color: var(--accent-cyan);
   }
 
-  /* KEYBOARD CONTROLS GUIDE */
   .controls-hint {
     position: absolute;
-    bottom: 24px;
-    left: 24px;
+    bottom: 12px;
+    left: 20px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.4);
     pointer-events: none;
+  }
+
+  /* MOBILE RESPONSIVE STYLES */
+  @media (max-width: 900px) {
+    .top-hud { flex-direction: column; align-items: stretch; }
+    .bottom-hud { grid-template-columns: 1fr; }
+    .left-hud { display: none; }
+    .narrative-console { max-height: 160px; }
   }
 </style>
 </head>
@@ -376,24 +394,29 @@
     <div id="gpu-progress-fill" class="progress-bar-fill"></div>
   </div>
 
+  <!-- REALM TOAST ALERT -->
+  <div id="realm-toast" class="realm-alert-toast">
+    <span>🌌</span><span id="toast-text">REALM SHIFT: The Celestial Citadel</span>
+  </div>
+
   <!-- GAME HUD OVERLAY -->
   <div class="hud-layer">
 
-    <!-- TOP NAVIGATION & WEBGPU / WEBLLM CONTROLLER -->
+    <!-- TOP NAVIGATION & WEBGPU CONTROLS -->
     <div class="top-hud">
       <div class="game-title-card">
         <div class="title-icon">⚔️</div>
         <div class="title-text">
           <h1>Chronicles of the Aether</h1>
-          <p>Real-Time Procedural Narrative Engine (WebGPU + WebLLM)</p>
+          <p>Real-Time Dynamic 3D World (Three.js + WebGPU + WebLLM)</p>
         </div>
       </div>
 
       <div class="engine-controls">
         <select id="model-select" class="model-select">
-          <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Ultra-Fast Plot Gen, ~100MB)</option>
+          <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Fastest, ~100MB)</option>
           <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (Deep Lore, ~350MB)</option>
-          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (Epic Saga, ~800MB)</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (High-Precision, ~800MB)</option>
         </select>
         <button id="btn-load-gpu" class="btn-engine" onclick="initWebGPU()">
           <span>⚡</span><span id="load-btn-label">Load WebGPU AI</span>
@@ -402,30 +425,29 @@
       </div>
     </div>
 
-    <!-- CENTER RETICLE & TARGETING INTERACTION -->
+    <!-- CENTER RETICLE -->
     <div class="center-reticle">
       <div class="crosshair"></div>
-      <div id="interact-prompt" class="interact-prompt">PRESS [E] OR CLICK TO INTERACT</div>
     </div>
 
     <!-- LEFT WORLD TELEMETRY & QUEST COMPASS -->
     <div class="left-hud">
       <div class="world-state-card">
         <div class="card-header-label">
-          <span>World Telemetry</span>
-          <span id="time-of-day">TWILIGHT</span>
+          <span>3D World Telemetry</span>
+          <span id="realm-phase">ACT I</span>
         </div>
         <div class="state-row">
-          <span class="state-label">Current Realm:</span>
+          <span class="state-label">3D Environment:</span>
           <span id="realm-name" class="state-value">The Sunken Obelisk</span>
         </div>
         <div class="state-row">
-          <span class="state-label">World Alignment:</span>
-          <span id="world-alignment" class="state-value" style="color:var(--accent-cyan);">Ethereal Balance</span>
+          <span class="state-label">Atmosphere:</span>
+          <span id="world-alignment" class="state-value" style="color:var(--accent-cyan);">Cyan Twilight Void</span>
         </div>
         <div class="state-row">
-          <span class="state-label">Plot Act:</span>
-          <span id="act-number" class="state-value">Act I: The Discovery</span>
+          <span class="state-label">Active Structures:</span>
+          <span id="structures-state" class="state-value">Ancient Monolith Core</span>
         </div>
         <div class="state-row">
           <span class="state-label">Aether Resonance:</span>
@@ -439,21 +461,21 @@
           <span>LIVE</span>
         </div>
         <div id="quest-goal" class="quest-goal">Investigate the Whispering Obelisk</div>
-        <div id="quest-desc" class="quest-desc">Strange volumetric runes have ignited across the stone circle. The local guardian awaits your approach.</div>
+        <div id="quest-desc" class="quest-desc">Volumetric runes circle the stone platform. Choose a path below to transform the 3D realm.</div>
       </div>
     </div>
 
-    <!-- BOTTOM REAL-TIME STORY CONSOLE & ADAPTIVE DECISIONS -->
+    <!-- BOTTOM REAL-TIME STORY CONSOLE & DECISIONS -->
     <div class="bottom-hud">
       <div class="narrative-console">
         <div class="story-teller-tag">
           <span>✨</span>
           <span id="narrator-title">Procedural AI Game Master</span>
-          <span id="engine-telemetry" style="color:var(--accent-cyan);margin-left:auto;font-size:0.65rem;">Engine: Simulation Active</span>
+          <span id="engine-telemetry" style="color:var(--accent-cyan);margin-left:auto;font-size:0.65rem;">Engine: Active</span>
         </div>
-        <div id="story-stream" class="story-live-stream">You awaken on a suspended island of crystalline obsidian floating above an endless sea of violet nebulae. Before you stands an ancient monolith pulsing with azure light. 
+        <div id="story-stream" class="story-live-stream">You awaken on a suspended island of crystalline obsidian floating above a sea of violet nebulae. Before you stands an ancient monolith pulsing with azure light.
 
-As your footsteps echo across the floating ruins, the monolith shifts its geometry, and a mysterious entity manifests in a shower of glowing aether particles...</div>
+Make a decision below: watch the entire 3D world, lighting, monolithic geometry, and sky transform in real time with each choice!</div>
       </div>
 
       <div class="choices-container">
@@ -463,15 +485,15 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
         </div>
         <button id="choice-1" class="choice-btn" onclick="executePlayerChoice(1)">
           <span class="choice-key">[1]</span>
-          <span id="choice-1-text">Touch the monolith to attune with the aether</span>
+          <span id="choice-1-text">Channel your energy: Ignite the Solar Storm & Citadel</span>
         </button>
         <button id="choice-2" class="choice-btn" onclick="executePlayerChoice(2)">
           <span class="choice-key">[2]</span>
-          <span id="choice-2-text">Draw your warding sigil and demand its name</span>
+          <span id="choice-2-text">Recite ancient glyphs: Unlock the Genesis Portal Rings</span>
         </button>
         <button id="choice-3" class="choice-btn" onclick="executePlayerChoice(3)">
           <span class="choice-key">[3]</span>
-          <span id="choice-3-text">Examine the floating ruin rings for ancient traps</span>
+          <span id="choice-3-text">Shatter the binding seals: Trigger Cosmic Apex Transcendence</span>
         </button>
       </div>
     </div>
@@ -479,15 +501,14 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
   </div>
 
   <div class="controls-hint">
-    [W, A, S, D] Move Player &bull; [Mouse Drag] Orbit Camera &bull; [1, 2, 3] Select Live Plot Choices
+    [W, A, S, D] Move &bull; [Drag Mouse] Orbit 3D Camera &bull; [1, 2, 3] Trigger Scene Transformation
   </div>
 
   <!-- =========================================================================
-       JAVASCRIPT: WEBGPU + WEBLLM REAL-TIME PLOT ENGINE
+       WEBGPU INTEGRATION
        ========================================================================= -->
   <script type="module">
     import * as webllm from "https://esm.run/@mlc-ai/web-llm";
-
     window.webllm = webllm;
     window.engine = null;
     window.isWebGPULoaded = false;
@@ -514,7 +535,7 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
 
       btnGpu.disabled = true;
       statusBadge.className = "status-badge loading";
-      statusBadge.textContent = "Loading Weights...";
+      statusBadge.textContent = "Downloading Model...";
       progressBar.style.display = "block";
 
       try {
@@ -534,39 +555,47 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
         engineTelemetry.textContent = `WebGPU Hardware Accelerated (${modelId})`;
         engineTelemetry.style.color = "var(--accent-emerald)";
       } catch (err) {
-        console.warn("WebGPU initialization failed or fallback needed:", err);
+        console.warn("WebGPU fallback:", err);
         statusBadge.className = "status-badge loading";
-        statusBadge.textContent = "Sim Mode (Instant)";
-        btnLabel.textContent = "Simulation Mode";
+        statusBadge.textContent = "Sim Mode";
+        btnLabel.textContent = "Sim Mode";
         btnGpu.disabled = false;
         progressBar.style.display = "none";
-        engineTelemetry.textContent = "Simulation Engine (Zero Wait Time)";
+        engineTelemetry.textContent = "Procedural Neural Engine";
       }
     };
   </script>
 
   <!-- =========================================================================
-       JAVASCRIPT: THREE.JS 3D PROCEDURAL GAME WORLD & PLOT INTEGRATION
+       THREE.JS DYNAMIC 3D SCENE & REAL-TIME TRANSFORMATION SYSTEM
        ========================================================================= -->
   <script>
-    // -------------------------------------------------------------------------
-    // 1. THREE.JS 3D SCENE SETUP
-    // -------------------------------------------------------------------------
     let scene, camera, renderer;
-    let islandMesh, monolithMesh, guardianMesh, crystalRunes = [], floatingIslands = [];
-    let particleSystem;
+    let islandMesh, monolithTop, monolithBottom, coreSingularity, guardianMesh;
+    let portalTorus, portalEnergyDisk, celestialMandala, lightBeamMesh;
+    let crystalRunes = [], floatingSpires = [], distantIslands = [], shockwaveRings = [];
+    let particleSystem, particlePositions;
     let ambientLight, directionalLight, pointLight;
 
-    // Player position and controls
+    // Camera and player controls
     let playerPos = { x: 0, y: 1.2, z: 12 };
     let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
     let isDragging = false, prevMouseX = 0, prevMouseY = 0;
-    let cameraAngleX = 0, cameraAngleY = 0.25;
+    let cameraAngleX = 0, cameraAngleY = 0.22;
+    let targetCameraAngleX = 0;
+    let screenShake = 0;
+
+    // Target colors for smooth lerp transitions
+    let currentRealmStage = 1; // 1: Sunken Obelisk, 2: Shattered Citadel, 3: Genesis Gateway
+    let targetFogColor = new THREE.Color(0x090D16);
+    let targetAmbientColor = new THREE.Color(0x1e1b4b);
+    let targetDirLightColor = new THREE.Color(0x06B6D4);
+    let targetPointLightColor = new THREE.Color(0x8B5CF6);
 
     function init3DWorld() {
       const container = document.getElementById("game-canvas");
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x090D16, 0.025);
+      scene.fog = new THREE.FogExp2(0x090D16, 0.024);
 
       camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 4, 16);
@@ -578,62 +607,145 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer.domElement);
 
-      // LIGHTING
-      ambientLight = new THREE.AmbientLight(0x1e1b4b, 1.2);
+      // LIGHTING SYSTEM
+      ambientLight = new THREE.AmbientLight(0x1e1b4b, 1.4);
       scene.add(ambientLight);
 
-      directionalLight = new THREE.DirectionalLight(0x06B6D4, 2.0);
-      directionalLight.position.set(20, 40, 20);
+      directionalLight = new THREE.DirectionalLight(0x06B6D4, 2.2);
+      directionalLight.position.set(20, 45, 20);
       directionalLight.castShadow = true;
       scene.add(directionalLight);
 
-      pointLight = new THREE.PointLight(0x8B5CF6, 3.5, 30);
+      pointLight = new THREE.PointLight(0x8B5CF6, 4.0, 35);
       pointLight.position.set(0, 4, 0);
       scene.add(pointLight);
 
-      // PROCEDURAL MAIN FLOATING ISLAND
-      const islandGeo = new THREE.CylinderGeometry(14, 2, 7, 32);
+      // 1. MAIN OBSIDIAN ISLAND PLATFORM
+      const islandGeo = new THREE.CylinderGeometry(15, 2.5, 7.5, 32);
       const islandMat = new THREE.MeshStandardMaterial({
         color: 0x1E293B,
-        roughness: 0.8,
+        roughness: 0.85,
         metalness: 0.2,
         flatShading: true
       });
       islandMesh = new THREE.Mesh(islandGeo, islandMat);
-      islandMesh.position.y = -3.5;
+      islandMesh.position.y = -3.75;
       islandMesh.receiveShadow = true;
       scene.add(islandMesh);
 
-      // THE ANCIENT MONOLITH (THE NARRATIVE NEXUS)
-      const monolithGeo = new THREE.BoxGeometry(2.4, 8, 2.4);
-      const monolithMat = new THREE.MeshStandardMaterial({
+      // 2. SPLITTABLE ANCIENT MONOLITH (TOP + BOTTOM + CORE SINGULARITY)
+      const monoMat = new THREE.MeshStandardMaterial({
         color: 0x0284C7,
         emissive: 0x0369A1,
-        emissiveIntensity: 0.6,
+        emissiveIntensity: 0.7,
         roughness: 0.2,
         metalness: 0.8
       });
-      monolithMesh = new THREE.Mesh(monolithGeo, monolithMat);
-      monolithMesh.position.set(0, 4, 0);
-      monolithMesh.castShadow = true;
-      scene.add(monolithMesh);
 
-      // GUARDIAN CONSTRUCT (FLOATING ABSTRACT GUARDIAN ENTITY)
+      // Monolith Bottom
+      const monoBottomGeo = new THREE.BoxGeometry(2.4, 3.8, 2.4);
+      monolithBottom = new THREE.Mesh(monoBottomGeo, monoMat);
+      monolithBottom.position.set(0, 1.9, 0);
+      scene.add(monolithBottom);
+
+      // Monolith Top (separates and levitates in Act 2)
+      const monoTopGeo = new THREE.BoxGeometry(2.4, 3.8, 2.4);
+      monolithTop = new THREE.Mesh(monoTopGeo, monoMat);
+      monolithTop.position.set(0, 5.8, 0);
+      scene.add(monolithTop);
+
+      // Core Glowing Singularity inside the Monolith
+      const coreGeo = new THREE.SphereGeometry(1.1, 24, 24);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        emissive: 0x06B6D4,
+        emissiveIntensity: 1.5,
+        roughness: 0.1,
+        metalness: 0.9
+      });
+      coreSingularity = new THREE.Mesh(coreGeo, coreMat);
+      coreSingularity.position.set(0, 3.8, 0);
+      coreSingularity.scale.set(0.2, 0.2, 0.2); // Expands in Act 2
+      scene.add(coreSingularity);
+
+      // 3. SWIRLING 3D CELESTIAL PORTAL (ACTIVATES IN ACT 2)
+      const portalGeo = new THREE.TorusGeometry(3.6, 0.35, 16, 64);
+      const portalMat = new THREE.MeshStandardMaterial({
+        color: 0xF59E0B,
+        emissive: 0xD97706,
+        emissiveIntensity: 1.2,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      portalTorus = new THREE.Mesh(portalGeo, portalMat);
+      portalTorus.position.set(0, 4.2, 0);
+      portalTorus.scale.set(0.001, 0.001, 0.001); // Invisible in Act 1
+      scene.add(portalTorus);
+
+      const portalDiskGeo = new THREE.CircleGeometry(3.3, 32);
+      const portalDiskMat = new THREE.MeshBasicMaterial({
+        color: 0xFBBF24,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide
+      });
+      portalEnergyDisk = new THREE.Mesh(portalDiskGeo, portalDiskMat);
+      portalEnergyDisk.position.set(0, 4.2, 0);
+      portalEnergyDisk.scale.set(0.001, 0.001, 0.001);
+      scene.add(portalEnergyDisk);
+
+      // 4. OVERHEAD CELESTIAL DYSON MANDALA (ACTIVATES IN ACT 3)
+      const mandalaGroup = new THREE.Group();
+      const ring1 = new THREE.Mesh(new THREE.RingGeometry(8, 8.4, 48), new THREE.MeshBasicMaterial({ color: 0x8B5CF6, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+      ring1.rotation.x = Math.PI / 2;
+      const ring2 = new THREE.Mesh(new THREE.RingGeometry(12, 12.5, 48), new THREE.MeshBasicMaterial({ color: 0xEC4899, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      ring2.rotation.x = Math.PI / 2;
+      mandalaGroup.add(ring1);
+      mandalaGroup.add(ring2);
+      mandalaGroup.position.set(0, 18, 0);
+      mandalaGroup.scale.set(0.001, 0.001, 0.001); // Spawns in Act 3
+      scene.add(mandalaGroup);
+      celestialMandala = mandalaGroup;
+
+      // 5. VERTICAL ASCENSION LIGHT BEAM
+      const beamGeo = new THREE.CylinderGeometry(1.6, 2.2, 60, 32, 1, true);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: 0xDDD6FE,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide
+      });
+      lightBeamMesh = new THREE.Mesh(beamGeo, beamMat);
+      lightBeamMesh.position.set(0, 30, 0);
+      scene.add(lightBeamMesh);
+
+      // 6. PERIMETER COLOSSAL STONE SPIRES (EMERGE IN ACT 2)
+      for (let i = 0; i < 4; i++) {
+        const spireGeo = new THREE.ConeGeometry(1.5, 12, 6);
+        const spireMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7, flatShading: true });
+        const spire = new THREE.Mesh(spireGeo, spireMat);
+        const angle = (i * Math.PI / 2) + 0.4;
+        const rad = 13.5;
+        spire.position.set(Math.cos(angle) * rad, -10, Math.sin(angle) * rad); // Starts submerged
+        scene.add(spire);
+        floatingSpires.push({ mesh: spire, targetY: -10, baseAngle: angle });
+      }
+
+      // 7. GUARDIAN CONSTRUCT
       const guardianGeo = new THREE.OctahedronGeometry(1.4, 0);
       const guardianMat = new THREE.MeshStandardMaterial({
         color: 0x8B5CF6,
         emissive: 0x7C3AED,
         emissiveIntensity: 0.9,
-        wireframe: false,
         metalness: 0.9,
         roughness: 0.1
       });
       guardianMesh = new THREE.Mesh(guardianGeo, guardianMat);
-      guardianMesh.position.set(0, 5, -4);
+      guardianMesh.position.set(0, 5, -4.5);
       scene.add(guardianMesh);
 
-      // RUNIC CRYSTAL ORBITALS
-      const runeGeo = new THREE.TetrahedronGeometry(0.7, 0);
+      // 8. RUNIC CRYSTAL ORBITALS
+      const runeGeo = new THREE.TetrahedronGeometry(0.75, 0);
       for (let i = 0; i < 6; i++) {
         const runeMat = new THREE.MeshStandardMaterial({
           color: 0x06B6D4,
@@ -645,38 +757,38 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
         crystalRunes.push(rune);
       }
 
-      // BACKGROUND DISTANT FLOATING ROCKS
-      for (let i = 0; i < 15; i++) {
+      // 9. BACKGROUND DISTANT FLOATING ROCK ISLANDS
+      for (let i = 0; i < 18; i++) {
         const rGeo = new THREE.DodecahedronGeometry(Math.random() * 3 + 1, 0);
         const rMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, flatShading: true });
         const rock = new THREE.Mesh(rGeo, rMat);
         const angle = Math.random() * Math.PI * 2;
-        const dist = Math.random() * 60 + 30;
+        const dist = Math.random() * 65 + 30;
         rock.position.set(Math.cos(angle) * dist, Math.random() * 30 - 10, Math.sin(angle) * dist);
         scene.add(rock);
-        floatingIslands.push({ mesh: rock, speed: Math.random() * 0.005 + 0.002, offset: Math.random() * Math.PI });
+        distantIslands.push({ mesh: rock, speed: Math.random() * 0.005 + 0.002, offset: Math.random() * Math.PI });
       }
 
-      // VOLUMETRIC AETHER PARTICLES
-      const particleCount = 400;
-      const particleGeo = new THREE.BufferGeometry();
-      const pPositions = new Float32Array(particleCount * 3);
-      for (let i = 0; i < particleCount * 3; i += 3) {
-        pPositions[i] = (Math.random() - 0.5) * 40;
-        pPositions[i + 1] = Math.random() * 20 - 2;
-        pPositions[i + 2] = (Math.random() - 0.5) * 40;
+      // 10. AETHER VOLUMETRIC PARTICLES
+      const pCount = 500;
+      const pGeo = new THREE.BufferGeometry();
+      particlePositions = new Float32Array(pCount * 3);
+      for (let i = 0; i < pCount * 3; i += 3) {
+        particlePositions[i] = (Math.random() - 0.5) * 45;
+        particlePositions[i + 1] = Math.random() * 25 - 3;
+        particlePositions[i + 2] = (Math.random() - 0.5) * 45;
       }
-      particleGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-      const particleMat = new THREE.PointsMaterial({
+      pGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+      const pMat = new THREE.PointsMaterial({
         color: 0x06B6D4,
-        size: 0.18,
+        size: 0.22,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.75
       });
-      particleSystem = new THREE.Points(particleGeo, particleMat);
+      particleSystem = new THREE.Points(pGeo, pMat);
       scene.add(particleSystem);
 
-      // EVENT LISTENERS FOR CONTROLS
+      // CONTROLS LISTENERS
       window.addEventListener("resize", onWindowResize);
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
@@ -720,190 +832,312 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
       prevMouseY = e.clientY;
 
       cameraAngleX -= deltaX * 0.006;
-      cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.5, cameraAngleY + deltaY * 0.006));
+      targetCameraAngleX = cameraAngleX;
+      cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.3, cameraAngleY + deltaY * 0.006));
     }
 
-    // 3D ANIMATION LOOP
-    let clock = new THREE.Clock();
+    // SPAWN GROUND SHOCKWAVE EXPANSION
+    function spawnShockwave(hexColor) {
+      const ringGeo = new THREE.RingGeometry(0.3, 0.9, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: hexColor,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(0, 0.05, 0);
+      scene.add(ring);
+      shockwaveRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
+    }
+
+    // -------------------------------------------------------------------------
+    // REAL-TIME 3D TRANSFORMATION HANDLER (ACT 1 -> ACT 2 -> ACT 3)
+    // -------------------------------------------------------------------------
+    function transform3DRealm(stageIndex) {
+      currentRealmStage = stageIndex;
+      screenShake = 0.45; // Immediate kinetic impact
+      targetCameraAngleX += Math.PI * 0.5; // Cinematic camera orbit sweep
+
+      const toast = document.getElementById("realm-toast");
+      const toastText = document.getElementById("toast-text");
+
+      if (stageIndex === 1) {
+        // ACT I: CYAN TWILIGHT VOID & THE OBSIDIAN MONOLITH
+        targetFogColor.setHex(0x090D16);
+        targetAmbientColor.setHex(0x1e1b4b);
+        targetDirLightColor.setHex(0x06B6D4);
+        targetPointLightColor.setHex(0x8B5CF6);
+
+        particleSystem.material.color.setHex(0x06B6D4);
+        monolithTop.material.color.setHex(0x0284C7);
+        monolithTop.material.emissive.setHex(0x0369A1);
+        monolithBottom.material.color.setHex(0x0284C7);
+        monolithBottom.material.emissive.setHex(0x0369A1);
+        crystalRunes.forEach(r => r.material.color.setHex(0x06B6D4));
+
+        floatingSpires.forEach(s => s.targetY = -10); // Submerge spires
+
+        spawnShockwave(0x06B6D4);
+        toastText.textContent = "REALM SHIFT: The Sunken Obelisk (Cyan Twilight)";
+        document.getElementById("structures-state").textContent = "Ancient Monolith Core";
+        document.getElementById("world-alignment").textContent = "Cyan Twilight Void";
+
+      } else if (stageIndex === 2) {
+        // ACT II: FIERY SOLAR STORM & THE SHATTERED CITADEL
+        targetFogColor.setHex(0x2A0F03);
+        targetAmbientColor.setHex(0x451A03);
+        targetDirLightColor.setHex(0xF59E0B);
+        targetPointLightColor.setHex(0xEF4444);
+
+        particleSystem.material.color.setHex(0xF59E0B);
+        monolithTop.material.color.setHex(0xDC2626);
+        monolithTop.material.emissive.setHex(0x991B1B);
+        monolithBottom.material.color.setHex(0xEA580C);
+        monolithBottom.material.emissive.setHex(0xC2410C);
+        crystalRunes.forEach(r => r.material.color.setHex(0xFBBF24));
+
+        floatingSpires.forEach(s => s.targetY = 4.5); // Spires rise 15m out of the void!
+
+        spawnShockwave(0xF59E0B);
+        toastText.textContent = "REALM SHIFT: The Shattered Citadel (Solar Rift)";
+        document.getElementById("structures-state").textContent = "Separated Monolith & Portal Gate";
+        document.getElementById("world-alignment").textContent = "Solar Nebula & Rift Storm";
+
+      } else if (stageIndex === 3) {
+        // ACT III: AMETHYST HYPERSPACE & THE GENESIS GATEWAY
+        targetFogColor.setHex(0x1E0538);
+        targetAmbientColor.setHex(0x3B0764);
+        targetDirLightColor.setHex(0xA855F7);
+        targetPointLightColor.setHex(0xEC4899);
+
+        particleSystem.material.color.setHex(0xEC4899);
+        monolithTop.material.color.setHex(0x8B5CF6);
+        monolithTop.material.emissive.setHex(0x7C3AED);
+        monolithBottom.material.color.setHex(0x8B5CF6);
+        monolithBottom.material.emissive.setHex(0x7C3AED);
+        crystalRunes.forEach(r => r.material.color.setHex(0xE879F9));
+
+        floatingSpires.forEach(s => s.targetY = 7.0);
+
+        spawnShockwave(0x8B5CF6);
+        toastText.textContent = "REALM SHIFT: The Genesis Gateway (Cosmic Apex)";
+        document.getElementById("structures-state").textContent = "Celestial Dyson Mandala Array";
+        document.getElementById("world-alignment").textContent = "Amethyst Hyperspace Matrix";
+      }
+
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    // -------------------------------------------------------------------------
+    // 3D RENDER ANIMATION LOOP WITH KINETIC MORPHING
+    // -------------------------------------------------------------------------
+    const clock = new THREE.Clock();
+
     function animate3D() {
       requestAnimationFrame(animate3D);
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // PLAYER MOVEMENT
+      // SMOOTH LERP WORLD LIGHTING & FOG
+      scene.fog.color.lerp(targetFogColor, 0.05);
+      renderer.setClearColor(scene.fog.color);
+      ambientLight.color.lerp(targetAmbientColor, 0.05);
+      directionalLight.color.lerp(targetDirLightColor, 0.05);
+      pointLight.color.lerp(targetPointLightColor, 0.05);
+
+      // PLAYER MOVEMENT INTERPOLATION
       const speed = 7.0 * delta;
       if (moveForward) playerPos.z -= speed;
       if (moveBackward) playerPos.z += speed;
       if (moveLeft) playerPos.x -= speed;
       if (moveRight) playerPos.x += speed;
 
-      // CONSTRAIN TO ISLAND CIRCLE
       const distFromCenter = Math.sqrt(playerPos.x * playerPos.x + playerPos.z * playerPos.z);
-      if (distFromCenter > 13) {
-        playerPos.x *= 13 / distFromCenter;
-        playerPos.z *= 13 / distFromCenter;
+      if (distFromCenter > 13.5) {
+        playerPos.x *= 13.5 / distFromCenter;
+        playerPos.z *= 13.5 / distFromCenter;
       }
 
-      // CAMERA FOLLOW ORBIT
-      const camDist = 9.0;
-      camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
-      camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + 2.0;
+      // CAMERA INTERPOLATION & SHOCKWAVE SHAKE
+      cameraAngleX += (targetCameraAngleX - cameraAngleX) * 0.08;
+      let shakeOffsetX = 0, shakeOffsetY = 0;
+      if (screenShake > 0) {
+        shakeOffsetX = (Math.random() - 0.5) * screenShake;
+        shakeOffsetY = (Math.random() - 0.5) * screenShake;
+        screenShake = Math.max(0, screenShake - delta * 1.5);
+      }
+
+      const camDist = 9.5;
+      camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY) + shakeOffsetX;
+      camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + 2.0 + shakeOffsetY;
       camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
       camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
 
-      // ROTATE MONOLITH & GUARDIAN
-      if (monolithMesh) {
-        monolithMesh.rotation.y = elapsed * 0.35;
-        monolithMesh.position.y = 4 + Math.sin(elapsed * 1.5) * 0.3;
-      }
-      if (guardianMesh) {
-        guardianMesh.rotation.x = elapsed * 0.6;
-        guardianMesh.rotation.y = elapsed * 0.8;
-        guardianMesh.position.y = 5 + Math.cos(elapsed * 1.8) * 0.5;
+      // --- DYNAMIC GEOMETRY MORPHING PER REALM STAGE ---
+
+      // 1. Monolith Top Separation & Singularity Core
+      if (currentRealmStage === 1) {
+        monolithTop.position.y += (5.8 - monolithTop.position.y) * 0.06;
+        coreSingularity.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), 0.08);
+        portalTorus.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
+        portalEnergyDisk.material.opacity += (0.0 - portalEnergyDisk.material.opacity) * 0.08;
+        celestialMandala.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
+        lightBeamMesh.material.opacity += (0.0 - lightBeamMesh.material.opacity) * 0.08;
+      } else if (currentRealmStage === 2) {
+        // Monolith splits upward, revealing the singularity!
+        monolithTop.position.y += (8.4 - monolithTop.position.y) * 0.06;
+        coreSingularity.scale.lerp(new THREE.Vector3(1.3, 1.3, 1.3), 0.08);
+        coreSingularity.rotation.y = elapsed * 2.0;
+        portalTorus.scale.lerp(new THREE.Vector3(1.0, 1.0, 1.0), 0.08);
+        portalTorus.rotation.z = elapsed * 1.5;
+        portalEnergyDisk.scale.lerp(new THREE.Vector3(1.0, 1.0, 1.0), 0.08);
+        portalEnergyDisk.material.opacity += (0.35 - portalEnergyDisk.material.opacity) * 0.08;
+        portalEnergyDisk.rotation.z = -elapsed * 1.2;
+        celestialMandala.scale.lerp(new THREE.Vector3(0.001, 0.001, 0.001), 0.08);
+        lightBeamMesh.material.opacity += (0.15 - lightBeamMesh.material.opacity) * 0.08;
+      } else if (currentRealmStage === 3) {
+        // Monolith levitates higher, celestial mandala activates!
+        monolithTop.position.y += (10.2 - monolithTop.position.y) * 0.06;
+        coreSingularity.scale.lerp(new THREE.Vector3(1.8, 1.8, 1.8), 0.08);
+        portalTorus.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.08);
+        portalTorus.rotation.z = elapsed * 2.5;
+        celestialMandala.scale.lerp(new THREE.Vector3(1.0, 1.0, 1.0), 0.08);
+        celestialMandala.rotation.y = elapsed * 0.3;
+        celestialMandala.children[0].rotation.z = elapsed * 0.8;
+        celestialMandala.children[1].rotation.z = -elapsed * 0.6;
+        lightBeamMesh.material.opacity += (0.55 - lightBeamMesh.material.opacity) * 0.08;
+        lightBeamMesh.rotation.y = elapsed * 0.4;
       }
 
-      // ORBIT CRYSTAL RUNES
-      crystalRunes.forEach((rune, i) => {
-        const angle = elapsed * 0.8 + (i * Math.PI / 3);
-        const radius = 5.5 + Math.sin(elapsed + i) * 0.5;
-        rune.position.set(Math.cos(angle) * radius, 3.5 + Math.sin(angle * 2) * 1.0, Math.sin(angle) * radius);
-        rune.rotation.x = elapsed;
-        rune.rotation.y = elapsed * 1.4;
+      // 2. Colossal Spires Elevation
+      floatingSpires.forEach(s => {
+        s.mesh.position.y += (s.targetY - s.mesh.position.y) * 0.05;
+        s.mesh.rotation.y = elapsed * 0.2;
       });
 
-      // FLOAT DISTANT ISLANDS
-      floatingIslands.forEach(item => {
+      // 3. Guardian Construct Animation
+      if (guardianMesh) {
+        const speedMultiplier = currentRealmStage === 2 ? 2.5 : (currentRealmStage === 3 ? 3.5 : 1.0);
+        guardianMesh.rotation.x = elapsed * 0.6 * speedMultiplier;
+        guardianMesh.rotation.y = elapsed * 0.8 * speedMultiplier;
+        guardianMesh.position.y = 5 + Math.cos(elapsed * 1.8) * 0.6;
+      }
+
+      // 4. Orbiting Crystal Runes
+      crystalRunes.forEach((rune, i) => {
+        const speedRune = currentRealmStage === 2 ? 1.6 : (currentRealmStage === 3 ? 2.2 : 0.8);
+        const angle = elapsed * speedRune + (i * Math.PI / 3);
+        const radius = (currentRealmStage === 2 ? 7.0 : (currentRealmStage === 3 ? 8.5 : 5.5)) + Math.sin(elapsed + i) * 0.5;
+        rune.position.set(Math.cos(angle) * radius, 3.8 + Math.sin(angle * 2) * 1.2, Math.sin(angle) * radius);
+        rune.rotation.x = elapsed * 1.2;
+        rune.rotation.y = elapsed * 1.8;
+      });
+
+      // 5. Expand & Fade Shockwave Rings
+      for (let i = shockwaveRings.length - 1; i >= 0; i--) {
+        const sw = shockwaveRings[i];
+        sw.scale += delta * 16;
+        sw.opacity -= delta * 1.2;
+        sw.mesh.scale.set(sw.scale, sw.scale, 1);
+        sw.mesh.material.opacity = Math.max(0, sw.opacity);
+        if (sw.opacity <= 0) {
+          scene.remove(sw.mesh);
+          shockwaveRings.splice(i, 1);
+        }
+      }
+
+      // 6. Background Floating Islands
+      distantIslands.forEach(item => {
         item.mesh.position.y += Math.sin(elapsed * 2 + item.offset) * 0.015;
         item.mesh.rotation.y += item.speed;
       });
 
-      // SLOW GLOW OF AETHER PARTICLES
+      // 7. Aether Volumetric Particles Rotation
       if (particleSystem) {
-        particleSystem.rotation.y = elapsed * 0.05;
+        particleSystem.rotation.y = elapsed * 0.06;
       }
 
       renderer.render(scene, camera);
     }
 
     // -------------------------------------------------------------------------
-    // 2. REAL-TIME AI PLOT EVOLUTION ENGINE
+    // PROCEDURAL BRANCHING PLOT DB
     // -------------------------------------------------------------------------
-
-    // GAME STATE TRACKER
-    const GAME_STATE = {
-      act: 1,
-      resonance: 78,
-      alignment: "Ethereal Balance",
-      realm: "The Sunken Obelisk",
-      history: []
-    };
-
-    // PROCEDURAL BRANCH SCENARIOS FOR INSTANT SIMULATION / FALLBACK
     const BRANCHING_PLOT_DB = {
       1: {
-        act: "Act I: The Resonance Gate",
+        act: "Act I: The Discovery",
         realm: "The Sunken Obelisk",
-        goal: "Attune the Ancient Runes",
-        desc: "The crystal monolith resonates with your aura. Three harmonic paths present themselves.",
+        goal: "Investigate the Whispering Obelisk",
+        desc: "Ancient stone runes circle the platform. Choose an attunement to shift the realm.",
         choices: [
-          { text: "Channel your life energy directly into the stone", nextAct: 2, flavor: "energy" },
-          { text: "Recite the ancient glyphs engraved on the rim", nextAct: 2, flavor: "lore" },
-          { text: "Shatter the binding crystals to free the trapped entity", nextAct: 2, flavor: "combat" }
+          { text: "Channel life energy: Ignite the Solar Storm & Citadel", stage: 2 },
+          { text: "Recite ancient glyphs: Unlock the Genesis Portal Rings", stage: 2 },
+          { text: "Shatter the binding seals: Trigger Cosmic Apex Transcendence", stage: 3 }
         ],
-        story: "As you step closer to the monolith, an azure harmonic hum reverberates through the obsidian ground. The floating crystals accelerate their orbits, casting crystalline refractions across the nebula.\n\nThe guardian construct speaks in a layered choir of reverberating tones: 'Mortal traveler... the stars have aligned after ten millennia. Will you serve the Covenant of Light, unravel the Lost Knowledge, or break the ancient seals?'"
+        story: "You awaken on an obsidian platform suspended over a cyan twilight void. The ancient monolith hums with primal resonance.\n\nAs you choose your action, a kinetic shockwave ripples across the stone floor, and the surrounding void begins to bend to your command!"
       },
       2: {
         act: "Act II: The Shattered Citadel",
         realm: "The Citadel of Nebulae",
-        goal: "Navigate the Rift Storm",
-        desc: "The realm shifts violently. A swirling vortex of golden stormclouds opens overhead.",
+        goal: "Navigate the Solar Rift Storm",
+        desc: "Colossal stone spires rise from the abyss! The monolith splits open to reveal the glowing Core Singularity.",
         choices: [
-          { text: "Step through the celestial portal into the core chamber", nextAct: 3, flavor: "portal" },
-          { text: "Summon the aether shields to withstand the storm", nextAct: 3, flavor: "defense" },
-          { text: "Commune with the cosmic vortex to absorb its cosmic power", nextAct: 3, flavor: "power" }
+          { text: "Step through the celestial portal into the core chamber", stage: 3 },
+          { text: "Summon the aether shields to withstand the storm", stage: 3 },
+          { text: "Absorb cosmic rift energy to awaken the Genesis Array", stage: 3 }
         ],
-        story: "Your choice echoes across the cosmos! The sky shifts from deep obsidian to radiant amethyst and gold. Pillars of light erupt from the floating islands in the distance.\n\nThe monolith blooms outward like a metallic lotus, revealing a glowing cosmic singularity at its heart. The guardian entity bows its multifaceted head: 'The path has been chosen. The timeline bends to your will. Ahead lies the Genesis Gateway.'"
+        story: "The realm violently shifts! Colossal stone spires erupt from the void, surrounding the sanctuary. Overhead, the sky turns into a tempest of blazing gold and solar crimson.\n\nThe ancient monolith splits apart, levitating in segmented rings to reveal a blinding Core Singularity and spinning energy portal!"
       },
       3: {
-        act: "Act III: The Apex Transcendence",
+        act: "Act III: The Genesis Gateway",
         realm: "The Genesis Gateway",
-        goal: "Decide the Fate of the Aether",
-        desc: "The celestial matrix is fully unlocked. You stand at the precipice of creation.",
+        goal: "Ascend the Celestial Dyson Mandala",
+        desc: "The sky has evolved into an amethyst hyperspace matrix. A colossal rotating Dyson Mandala array shines overhead.",
         choices: [
-          { text: "Rebuild the universe in harmony with all mortal kind", nextAct: 1, flavor: "peace" },
-          { text: "Ascend as the eternal sovereign of the Aether", nextAct: 1, flavor: "ascend" },
-          { text: "Release all cosmic energy into the infinite void", nextAct: 1, flavor: "reset" }
+          { text: "Harmonize the universe with mortal kind", stage: 1 },
+          { text: "Ascend as eternal sovereign of the Aether", stage: 1 },
+          { text: "Reset the cosmic cycle and begin anew", stage: 1 }
         ],
-        story: "Blinding radiance fills the 3D void! The islands re-align themselves into an intricate geometric mandala of pure light. The aether storm settles into a tranquil mirror of cosmic stars.\n\nYou have completed the cycle of the Aether. The universe awaits your final decree to shape the next epoch."
+        story: "Transcendent violet hyperspace engulfs the entire world! A colossal celestial Dyson Mandala array manifests overhead, cascading divine light down upon the island.\n\nA vertical pillar of cosmic energy pierces the stratosphere. The entire 3D geometry of the universe has answered your command."
       }
     };
 
-    // TRIGGER 3D ENVIRONMENT DYNAMIC EFFECTS BASED ON PLOT
-    function update3DEnvironment(theme) {
-      if (theme === 'energy') {
-        monolithMesh.material.color.setHex(0xF59E0B);
-        monolithMesh.material.emissive.setHex(0xD97706);
-        pointLight.color.setHex(0xF59E0B);
-        crystalRunes.forEach(r => r.material.color.setHex(0xFBBF24));
-      } else if (theme === 'lore') {
-        monolithMesh.material.color.setHex(0x10B981);
-        monolithMesh.material.emissive.setHex(0x059669);
-        pointLight.color.setHex(0x10B981);
-        crystalRunes.forEach(r => r.material.color.setHex(0x34D399));
-      } else if (theme === 'combat') {
-        monolithMesh.material.color.setHex(0xEF4444);
-        monolithMesh.material.emissive.setHex(0xDC2626);
-        pointLight.color.setHex(0xEF4444);
-        crystalRunes.forEach(r => r.material.color.setHex(0xF87171));
-      } else {
-        monolithMesh.material.color.setHex(0x8B5CF6);
-        monolithMesh.material.emissive.setHex(0x7C3AED);
-        pointLight.color.setHex(0x06B6D4);
-        crystalRunes.forEach(r => r.material.color.setHex(0x06B6D4));
-      }
-    }
-
-    // EXECUTE PLAYER DECISION & GENERATE PLOT IN REAL TIME
+    // EXECUTE DECISION & TRIGGER REAL 3D SCENE TRANSFORMATION
     async function executePlayerChoice(choiceIndex) {
-      const choiceBtn = document.getElementById(`choice-${choiceIndex}`);
       const chosenText = document.getElementById(`choice-${choiceIndex}-text`).textContent;
 
-      // Disable choice buttons during generation
       for (let i = 1; i <= 3; i++) {
         document.getElementById(`choice-${i}`).disabled = true;
       }
 
-      // Record in history
-      GAME_STATE.history.push(chosenText);
-      GAME_STATE.act = (GAME_STATE.act % 3) + 1;
-      GAME_STATE.resonance = Math.min(100, Math.max(20, GAME_STATE.resonance + (choiceIndex === 1 ? 8 : (choiceIndex === 2 ? -5 : 12))));
+      // Next stage cycle: 1 -> 2 -> 3 -> 1
+      const nextStage = (currentRealmStage % 3) + 1;
+      
+      // TRIGGER THE REAL 3D SCENE TRANSFORMATION
+      transform3DRealm(nextStage);
 
-      // Update UI Telemetry
-      document.getElementById("act-number").textContent = `Act ${GAME_STATE.act}: ${GAME_STATE.act === 1 ? 'Discovery' : (GAME_STATE.act === 2 ? 'The Crucible' : 'Transcendence')}`;
-      document.getElementById("resonance-level").textContent = `${GAME_STATE.resonance}%`;
+      // Update telemetry
+      document.getElementById("realm-phase").textContent = `ACT ${nextStage}`;
+      document.getElementById("resonance-level").textContent = `${Math.floor(65 + Math.random() * 34)}%`;
 
       const storyEl = document.getElementById("story-stream");
-      storyEl.textContent = `[Player Action: ${chosenText}]\n\nArchitecting next narrative node...\n`;
-
-      // Branch 3D visuals
-      const themeColors = ['energy', 'lore', 'combat', 'portal'];
-      update3DEnvironment(themeColors[choiceIndex % themeColors.length]);
+      storyEl.textContent = `[Decision: ${chosenText}]\n\nTransforming 3D geometry and synthesizing narrative...\n`;
 
       if (window.isWebGPULoaded && window.engine) {
-        // GENERATE VIA REAL WEBGPU WEBLLM MODEL
-        await generatePlotWithWebLLM(chosenText);
+        await generatePlotWithWebLLM(chosenText, nextStage);
       } else {
-        // HIGH-FIDELITY PROCEDURAL SIMULATION STREAMING
-        await generateSimulatedPlot(GAME_STATE.act, chosenText);
+        await generateSimulatedPlot(nextStage, chosenText);
       }
 
-      // Re-enable buttons
       for (let i = 1; i <= 3; i++) {
         document.getElementById(`choice-${i}`).disabled = false;
       }
     }
 
-    // STREAM SIMULATED PROCEDURAL NARRATIVE
+    // SIMULATED NARRATIVE STREAMING
     async function generateSimulatedPlot(actNum, playerAction) {
       const plotNode = BRANCHING_PLOT_DB[actNum];
       document.getElementById("realm-name").textContent = plotNode.realm;
@@ -911,30 +1145,34 @@ As your footsteps echo across the floating ruins, the monolith shifts its geomet
       document.getElementById("quest-desc").textContent = plotNode.desc;
 
       const storyEl = document.getElementById("story-stream");
-      const fullText = `[Action: ${playerAction}]\n\n` + plotNode.story;
+      const fullText = `[Choice: ${playerAction}]\n\n` + plotNode.story;
 
       storyEl.textContent = "";
       const chars = fullText.split("");
       for (let i = 0; i < chars.length; i++) {
         storyEl.textContent += chars[i];
         storyEl.scrollTop = storyEl.scrollHeight;
-        if (i % 3 === 0) await new Promise(r => setTimeout(r, 14));
+        if (i % 3 === 0) await new Promise(r => setTimeout(r, 12));
       }
 
-      // Update next 3 choices
       plotNode.choices.forEach((c, idx) => {
         document.getElementById(`choice-${idx + 1}-text`).textContent = c.text;
       });
     }
 
-    // STREAM LIVE WEBGPU WEBLLM PROMPT
-    async function generatePlotWithWebLLM(playerAction) {
+    // WEBGPU STREAMING
+    async function generatePlotWithWebLLM(playerAction, nextStage) {
       const storyEl = document.getElementById("story-stream");
+      const plotNode = BRANCHING_PLOT_DB[nextStage];
+      document.getElementById("realm-name").textContent = plotNode.realm;
+      document.getElementById("quest-goal").textContent = plotNode.goal;
+      document.getElementById("quest-desc").textContent = plotNode.desc;
 
-      const systemPrompt = `You are the Game Master of a high-fantasy sci-fi 3D game named "Chronicles of the Aether".
-The player just took the following action: "${playerAction}".
-Generate the next exciting narrative segment in 3 to 4 sentences, describing how the 3D aether world reacts.
-Then provide exactly three distinct, dramatic player action options formatted as:
+      const systemPrompt = `You are the Game Master of the 3D sci-fi game "Chronicles of the Aether".
+The player just triggered a physical 3D scene transformation into Act ${nextStage} (${plotNode.realm}).
+Player action: "${playerAction}".
+Describe the breathtaking physical metamorphosis of the 3D environment in 3 vivid sentences.
+Then provide exactly three bold next choices:
 [CHOICE 1]: <action>
 [CHOICE 2]: <action>
 [CHOICE 3]: <action>`;
@@ -943,14 +1181,14 @@ Then provide exactly three distinct, dramatic player action options formatted as
         const completion = await window.engine.chat.completions.create({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `The player chose: "${playerAction}". Continue the saga.` }
+            { role: "user", content: `Player chose: "${playerAction}". Describe the 3D transformation into ${plotNode.realm}.` }
           ],
           stream: true,
-          temperature: 0.6
+          temperature: 0.65
         });
 
         let accumulatedText = "";
-        storyEl.textContent = `[Action: ${playerAction}]\n\n`;
+        storyEl.textContent = `[Choice: ${playerAction}]\n\n`;
 
         for await (const chunk of completion) {
           const delta = chunk.choices[0]?.delta?.content || "";
@@ -959,7 +1197,6 @@ Then provide exactly three distinct, dramatic player action options formatted as
           storyEl.scrollTop = storyEl.scrollHeight;
         }
 
-        // Parse choices from LLM output if present
         const c1Match = accumulatedText.match(/\[CHOICE 1\]:\s*(.+)/i);
         const c2Match = accumulatedText.match(/\[CHOICE 2\]:\s*(.+)/i);
         const c3Match = accumulatedText.match(/\[CHOICE 3\]:\s*(.+)/i);
@@ -969,16 +1206,14 @@ Then provide exactly three distinct, dramatic player action options formatted as
         if (c3Match) document.getElementById("choice-3-text").textContent = c3Match[1].trim();
 
       } catch (err) {
-        console.error("WebLLM generation error:", err);
-        await generateSimulatedPlot(GAME_STATE.act, playerAction);
+        console.error("WebLLM error, falling back:", err);
+        await generateSimulatedPlot(nextStage, playerAction);
       }
     }
 
-    // START 3D GAME ON LOAD
     window.addEventListener("load", () => {
       init3DWorld();
     });
   </script>
-
 </body>
 </html>
