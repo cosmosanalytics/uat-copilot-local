@@ -503,7 +503,7 @@
           <span>LIVE</span>
         </div>
         <div id="quest-goal" class="quest-goal">Investigate the Whispering Obelisk</div>
-        <div id="quest-desc" class="quest-desc">Volumetric runes circle the stone platform. Type any command (e.g. 'back to earth and city' or 'explore the forest') to morph the 3D world!</div>
+        <div id="quest-desc" class="quest-desc">Type ANY environment on the fly (e.g. 'desert pyramids', 'deep ocean coral', 'volcano lava', 'frozen ice castle', 'enchanted forest', 'Mars colony', 'back to earth') to reconstruct the 3D world in real-time!</div>
       </div>
     </div>
 
@@ -512,18 +512,18 @@
       <div class="narrative-console">
         <div class="story-teller-tag">
           <span>✨</span>
-          <span id="narrator-title">Procedural AI Game Master</span>
+          <span id="narrator-title">Universal 3D World AI Synthesizer</span>
           <span id="engine-telemetry" style="color:var(--accent-cyan);margin-left:auto;font-size:0.65rem;">Engine: Active</span>
         </div>
         <div id="story-stream" class="story-live-stream">You awaken on a suspended island of crystalline obsidian floating above a sea of violet nebulae. Before you stands an ancient monolith pulsing with azure light.
 
-Try typing any command into the box below (e.g. "back to earth and city", "summon a forest", "travel to solar nebula") to watch the 3D world physically reconstruct!</div>
+Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep underwater coral reef", "volcano with lava", "enchanted forest with glowing mushrooms", "ice glacier kingdom", "back to earth and city") to physically generate that 3D world on the fly!</div>
       </div>
 
       <div class="choices-container">
         <div class="card-header-label">
           <span>Real-Time Decisions</span>
-          <span>CHOOSE ACTION</span>
+          <span>CHOOSE OR TYPE ANY WORLD</span>
         </div>
         <button id="choice-1" class="choice-btn" onclick="executePlayerChoice(1)">
           <span class="choice-key">[1]</span>
@@ -531,17 +531,17 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
         </button>
         <button id="choice-2" class="choice-btn" onclick="executePlayerChoice(2)">
           <span class="choice-key">[2]</span>
-          <span id="choice-2-text">Channel cosmic energy: Ignite the Solar Storm & Citadel</span>
+          <span id="choice-2-text">Warp to ancient Egypt: Golden desert dunes & Great Pyramids</span>
         </button>
         <button id="choice-3" class="choice-btn" onclick="executePlayerChoice(3)">
           <span class="choice-key">[3]</span>
-          <span id="choice-3-text">Enter the Genesis Gateway: Ascend the Dyson Mandala</span>
+          <span id="choice-3-text">Dive into the Abyss: Deep ocean floor with glowing coral reefs</span>
         </button>
 
         <!-- FREE-FORM CUSTOM PLAYER ACTION -->
         <div class="custom-action-row">
-          <input type="text" id="custom-action-input" class="custom-input" placeholder="Type ANY action (e.g., 'back to earth and city', 'explore forest')..." onkeydown="if(event.key==='Enter') executeCustomAction()">
-          <button id="btn-custom-action" class="btn-custom-action" onclick="executeCustomAction()">Act ➔</button>
+          <input type="text" id="custom-action-input" class="custom-input" placeholder="Type ANYTHING to generate in 3D (e.g. 'desert pyramids', 'volcano', 'ice kingdom')..." onkeydown="if(event.key==='Enter') executeCustomAction()">
+          <button id="btn-custom-action" class="btn-custom-action" onclick="executeCustomAction()">Generate ➔</button>
         </div>
       </div>
     </div>
@@ -622,7 +622,9 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
     let ambientLight, directionalLight, pointLight;
 
     // GROUPS FOR SEAMLESS 3D REALM SWITCHING
-    let aetherGroup, cityGroup, forestGroup;
+    let aetherGroup, cityGroup, dynamicWorldGroup;
+    let dynamicAnimatedObjects = [];
+    let dynamicParticlesMesh = null, dynamicParticleMeta = null;
 
     // AETHER REALM OBJECTS
     let islandMesh, monolithTop, monolithBottom, coreSingularity, guardianMesh;
@@ -851,6 +853,13 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
       cityGroup.visible = false; // Hidden initially
       scene.add(cityGroup);
 
+      // -----------------------------------------------------------------------
+      // 3. DYNAMIC PROCEDURAL ON-THE-FLY 3D WORLD GROUP
+      // -----------------------------------------------------------------------
+      dynamicWorldGroup = new THREE.Group();
+      dynamicWorldGroup.visible = false;
+      scene.add(dynamicWorldGroup);
+
       // CONTROLS LISTENERS
       window.addEventListener("resize", onWindowResize);
       window.addEventListener("keydown", onKeyDown);
@@ -912,6 +921,31 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
     }
 
     // -------------------------------------------------------------------------
+    // DYNAMIC PROCEDURAL PARTICLE SYSTEM (BUBBLES, EMBERS, SNOW, DUST, SPORES)
+    // -------------------------------------------------------------------------
+    function spawnDynamicParticles(hexColor, count, spreadXZ, spreadY, isRising = false, isFalling = false) {
+      if (dynamicParticlesMesh) {
+        scene.remove(dynamicParticlesMesh);
+        if (dynamicParticlesMesh.geometry) dynamicParticlesMesh.geometry.dispose();
+        if (dynamicParticlesMesh.material) dynamicParticlesMesh.material.dispose();
+        dynamicParticlesMesh = null;
+      }
+
+      const pGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * spreadXZ;
+        positions[i + 1] = Math.random() * spreadY;
+        positions[i + 2] = (Math.random() - 0.5) * spreadXZ;
+      }
+      pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const pMat = new THREE.PointsMaterial({ color: hexColor, size: 0.28, transparent: true, opacity: 0.85 });
+      dynamicParticlesMesh = new THREE.Points(pGeo, pMat);
+      scene.add(dynamicParticlesMesh);
+      dynamicParticleMeta = { isRising, isFalling, spreadY, spreadXZ, count };
+    }
+
+    // -------------------------------------------------------------------------
     // BIOME SWITCHER: SEAMLESSLY SWAPS BETWEEN EARTH CITY & SPACE REALMS
     // -------------------------------------------------------------------------
     function switchEnvironmentBiome(biome) {
@@ -921,6 +955,8 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
 
       const toast = document.getElementById("realm-toast");
       const toastText = document.getElementById("toast-text");
+
+      if (dynamicWorldGroup) dynamicWorldGroup.visible = false;
 
       if (biome === "city") {
         // ACTIVATE EARTH CITY METROPOLIS
@@ -944,6 +980,17 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
         document.getElementById("quest-goal").textContent = "Explore the Earth Metropolis";
         document.getElementById("quest-desc").textContent = "You stand on the asphalt between towering skyscrapers. Discover the city's hidden mainframe or navigate the neon avenues.";
 
+        return {
+          theme: "city",
+          title: "Earth Neo-Metropolis",
+          storyText: "Dimensional rift collapsed! You plummet through the stratosphere and re-materialize on the asphalt of a bustling downtown avenue on Earth!\n\nTowering glass-and-steel skyscrapers rise into the cloudy night sky around you, lit by glowing office windows and neon signs. Streetlamps illuminate the crosswalk, and distant city sirens echo down the avenues.\n\nYou have returned to Earth, but your cosmic powers still hum in your veins.",
+          choices: [
+            "Walk down 5th Avenue toward the pulsing neon cyber-tower",
+            "Take the skyscraper express elevator to the rooftop observation deck",
+            "Open an interdimensional portal to return to the cosmic Aether Void"
+          ]
+        };
+
       } else {
         // ACTIVATE AETHER / SPACE REALM
         cityGroup.visible = false;
@@ -963,10 +1010,689 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
         document.getElementById("realm-name").textContent = "The Sunken Obelisk";
         document.getElementById("world-alignment").textContent = "Cyan Twilight Void";
         document.getElementById("structures-state").textContent = "Ancient Monolith Core";
+
+        return {
+          theme: "aether",
+          title: "The Cosmic Aether Void",
+          storyText: "Reality folds inward. You re-materialize atop the floating obsidian platform suspended over the swirling violet nebula!\n\nThe ancient monolith hums with primal azure resonance, its upper spire levitating rhythmically in zero gravity as crystalline runes orbit your perimeter.",
+          choices: [
+            "Harness the surging energy to warp directly to Earth and its cities",
+            "Commune with the ancient core singularity to absorb its knowledge",
+            "Unleash a cosmic pulse to awaken the surrounding floating ruins"
+          ]
+        };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // UNIVERSAL ON-THE-FLY 3D WORLD BUILDER (TEXT-TO-3D-ENVIRONMENT)
+    // -------------------------------------------------------------------------
+    function buildDynamicWorld(promptText) {
+      const p = promptText.toLowerCase();
+
+      // Check if user specifically requested city or classic aether
+      if (p.includes("earth") || p.includes("city") || p.includes("building") || p.includes("street") || p.includes("skyscraper") || p.includes("metropolis") || p.includes("urban")) {
+        return switchEnvironmentBiome("city");
+      }
+      if (p.includes("aether") || (p.includes("monolith") && !p.includes("egypt")) || p.includes("void")) {
+        return switchEnvironmentBiome("aether");
       }
 
+      // CLEAR PREVIOUS DYNAMIC GEOMETRIES & MATERIALS
+      while (dynamicWorldGroup.children.length > 0) {
+        const obj = dynamicWorldGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+        dynamicWorldGroup.remove(obj);
+      }
+      dynamicAnimatedObjects = [];
+
+      // ACTIVATE DYNAMIC WORLD GROUP
+      aetherGroup.visible = false;
+      cityGroup.visible = false;
+      dynamicWorldGroup.visible = true;
+
+      screenShake = 0.65;
+      targetCameraAngleX += Math.PI * 0.45;
+      playerPos.x = 0; playerPos.y = 1.2; playerPos.z = 10;
+
+      let theme = "custom";
+      if (p.includes("desert") || p.includes("pyramid") || p.includes("egypt") || p.includes("sand") || p.includes("dune") || p.includes("sphinx") || p.includes("canyon") || p.includes("pharaoh")) {
+        theme = "desert";
+      } else if (p.includes("forest") || p.includes("jungle") || p.includes("tree") || p.includes("mushroom") || p.includes("nature") || p.includes("woods") || p.includes("garden") || p.includes("plant") || p.includes("leaf") || p.includes("grove")) {
+        theme = "forest";
+      } else if (p.includes("ocean") || p.includes("underwater") || p.includes("sea") || p.includes("coral") || p.includes("water") || p.includes("fish") || p.includes("atlantis") || p.includes("deep") || p.includes("marine") || p.includes("aquatic") || p.includes("reef")) {
+        theme = "ocean";
+      } else if (p.includes("volcano") || p.includes("lava") || p.includes("fire") || p.includes("magma") || p.includes("inferno") || p.includes("hell") || p.includes("flame") || p.includes("molten") || p.includes("burn")) {
+        theme = "volcano";
+      } else if (p.includes("ice") || p.includes("snow") || p.includes("winter") || p.includes("arctic") || p.includes("glacier") || p.includes("frozen") || p.includes("blizzard") || p.includes("frost") || p.includes("cold")) {
+        theme = "ice";
+      } else if (p.includes("mars") || p.includes("moon") || p.includes("space") || p.includes("alien") || p.includes("galaxy") || p.includes("nebula") || p.includes("planet") || p.includes("star") || p.includes("asteroid") || p.includes("orbit")) {
+        theme = "space";
+      } else if (p.includes("castle") || p.includes("medieval") || p.includes("dungeon") || p.includes("fortress") || p.includes("stone") || p.includes("knight") || p.includes("kingdom") || p.includes("palace") || p.includes("keep")) {
+        theme = "castle";
+      } else if (p.includes("cyberpunk") || p.includes("synthwave") || p.includes("matrix") || p.includes("neon") || p.includes("digital") || p.includes("virtual") || p.includes("grid") || p.includes("hologram") || p.includes("laser")) {
+        theme = "cyberpunk";
+      }
+
+      activeBiome = "dynamic_" + theme;
+      let themeData = { title: "", desc: "", structures: "", storyText: "", choices: [] };
+
+      if (theme === "desert") {
+        targetFogColor.setHex(0xB45309);
+        targetAmbientColor.setHex(0x78350F);
+        targetDirLightColor.setHex(0xFBBF24);
+        targetPointLightColor.setHex(0xF59E0B);
+
+        // Sand Ground
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0xD97706, roughness: 0.9, metalness: 0.1 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        dynamicWorldGroup.add(ground);
+
+        // Great Stepped Pyramid
+        const pyrGeo = new THREE.CylinderGeometry(0.5, 34, 26, 4);
+        const pyrMat = new THREE.MeshStandardMaterial({ color: 0xB45309, roughness: 0.8, flatShading: true });
+        const pyramid = new THREE.Mesh(pyrGeo, pyrMat);
+        pyramid.rotation.y = Math.PI / 4;
+        pyramid.position.set(0, 13, -28);
+        pyramid.castShadow = true;
+        dynamicWorldGroup.add(pyramid);
+
+        // Golden Apex Capstone
+        const capGeo = new THREE.CylinderGeometry(0.1, 4.5, 4.5, 4);
+        const capMat = new THREE.MeshStandardMaterial({ color: 0xFDE047, emissive: 0xEAB308, emissiveIntensity: 1.3, metalness: 0.9, roughness: 0.1 });
+        const capstone = new THREE.Mesh(capGeo, capMat);
+        capstone.rotation.y = Math.PI / 4;
+        capstone.position.set(0, 26.5, -28);
+        dynamicWorldGroup.add(capstone);
+        dynamicAnimatedObjects.push({ mesh: capstone, type: 'spin' });
+
+        // Surrounding Sandstone Obelisks
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI * 2) / 8;
+          const dist = 20;
+          const obelisk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7, 1.3, 11, 4),
+            new THREE.MeshStandardMaterial({ color: 0x92400E, roughness: 0.7 })
+          );
+          obelisk.rotation.y = Math.PI / 4;
+          obelisk.position.set(Math.cos(angle) * dist, 5.5, Math.sin(angle) * dist - 10);
+          dynamicWorldGroup.add(obelisk);
+
+          const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), new THREE.MeshBasicMaterial({ color: 0xFBBF24 }));
+          tip.position.set(Math.cos(angle) * dist, 11.5, Math.sin(angle) * dist - 10);
+          dynamicWorldGroup.add(tip);
+        }
+
+        // Boulders and dunes
+        for (let i = 0; i < 28; i++) {
+          const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(Math.random() * 4 + 2, 0),
+            new THREE.MeshStandardMaterial({ color: 0x78350F, roughness: 0.9, flatShading: true })
+          );
+          const rAngle = Math.random() * Math.PI * 2;
+          const rDist = Math.random() * 70 + 24;
+          rock.position.set(Math.cos(rAngle) * rDist, Math.random() * 2, Math.sin(rAngle) * rDist);
+          dynamicWorldGroup.add(rock);
+        }
+
+        spawnDynamicParticles(0xFDE047, 450, 60, 20);
+        spawnShockwave(0xF59E0B);
+
+        themeData.title = "Ancient Desert & Golden Pyramids";
+        themeData.structures = "Great Stepped Pyramid & Obelisks";
+        themeData.desc = "Endless golden dunes under a searing solar sky with monumental Egyptian architecture.";
+        themeData.storyText = `As your command echoes across reality, the sky blazes with radiant amber sunlight! The floor dissolves into golden desert dunes, and a colossal stepped pyramid rises from the sand before you, crowned with a gleaming gold capstone.\n\nEight towering sandstone obelisks encircle the ancient sanctum, their hieroglyphic runes humming with solar energy.`;
+        themeData.choices = [
+          "Ascend the steps of the Great Pyramid toward the blazing golden capstone",
+          "Enter the subterranean tomb corridor beneath the sandstone obelisk",
+          "Summon an oasis of crystal water to cool the desert dunes"
+        ];
+
+      } else if (theme === "forest") {
+        targetFogColor.setHex(0x064E3B);
+        targetAmbientColor.setHex(0x022C22);
+        targetDirLightColor.setHex(0x34D399);
+        targetPointLightColor.setHex(0xA7F3D0);
+
+        // Forest Moss Ground
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0x064E3B, roughness: 0.95 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        dynamicWorldGroup.add(ground);
+
+        // Giant Bioluminescent Mushroom (Centerpiece)
+        const stemGeo = new THREE.CylinderGeometry(1.8, 2.8, 16, 16);
+        const stemMat = new THREE.MeshStandardMaterial({ color: 0xECFDF5, roughness: 0.6 });
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.position.set(0, 8, -14);
+        dynamicWorldGroup.add(stem);
+
+        const capGeo = new THREE.SphereGeometry(7.5, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x10B981, emissive: 0x059669, emissiveIntensity: 1.2, roughness: 0.3 });
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.position.set(0, 16, -14);
+        dynamicWorldGroup.add(cap);
+        dynamicAnimatedObjects.push({ mesh: cap, type: 'pulse', baseScale: 1.0 });
+
+        // 36 Procedural Trees & Glowing Shrooms
+        const trunkGeo = new THREE.CylinderGeometry(0.6, 1.1, 9, 8);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.9 });
+        const foliageGeo = new THREE.ConeGeometry(3.8, 10, 8);
+        const foliageMat = new THREE.MeshStandardMaterial({ color: 0x047857, roughness: 0.7, flatShading: true });
+
+        for (let i = 0; i < 36; i++) {
+          let tx = (Math.random() - 0.5) * 120;
+          let tz = (Math.random() - 0.5) * 120;
+          if (Math.abs(tx) < 10 && Math.abs(tz) < 14) tx += 18;
+
+          const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+          trunk.position.set(tx, 4.5, tz);
+          dynamicWorldGroup.add(trunk);
+
+          const fol = new THREE.Mesh(foliageGeo, foliageMat);
+          fol.position.set(tx, 11, tz);
+          dynamicWorldGroup.add(fol);
+
+          if (i % 2 === 0) {
+            const shroomCap = new THREE.Mesh(
+              new THREE.SphereGeometry(0.8, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+              new THREE.MeshBasicMaterial({ color: (i % 4 === 0 ? 0x8B5CF6 : 0x06B6D4) })
+            );
+            shroomCap.position.set(tx + 1.2, 1.0, tz + 1.2);
+            dynamicWorldGroup.add(shroomCap);
+          }
+        }
+
+        spawnDynamicParticles(0x6EE7B7, 500, 50, 18);
+        spawnShockwave(0x10B981);
+
+        themeData.title = "Enchanted Bioluminescent Forest";
+        themeData.structures = "Colossal Spore Cap & Ancient Canopy";
+        themeData.desc = "Lush emerald wilderness alive with glowing fungal flora and drifting mystical spores.";
+        themeData.storyText = `At your word, ancient vines erupt from the soil! Towering mossy trees and giant bioluminescent mushrooms with pulsing emerald caps surge into the canopy around you.\n\nDrifting spore motes and fireflies illuminate the grove, whispering forgotten secrets of nature into the nocturnal mist.`;
+        themeData.choices = [
+          "Climb the massive bioluminescent world mushroom to look across the canopy",
+          "Commune with the elder nature spirit dwelling within the mossy grove",
+          "Forge a pathway through the thicket toward the hidden rune circle"
+        ];
+
+      } else if (theme === "ocean") {
+        targetFogColor.setHex(0x0C4A6E);
+        targetAmbientColor.setHex(0x082F49);
+        targetDirLightColor.setHex(0x38BDF8);
+        targetPointLightColor.setHex(0x06B6D4);
+
+        // Seabed
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0x0E7490, roughness: 0.8, metalness: 0.2 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Sunken Atlantis Shrine
+        const shrine = new THREE.Mesh(
+          new THREE.BoxGeometry(7, 15, 7),
+          new THREE.MeshStandardMaterial({ color: 0x155E75, metalness: 0.6, roughness: 0.3 })
+        );
+        shrine.position.set(0, 7.5, -20);
+        dynamicWorldGroup.add(shrine);
+
+        // Sunken Glowing Core Orb
+        const coreOrb = new THREE.Mesh(
+          new THREE.SphereGeometry(2.4, 24, 24),
+          new THREE.MeshStandardMaterial({ color: 0x22D3EE, emissive: 0x06B6D4, emissiveIntensity: 1.6, metalness: 0.9 })
+        );
+        coreOrb.position.set(0, 17, -20);
+        dynamicWorldGroup.add(coreOrb);
+        dynamicAnimatedObjects.push({ mesh: coreOrb, type: 'float', baseY: 17 });
+
+        // Corals & Sunken Marble Pillars
+        const coralColors = [0xEC4899, 0xF43F5E, 0x06B6D4, 0x8B5CF6, 0x10B981];
+        for (let i = 0; i < 40; i++) {
+          let cx = (Math.random() - 0.5) * 110;
+          let cz = (Math.random() - 0.5) * 110;
+          if (Math.abs(cx) < 8 && Math.abs(cz) < 10) cx += 16;
+
+          const coralMat = new THREE.MeshStandardMaterial({
+            color: coralColors[i % coralColors.length],
+            emissive: coralColors[i % coralColors.length],
+            emissiveIntensity: 0.6,
+            roughness: 0.4
+          });
+
+          if (i % 2 === 0) {
+            const coral = new THREE.Mesh(new THREE.TorusKnotGeometry(1.5, 0.45, 48, 8), coralMat);
+            coral.position.set(cx, 2.5, cz);
+            coral.rotation.x = Math.PI / 2;
+            dynamicWorldGroup.add(coral);
+          } else {
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, Math.random() * 8 + 4, 12), new THREE.MeshStandardMaterial({ color: 0x0891B2, roughness: 0.5 }));
+            pillar.position.set(cx, 3.5, cz);
+            dynamicWorldGroup.add(pillar);
+          }
+        }
+
+        spawnDynamicParticles(0xBAE6FD, 500, 60, 28, true);
+        spawnShockwave(0x06B6D4);
+
+        themeData.title = "Abyssal Atlantis & Coral Sanctuary";
+        themeData.structures = "Sunken Crystal Core & Coral Spire Reef";
+        themeData.desc = "Underwater depths filled with glowing bioluminescent corals, sunken pillars, and rising bubbles.";
+        themeData.storyText = `The atmosphere rushes away and you are submerged in the weightless twilight of the deep ocean! Bioluminescent coral formations in radiant pink and cyan shimmer across the ocean floor.\n\nBefore you stands a sunken Atlantis monolith crowned by a levitating turquoise core orb, while streams of bubbles drift upward through the caustics.`;
+        themeData.choices = [
+          "Swim toward the pulsing sunken Atlantis temple core orb",
+          "Follow the neon coral trail into the abyssal oceanic trench",
+          "Channel hydro-kinetic force to erupt an undersea thermal vent"
+        ];
+
+      } else if (theme === "volcano") {
+        targetFogColor.setHex(0x450A0A);
+        targetAmbientColor.setHex(0x18181B);
+        targetDirLightColor.setHex(0xEF4444);
+        targetPointLightColor.setHex(0xF97316);
+
+        // Basalt Crust Ground
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0x18181B, roughness: 0.95 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Glowing Lava Fissure Lines
+        for (let i = -4; i <= 4; i++) {
+          const lavaRiver = new THREE.Mesh(
+            new THREE.PlaneGeometry(160, 2.8),
+            new THREE.MeshBasicMaterial({ color: 0xF97316 })
+          );
+          lavaRiver.rotation.x = -Math.PI / 2;
+          lavaRiver.rotation.z = (i * 0.35);
+          lavaRiver.position.set(0, 0.05, i * 16);
+          dynamicWorldGroup.add(lavaRiver);
+        }
+
+        // Giant Volcanic Mountain Peak
+        const volcGeo = new THREE.ConeGeometry(26, 30, 12, 1, true);
+        const volcMat = new THREE.MeshStandardMaterial({ color: 0x1C1917, roughness: 0.9, flatShading: true });
+        const volc = new THREE.Mesh(volcGeo, volcMat);
+        volc.position.set(0, 15, -35);
+        dynamicWorldGroup.add(volc);
+
+        // Bubbling Magma Core
+        const lavaCore = new THREE.Mesh(
+          new THREE.SphereGeometry(6.5, 16, 16),
+          new THREE.MeshStandardMaterial({ color: 0xEF4444, emissive: 0xDC2626, emissiveIntensity: 2.0 })
+        );
+        lavaCore.position.set(0, 28, -35);
+        dynamicWorldGroup.add(lavaCore);
+        dynamicAnimatedObjects.push({ mesh: lavaCore, type: 'pulse', baseScale: 1.0 });
+
+        // Jagged Obsidian Spires
+        for (let i = 0; i < 32; i++) {
+          const h = Math.random() * 12 + 4;
+          const spire = new THREE.Mesh(
+            new THREE.ConeGeometry(Math.random() * 2 + 1, h, 5),
+            new THREE.MeshStandardMaterial({ color: 0x0C0A09, metalness: 0.8, roughness: 0.2, flatShading: true })
+          );
+          let sx = (Math.random() - 0.5) * 110;
+          let sz = (Math.random() - 0.5) * 110;
+          if (Math.abs(sx) < 10 && Math.abs(sz) < 12) sx += 18;
+          spire.position.set(sx, h / 2, sz);
+          dynamicWorldGroup.add(spire);
+        }
+
+        spawnDynamicParticles(0xF97316, 500, 60, 25, true);
+        spawnShockwave(0xEF4444);
+
+        themeData.title = "Volcanic Caldera & Magma Fissures";
+        themeData.structures = "Caldera Mountain & Obsidian Spire Fields";
+        themeData.desc = "Thermal magma veins tearing through obsidian rock under a fiery crimson sky.";
+        themeData.storyText = `The earth cracks apart with a deafening roar! The horizon blazes blood red as rivers of molten orange lava tear across black obsidian basalt.\n\nA colossal volcanic mountain surges into the sky, venting smoke, ash, and thermal embers while bubbling magma illuminates the jagged crags.`;
+        themeData.choices = [
+          "Traverse the floating obsidian boulders across the lava river",
+          "Ascend the jagged rim of the volcanic caldera to tap into the magma core",
+          "Summon an arctic blizzard to freeze the molten hellscape into crystal ice"
+        ];
+
+      } else if (theme === "ice") {
+        targetFogColor.setHex(0xBAE6FD);
+        targetAmbientColor.setHex(0x0284C7);
+        targetDirLightColor.setHex(0xF0F9FF);
+        targetPointLightColor.setHex(0x38BDF8);
+
+        // Crystalline Ice Ground
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0xE0F2FE, metalness: 0.7, roughness: 0.15 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Central Ice Citadel Spire
+        const citadelGeo = new THREE.CylinderGeometry(1.2, 5.5, 28, 6);
+        const citadelMat = new THREE.MeshStandardMaterial({ color: 0x7DD3FC, emissive: 0x0284C7, emissiveIntensity: 0.8, metalness: 0.8, roughness: 0.1 });
+        const citadel = new THREE.Mesh(citadelGeo, citadelMat);
+        citadel.position.set(0, 14, -22);
+        dynamicWorldGroup.add(citadel);
+
+        // Floating Ice Crystal
+        const crysGeo = new THREE.OctahedronGeometry(3.8, 0);
+        const crysMat = new THREE.MeshStandardMaterial({ color: 0xE0F2FE, emissive: 0x38BDF8, emissiveIntensity: 1.1, roughness: 0.05, metalness: 0.9 });
+        const crystal = new THREE.Mesh(crysGeo, crysMat);
+        crystal.position.set(0, 30, -22);
+        dynamicWorldGroup.add(crystal);
+        dynamicAnimatedObjects.push({ mesh: crystal, type: 'spin' });
+
+        // Glaciers
+        for (let i = 0; i < 35; i++) {
+          const h = Math.random() * 14 + 5;
+          const glacier = new THREE.Mesh(
+            new THREE.TetrahedronGeometry(h * 0.45, 0),
+            new THREE.MeshStandardMaterial({ color: 0xBAE6FD, metalness: 0.5, roughness: 0.2, flatShading: true })
+          );
+          let gx = (Math.random() - 0.5) * 110;
+          let gz = (Math.random() - 0.5) * 110;
+          if (Math.abs(gx) < 10 && Math.abs(gz) < 12) gx += 16;
+          glacier.position.set(gx, h * 0.25, gz);
+          dynamicWorldGroup.add(glacier);
+        }
+
+        spawnDynamicParticles(0xFFFFFF, 500, 60, 25, false, true);
+        spawnShockwave(0x38BDF8);
+
+        themeData.title = "Glacial Citadel & Frozen Spirelands";
+        themeData.structures = "Central Crystal Spire & Iceberg Field";
+        themeData.desc = "Sub-zero crystalline realm of translucent glaciers and drifting polar blizzards.";
+        themeData.storyText = `A bitter sub-zero blizzard sweeps across the world! The terrain instantly crystallizes into a gleaming sheet of pale blue glacial ice.\n\nJagged icebergs rise like razor-sharp sentinels, framing a colossal crystalline ice citadel crowned by a floating prismatic gem.`;
+        themeData.choices = [
+          "Ascend the steps of the Glacial Citadel toward the levitating ice crystal",
+          "Traverse the precarious ice bridge spanning the bottomless crevasse",
+          "Ignite a solar fire to melt the frozen fortress and uncover its ancient secrets"
+        ];
+
+      } else if (theme === "space") {
+        const isMars = p.includes("mars") || p.includes("red");
+        targetFogColor.setHex(isMars ? 0x450A0A : 0x0F172A);
+        targetAmbientColor.setHex(0x1E1B4B);
+        targetDirLightColor.setHex(isMars ? 0xFB7185 : 0xE2E8F0);
+        targetPointLightColor.setHex(0x38BDF8);
+
+        // Planetary Regolith
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: isMars ? 0x7F1D1D : 0x334155, roughness: 0.95 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Geodesic Colony Bio-Dome
+        const domeGeo = new THREE.SphereGeometry(15, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const domeMat = new THREE.MeshStandardMaterial({ color: 0x0284C7, wireframe: true });
+        const dome = new THREE.Mesh(domeGeo, domeMat);
+        dome.position.set(0, 0, -24);
+        dynamicWorldGroup.add(dome);
+
+        const coreHab = new THREE.Mesh(
+          new THREE.CylinderGeometry(6.5, 6.5, 6.5, 16),
+          new THREE.MeshStandardMaterial({ color: 0xE2E8F0, metalness: 0.8, roughness: 0.2 })
+        );
+        coreHab.position.set(0, 3.2, -24);
+        dynamicWorldGroup.add(coreHab);
+
+        // Satellite Dish
+        const dish = new THREE.Mesh(
+          new THREE.ConeGeometry(4, 2, 16, 1, true),
+          new THREE.MeshStandardMaterial({ color: 0x94A3B8, metalness: 0.9 })
+        );
+        dish.position.set(0, 11, -24);
+        dish.rotation.x = Math.PI / 3;
+        dynamicWorldGroup.add(dish);
+        dynamicAnimatedObjects.push({ mesh: dish, type: 'spin' });
+
+        // Solar panels
+        for (let i = 0; i < 16; i++) {
+          const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(4.2, 0.2, 2.5),
+            new THREE.MeshStandardMaterial({ color: 0x0284C7, metalness: 0.9, roughness: 0.1 })
+          );
+          const angle = (i * Math.PI * 2) / 16;
+          panel.position.set(Math.cos(angle) * 24, 1.5, Math.sin(angle) * 24 - 22);
+          panel.rotation.y = angle;
+          dynamicWorldGroup.add(panel);
+        }
+
+        spawnDynamicParticles(0x38BDF8, 500, 70, 30);
+        spawnShockwave(isMars ? 0xEF4444 : 0x38BDF8);
+
+        themeData.title = isMars ? "Martian Frontier & Bio-Colony" : "Lunar Outpost & Planetary Base";
+        themeData.structures = "Geodesic Bio-Dome & Communications Dish";
+        themeData.desc = "Extraterrestrial outpost with solar arrays and atmospheric habitats.";
+        themeData.storyText = `Atmosphere depressurizes into deep cosmic silence! You materialize on the rugged Martian regolith under a star-strewn void.\n\nAhead stands an advanced geodesic bio-colony dome encircled by solar collectors and a rotating deep-space communications dish tracking alien signals.`;
+        themeData.choices = [
+          "Enter the airlock of the Martian geodesic colony bio-dome",
+          "Align the deep-space communications dish to intercept alien frequencies",
+          "Venture out across the Martian crater dunes toward the mysterious anomaly"
+        ];
+
+      } else if (theme === "castle") {
+        targetFogColor.setHex(0x18181B);
+        targetAmbientColor.setHex(0x27272A);
+        targetDirLightColor.setHex(0xFDE047);
+        targetPointLightColor.setHex(0xF59E0B);
+
+        // Cobblestone Ground
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220),
+          new THREE.MeshStandardMaterial({ color: 0x27272A, roughness: 0.95 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Keep
+        const keep = new THREE.Mesh(
+          new THREE.BoxGeometry(11, 24, 11),
+          new THREE.MeshStandardMaterial({ color: 0x3F3F46, roughness: 0.9, flatShading: true })
+        );
+        keep.position.set(0, 12, -24);
+        dynamicWorldGroup.add(keep);
+
+        // Towers
+        const towerGeo = new THREE.CylinderGeometry(2.6, 3.2, 20, 12);
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0x52525B, roughness: 0.85 });
+        const offsets = [[-15, -38], [15, -38], [-15, -10], [15, -10]];
+        offsets.forEach(pos => {
+          const tower = new THREE.Mesh(towerGeo, towerMat);
+          tower.position.set(pos[0], 10, pos[1]);
+          dynamicWorldGroup.add(tower);
+
+          const torch = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xF97316 }));
+          torch.position.set(pos[0], 21, pos[1]);
+          dynamicWorldGroup.add(torch);
+        });
+
+        // Walls
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x3F3F46, roughness: 0.9 });
+        const wall1 = new THREE.Mesh(new THREE.BoxGeometry(30, 10, 2), wallMat);
+        wall1.position.set(0, 5, -38);
+        dynamicWorldGroup.add(wall1);
+
+        const wall2 = new THREE.Mesh(new THREE.BoxGeometry(2, 10, 28), wallMat);
+        wall2.position.set(-15, 5, -24);
+        dynamicWorldGroup.add(wall2);
+
+        const wall3 = new THREE.Mesh(new THREE.BoxGeometry(2, 10, 28), wallMat);
+        wall3.position.set(15, 5, -24);
+        dynamicWorldGroup.add(wall3);
+
+        spawnDynamicParticles(0xF59E0B, 300, 40, 20, true);
+        spawnShockwave(0xF59E0B);
+
+        themeData.title = "Medieval Stone Fortress & Keep";
+        themeData.structures = "Central Great Keep & 4 Bastion Towers";
+        themeData.desc = "Ancient stone ramparts guarded by crenellated battlements and blazing torches.";
+        themeData.storyText = `Heavy iron gates and towering granite blocks slam into place! You stand in the courtyard of a massive medieval stone fortress.\n\nFour bastion watchtowers bristling with flaming torches illuminate the battlements under a dark storm sky, while the ancient keep watches in solemn silence.`;
+        themeData.choices = [
+          "Ascend the winding spiral staircase to the castle keep's highest battlement",
+          "Draw the ancient enchanted broadsword mounted above the fortress gate",
+          "Venture deep down into the stone dungeon labyrinth beneath the courtyard"
+        ];
+
+      } else if (theme === "cyberpunk") {
+        targetFogColor.setHex(0x2E1065);
+        targetAmbientColor.setHex(0x1E1B4B);
+        targetDirLightColor.setHex(0xEC4899);
+        targetPointLightColor.setHex(0x06B6D4);
+
+        // Reflective Grid Floor
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220, 40, 40),
+          new THREE.MeshStandardMaterial({ color: 0x030712, wireframe: true, emissive: 0x06B6D4, emissiveIntensity: 0.4 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        // Central Holographic Mega-Polyhedron
+        const coreGeo = new THREE.IcosahedronGeometry(7.5, 1);
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0xEC4899, wireframe: true, emissive: 0xD946EF, emissiveIntensity: 1.5 });
+        const holoCore = new THREE.Mesh(coreGeo, coreMat);
+        holoCore.position.set(0, 15, -24);
+        dynamicWorldGroup.add(holoCore);
+        dynamicAnimatedObjects.push({ mesh: holoCore, type: 'spin' });
+
+        // Neon Monolith Pillars
+        for (let i = 0; i < 30; i++) {
+          const h = Math.random() * 25 + 8;
+          const pillar = new THREE.Mesh(
+            new THREE.BoxGeometry(2, h, 2),
+            new THREE.MeshStandardMaterial({
+              color: 0x0F172A,
+              emissive: (i % 2 === 0 ? 0x06B6D4 : 0xEC4899),
+              emissiveIntensity: 0.8
+            })
+          );
+          let px = (Math.random() - 0.5) * 110;
+          let pz = (Math.random() - 0.5) * 110;
+          if (Math.abs(px) < 10 && Math.abs(pz) < 12) px += 16;
+          pillar.position.set(px, h / 2, pz);
+          dynamicWorldGroup.add(pillar);
+        }
+
+        spawnDynamicParticles(0xEC4899, 500, 60, 25);
+        spawnShockwave(0xEC4899);
+
+        themeData.title = "Neon Synthwave Cybergrid";
+        themeData.structures = "Holographic Icosahedron & Neon Monoliths";
+        themeData.desc = "Digital cyberspace humming with quantum wireframes, laser pillars, and neon light.";
+        themeData.storyText = `Reality dissolves into endless lines of glowing code! You stand on a mirror-like synthwave digital grid illuminated by cyan and magenta lasers.\n\nTowering holographic monoliths and a giant rotating wireframe icosahedron hum with raw AI data streams and quantum logic gates.`;
+        themeData.choices = [
+          "Jack directly into the rotating holographic icosahedron mainframe",
+          "Sprint down the laser grid highway toward the neon cyber-spires",
+          "Execute an escape protocol to return to physical Earth City streets"
+        ];
+
+      } else {
+        // UNIVERSAL FREE-FORM PROCEDURAL GENERATION (FOR NOVEL / UNEXPECTED PROMPTS)
+        let colorHex = 0x8B5CF6;
+        let fogHex = 0x1E1B4B;
+        if (p.includes("gold") || p.includes("yellow")) { colorHex = 0xFBBF24; fogHex = 0x78350F; }
+        else if (p.includes("red") || p.includes("crimson") || p.includes("blood")) { colorHex = 0xEF4444; fogHex = 0x450A0A; }
+        else if (p.includes("green") || p.includes("emerald")) { colorHex = 0x10B981; fogHex = 0x064E3B; }
+        else if (p.includes("blue") || p.includes("cyan") || p.includes("sky")) { colorHex = 0x06B6D4; fogHex = 0x0C4A6E; }
+        else if (p.includes("pink") || p.includes("purple") || p.includes("magenta")) { colorHex = 0xEC4899; fogHex = 0x3B0764; }
+        else if (p.includes("white") || p.includes("silver") || p.includes("light")) { colorHex = 0xF1F5F9; fogHex = 0x334155; }
+
+        targetFogColor.setHex(fogHex);
+        targetAmbientColor.setHex(0x18181B);
+        targetDirLightColor.setHex(colorHex);
+        targetPointLightColor.setHex(colorHex);
+
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(220, 220, 24, 24),
+          new THREE.MeshStandardMaterial({ color: 0x0F172A, roughness: 0.8, metalness: 0.3 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        dynamicWorldGroup.add(ground);
+
+        const centerTorus = new THREE.Mesh(
+          new THREE.TorusGeometry(8.5, 1.4, 24, 64),
+          new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 1.0, metalness: 0.9, roughness: 0.1 })
+        );
+        centerTorus.position.set(0, 15, -24);
+        dynamicWorldGroup.add(centerTorus);
+        dynamicAnimatedObjects.push({ mesh: centerTorus, type: 'spin' });
+
+        const innerSphere = new THREE.Mesh(
+          new THREE.SphereGeometry(3.6, 24, 24),
+          new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: colorHex, emissiveIntensity: 1.4, metalness: 0.9 })
+        );
+        innerSphere.position.set(0, 15, -24);
+        dynamicWorldGroup.add(innerSphere);
+        dynamicAnimatedObjects.push({ mesh: innerSphere, type: 'float', baseY: 15 });
+
+        for (let i = 0; i < 32; i++) {
+          let geo;
+          if (i % 3 === 0) geo = new THREE.ConeGeometry(Math.random() * 3 + 1, Math.random() * 12 + 6, 6);
+          else if (i % 3 === 1) geo = new THREE.BoxGeometry(3, Math.random() * 15 + 4, 3);
+          else geo = new THREE.TorusGeometry(2, 0.4, 12, 24);
+
+          const m = new THREE.Mesh(
+            geo,
+            new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.4, roughness: 0.4, metalness: 0.6 })
+          );
+          let mx = (Math.random() - 0.5) * 110;
+          let mz = (Math.random() - 0.5) * 110;
+          if (Math.abs(mx) < 10 && Math.abs(mz) < 12) mx += 16;
+          m.position.set(mx, 5, mz);
+          dynamicWorldGroup.add(m);
+        }
+
+        spawnDynamicParticles(colorHex, 450, 60, 25);
+        spawnShockwave(colorHex);
+
+        const cleanTitle = promptText.length > 25 ? promptText.slice(0, 25) + "..." : promptText;
+        themeData.title = `Synthesized Sanctum: "${cleanTitle}"`;
+        themeData.structures = "Orbital Celestial Torus & Geometric Sanctum";
+        themeData.desc = `Procedurally synthesized environment materialized directly on the fly from your prompt: "${promptText}".`;
+        themeData.storyText = `The boundaries of space and time bend to your command: "${promptText}"!\n\nReality re-synthesizes in real time into an extraordinary realm with monumental geometric spires and an orbital celestial torus vibrating with harmonic light.\n\nEvery element in this 3D environment was generated on the fly.`;
+        themeData.choices = [
+          "Harmonize with the rotating celestial torus at the heart of this realm",
+          "Explore the surrounding geometric monuments for hidden ancient relics",
+          "Reshape reality once more: Morph into an enchanted forest or ancient pyramids"
+        ];
+      }
+
+      // Update HUD
+      const toast = document.getElementById("realm-toast");
+      const toastText = document.getElementById("toast-text");
+      toastText.textContent = `🌐 REALM SYNTHESIS: ${themeData.title}`;
       toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 2800);
+      setTimeout(() => toast.classList.remove("show"), 3500);
+
+      document.getElementById("realm-name").textContent = themeData.title;
+      document.getElementById("world-alignment").textContent = `Procedural 3D Matrix (${theme.toUpperCase()})`;
+      document.getElementById("structures-state").textContent = themeData.structures;
+      document.getElementById("quest-goal").textContent = `Explore ${themeData.title}`;
+      document.getElementById("quest-desc").textContent = themeData.desc;
+
+      return {
+        theme,
+        title: themeData.title,
+        desc: themeData.desc,
+        storyText: themeData.storyText,
+        choices: themeData.choices
+      };
     }
 
     // -------------------------------------------------------------------------
@@ -1002,14 +1728,14 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
         screenShake = Math.max(0, screenShake - delta * 1.5);
       }
 
-      const camDist = activeBiome === "city" ? 11.0 : 9.5;
+      const camDist = (activeBiome === "city" || activeBiome.startsWith("dynamic_")) ? 11.0 : 9.5;
       camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY) + shakeOffsetX;
       camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + (activeBiome === "city" ? 3.0 : 2.0) + shakeOffsetY;
       camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
       camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 1.2), playerPos.z);
 
       // Animate Aether objects if active
-      if (aetherGroup.visible) {
+      if (aetherGroup && aetherGroup.visible) {
         if (monolithTop) {
           monolithTop.position.y = 5.8 + Math.sin(elapsed * 1.5) * 0.3;
         }
@@ -1032,10 +1758,43 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
       }
 
       // Animate City lights if active
-      if (cityGroup.visible) {
+      if (cityGroup && cityGroup.visible) {
         cityLamps.forEach((lamp, i) => {
           lamp.scale.setScalar(1.0 + Math.sin(elapsed * 3 + i) * 0.05);
         });
+      }
+
+      // Animate Dynamic Procedural Objects
+      if (dynamicWorldGroup && dynamicWorldGroup.visible) {
+        dynamicAnimatedObjects.forEach(obj => {
+          if (obj.type === 'spin') {
+            obj.mesh.rotation.y = elapsed * 0.8;
+            obj.mesh.rotation.x = elapsed * 0.3;
+          } else if (obj.type === 'float') {
+            obj.mesh.position.y = obj.baseY + Math.sin(elapsed * 2.2) * 0.8;
+          } else if (obj.type === 'pulse') {
+            const s = (obj.baseScale || 1.0) * (1.0 + Math.sin(elapsed * 3) * 0.08);
+            obj.mesh.scale.set(s, s, s);
+          }
+        });
+      }
+
+      // Animate Dynamic Particles
+      if (dynamicParticlesMesh && dynamicParticleMeta) {
+        const pos = dynamicParticlesMesh.geometry.attributes.position.array;
+        for (let i = 1; i < pos.length; i += 3) {
+          if (dynamicParticleMeta.isRising) {
+            pos[i] += delta * 5.0;
+            if (pos[i] > dynamicParticleMeta.spreadY) pos[i] = 0;
+          } else if (dynamicParticleMeta.isFalling) {
+            pos[i] -= delta * 6.0;
+            if (pos[i] < 0) pos[i] = dynamicParticleMeta.spreadY;
+          } else {
+            pos[i] += Math.sin(elapsed + i) * 0.02;
+          }
+        }
+        dynamicParticlesMesh.geometry.attributes.position.needsUpdate = true;
+        dynamicParticlesMesh.rotation.y = elapsed * 0.04;
       }
 
       // Shockwave rings
@@ -1079,31 +1838,17 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
       document.getElementById("chapter-count").textContent = `Chapter ${currentChapter}`;
       document.getElementById("resonance-level").textContent = `${Math.floor(70 + Math.random() * 29)}%`;
 
-      const pLower = actionText.toLowerCase();
-
-      // Check for Earth / City intent
-      const isCityIntent = pLower.includes("earth") || pLower.includes("city") || pLower.includes("building") || pLower.includes("street") || pLower.includes("skyscraper") || pLower.includes("urban") || pLower.includes("metropolis");
-      
-      // Check for Space / Aether intent
-      const isSpaceIntent = pLower.includes("space") || pLower.includes("aether") || pLower.includes("portal") || pLower.includes("monolith") || pLower.includes("stars") || pLower.includes("void") || pLower.includes("dyson");
-
-      if (isCityIntent && activeBiome !== "city") {
-        switchEnvironmentBiome("city");
-      } else if (isSpaceIntent && activeBiome !== "aether") {
-        switchEnvironmentBiome("aether");
-      } else {
-        screenShake = 0.4;
-        targetCameraAngleX += Math.PI * 0.4;
-        spawnShockwave(activeBiome === "city" ? 0x38BDF8 : 0x8B5CF6);
-      }
-
       const storyEl = document.getElementById("story-stream");
-      storyEl.textContent = `[Player Action: "${actionText}"]\n\nSynthesizing 3D realm response...\n`;
+      storyEl.textContent = `[Player Action: "${actionText}"]\n\nSynthesizing 3D realm response on the fly...\n`;
 
+      // 1. RECONSTRUCT 3D WORLD ON THE FLY
+      const worldInfo = buildDynamicWorld(actionText);
+
+      // 2. GENERATE PLOT
       if (window.isWebGPULoaded && window.engine) {
-        await generatePlotWithWebLLM(actionText, isCityIntent);
+        await generatePlotWithWebLLM(actionText, worldInfo);
       } else {
-        await generateAdaptivePlot(actionText, isCityIntent);
+        await generateAdaptivePlot(actionText, worldInfo);
       }
 
       // Re-enable controls
@@ -1112,28 +1857,9 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
     }
 
     // ADAPTIVE SIMULATED STORY GENERATOR (REACTS DIRECTLY TO USER INPUT)
-    async function generateAdaptivePlot(actionText, isCityIntent) {
-      let storyText = "";
-      let newChoices = [];
-
-      if (isCityIntent || activeBiome === "city") {
-        storyText = `Dimensional rift collapsed! You plummet through the stratosphere and re-materialize on the asphalt of a bustling downtown avenue on Earth!\n\nTowering glass-and-steel skyscrapers rise into the cloudy night sky around you, lit by glowing office windows and neon signs. Streetlamps illuminate the crosswalk, and distant city sirens echo down the avenues.\n\nYou have returned to Earth, but your cosmic aether powers still pulse through your fingertips.`;
-        newChoices = [
-          "Walk down 5th Avenue toward the pulsing neon cyber-tower",
-          "Take the skyscraper express elevator to the rooftop observation deck",
-          "Open an interdimensional portal to return to the cosmic Aether Void"
-        ];
-      } else {
-        storyText = `Responding to your action ("${actionText}"), the 3D aether world surges with raw kinetic energy!\n\nA blinding shockwave erupts across the obsidian platform. The floating runes accelerate their orbital spin, casting crystalline refractions into the deep void.\n\nThe guardian construct resonates in harmony: 'Your will echoes across the cosmic tapestry. The universe reshapes itself around you.'`;
-        newChoices = [
-          "Harness the surging energy to warp directly to Earth and its cities",
-          "Commune with the ancient core singularity to absorb its knowledge",
-          "Unleash a cosmic pulse to awaken the surrounding floating ruins"
-        ];
-      }
-
+    async function generateAdaptivePlot(actionText, worldInfo) {
       const storyEl = document.getElementById("story-stream");
-      const fullText = `[Action: "${actionText}"]\n\n` + storyText;
+      const fullText = `[Action: "${actionText}"]\n\n` + worldInfo.storyText;
 
       storyEl.textContent = "";
       const chars = fullText.split("");
@@ -1143,19 +1869,19 @@ Try typing any command into the box below (e.g. "back to earth and city", "summo
         if (i % 3 === 0) await new Promise(r => setTimeout(r, 12));
       }
 
-      newChoices.forEach((c, idx) => {
+      worldInfo.choices.forEach((c, idx) => {
         document.getElementById(`choice-${idx + 1}-text`).textContent = c;
       });
     }
 
     // WEBGPU LLM GENERATION
-    async function generatePlotWithWebLLM(actionText, isCityIntent) {
+    async function generatePlotWithWebLLM(actionText, worldInfo) {
       const storyEl = document.getElementById("story-stream");
-      const currentWorld = activeBiome === "city" ? "Earth Metropolis with skyscrapers and city streets" : "The Aether Void with floating islands and ancient monolith";
+      const currentWorld = `${worldInfo.title} (${worldInfo.desc})`;
 
       const systemPrompt = `You are the Game Master of the dynamic 3D game "Chronicles of the Aether".
-The player is currently in: "${currentWorld}".
-The player just took the custom action: "${actionText}".
+The player just generated a new 3D realm: "${currentWorld}".
+The player's action was: "${actionText}".
 Write a vivid, thrilling 3-sentence narrative describing the physical transformation of the 3D world in direct response to their action.
 Then provide exactly 3 exciting next choices:
 [CHOICE 1]: <action>
@@ -1192,7 +1918,7 @@ Then provide exactly 3 exciting next choices:
 
       } catch (err) {
         console.error("WebLLM error, falling back:", err);
-        await generateAdaptivePlot(actionText, isCityIntent);
+        await generateAdaptivePlot(actionText, worldInfo);
       }
     }
 
