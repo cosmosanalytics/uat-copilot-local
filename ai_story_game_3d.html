@@ -601,9 +601,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 720px;
-    max-width: 94vw;
-    max-height: 88vh;
+    width: 92vw;
+    max-width: 520px;
+    max-height: 86vh;
     background: rgba(10, 15, 29, 0.98);
     backdrop-filter: blur(28px);
     border: 1.5px solid var(--accent-cyan);
@@ -612,12 +612,14 @@
     z-index: 9999;
     display: none;
     flex-direction: column;
-    padding: 22px 26px;
+    padding: 20px 22px;
     pointer-events: auto !important;
     overflow-y: auto;
+    box-sizing: border-box;
   }
   .json-modal * {
     pointer-events: auto;
+    box-sizing: border-box;
   }
   .json-modal.open {
     display: flex !important;
@@ -629,23 +631,27 @@
     margin-bottom: 10px;
     border-bottom: 1px solid var(--border-dark);
     padding-bottom: 8px;
+    width: 100%;
   }
   .json-modal-title {
     font-family: 'Bricolage Grotesque', sans-serif;
     font-size: 1.05rem;
     font-weight: 800;
     color: var(--accent-cyan);
+    padding-right: 8px;
   }
   .json-modal-close {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 8px;
-    color: #cbd5e1;
-    font-size: 1.4rem;
+    color: #ffffff;
+    font-size: 1.5rem;
     cursor: pointer;
     line-height: 1;
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -654,9 +660,9 @@
   }
   .json-modal-close:hover {
     color: #FFFFFF;
-    background: rgba(239, 68, 68, 0.4);
-    border-color: rgba(239, 68, 68, 0.8);
-    transform: scale(1.05);
+    background: rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.9);
+    transform: scale(1.08);
   }
   .json-content-area {
     background: #030712;
@@ -678,6 +684,14 @@
     margin-top: 12px;
   }
 
+  /* TOGGLE AGENTS SWARM BUTTON */
+  .btn-agents-toggle {
+    display: none;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38BDF8;
+  }
+
   .controls-hint {
     position: absolute;
     bottom: 12px;
@@ -690,10 +704,59 @@
 
   /* MOBILE RESPONSIVE STYLES */
   @media (max-width: 900px) {
-    .top-hud { flex-direction: column; align-items: stretch; }
+    .top-hud {
+      flex-direction: column;
+      align-items: stretch;
+      position: relative;
+      z-index: 100;
+      pointer-events: auto;
+      gap: 8px;
+    }
+    .engine-controls {
+      position: relative;
+      z-index: 101;
+      pointer-events: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-start;
+    }
+    .btn-engine {
+      padding: 6px 10px;
+      font-size: 0.72rem;
+    }
+    .status-badge {
+      font-size: 0.68rem;
+      padding: 3px 7px;
+    }
+    .btn-agents-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .right-hud {
+      display: none;
+    }
+    .right-hud.mobile-open {
+      display: flex !important;
+      position: fixed;
+      top: 140px;
+      right: 12px;
+      left: 12px;
+      width: auto;
+      max-width: 350px;
+      margin: 0 auto;
+      z-index: 95;
+    }
+    .json-modal {
+      width: 94vw !important;
+      max-width: 94vw !important;
+      padding: 14px 16px !important;
+      max-height: 88vh !important;
+    }
     .bottom-hud { grid-template-columns: 1fr; }
     .left-hud { display: none; }
-    .narrative-console { max-height: 150px; }
+    .narrative-console { max-height: 140px; }
   }
 </style>
 </head>
@@ -738,6 +801,9 @@
         </div>
         <button id="btn-ai-settings" class="btn-engine" onclick="toggleAiSettingsModal()" style="border-color: rgba(56,189,248,0.4);">
           <span>⚙️</span><span>AI Engine &amp; Keys</span>
+        </button>
+        <button id="btn-toggle-agents" class="btn-engine btn-agents-toggle" onclick="toggleAgentsPanel()">
+          <span>🤖</span><span>Swarm (4)</span>
         </button>
         <span id="gpu-status-badge" class="status-badge" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">⚡ Groq LPU Cloud (Active)</span>
       </div>
@@ -919,7 +985,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
   </div>
 
   <!-- AI ENGINE PROVIDER MODAL -->
-  <div id="ai-settings-modal" class="json-modal" style="max-width:540px;" onclick="event.stopPropagation()">
+  <div id="ai-settings-modal" class="json-modal" onclick="event.stopPropagation()">
     <div class="json-modal-header">
       <div class="json-modal-title">⚙️ Generative AI Engine Settings</div>
       <button class="json-modal-close" onclick="closeAiSettingsModal()" title="Close">&times;</button>
@@ -1756,6 +1822,11 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       window.closeJsonModal();
     };
 
+    window.toggleAgentsPanel = function() {
+      const panel = document.querySelector(".right-hud");
+      if (panel) panel.classList.toggle("mobile-open");
+    };
+
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         window.closeAllModals();
@@ -1994,10 +2065,24 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     }
 
     function updateCameraAutoFraming() {
+      // If there is an active flying entity (e.g. bird/flamingo), focus camera directly on it
+      if (activeFlyingEntity) {
+        playerPos.x = 0;
+        playerPos.y = (activeFlyingEntity.userData.baseY || 8.5);
+        playerPos.z = 0;
+        dynamicCamDist = 14.0;
+        cameraAngleX = 0;
+        targetCameraAngleX = 0;
+        cameraAngleY = 0.22;
+        return;
+      }
+
       const bbox = new THREE.Box3();
       let hasStructure = false;
       dynamicWorldGroup.traverse(child => {
-        if (child.isMesh && child.name !== "environment_ground_plane") {
+        const isGround = child.name === "environment_ground_plane";
+        const isCloud = child.name.startsWith("sky_cloud") || (child.parent && child.parent.name.startsWith("sky_cloud"));
+        if (child.isMesh && !isGround && !isCloud) {
           bbox.expandByObject(child);
           hasStructure = true;
         }
@@ -2015,8 +2100,8 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         playerPos.y = center.y;
         playerPos.z = center.z;
 
-        // Auto-scale camera orbit distance according to object bounding box
-        dynamicCamDist = Math.max(maxDim * 1.85, 12.0);
+        // Auto-scale camera orbit distance according to object bounding box (capped at 40 so it stays in sight)
+        dynamicCamDist = Math.min(Math.max(maxDim * 1.85, 12.0), 40.0);
 
         cameraAngleX = 0;
         targetCameraAngleX = 0;
@@ -2461,8 +2546,8 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         const cloudMat = createMaterial({ color: "#ffffff", roughness: 1.0, metalness: 0.0, transparent: true, opacity: 0.88 });
         for (let c = 0; c < 8; c++) {
           const cloudAngle = (c * Math.PI * 2) / 8 + Math.random() * 0.3;
-          const cloudDist = 28 + Math.random() * 22;
-          const cloudY = 12 + Math.random() * 10;
+          const cloudDist = 48 + Math.random() * 22;
+          const cloudY = 16 + Math.random() * 8;
           const cloudGroup = new THREE.Group();
           cloudGroup.name = `sky_cloud_${c}`;
           for (let pIdx = 0; pIdx < 5; pIdx++) {
@@ -2509,13 +2594,13 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           modelBox.getSize(modelSize);
           const maxModelDim = Math.max(modelSize.x, modelSize.y, modelSize.z);
           if (maxModelDim > 0) {
-            const targetDim = match.isFlying ? 5.2 : 7.0;
+            const targetDim = match.isFlying ? 12.0 : 7.0;
             const normScale = targetDim / maxModelDim;
             model.scale.set(normScale, normScale, normScale);
           }
 
           if (match.isFlying) {
-            const alt = match.altitude || 8.5;
+            const alt = match.altitude || 10.5;
             model.position.set(0, alt, 0);
             model.userData.baseY = alt;
             activeFlyingEntity = model;
@@ -3014,7 +3099,7 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
       // Animate Flying Entity (Bird flight trajectory & aerodynamic swooping bank)
       if (activeFlyingEntity && activeFlyingEntity.parent) {
         const t = elapsed * 0.75;
-        const radius = 14.0;
+        const radius = 5.0;
         activeFlyingEntity.position.x = Math.sin(t) * radius;
         activeFlyingEntity.position.z = Math.cos(t) * radius;
         activeFlyingEntity.position.y = (activeFlyingEntity.userData.baseY || 8.5) + Math.sin(t * 2.0) * 1.3;
@@ -3131,11 +3216,17 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
         // Camera interpolation & screen shake
         cameraAngleX += (targetCameraAngleX - cameraAngleX) * 0.08;
 
+        const isMobile = window.innerWidth <= 900;
         const camDist = activeBiome.startsWith("dynamic_") ? (dynamicCamDist || 14.0) : ((activeBiome === "city") ? 11.0 : 9.5);
         camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY) + shakeOffsetX;
-        camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + (activeBiome === "city" ? 3.0 : 1.5) + shakeOffsetY;
+        camera.position.y = (activeFlyingEntity ? activeFlyingEntity.position.y : playerPos.y) + (isMobile ? 1.8 : 2.8) + shakeOffsetY;
         camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
-        camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 0.8), playerPos.z);
+        if (activeFlyingEntity && activeFlyingEntity.parent) {
+          const yOff = isMobile ? 3.8 : 0.6;
+          camera.lookAt(activeFlyingEntity.position.x, activeFlyingEntity.position.y - yOff, activeFlyingEntity.position.z);
+        } else {
+          camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 0.8), playerPos.z);
+        }
       }
 
       // Animate Aether objects if active
