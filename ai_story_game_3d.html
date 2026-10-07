@@ -2846,12 +2846,17 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         const geoParams = Array.isArray(p.params) ? p.params : (geomType === "box" ? [2, 2, 2] : (geomType === "sphere" ? [2, 20, 20] : (geomType === "cylinder" ? [1, 1, 3, 16] : (geomType === "cone" ? [1.5, 3, 16] : (geomType === "torus" ? [2, 0.5, 16, 24] : [2, 2, 2])))));
         
         const geo = createGeometry(geomType, geoParams);
+        const isGlass = p.transparent === true || p.glass === true || (typeof p.opacity === "number" && p.opacity < 1);
         const mat = createMaterial({
           color: p.color || "#38bdf8",
           roughness: typeof p.rough === "number" ? p.rough : (typeof p.roughness === "number" ? p.roughness : 0.4),
           metalness: typeof p.metal === "number" ? p.metal : (typeof p.metalness === "number" ? p.metalness : 0.4),
           emissive: p.emissive ? p.emissive : (p.glow ? p.color : undefined),
-          emissiveIntensity: p.glow ? 0.7 : 0.0
+          emissiveIntensity: p.glow ? (typeof p.emissiveIntensity === "number" ? p.emissiveIntensity : 1.5) : (p.emissive ? 1.0 : 0.0),
+          transparent: isGlass,
+          opacity: typeof p.opacity === "number" ? p.opacity : 1.0,
+          wireframe: p.wireframe === true || p.wire === true,
+          flatShading: p.flatShading === true || p.flat === true
         });
 
         const mesh = new THREE.Mesh(geo, mat);
@@ -2906,36 +2911,26 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       const storyEl = document.getElementById("story-stream");
       storyEl.textContent = `[Live AI 3D Synthesizer: "${actionText}"]\nStreaming 3D world on the fly...\n\n`;
 
-      const sysPrompt = `You are a real-time 3D World Architect.
+      const sysPrompt = `You are a Master 3D Spatial Architect & Structural Modeler in Three.js.
 The player requested: "${actionText}".
-Stream one instruction per line to construct this 3D scene from scratch.
-Coordinate rules: y=0 is ground level, y>0 is above ground. Scale=[sx,sy,sz].
-Available commands:
+Stream one instruction per line to assemble a HIGH-DETAIL, expressive 3D world on the fly.
+
+Rules:
+1. Break down the subject into 15 to 25 articulated 3D NODES (body, sub-assemblies, limbs/wheels, trims, glowing accents, cockpit/head).
+2. Use precise pos=[x,y,z], scale=[sx,sy,sz], and rot=[rx,ry,rz] (radians). y=0 is ground level.
+3. Combine metal=0.85, rough=0.2, emissive=#hex, glow=true, opacity=0.45, transparent=true.
+4. Use anim=spin|float|pulse for kinetic parts.
+
+Commands:
 ENV sky=#hex ground=#hex fog=0.008
 LIGHT type=dir|point color=#hex pos=[x,y,z]
-PARTICLES color=#hex count=400 style=rising|falling|ambient
-NODE name=str geom=box|sphere|cylinder|cone|torus pos=[x,y,z] scale=[sx,sy,sz] color=#hex metal=0.4 rough=0.3 emissive=#hex glow=true|false anim=none|spin|float|pulse
-(Generate 5 to 14 NODE lines assembling the requested subject)
+PARTICLES color=#hex count=250 style=rising|falling|ambient
+NODE name="str" geom=box|sphere|cylinder|cone|torus|torusKnot|octahedron pos=[x,y,z] scale=[sx,sy,sz] rot=[rx,ry,rz] color=#hex metal=0.6 rough=0.3 emissive=#hex glow=true opacity=1.0 anim=none|spin|float|pulse
 STORY: 2 vivid dramatic sentences describing the physical 3D world created.
 [CHOICE 1]: action 1
 [CHOICE 2]: action 2
 [CHOICE 3]: action 3
-
-EXAMPLE for "volcano with lava":
-ENV sky=#180505 ground=#09090b fog=0.012
-LIGHT type=point color=#ff3300 pos=[0,16,0]
-PARTICLES color=#ff4500 count=500 style=rising
-NODE name=mountain_cone geom=cone pos=[0,7,0] scale=[18,14,18] color=#1c1917 rough=0.95
-NODE name=crater_magma geom=cylinder pos=[0,13.8,0] scale=[4.2,0.8,4.2] color=#ef4444 emissive=#ff2200 glow=true
-NODE name=lava_stream_1 geom=box pos=[0,6,7.5] scale=[2,13,0.8] color=#f97316 emissive=#ff4500 glow=true rot=[0.45,0,0]
-NODE name=lava_stream_2 geom=box pos=[7.5,6,0] scale=[0.8,13,2] color=#f97316 emissive=#ff4500 glow=true rot=[0,0,-0.45]
-NODE name=smoke_plume geom=sphere pos=[0,18,0] scale=[6,3.5,6] color=#3f3f46 anim=float
-STORY: A colossal volcanic peak roars into the darkened sky, rivers of glowing orange lava cascading down its jagged obsidian flanks.
-[CHOICE 1]: Ascend the basalt ridges toward the blazing caldera
-[CHOICE 2]: Harvest molten fire-crystals at the crater rim
-[CHOICE 3]: Cast an aether frost ward to freeze the advancing magma
-
-Output ONLY instruction lines. No markdown fences.`;
+Assemble 15 to 25 detailed NODES. Output ONLY instruction lines. No markdown fences.`;
 
       try {
         const completion = await window.engine.chat.completions.create({
@@ -3043,20 +3038,32 @@ Output ONLY instruction lines. No markdown fences.`;
       const storyEl = document.getElementById("story-stream");
       storyEl.textContent = `[Live AI Generative Stream: "${actionText}"]\nStreaming 3D world on the fly via neural network...\n\n`;
 
-      const sysPrompt = `You are a real-time 3D World Architect.
+      const sysPrompt = `You are a Master 3D Spatial Architect & Structural Modeler in Three.js.
 The player requested: "${actionText}".
-Stream one instruction per line to construct this 3D scene from scratch.
+Stream one instruction per line to assemble a HIGH-DETAIL, expressive 3D world on the fly.
+
+Rules for high aesthetic fidelity:
+1. Break down the subject into 15 to 25 articulated, complementary 3D NODES (main body, sub-assemblies, limbs/wheels/wings, joints, trims, glowing accents, cockpit/head, environment details).
+2. Spatial coordinates pos=[x,y,z] and scale=[sx,sy,sz]. y=0 is ground level; everything rests on or above ground.
+3. Use rot=[rx,ry,rz] (radians) for angled wings, tilted joints, aerodynamic slopes, or horizontal cylinder wheels (e.g. rot=[0,0,1.57]).
+4. Combine materials creatively:
+   - High metal (metal=0.85, rough=0.2) for armor/chrome/machinery.
+   - Matte (rough=0.85, metal=0.1) for asphalt, stone, rubber tires, terrain.
+   - Emissive glow (emissive=#hex glow=true) for headlights, energy cores, visors, taillights, magic runes.
+   - Glass (opacity=0.45 transparent=true) for windshields, visors, cockpits, energy shields.
+5. Use animations (anim=spin|float|pulse speed=1.5) for wheels, rotors, hovering drones, beating energy cores, glowing eyes.
+
 Available commands:
 ENV sky=#hex ground=#hex fog=0.008
-LIGHT type=dir color=#hex pos=[20,40,20]
-PARTICLES color=#hex count=300 style=rising|falling|ambient
-NODE name=str geom=box|sphere|cylinder|cone|torus pos=[x,y,z] scale=[sx,sy,sz] color=#hex metal=0.4 rough=0.3 anim=none|spin|float|pulse
-(Generate 5 to 15 NODE lines to assemble the requested 3D entity)
-STORY: 2 vivid sentences describing what was created.
+LIGHT type=dir|point color=#hex pos=[x,y,z]
+PARTICLES color=#hex count=250 style=rising|falling|ambient
+NODE name="str" geom=box|sphere|cylinder|cone|torus|torusKnot|octahedron pos=[x,y,z] scale=[sx,sy,sz] rot=[rx,ry,rz] color=#hex metal=0.6 rough=0.3 emissive=#hex glow=true opacity=1.0 anim=none|spin|float|pulse
+STORY: 2 vivid, dramatic sentences capturing the physical scene.
 [CHOICE 1]: action 1
 [CHOICE 2]: action 2
 [CHOICE 3]: action 3
-Output ONLY these lines. No JSON, no markdown codeblocks.`;
+
+Assemble 15 to 25 detailed NODES. Output ONLY instruction lines. No markdown fences.`;
 
       const endpoint = localStorage.getItem("aether_llm_endpoint") || DEFAULT_GROQ_ENDPOINT;
       const apiKey = localStorage.getItem("aether_llm_key") || PROVISIONED_GROQ_KEY;
@@ -3082,10 +3089,10 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
             model: model,
             messages: [
               { role: "system", content: sysPrompt },
-              { role: "user", content: `Generate 3D scene for: "${actionText}"` }
+              { role: "user", content: `Generate high-detail 3D scene for: "${actionText}"` }
             ],
             stream: true,
-            max_tokens: 1200,
+            max_tokens: 2200,
             temperature: 0.6
           })
         });
