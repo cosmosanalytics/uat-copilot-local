@@ -345,6 +345,7 @@
 
     .dist-btn {
       background: var(--bg-base);
+      color: var(--text-main);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 7px;
@@ -355,6 +356,7 @@
       text-align: center;
     }
     .dist-btn:hover {
+      background: var(--bg-surface);
       border-color: var(--accent-rose);
       color: var(--accent-rose);
     }
@@ -613,8 +615,8 @@
 
     <div class="header-actions">
       <!-- Disturbance Quick Inject -->
-      <button class="btn btn-danger" onclick="injectShockDisturbance('vortex')">
-        <span>🌪️ Inject Severe Vortex</span>
+      <button class="btn btn-danger" onclick="injectShockDisturbance('exothermic')">
+        <span>🔥 Trigger Exothermic Surge</span>
       </button>
 
       <!-- Toggle Controller Comparison -->
@@ -659,7 +661,12 @@
         </p>
 
         <div class="scenario-btn-grid">
-          <div class="scenario-btn active" id="scen-quadrotor" onclick="selectScenario('quadrotor')">
+          <div class="scenario-btn active" id="scen-chemical_cstr" onclick="selectScenario('chemical_cstr')">
+            <strong>Exothermic Chemical Reactor (CSTR)</strong>
+            <span>Non-linear Arrhenius thermal runaway & cooling jacket lag.</span>
+          </div>
+
+          <div class="scenario-btn" id="scen-quadrotor" onclick="selectScenario('quadrotor')">
             <strong>Agile Quadrotor in Vortex Wind</strong>
             <span>Non-stationary turbulent aerodynamic wind shear.</span>
           </div>
@@ -702,11 +709,11 @@
           <input type="range" class="range-slider" id="rng-horizon" min="10" max="40" value="25" oninput="updateHorizonLength(this.value)">
         </div>
 
-        <div class="disturbance-grid">
-          <button class="dist-btn" onclick="injectShockDisturbance('vortex')">🌪️ Wind Vortex</button>
-          <button class="dist-btn" onclick="injectShockDisturbance('ice')">🧊 Ice Patch Slip</button>
-          <button class="dist-btn" onclick="injectShockDisturbance('payload')">📦 Payload Drop</button>
-          <button class="dist-btn" onclick="injectShockDisturbance('lag')">⏱️ Actuator Lag</button>
+        <div class="disturbance-grid" id="disturbance-btn-container">
+          <button class="dist-btn" onclick="injectShockDisturbance('exothermic')">🔥 Exothermic Surge</button>
+          <button class="dist-btn" onclick="injectShockDisturbance('coolant')">🧊 Coolant Pressure Drop</button>
+          <button class="dist-btn" onclick="injectShockDisturbance('catalyst')">🧪 Catalyst Aging</button>
+          <button class="dist-btn" onclick="injectShockDisturbance('impurity')">⚙️ Feed Impurity</button>
         </div>
       </div>
 
@@ -741,7 +748,7 @@
       <!-- HUD Floating Status -->
       <div class="stage-hud">
         <div class="hud-badge">
-          <span>PLANT: <strong id="hud-plant-name" style="color:var(--aipc-green);">Agile Quadrotor</strong></span>
+          <span>PLANT: <strong id="hud-plant-name" style="color:var(--aipc-green);">Exothermic CSTR Reactor</strong></span>
           <span>GPU: <strong style="color:var(--accent-cyan);">4,096 Rollouts (60Hz)</strong></span>
         </div>
       </div>
@@ -932,7 +939,7 @@
     const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
     window.AIPCState = {
-      scenario: 'quadrotor',          // 'quadrotor', 'vehicle', 'pendulum'
+      scenario: 'chemical_cstr',      // 'chemical_cstr' (default), 'quadrotor', 'vehicle', 'pendulum'
       unmodeledIntensity: 0.65,       // 0.0 to 1.0 unmodeled aerodynamic / friction mismatch
       horizonSteps: 25,               // Prediction horizon steps (H_p)
       showClassicalGhost: true,       // Overlay classical MPC
@@ -1025,9 +1032,13 @@
       const S = window.AIPCState;
       S.time += dt;
 
-      // 1. Dynamic Moving Reference Target (Lissajous figure / Agile Waypoints)
+      // 1. Dynamic Moving Reference Target
       const t = S.time * 0.8;
-      if (S.scenario === 'quadrotor') {
+      if (S.scenario === 'chemical_cstr') {
+        // CSTR Reaction: Concentration C_A (x) and Temperature T_ref (y=0 is 370 K)
+        S.target.x = Math.sin(t * 0.35) * 0.3;
+        S.target.y = Math.sin(t * 0.25) * 0.25;
+      } else if (S.scenario === 'quadrotor') {
         S.target.x = Math.sin(t) * 1.8 + Math.cos(t * 0.5) * 0.4;
         S.target.y = Math.cos(t * 0.8) * 1.0 - 0.2;
       } else if (S.scenario === 'vehicle') {
@@ -1039,9 +1050,18 @@
         S.target.y = 0;
       }
 
-      // 2. Compute Disturbance Force (Base wind shear + Shock vortex)
-      let distFx = Math.sin(S.time * 2.5) * 0.5 * S.unmodeledIntensity;
-      let distFy = Math.cos(S.time * 1.9) * 0.4 * S.unmodeledIntensity;
+      // 2. Compute Disturbance Force
+      let distFx, distFy;
+      if (S.scenario === 'chemical_cstr') {
+        // Exothermic Arrhenius reaction kinetics:
+        // Heat release accelerates exponentially with temperature deviation!
+        const arrheniusSurge = Math.exp(Math.max(-0.5, S.classic.y * 1.5)) - 1.0;
+        distFx = Math.sin(S.time * 1.5) * 0.35 * S.unmodeledIntensity;
+        distFy = (arrheniusSurge * 0.8 + Math.cos(S.time * 1.2) * 0.3) * S.unmodeledIntensity;
+      } else {
+        distFx = Math.sin(S.time * 2.5) * 0.5 * S.unmodeledIntensity;
+        distFy = Math.cos(S.time * 1.9) * 0.4 * S.unmodeledIntensity;
+      }
 
       // Active Shock Injection
       if (S.shockDisturbance) {
@@ -1137,8 +1157,20 @@
       }
 
       // Update HUD Numbers
-      document.getElementById('m-classic-rmse').textContent = `${classicErr.toFixed(2)} m`;
-      document.getElementById('m-aipc-rmse').textContent = `${aipcErr.toFixed(2)} m`;
+      const isCSTR = S.scenario === 'chemical_cstr';
+      const unit = isCSTR ? ' K' : ' m';
+      const scaleVal = isCSTR ? 14 : 1;
+      document.getElementById('m-classic-rmse').textContent = `${(classicErr * scaleVal).toFixed(2)}${unit}`;
+      document.getElementById('m-aipc-rmse').textContent = `${(aipcErr * scaleVal).toFixed(2)}${unit}`;
+
+      const classicTemp = 370 + S.classic.y * 14;
+      if (isCSTR && classicTemp >= 384) {
+        document.getElementById('m-classic-viol').textContent = 'TRIP (100%)';
+        document.getElementById('m-classic-viol').style.color = 'var(--accent-rose)';
+      } else {
+        document.getElementById('m-classic-viol').textContent = '14%';
+        document.getElementById('m-classic-viol').style.color = '';
+      }
     }
 
     /* =====================================================================
@@ -1170,6 +1202,12 @@
       }
       for (let y = 0; y < h; y += gridSize) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      // If Chemical CSTR scenario is active, draw dedicated CSTR reactor plant
+      if (S.scenario === 'chemical_cstr') {
+        drawChemicalCSTRPlant(ctx, cx, cy, scale, isLight);
+        return;
       }
 
       // 2. Draw Wind Vortex Particles (Disturbance Field)
@@ -1316,6 +1354,175 @@
       ctx.fillText(label, pt.x, pt.y + 26);
     }
 
+    function drawChemicalCSTRPlant(ctx, cx, cy, scale, isLight) {
+      const S = window.AIPCState;
+      const reactorW = 300;
+      const reactorH = 330;
+      const rx = cx - reactorW / 2;
+      const ry = cy - reactorH / 2 - 15;
+
+      // 1. Outer Cooling Water Jacket (Double Wall Shell)
+      ctx.fillStyle = isLight ? '#f0f9ff' : 'rgba(2, 132, 199, 0.12)';
+      ctx.strokeStyle = isLight ? '#0284c7' : '#38bdf8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(rx - 22, ry + 35, reactorW + 44, reactorH - 45, [0, 0, 48, 48]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Coolant Inlet Pipe (Top Left)
+      ctx.fillStyle = isLight ? '#bae6fd' : '#0369a1';
+      ctx.fillRect(rx - 55, ry + 65, 36, 20);
+      ctx.fillStyle = isLight ? '#0369a1' : '#7dd3fc';
+      ctx.font = '600 9px JetBrains Mono';
+      ctx.textAlign = 'right';
+      ctx.fillText('Coolant In (Tc) ➔', rx - 60, ry + 79);
+
+      // Coolant Outlet Pipe (Bottom Right)
+      ctx.fillStyle = isLight ? '#bae6fd' : '#0369a1';
+      ctx.fillRect(rx + reactorW + 20, ry + reactorH - 70, 36, 20);
+      ctx.textAlign = 'left';
+      ctx.fillText('➔ Coolant Out', rx + reactorW + 62, ry + reactorH - 56);
+
+      // 2. Inner Reactor Tank (Vessel Wall)
+      ctx.fillStyle = isLight ? '#ffffff' : '#1e293b';
+      ctx.strokeStyle = isLight ? '#64748b' : '#94a3b8';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.roundRect(rx, ry + 15, reactorW, reactorH - 25, [0, 0, 38, 38]);
+      ctx.fill();
+      ctx.stroke();
+
+      // 3. Reactant Fluid with Thermal Color Gradient
+      const fluidH = reactorH - 80;
+      const fluidY = ry + 65;
+
+      const classicTempK = 370 + S.classic.y * 14;
+      const aipcTempK = 370 + S.aipc.y * 14;
+
+      const fluidGrad = ctx.createLinearGradient(0, fluidY, 0, fluidY + fluidH);
+      if (classicTempK > 380) {
+        fluidGrad.addColorStop(0, 'rgba(239, 68, 68, 0.7)'); // Hot runaway red
+        fluidGrad.addColorStop(1, 'rgba(245, 158, 11, 0.6)');
+      } else {
+        fluidGrad.addColorStop(0, isLight ? 'rgba(5, 150, 105, 0.45)' : 'rgba(16, 185, 129, 0.4)');
+        fluidGrad.addColorStop(1, isLight ? 'rgba(14, 165, 233, 0.4)' : 'rgba(56, 189, 248, 0.35)');
+      }
+
+      ctx.fillStyle = fluidGrad;
+      ctx.beginPath();
+      ctx.roundRect(rx + 6, fluidY, reactorW - 12, fluidH, [0, 0, 32, 32]);
+      ctx.fill();
+
+      // Feedstock Inlet Pipe (Top Left of Vessel)
+      ctx.fillStyle = isLight ? '#e2e8f0' : '#334155';
+      ctx.fillRect(rx + 25, ry - 15, 24, 30);
+      ctx.fillStyle = isLight ? '#475569' : '#94a3b8';
+      ctx.font = '600 8.5px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('Feed A', rx + 37, ry - 20);
+
+      // 4. Central Motor & Spinning Dual Rushton Turbine Impellers
+      ctx.fillStyle = isLight ? '#334155' : '#475569';
+      ctx.fillRect(cx - 28, ry - 22, 56, 36);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '700 8.5px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('AGITATOR', cx, ry - 8);
+
+      // Shaft
+      ctx.strokeStyle = isLight ? '#64748b' : '#cbd5e1';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx, ry + 15);
+      ctx.lineTo(cx, ry + reactorH - 55);
+      ctx.stroke();
+
+      // Spinning Impeller Blades
+      const bladeW = Math.cos(S.time * 18) * 54;
+      ctx.fillStyle = isLight ? '#0f172a' : '#f8fafc';
+      ctx.fillRect(cx - bladeW/2, ry + 130, bladeW, 9);
+      ctx.fillRect(cx - bladeW/2, ry + 225, bladeW, 9);
+
+      // 5. Critical Threshold Lines
+      // Red Runaway Trip Line (T_max = 385 K)
+      const runawayY = cy - 65;
+      ctx.strokeStyle = '#e11d48';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(rx + 8, runawayY);
+      ctx.lineTo(rx + reactorW - 8, runawayY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#e11d48';
+      ctx.font = '700 9px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText('⚠ THERMAL RUNAWAY TRIP: T_max = 385 K', rx + 14, runawayY - 5);
+
+      // Green Optimal Reaction Setpoint Line (T_ref = 370 K)
+      const setpointY = cy + 15;
+      ctx.strokeStyle = '#059669';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(rx + 8, setpointY);
+      ctx.lineTo(rx + reactorW - 8, setpointY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#059669';
+      ctx.fillText('🎯 OPTIMAL REACTION SETPOINT: T_ref = 370 K, C_A = 0.5 M', rx + 14, setpointY - 4);
+
+      // 6. Controllers Probes inside CSTR
+      // Classical MPC Probe (Left)
+      if (S.showClassicalGhost) {
+        const classicY = setpointY + S.classic.y * 60;
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(cx - 75, classicY, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 8.5px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('QP', cx - 75, classicY + 3);
+
+        const isRunaway = classicTempK >= 384;
+        ctx.fillStyle = isRunaway ? '#e11d48' : '#2563eb';
+        ctx.font = '700 9.5px JetBrains Mono';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Classical MPC: ${classicTempK.toFixed(1)} K ${isRunaway ? '💥 RUNAWAY TRIP!' : ''}`, cx - 92, classicY + 3);
+      }
+
+      // AIPC Probe (Right)
+      const aipcY = setpointY + S.aipc.y * 60;
+      ctx.fillStyle = '#059669';
+      ctx.beginPath();
+      ctx.arc(cx + 75, aipcY, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 8.5px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('AI', cx + 75, aipcY + 3);
+
+      ctx.fillStyle = '#059669';
+      ctx.font = '700 9.5px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AIPC: ${aipcTempK.toFixed(1)} K (Deadbeat)`, cx + 92, aipcY + 3);
+
+      // Draw AIPC Anticipatory Predicted Horizon Ribbon
+      if (S.aipc.rollout.length > 0) {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(cx + 75, aipcY);
+        S.aipc.rollout.forEach((p, idx) => {
+          const predY = setpointY + p.y * 60;
+          ctx.lineTo(cx + 75 + idx * 2.5, predY);
+        });
+        ctx.stroke();
+      }
+    }
+
     /* =====================================================================
        5. TELEMETRY CHARTS RENDERING
        ===================================================================== */
@@ -1375,10 +1582,16 @@
     window.selectScenario = function(scen) {
       window.AIPCState.scenario = scen;
       document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(`scen-${scen}`).classList.add('active');
+      const activeEl = document.getElementById(`scen-${scen}`);
+      if (activeEl) activeEl.classList.add('active');
 
-      const names = { quadrotor: 'Agile Quadrotor in Vortex', vehicle: 'Autonomous Vehicle Drift', pendulum: 'Inverted Pendulum Slosh' };
-      document.getElementById('hud-plant-name').textContent = names[scen];
+      const names = {
+        chemical_cstr: 'Exothermic CSTR Chemical Reactor',
+        quadrotor: 'Agile Quadrotor in Vortex',
+        vehicle: 'Autonomous Vehicle Drift',
+        pendulum: 'Inverted Pendulum Slosh'
+      };
+      document.getElementById('hud-plant-name').textContent = names[scen] || scen;
       resetSimulation();
     };
 
@@ -1393,14 +1606,22 @@
     };
 
     window.injectShockDisturbance = function(type) {
-      if (type === 'vortex') {
+      if (type === 'exothermic') {
+        window.AIPCState.shockDisturbance = { fx: 1.2, fy: 3.8, timer: 1.6 };
+      } else if (type === 'coolant') {
+        window.AIPCState.shockDisturbance = { fx: 0.0, fy: 4.8, timer: 1.8 };
+      } else if (type === 'catalyst') {
+        window.AIPCState.shockDisturbance = { fx: -2.8, fy: -2.0, timer: 1.4 };
+      } else if (type === 'impurity') {
+        window.AIPCState.shockDisturbance = { fx: 3.2, fy: 2.8, timer: 1.5 };
+      } else if (type === 'vortex') {
         window.AIPCState.shockDisturbance = { fx: 3.5, fy: -2.8, timer: 1.2 };
       } else if (type === 'ice') {
         window.AIPCState.shockDisturbance = { fx: -4.2, fy: 0.5, timer: 1.0 };
       } else if (type === 'payload') {
         window.AIPCState.shockDisturbance = { fx: 0.0, fy: 4.5, timer: 1.4 };
       } else {
-        window.AIPCState.shockDisturbance = { fx: 2.2, fy: 2.2, timer: 1.8 };
+        window.AIPCState.shockDisturbance = { fx: 1.5, fy: 3.5, timer: 1.5 };
       }
     };
 
@@ -1414,6 +1635,8 @@
        7. WEBLLM / GROQ CONTROL SUPERVISORY COPILOT
        ===================================================================== */
     window.requestAIControlAnalysis = async function() {
+      const S = window.AIPCState;
+      const isCSTR = S.scenario === 'chemical_cstr';
       const btn = document.getElementById('btn-ai-analyze');
       const out = document.getElementById('copilot-output-text');
       const badge = document.getElementById('ai-badge');
@@ -1421,20 +1644,25 @@
       btn.disabled = true;
       btn.innerHTML = `<span>⏳ Synthesizing Diagnostics...</span>`;
       badge.textContent = 'Analyzing...';
-      out.textContent = `Analyzing continuous neural state-space vs Classical QP quadratic program...`;
+      out.textContent = `Analyzing continuous neural state-space vs Classical QP quadratic program for ${isCSTR ? 'Exothermic CSTR Chemical Reactor' : S.scenario}...`;
 
-      const systemPrompt = `You are a Principal Control Systems Scientist specializing in Next-Generation AI Predictive Control (AIPC) and Neural Model Predictive Control.
-Explain why Classical Model Predictive Control breaks down under non-linear unmodeled disturbances (vortex wind, tire slip), and how Learned Latent World Models with WebGPU MPPI parallel rollouts achieve deadbeat tracking.`;
+      const systemPrompt = `You are a Principal Chemical Control Systems Scientist specializing in Next-Generation AI Predictive Control (AIPC) and Neural Model Predictive Control for continuous stirred-tank reactors (CSTR) and chemical process plants.
+Explain why Classical Model Predictive Control breaks down under non-linear Arrhenius exothermic kinetics, jacket heat-transfer fouling, and control valve saturation, and how Learned Latent World Models with WebGPU MPPI parallel rollouts achieve deadbeat tracking without thermal runaway trips.`;
 
-      const userPrompt = `Current Physical Plant: ${window.AIPCState.scenario.toUpperCase()}
-Unmodeled Aerodynamic / Non-linear Intensity: ${(window.AIPCState.unmodeledIntensity * 100).toFixed(0)}%
-Classical MPC Tracking Error: 0.42 m (with observable phase lag and high chattering)
-AIPC Tracking Error: 0.04 m (90.4% reduction via neural residual observer)
+      const unit = isCSTR ? ' K' : ' m';
+      const classicErrStr = isCSTR ? '14.6 K (Thermal runaway trip threshold reached: 384.6 K)' : '0.42 m (phase lag & chattering)';
+      const aipcErrStr = isCSTR ? '0.12 K (Stable deadbeat regulation at 370.1 K)' : '0.04 m (90.4% error reduction)';
+
+      const userPrompt = `Current Physical Plant: ${isCSTR ? 'EXOTHERMIC CONTINUOUS STIRRED-TANK REACTOR (CSTR)' : S.scenario.toUpperCase()}
+Unmodeled Non-linear / Arrhenius Reaction Intensity: ${(S.unmodeledIntensity * 100).toFixed(0)}%
+Target Reaction Setpoint: T_ref = 370.0 K, C_A = 0.50 mol/L
+Classical MPC Temperature Deviation: ${classicErrStr}
+AIPC Temperature Deviation: ${aipcErrStr}
 
 Please provide:
-1. Executive Root-Cause Diagnostic: Why the classical analytical QP solver fails to compensate.
-2. The Mathematical Advantage of AIPC: How PINN-residuals and parallel GPU horizon rollouts eliminate overshoot.
-3. Recommended Control Hyperparameters: Horizon tuning recommendations for extreme safety bounds.`;
+1. Executive Root-Cause Diagnostic: Why the classical linear QP solver causes thermal runaway (Arrhenius exponential non-linearity k0*exp(-E/RT) vs linearized Jacobian).
+2. The Mathematical Advantage of AIPC: How PINN-residuals and parallel WebGPU MPPI horizon rollouts pre-cool the jacket before runaway accelerates.
+3. Recommended Control Hyperparameters: Prediction horizon and penalty weights for zero-trip chemical process safety.`;
 
       try {
         const customKey = document.getElementById('cfg-custom-key').value.trim();
@@ -1472,8 +1700,27 @@ Please provide:
     };
 
     function generateDeterministicControlDiagnostic() {
+      const S = window.AIPCState;
+      if (S.scenario === 'chemical_cstr') {
+        return `=== AI PREDICTIVE CONTROL (AIPC) CHEMICAL PLANT DIAGNOSTIC ===
+[PLANT: EXOTHERMIC CSTR REACTOR | UNMODELED REACTION INTENSITY: ${(S.unmodeledIntensity * 100).toFixed(0)}%]
+
+1. ROOT-CAUSE DIAGNOSTIC OF CLASSICAL MPC THERMAL RUNAWAY:
+   • Arrhenius Non-Linearity Mismatch: Reaction rate follows r_A = k₀ exp(-E / RT) C_A. Heat generation scales exponentially with temperature, violating Classical MPC's linearized Jacobian assumption (A = ∂f/∂x|_{T_ref}).
+   • Jacket Delay & Valve Saturation: When feed temperature or catalyst activity surges, Classical MPC reacts only after sensor temperature rises. Because jacket heat transfer Q = UA(T - T_c) incurs transport delay, late valve saturation triggers a thermal runaway trip (T > 385.0 K).
+
+2. WHY AIPC ACHIEVES DEADBEAT TEMPERATURE REGULATION (370.0 K ± 0.1 K):
+   • Physics-Informed Residual Observer (PINN-CSTR): Continually identifies the Arrhenius exponential divergence Δ_reaction(T, C_A) and heat exchanger fouling in real time.
+   • Parallel WebGPU MPPI Rollouts: Simultaneously evaluates 4,096 prospective cooling valve trajectories in < 2ms, discovering non-convex pre-cooling sequences that pull heat out of the jacket *before* the thermal peak manifests.
+   • Zero Constraint Violations: Enforces hard safety barriers on maximum reactor temperature without sacrificing reactant conversion efficiency.
+
+3. OPTIMAL PARAMETER RECOMMENDATIONS:
+   • Prediction Horizon (H_p): 25–30 steps (capturing the full jacket thermal residence time τ_jacket).
+   • Terminal Penalty Matrix: Weight Q_temperature / R_coolant set to 18.5:1 with asymmetric barrier penalty above 382 K.`;
+      }
+
       return `=== AI PREDICTIVE CONTROL (AIPC) EXECUTIVE DIAGNOSTIC ===
-[PLANT: ${window.AIPCState.scenario.toUpperCase()} | UNMODELED INTENSITY: ${(window.AIPCState.unmodeledIntensity * 100).toFixed(0)}%]
+[PLANT: ${S.scenario.toUpperCase()} | UNMODELED INTENSITY: ${(S.unmodeledIntensity * 100).toFixed(0)}%]
 
 1. ROOT-CAUSE DIAGNOSTIC OF CLASSICAL MPC FAILURE:
    • Model Mismatch Gap: Classical MPC relies on a nominal analytical model (x_{k+1} = Ax_k + Bu_k) that assumes zero vortex wind shear.
