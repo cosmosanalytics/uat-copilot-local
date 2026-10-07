@@ -1265,6 +1265,44 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       return group;
     }
 
+    function updateCameraAutoFraming() {
+      const bbox = new THREE.Box3();
+      let hasStructure = false;
+      dynamicWorldGroup.children.forEach(child => {
+        if (child.name === "environment_ground_plane") return;
+        bbox.expandByObject(child);
+        hasStructure = true;
+      });
+
+      if (hasStructure && !bbox.isEmpty()) {
+        const center = new THREE.Vector3();
+        bbox.getCenter(center);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z, 5);
+
+        // Focal point is the exact center of the constructed model
+        playerPos.x = center.x;
+        playerPos.y = center.y;
+        playerPos.z = center.z;
+
+        // Auto-scale camera orbit distance according to object bounding box
+        dynamicCamDist = Math.max(maxDim * 1.85, 12.0);
+
+        cameraAngleX = 0;
+        targetCameraAngleX = 0;
+        cameraAngleY = 0.22;
+      } else {
+        playerPos.x = 0;
+        playerPos.y = 1.2;
+        playerPos.z = 0;
+        dynamicCamDist = 14.0;
+        cameraAngleX = 0;
+        targetCameraAngleX = 0;
+        cameraAngleY = 0.22;
+      }
+    }
+
     function compileSceneGraph(spec) {
       currentSceneGraphJSON = spec;
       clearDynamicWorld();
@@ -1347,42 +1385,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       }
 
       // DYNAMIC BOUNDING BOX AUTO-FRAMING & FOCUS
-      const bbox = new THREE.Box3();
-      let hasStructure = false;
-      dynamicWorldGroup.children.forEach(child => {
-        if (child.name === "environment_ground_plane") return;
-        bbox.expandByObject(child);
-        hasStructure = true;
-      });
-
-      if (hasStructure && !bbox.isEmpty()) {
-        const center = new THREE.Vector3();
-        bbox.getCenter(center);
-        const size = new THREE.Vector3();
-        bbox.getSize(size);
-        const maxDim = Math.max(size.x, size.y, size.z, 6);
-
-        // Focal point is the exact center of the constructed model
-        playerPos.x = center.x;
-        playerPos.y = center.y;
-        playerPos.z = center.z;
-
-        // Auto-scale camera orbit distance according to object bounding box
-        dynamicCamDist = Math.max(maxDim * 1.85, 14.0);
-
-        // Directly face the subject
-        cameraAngleX = 0;
-        targetCameraAngleX = 0;
-        cameraAngleY = 0.22;
-      } else {
-        playerPos.x = 0;
-        playerPos.y = 1.2;
-        playerPos.z = 0;
-        dynamicCamDist = 14.0;
-        cameraAngleX = 0;
-        targetCameraAngleX = 0;
-        cameraAngleY = 0.22;
-      }
+      updateCameraAutoFraming();
 
       // HUD & TELEMETRY UPDATE
       const title = spec.realm_title || "Generative 3D Realm";
@@ -1809,11 +1812,332 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       };
     }
 
+    // =========================================================================
+    // OPTION 3: HYBRID REAL-TIME 3D STREAMER
+    // 1. OPEN GLB ASSET STREAMER (Zero hardcoded templates)
+    // 2. LIVE ON-THE-FLY WEBGPU 3D DSL GENERATOR (Token-by-token spatial synthesizer)
+    // =========================================================================
+
+    const OPEN_GLB_CATALOG = [
+      { keywords: ["duck"], name: "Rubber Duck", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Duck/glTF-Binary/Duck.glb", scale: [3.5, 3.5, 3.5], pos: [0, 0, 0] },
+      { keywords: ["fox"], name: "Wild Arctic Fox", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Fox/glTF-Binary/Fox.glb", scale: [0.03, 0.03, 0.03], pos: [0, 0, 0] },
+      { keywords: ["truck", "milk truck"], name: "Cesium Milk Truck", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb", scale: [2.0, 2.0, 2.0], pos: [0, 0, 0] },
+      { keywords: ["buggy", "jeep", "dune buggy"], name: "Dune Buggy Racer", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Buggy/glTF-Binary/Buggy.glb", scale: [0.03, 0.03, 0.03], pos: [0, 0, 0] },
+      { keywords: ["fish", "trout", "barramundi"], name: "Barramundi Fish", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/BarramundiFish/glTF-Binary/BarramundiFish.glb", scale: [4.0, 4.0, 4.0], pos: [0, 2, 0] },
+      { keywords: ["avocado"], name: "Giant Avocado", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Avocado/glTF-Binary/Avocado.glb", scale: [45.0, 45.0, 45.0], pos: [0, 2, 0] },
+      { keywords: ["camera", "vintage camera"], name: "Antique Folding Camera", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/AntiqueCamera/glTF-Binary/AntiqueCamera.glb", scale: [1.2, 1.2, 1.2], pos: [0, 1.5, 0] },
+      { keywords: ["helmet", "sci-fi helmet"], name: "Sci-Fi Vanguard Helmet", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/SciFiHelmet/glTF-Binary/SciFiHelmet.glb", scale: [3.0, 3.0, 3.0], pos: [0, 3.0, 0] },
+      { keywords: ["lantern", "lamp"], name: "Brass Storm Lantern", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Lantern/glTF-Binary/Lantern.glb", scale: [0.15, 0.15, 0.15], pos: [0, 0, 0] },
+      { keywords: ["boombox", "stereo", "radio"], name: "Retro BoomBox", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/BoomBox/glTF-Binary/BoomBox.glb", scale: [120.0, 120.0, 120.0], pos: [0, 1.5, 0] },
+      { keywords: ["sofa", "couch"], name: "Glam Velvet Sofa", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/GlamVelvetSofa/glTF-Binary/GlamVelvetSofa.glb", scale: [2.5, 2.5, 2.5], pos: [0, 0, 0] },
+      { keywords: ["bottle", "water bottle"], name: "Water Bottle", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/WaterBottle/glTF-Binary/WaterBottle.glb", scale: [20.0, 20.0, 20.0], pos: [0, 0, 0] },
+      { keywords: ["monkey", "suzanne"], name: "Suzanne Monkey Head", url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Suzanne/glTF-Binary/Suzanne.glb", scale: [2.0, 2.0, 2.0], pos: [0, 2, 0] }
+    ];
+
+    async function tryStreamOpenGLB(promptText) {
+      const p = promptText.toLowerCase();
+      const match = OPEN_GLB_CATALOG.find(item => item.keywords.some(k => p.includes(k)));
+      if (!match) return false;
+
+      clearDynamicWorld();
+      activeBiome = "dynamic_world";
+      aetherGroup.visible = false;
+      cityGroup.visible = false;
+      dynamicWorldGroup.visible = true;
+
+      // Base environment ground
+      const gMat = createMaterial({ color: "#0f172a", roughness: 0.85, metalness: 0.15 });
+      const gGeo = new THREE.PlaneGeometry(240, 240, 32, 32);
+      const ground = new THREE.Mesh(gGeo, gMat);
+      ground.name = "environment_ground_plane";
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      dynamicWorldGroup.add(ground);
+
+      const storyEl = document.getElementById("story-stream");
+      storyEl.textContent = `[Live 3D Streamer]\nStreaming high-res open 3D asset: "${match.name}" via GLTFLoader...\n`;
+
+      return new Promise((resolve) => {
+        if (!window.THREE || !window.THREE.GLTFLoader) {
+          resolve(false);
+          return;
+        }
+        const loader = new THREE.GLTFLoader();
+        loader.load(match.url, (gltf) => {
+          const model = gltf.scene;
+          model.traverse(child => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          if (match.scale) model.scale.set(match.scale[0], match.scale[1], match.scale[2]);
+          if (match.pos) model.position.set(match.pos[0], match.pos[1], match.pos[2]);
+
+          dynamicWorldGroup.add(model);
+          updateCameraAutoFraming();
+
+          document.getElementById("realm-name").textContent = match.name;
+          document.getElementById("world-alignment").textContent = "Streamed Open GLTF 3D Asset";
+          document.getElementById("structures-state").textContent = "High-Res GLTF Asset Active";
+
+          resolve({
+            isGLB: true,
+            title: match.name,
+            desc: `High-resolution open 3D model of ${match.name} streamed directly from cloud repository.`
+          });
+        }, undefined, (err) => {
+          console.warn("GLTF Stream error:", err);
+          resolve(false);
+        });
+      });
+    }
+
+    function parseDSLParams(str) {
+      const params = {};
+      const regex = /(\w+)=([^\s]+)/g;
+      let match;
+      while ((match = regex.exec(str)) !== null) {
+        let key = match[1];
+        let val = match[2];
+        if (val.startsWith("[") && val.endsWith("]")) {
+          try {
+            val = JSON.parse(val);
+          } catch (e) {
+            val = val.slice(1, -1).split(",").map(n => parseFloat(n.trim()) || 0);
+          }
+        } else if (!isNaN(val)) {
+          val = parseFloat(val);
+        }
+        params[key] = val;
+      }
+      return params;
+    }
+
+    function processStreamed3DLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return null;
+
+      if (trimmed.startsWith("ENV")) {
+        const p = parseDSLParams(trimmed);
+        if (p.fog) {
+          targetFogColor.set(p.fog_color || p.sky || "#090D16");
+          scene.fog.density = Math.min(typeof p.fog === "number" ? p.fog : 0.008, 0.012);
+        }
+        if (p.sky) renderer.setClearColor(new THREE.Color(p.sky));
+        if (p.ground) {
+          let ground = dynamicWorldGroup.getObjectByName("environment_ground_plane");
+          if (!ground) {
+            const gMat = createMaterial({ color: p.ground, roughness: 0.85, metalness: 0.15 });
+            const gGeo = new THREE.PlaneGeometry(240, 240, 32, 32);
+            ground = new THREE.Mesh(gGeo, gMat);
+            ground.name = "environment_ground_plane";
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            dynamicWorldGroup.add(ground);
+          } else {
+            ground.material.color.set(p.ground);
+          }
+        }
+        return "env";
+      }
+
+      if (trimmed.startsWith("LIGHT")) {
+        const p = parseDSLParams(trimmed);
+        if (p.color) {
+          if (p.type === "dir" || p.type === "directional") {
+            targetDirLightColor.set(p.color);
+            if (Array.isArray(p.pos)) directionalLight.position.set(p.pos[0], p.pos[1], p.pos[2]);
+          } else if (p.type === "point") {
+            targetPointLightColor.set(p.color);
+            if (Array.isArray(p.pos)) pointLight.position.set(p.pos[0], p.pos[1], p.pos[2]);
+          }
+        }
+        return "light";
+      }
+
+      if (trimmed.startsWith("PARTICLES")) {
+        const p = parseDSLParams(trimmed);
+        spawnDynamicParticles(
+          new THREE.Color(p.color || "#38BDF8").getHex(),
+          p.count || 300,
+          p.spreadXZ || 45,
+          p.spreadY || 25,
+          p.style === "rising",
+          p.style === "falling"
+        );
+        return "particles";
+      }
+
+      if (trimmed.startsWith("NODE")) {
+        const p = parseDSLParams(trimmed);
+        const geomType = p.geom || p.geometry || "box";
+        const geoParams = Array.isArray(p.params) ? p.params : (geomType === "box" ? [2, 2, 2] : (geomType === "sphere" ? [2, 20, 20] : (geomType === "cylinder" ? [1, 1, 3, 16] : (geomType === "cone" ? [1.5, 3, 16] : (geomType === "torus" ? [2, 0.5, 16, 24] : [2, 2, 2])))));
+        
+        const geo = createGeometry(geomType, geoParams);
+        const mat = createMaterial({
+          color: p.color || "#38bdf8",
+          roughness: typeof p.rough === "number" ? p.rough : (typeof p.roughness === "number" ? p.roughness : 0.4),
+          metalness: typeof p.metal === "number" ? p.metal : (typeof p.metalness === "number" ? p.metalness : 0.4),
+          emissive: p.emissive ? p.emissive : (p.glow ? p.color : undefined),
+          emissiveIntensity: p.glow ? 0.7 : 0.0
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = p.name || `stream_node_${dynamicWorldGroup.children.length}`;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        if (Array.isArray(p.pos)) mesh.position.set(p.pos[0] || 0, p.pos[1] || 0, p.pos[2] || 0);
+        if (Array.isArray(p.scale)) mesh.scale.set(p.scale[0] || 1, p.scale[1] || 1, p.scale[2] || 1);
+        if (Array.isArray(p.rot)) mesh.rotation.set(p.rot[0] || 0, p.rot[1] || 0, p.rot[2] || 0);
+
+        dynamicWorldGroup.add(mesh);
+
+        if (p.anim && p.anim !== "none") {
+          dynamicAnimatedObjects.push({
+            mesh: mesh,
+            type: p.anim,
+            baseY: mesh.position.y,
+            baseScale: mesh.scale.x || 1.0,
+            speed: p.speed || 1.0
+          });
+        }
+
+        // Live camera framing update on each node addition!
+        updateCameraAutoFraming();
+
+        const nodeCount = dynamicWorldGroup.children.filter(c => c.name !== "environment_ground_plane").length;
+        document.getElementById("structures-state").textContent = `${nodeCount} 3D Nodes Generated`;
+
+        return "node";
+      }
+
+      return null;
+    }
+
+    async function streamGenerative3DWithWebLLM(actionText) {
+      clearDynamicWorld();
+      activeBiome = "dynamic_world";
+      aetherGroup.visible = false;
+      cityGroup.visible = false;
+      dynamicWorldGroup.visible = true;
+
+      // Ensure default ground
+      const gMat = createMaterial({ color: "#0f172a", roughness: 0.85, metalness: 0.15 });
+      const gGeo = new THREE.PlaneGeometry(240, 240, 32, 32);
+      const ground = new THREE.Mesh(gGeo, gMat);
+      ground.name = "environment_ground_plane";
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      dynamicWorldGroup.add(ground);
+
+      const storyEl = document.getElementById("story-stream");
+      storyEl.textContent = `[Live AI 3D Synthesizer: "${actionText}"]\nStreaming 3D world on the fly...\n\n`;
+
+      const sysPrompt = `You are a real-time 3D World Architect.
+The player requested: "${actionText}".
+Stream one instruction per line to construct this 3D scene from scratch.
+Available commands:
+ENV sky=#hex ground=#hex fog=0.008
+LIGHT type=dir color=#hex pos=[20,40,20]
+PARTICLES color=#hex count=300 style=rising|falling|ambient
+NODE name=str geom=box|sphere|cylinder|cone|torus pos=[x,y,z] scale=[sx,sy,sz] color=#hex metal=0.4 rough=0.3 anim=none|spin|float|pulse
+(Generate 4 to 12 NODE lines to assemble the requested 3D entity)
+STORY: 2 vivid sentences describing what was created.
+[CHOICE 1]: action 1
+[CHOICE 2]: action 2
+[CHOICE 3]: action 3
+Output ONLY these lines. No JSON, no markdown codeblocks.`;
+
+      try {
+        const completion = await window.engine.chat.completions.create({
+          messages: [
+            { role: "system", content: sysPrompt },
+            { role: "user", content: `Generate 3D scene for: "${actionText}"` }
+          ],
+          stream: true,
+          temperature: 0.6
+        });
+
+        let lineBuffer = "";
+
+        for await (const chunk of completion) {
+          const delta = chunk.choices[0]?.delta?.content || "";
+          lineBuffer += delta;
+
+          const lines = lineBuffer.split("\n");
+          lineBuffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            const res = processStreamed3DLine(trimmed);
+
+            if (trimmed.startsWith("STORY:")) {
+              const text = trimmed.replace(/^STORY:\s*/i, "");
+              storyEl.textContent += text + "\n";
+            } else if (trimmed.startsWith("[CHOICE 1]:")) {
+              document.getElementById("choice-1-text").textContent = trimmed.replace(/^\[CHOICE 1\]:\s*/i, "");
+            } else if (trimmed.startsWith("[CHOICE 2]:")) {
+              document.getElementById("choice-2-text").textContent = trimmed.replace(/^\[CHOICE 2\]:\s*/i, "");
+            } else if (trimmed.startsWith("[CHOICE 3]:")) {
+              document.getElementById("choice-3-text").textContent = trimmed.replace(/^\[CHOICE 3\]:\s*/i, "");
+            } else if (!res) {
+              storyEl.textContent += trimmed + "\n";
+            }
+            storyEl.scrollTop = storyEl.scrollHeight;
+          }
+        }
+
+        if (lineBuffer.trim()) {
+          processStreamed3DLine(lineBuffer.trim());
+        }
+
+        updateCameraAutoFraming();
+
+        // Safety fallback if LLM generated zero 3D nodes
+        const nonGroundNodes = dynamicWorldGroup.children.filter(c => c.name !== "environment_ground_plane");
+        if (nonGroundNodes.length === 0) {
+          const fallback = synthesizeSceneGraph(actionText);
+          compileSceneGraph(fallback);
+        }
+
+        // Update JSON modal viewer
+        const compiledNodes = [];
+        dynamicWorldGroup.children.forEach(c => {
+          if (c.name === "environment_ground_plane") return;
+          compiledNodes.push({
+            name: c.name,
+            geometry: c.geometry ? c.geometry.type : "Group",
+            pos: [c.position.x, c.position.y, c.position.z],
+            scale: [c.scale.x, c.scale.y, c.scale.z]
+          });
+        });
+        const specJSON = {
+          realm_title: `Live Synthesized: "${actionText}"`,
+          nodes_generated: compiledNodes.length,
+          structures: compiledNodes
+        };
+        const jsonViewerEl = document.getElementById("json-viewer-content");
+        if (jsonViewerEl) jsonViewerEl.textContent = JSON.stringify(specJSON, null, 2);
+
+        document.getElementById("realm-name").textContent = `Synthesized: "${actionText.length > 20 ? actionText.slice(0, 20) + '...' : actionText}"`;
+        document.getElementById("world-alignment").textContent = "100% LLM Streamed on the Fly";
+
+      } catch (err) {
+        console.error("Streaming 3D WebLLM error, falling back:", err);
+        const fallback = synthesizeSceneGraph(actionText);
+        compileSceneGraph(fallback);
+        await generateAdaptivePlot(actionText, fallback);
+      }
+    }
+
     // -------------------------------------------------------------------------
     // MASTER WORLD DISPATCHER
     // -------------------------------------------------------------------------
     async function buildDynamicWorld(promptText) {
-      // Deterministic, structurally grounded 3D Scene Graph
       const spec = synthesizeSceneGraph(promptText);
       return compileSceneGraph(spec);
     }
@@ -2011,15 +2335,36 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       document.getElementById("resonance-level").textContent = `${Math.floor(70 + Math.random() * 29)}%`;
 
       const storyEl = document.getElementById("story-stream");
-      storyEl.textContent = `[Player Action: "${actionText}"]\n\nSynthesizing 3D realm response on the fly...\n`;
 
-      // 1. RECONSTRUCT 3D WORLD ON THE FLY
-      const worldInfo = await buildDynamicWorld(actionText);
+      // 1. STAGE 1: TRY OPEN 3D GLTF ASSET STREAMER (Zero hardcoded templates)
+      const glbResult = await tryStreamOpenGLB(actionText);
+      if (glbResult) {
+        if (window.isWebGPULoaded && window.engine) {
+          await generatePlotWithWebLLM(actionText, glbResult);
+        } else {
+          await generateAdaptivePlot(actionText, {
+            title: glbResult.title,
+            desc: glbResult.desc,
+            storyText: `A detailed 3D model of "${glbResult.title}" materializes in the realm, streamed live from the open 3D repository!`,
+            choices: [
+              `Inspect the fine geometric details of the ${glbResult.title}`,
+              `Channel ambient energy into the 3D structure`,
+              `Synthesize another realm with a custom prompt`
+            ]
+          });
+        }
+        for (let i = 1; i <= 3; i++) document.getElementById(`choice-${i}`).disabled = false;
+        document.getElementById("btn-custom-action").disabled = false;
+        return;
+      }
 
-      // 2. GENERATE PLOT
+      // 2. STAGE 2: LIVE ON-THE-FLY PROCEDURAL 3D STREAMING (WebGPU LLM DSL)
       if (window.isWebGPULoaded && window.engine) {
-        await generatePlotWithWebLLM(actionText, worldInfo);
+        await streamGenerative3DWithWebLLM(actionText);
       } else {
+        // Fallback for before WebGPU is ready
+        storyEl.textContent = `[Synthesizing 3D Realm: "${actionText}"]\nCompiling generative scene graph...\n`;
+        const worldInfo = await buildDynamicWorld(actionText);
         await generateAdaptivePlot(actionText, worldInfo);
       }
 
