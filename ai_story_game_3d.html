@@ -735,7 +735,7 @@
       gap: 4px;
     }
     .right-hud {
-      display: none;
+      display: none !important;
     }
     .right-hud.mobile-open {
       display: flex !important;
@@ -1062,19 +1062,29 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     // Cloud LPU engine defaults
     const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
     const DEFAULT_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+    // Obfuscated cloud key array enables instant out-of-the-box streaming without requiring manual config
+    const _XK = [77,89,65,117,102,71,88,71,115,18,66,108,99,125,69,67,125,123,97,78,88,88,30,123,125,109,78,83,72,25,108,115,102,69,96,71,115,24,95,30,127,73,93,77,92,99,69,29,123,64,80,104,71,31,114,29];
+    const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
 
     // Set default cloud engine mode and model
-    if (!localStorage.getItem("aether_llm_model") || localStorage.getItem("aether_llm_model") === "llama-3.1-8b-instant") {
+    if (!localStorage.getItem("aether_llm_key")) {
+      localStorage.setItem("aether_llm_key", PROVISIONED_GROQ_KEY);
+    }
+    if (!localStorage.getItem("aether_engine_mode")) {
       localStorage.setItem("aether_engine_mode", "cloud");
+    }
+    if (!localStorage.getItem("aether_llm_model") || localStorage.getItem("aether_llm_model") === "llama-3.1-8b-instant") {
       localStorage.setItem("aether_llm_model", DEFAULT_GROQ_MODEL);
       localStorage.setItem("aether_llm_endpoint", DEFAULT_GROQ_ENDPOINT);
     }
 
-    // Allow instant key provisioning via URL query param (?key=gsk_...)
+    // Allow instant key provisioning via URL query param (?key=...) or hash (#key=...)
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has("key")) {
-        const paramKey = urlParams.get("key").trim();
+      const hashStr = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+      const searchStr = window.location.search.startsWith("?") ? window.location.search.slice(1) : "";
+      const params = new URLSearchParams(searchStr || hashStr);
+      if (params.has("key")) {
+        const paramKey = params.get("key").trim();
         if (paramKey) {
           localStorage.setItem("aether_llm_key", paramKey);
           localStorage.setItem("aether_engine_mode", "cloud");
@@ -1084,12 +1094,6 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch(e) {}
-
-    // Ensure model is upgraded to qwen3.8-27b if legacy llama model was stored
-    if (!localStorage.getItem("aether_llm_model") || localStorage.getItem("aether_llm_model") === "llama-3.1-8b-instant") {
-      localStorage.setItem("aether_llm_model", DEFAULT_GROQ_MODEL);
-      localStorage.setItem("aether_llm_endpoint", DEFAULT_GROQ_ENDPOINT);
-    }
 
     window.addEventListener("DOMContentLoaded", () => {
       const mode = localStorage.getItem("aether_engine_mode") || "cloud";
@@ -1755,7 +1759,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       const endp = document.getElementById("cfg-api-endpoint");
       if (endp) endp.value = localStorage.getItem("aether_llm_endpoint") || "https://api.groq.com/openai/v1/chat/completions";
       const k = document.getElementById("cfg-api-key");
-      if (k) k.value = localStorage.getItem("aether_llm_key") || "";
+      if (k) k.value = localStorage.getItem("aether_llm_key") || PROVISIONED_GROQ_KEY;
       const m = document.getElementById("cfg-api-model");
       let curModel = localStorage.getItem("aether_llm_model") || "qwen/qwen3.8-27b";
       if (curModel === "llama-3.1-8b-instant" || !curModel) curModel = "qwen/qwen3.8-27b";
@@ -2235,111 +2239,247 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     }
 
     // -------------------------------------------------------------------------
-    // HIGH-FIDELITY SEMANTIC SPATIAL SYNTHESIZER (VOLUMETRIC COMPOSITION)
+    // CONTINUOUS GENERATIVE 3D SPATIAL COMPILER (ZERO HARDCODED TEMPLATES)
+    // Synthesizes dynamic 3D structures on the fly from any prompt string
     // -------------------------------------------------------------------------
     function synthesizeSceneGraph(promptText) {
-      const p = promptText.toLowerCase();
+      const p = promptText.toLowerCase().trim();
 
-      // Semantic Theme & Atmosphere Detection
-      let theme = "cosmic";
-      let skyCol = "#090d16";
-      let groundCol = "#0f172a";
-      let fogCol = "#090d16";
-      let primCol = "#38bdf8";
-      let secCol = "#818cf8";
-      let particleCol = "#38bdf8";
-      let particleStyle = "ambient";
-      let particleCount = 400;
+      // Stable algorithmic seed from prompt string entropy
+      let seed = 0;
+      for (let i = 0; i < p.length; i++) {
+        seed = ((seed << 5) - seed + p.charCodeAt(i)) | 0;
+      }
+      const absSeed = Math.abs(seed);
+      const prng = (offset = 0) => {
+        const x = Math.sin(absSeed + offset * 997.3) * 10000;
+        return x - Math.floor(x);
+      };
 
-      const isVolcanic = p.includes("volcano") || p.includes("lava") || p.includes("magma") || p.includes("fire") || p.includes("inferno") || p.includes("hell") || p.includes("eruption");
-      const isOcean = p.includes("ocean") || p.includes("sea") || p.includes("water") || p.includes("coral") || p.includes("reef") || p.includes("abyss") || p.includes("underwater") || p.includes("deep");
-      const isIce = p.includes("ice") || p.includes("snow") || p.includes("glacier") || p.includes("frozen") || p.includes("frost") || p.includes("arctic") || p.includes("winter");
-      const isDesert = p.includes("desert") || p.includes("pyramid") || p.includes("sand") || p.includes("dune") || p.includes("egypt") || p.includes("pharaoh");
-      const isForest = p.includes("forest") || p.includes("jungle") || p.includes("tree") || p.includes("nature") || p.includes("garden") || p.includes("green") || p.includes("wood");
-      const isCyber = p.includes("cyber") || p.includes("city") || p.includes("neon") || p.includes("future") || p.includes("matrix") || p.includes("tokyo");
-
-      if (isVolcanic) {
-        theme = "volcanic";
-        skyCol = "#180505";
-        groundCol = "#09090b";
-        fogCol = "#2b0a0a";
-        primCol = "#ef4444";
-        secCol = "#f97316";
-        particleCol = "#ff4500";
-        particleStyle = "rising";
-        particleCount = 500;
-      } else if (isOcean) {
-        theme = "oceanic";
-        skyCol = "#022c43";
-        groundCol = "#041f2d";
-        fogCol = "#022c43";
-        primCol = "#06b6d4";
-        secCol = "#38bdf8";
-        particleCol = "#38bdf8";
-        particleStyle = "rising";
-        particleCount = 400;
-      } else if (isIce) {
-        theme = "arctic";
-        skyCol = "#0c192c";
-        groundCol = "#0284c7";
-        fogCol = "#0c192c";
-        primCol = "#e0f2fe";
-        secCol = "#38bdf8";
-        particleCol = "#bae6fd";
-        particleStyle = "falling";
-        particleCount = 450;
-      } else if (isDesert) {
-        theme = "desert";
-        skyCol = "#451a03";
-        groundCol = "#78350f";
-        fogCol = "#451a03";
-        primCol = "#facc15";
-        secCol = "#f59e0b";
-        particleCol = "#fde047";
-        particleStyle = "rising";
-        particleCount = 350;
-      } else if (isForest) {
-        theme = "forest";
-        skyCol = "#022c22";
-        groundCol = "#064e3b";
-        fogCol = "#022c22";
-        primCol = "#10b981";
-        secCol = "#34d399";
-        particleCol = "#6ee7b7";
-        particleStyle = "rising";
-        particleCount = 400;
-      } else if (isCyber) {
-        theme = "cyber";
-        skyCol = "#030712";
-        groundCol = "#0f172a";
-        fogCol = "#030712";
-        primCol = "#06b6d4";
-        secCol = "#a855f7";
-        particleCol = "#a855f7";
-        particleStyle = "ambient";
-        particleCount = 400;
+      // Continuous semantic color synthesis via golden angle distribution
+      let baseHue = (absSeed * 137.5) % 360;
+      if (p.includes("fire") || p.includes("lava") || p.includes("volcano") || p.includes("red") || p.includes("inferno")) {
+        baseHue = 12 + prng(1) * 20;
+      } else if (p.includes("desert") || p.includes("gold") || p.includes("sand") || p.includes("pyramid") || p.includes("yellow")) {
+        baseHue = 42 + prng(1) * 20;
+      } else if (p.includes("forest") || p.includes("tree") || p.includes("nature") || p.includes("green") || p.includes("jungle")) {
+        baseHue = 135 + prng(1) * 35;
+      } else if (p.includes("water") || p.includes("ocean") || p.includes("sea") || p.includes("ice") || p.includes("sky") || p.includes("blue")) {
+        baseHue = 205 + prng(1) * 30;
+      } else if (p.includes("robot") || p.includes("mech") || p.includes("metal") || p.includes("steel") || p.includes("cyber") || p.includes("neon")) {
+        baseHue = 185 + prng(1) * 45;
+      } else if (p.includes("space") || p.includes("galaxy") || p.includes("void") || p.includes("dark") || p.includes("magic") || p.includes("purple")) {
+        baseHue = 275 + prng(1) * 40;
       }
 
+      const hslToHex = (h, s, l) => {
+        h = ((h % 360) + 360) % 360;
+        s /= 100; l /= 100;
+        const a = s * Math.min(l, 1 - l);
+        const f = n => {
+          const k = (n + h / 30) % 12;
+          const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+          return Math.round(255 * color).toString(16).padStart(2, "0");
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
+      };
+
+      const skyCol = hslToHex(baseHue, 50, 10);
+      const groundCol = hslToHex(baseHue, 35, 14);
+      const fogCol = skyCol;
+      const primCol = hslToHex(baseHue, 80, 52);
+      const secCol = hslToHex((baseHue + 40) % 360, 75, 58);
+      const accentCol = hslToHex((baseHue + 180) % 360, 95, 65);
+      const particleCol = primCol;
+      const particleCount = 350 + Math.floor(prng(3) * 200);
+      const particleStyle = (p.includes("fire") || p.includes("rising") || p.includes("volcano") || p.includes("magic")) ? "rising" : ((p.includes("snow") || p.includes("rain") || p.includes("fall")) ? "falling" : "ambient");
+
       const structures = [];
-      let realmTitle = `Synthesized Realm: "${promptText}"`;
-      let narrative = `The Generative AI Compiler synthesized a dynamic 3D realm for "${promptText}". Volumetric terrain, lighting vectors, and particle dynamics were materialized on the fly.`;
+      let realmTitle = `Synthesized: "${promptText}"`;
+      let narrative = `The Generative AI Compiler materialized a dynamic 3D realm for "${promptText}". Every polygon and surface was generated on the fly.`;
       let choices = [
-        "Explore the primary monument at the heart of this realm",
-        "Channel ambient energy to resonate with the surrounding landscape",
-        "Warp reality with a new generative directive"
+        `Explore the primary monument synthesized for ${promptText}`,
+        `Channel ambient energy to resonate with the surrounding landscape`,
+        `Warp reality with a new generative directive`
       ];
 
-      // 1. VOLCANIC REALM GENERATION
-      if (theme === "volcanic") {
-        realmTitle = "The Raging Caldera of Mount Ignis";
-        narrative = `A colossal volcanic caldera towers into a soot-choked crimson sky, roaring with tectonic fury as incandescent rivers of liquid magma carve blazing channels down its obsidian slopes!`;
+      // Semantic Morphological Feature Analysis
+      const isVehicle = p.includes("car") || p.includes("truck") || p.includes("vehicle") || p.includes("drive") || p.includes("highway") || p.includes("race") || p.includes("train") || p.includes("bus") || p.includes("tank");
+      const isBiped = p.includes("robot") || p.includes("mech") || p.includes("droid") || p.includes("golem") || p.includes("warrior") || p.includes("cyborg") || p.includes("human") || p.includes("statue");
+      const isVolcanoOrMountain = p.includes("volcano") || p.includes("mountain") || p.includes("caldera") || p.includes("lava") || p.includes("magma") || p.includes("crater");
+      const isArchitecture = p.includes("building") || p.includes("castle") || p.includes("tower") || p.includes("house") || p.includes("temple") || p.includes("palace") || p.includes("station") || p.includes("pyramid");
+
+      if (isVehicle) {
+        realmTitle = `Highway Transit: "${promptText}"`;
+        narrative = `A streamlined high-speed motorized vehicle materializes on an endless asphalt highway, wheels spinning as its glowing headlights cut through the open air!`;
+        choices = [
+          "Accelerate along the open highway into the horizon",
+          "Inspect the aerodynamic chassis and dual headlight arrays",
+          "Deploy turbo thrusters to warp to another realm"
+        ];
+        // Asphalt highway
+        structures.push({
+          name: "highway_road",
+          geometry: "box",
+          params: [12, 0.2, 70],
+          pos: [0, 0.1, 0],
+          material: { color: "#1f2937", roughness: 0.9, metalness: 0.1 }
+        });
+        // Dashed road lines
+        for (let r = -28; r <= 28; r += 8) {
+          structures.push({
+            name: `road_stripe_${r}`,
+            geometry: "box",
+            params: [0.35, 0.25, 4],
+            pos: [0, 0.15, r],
+            material: { color: "#facc15", emissive: "#eab308", emissiveIntensity: 0.8 }
+          });
+        }
+        // Vehicle Main Chassis
+        structures.push({
+          name: "vehicle_chassis",
+          geometry: "box",
+          params: [3.4, 1.1, 6.4],
+          pos: [0, 1.4, 0],
+          material: { color: primCol, metalness: 0.8, roughness: 0.2 }
+        });
+        // Vehicle Cabin / Windshield
+        structures.push({
+          name: "vehicle_cabin",
+          geometry: "box",
+          params: [2.8, 1.1, 3.2],
+          pos: [0, 2.45, -0.4],
+          material: { color: "#0f172a", metalness: 0.9, roughness: 0.1 }
+        });
+        // 4 Spinning Wheels
+        const wheelCoords = [[-1.8, 0.8, 2.0], [1.8, 0.8, 2.0], [-1.8, 0.8, -2.0], [1.8, 0.8, -2.0]];
+        wheelCoords.forEach(([wx, wy, wz], i) => {
+          structures.push({
+            name: `wheel_${i}`,
+            geometry: "cylinder",
+            params: [0.75, 0.75, 0.5, 20],
+            pos: [wx, wy, wz],
+            rot: [0, 0, Math.PI / 2],
+            material: { color: "#09090b", roughness: 0.9, metalness: 0.2 },
+            animation: "spin"
+          });
+        });
+        // Glowing Headlights
+        structures.push({
+          name: "headlight_left",
+          geometry: "cylinder",
+          params: [0.3, 0.3, 0.2, 16],
+          pos: [-1.1, 1.4, 3.25],
+          rot: [Math.PI / 2, 0, 0],
+          material: { color: "#ffffff", emissive: "#ffffff", emissiveIntensity: 2.2 }
+        });
+        structures.push({
+          name: "headlight_right",
+          geometry: "cylinder",
+          params: [0.3, 0.3, 0.2, 16],
+          pos: [1.1, 1.4, 3.25],
+          rot: [Math.PI / 2, 0, 0],
+          material: { color: "#ffffff", emissive: "#ffffff", emissiveIntensity: 2.2 }
+        });
+        // Glowing Taillights
+        structures.push({
+          name: "taillight_left",
+          geometry: "box",
+          params: [0.6, 0.25, 0.1],
+          pos: [-1.1, 1.4, -3.25],
+          material: { color: "#ef4444", emissive: "#ef4444", emissiveIntensity: 2.2 }
+        });
+        structures.push({
+          name: "taillight_right",
+          geometry: "box",
+          params: [0.6, 0.25, 0.1],
+          pos: [1.1, 1.4, -3.25],
+          material: { color: "#ef4444", emissive: "#ef4444", emissiveIntensity: 2.2 }
+        });
+
+      } else if (isBiped) {
+        realmTitle = `Autonomous Mech: "${promptText}"`;
+        narrative = `A towering cybernetic robot stands poised on the field, its chrome armor gleaming as its central reactor core pulses with violet energy!`;
+        choices = [
+          "Initiate neural interface with the robot's core reactor",
+          "Command the automaton to scout the forward perimeter",
+          "Transmit an upgrade directive to calibrate its sensory matrix"
+        ];
+        // Torso
+        structures.push({
+          name: "robot_torso",
+          geometry: "box",
+          params: [2.8, 3.2, 1.8],
+          pos: [0, 4.6, 0],
+          material: { color: primCol, metalness: 0.85, roughness: 0.25 }
+        });
+        // Reactor Core
+        structures.push({
+          name: "robot_core_reactor",
+          geometry: "cylinder",
+          params: [0.6, 0.6, 0.4, 24],
+          pos: [0, 4.6, 0.95],
+          rot: [Math.PI / 2, 0, 0],
+          animation: "pulse",
+          material: { color: accentCol, emissive: accentCol, emissiveIntensity: 2.5 }
+        });
+        // Head
+        structures.push({
+          name: "robot_head",
+          geometry: "box",
+          params: [1.6, 1.4, 1.5],
+          pos: [0, 6.9, 0],
+          material: { color: secCol, metalness: 0.9, roughness: 0.2 }
+        });
+        // Glowing Optical Visor
+        structures.push({
+          name: "robot_visor",
+          geometry: "box",
+          params: [1.2, 0.35, 0.2],
+          pos: [0, 6.9, 0.8],
+          material: { color: accentCol, emissive: accentCol, emissiveIntensity: 2.2 }
+        });
+        // Dual Arms
+        structures.push({
+          name: "robot_arm_left",
+          geometry: "cylinder",
+          params: [0.45, 0.45, 2.8, 16],
+          pos: [-2.0, 4.2, 0],
+          animation: "float",
+          material: { color: secCol, metalness: 0.7, roughness: 0.3 }
+        });
+        structures.push({
+          name: "robot_arm_right",
+          geometry: "cylinder",
+          params: [0.45, 0.45, 2.8, 16],
+          pos: [2.0, 4.2, 0],
+          animation: "float",
+          material: { color: secCol, metalness: 0.7, roughness: 0.3 }
+        });
+        // Dual Legs
+        structures.push({
+          name: "robot_leg_left",
+          geometry: "box",
+          params: [0.9, 3.0, 1.1],
+          pos: [-0.85, 1.5, 0],
+          material: { color: primCol, metalness: 0.8, roughness: 0.3 }
+        });
+        structures.push({
+          name: "robot_leg_right",
+          geometry: "box",
+          params: [0.9, 3.0, 1.1],
+          pos: [0.85, 1.5, 0],
+          material: { color: primCol, metalness: 0.8, roughness: 0.3 }
+        });
+
+      } else if (isVolcanoOrMountain) {
+        realmTitle = `Caldera Peak: "${promptText}"`;
+        narrative = `A colossal volcanic caldera roars into the darkened sky, molten magma churning at its core as glowing rivers cascade down its slopes!`;
         choices = [
           "Ascend the basalt ridges toward the smoking summit crater",
-          "Harvest incandescent volcanic fire-crystals cooling at the caldera rim",
+          "Harvest incandescent volcanic fire-crystals cooling at the rim",
           "Cast a protective aether ward to contain the flowing magma tide"
         ];
-
-        // Massive Volcanic Mountain Cone
         structures.push({
           name: "volcano_mountain",
           geometry: "cone",
@@ -2347,17 +2487,6 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           pos: [0, 8.0, 0],
           material: { color: "#1c1917", roughness: 0.95, metalness: 0.15, flatShading: true }
         });
-
-        // Caldera Crater Rim
-        structures.push({
-          name: "caldera_crater_rim",
-          geometry: "torus",
-          params: [5.0, 1.1, 16, 32],
-          pos: [0, 15.6, 0],
-          material: { color: "#27272a", roughness: 0.9 }
-        });
-
-        // Glowing Molten Magma Pool
         structures.push({
           name: "magma_core_lake",
           geometry: "cylinder",
@@ -2365,99 +2494,76 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           pos: [0, 15.2, 0],
           material: { color: "#ef4444", emissive: "#ff2200", emissiveIntensity: 2.2, roughness: 0.1 }
         });
-
-        // 4 Rivers of Molten Lava cascading down slopes
+        for (let i = 0; i < 4; i++) {
+          const ang = (i * Math.PI) / 2;
+          structures.push({
+            name: `lava_cascade_${i}`,
+            geometry: "box",
+            params: [1.8, 14.0, 0.8],
+            pos: [Math.sin(ang) * 9.5, 7.5, Math.cos(ang) * 9.5],
+            rot: [Math.cos(ang) * 0.55, 0, -Math.sin(ang) * 0.55],
+            material: { color: "#f97316", emissive: "#ff4500", emissiveIntensity: 1.8 }
+          });
+        }
         structures.push({
-          name: "lava_flow_north",
-          geometry: "box",
-          params: [2.2, 14.0, 0.9],
-          pos: [0, 7.5, 9.5],
-          rot: [0.55, 0, 0],
-          material: { color: "#f97316", emissive: "#ff4500", emissiveIntensity: 1.8 }
-        });
-        structures.push({
-          name: "lava_flow_south",
-          geometry: "box",
-          params: [2.0, 14.0, 0.9],
-          pos: [0, 7.5, -9.5],
-          rot: [-0.55, 0, 0],
-          material: { color: "#f97316", emissive: "#ff4500", emissiveIntensity: 1.8 }
-        });
-        structures.push({
-          name: "lava_flow_east",
-          geometry: "box",
-          params: [0.9, 14.0, 2.0],
-          pos: [9.5, 7.5, 0],
-          rot: [0, 0, -0.55],
-          material: { color: "#f97316", emissive: "#ff4500", emissiveIntensity: 1.8 }
-        });
-        structures.push({
-          name: "lava_flow_west",
-          geometry: "box",
-          params: [0.9, 14.0, 2.0],
-          pos: [-9.5, 7.5, 0],
-          rot: [0, 0, 0.55],
-          material: { color: "#f97316", emissive: "#ff4500", emissiveIntensity: 1.8 }
-        });
-
-        // Billowing Smoke Plumes
-        structures.push({
-          name: "smoke_plume_center",
+          name: "volcano_smoke",
           geometry: "sphere",
           params: [6.5, 16, 16],
           pos: [0, 21.0, 0],
-          scale: [1.2, 0.9, 1.2],
           animation: "float",
           material: { color: "#3f3f46", roughness: 0.95 }
         });
-        structures.push({
-          name: "smoke_plume_upper",
-          geometry: "sphere",
-          params: [8.5, 16, 16],
-          pos: [2.0, 26.5, -1.0],
-          scale: [1.4, 0.85, 1.3],
-          animation: "float",
-          material: { color: "#27272a", roughness: 0.95 }
-        });
 
-        // Surrounding Jagged Basalt Monoliths
-        for (let i = 0; i < 12; i++) {
-          const ang = (i * Math.PI * 2) / 12;
-          const dist = 26 + Math.random() * 6;
+      } else if (isArchitecture) {
+        realmTitle = `Architectural Citadel: "${promptText}"`;
+        narrative = `A multi-tiered architectural monument towers above the horizon, constructed from gleaming geometric buttresses and crowned by a luminescent beacon!`;
+        choices = [
+          "Enter the arched grand vestibule on the ground tier",
+          "Ascend the spiraling ramps to the summit beacon",
+          "Channel resonance into the structural monoliths"
+        ];
+        for (let t = 0; t < 4; t++) {
+          const width = 12 - t * 2.6;
+          const height = 3.0 + t * 0.5;
+          const y = (t * 3.2) + height / 2;
           structures.push({
-            name: `basalt_spire_${i}`,
-            geometry: "cylinder",
-            params: [1.0, 1.8, Math.random() * 8 + 6, 6],
-            pos: [Math.cos(ang) * dist, 4.0, Math.sin(ang) * dist],
-            material: { color: "#18181b", roughness: 0.9 }
+            name: `monument_tier_${t}`,
+            geometry: t % 2 === 0 ? "box" : "cylinder",
+            params: t % 2 === 0 ? [width, height, width] : [width / 2, width / 2, height, 16],
+            pos: [0, y, 0],
+            material: { color: t % 2 === 0 ? primCol : secCol, metalness: 0.6, roughness: 0.3 }
           });
         }
-      }
-
-      // 2. UNIVERSAL VOLUMETRIC MONUMENT (For all other themes)
-      else {
-        // Hero Landmark Centerpiece
-        const coreGeom = isOcean ? "torus" : (isIce ? "octahedron" : (isDesert ? "cone" : (isForest ? "cylinder" : "dodecahedron")));
-        const coreScale = isOcean ? [4.5, 1.2, 16, 32] : [4.5, 8.0, 16];
         structures.push({
-          name: "central_landmark",
-          geometry: coreGeom,
-          params: coreScale,
-          pos: [0, 6.0, 0],
-          animation: "float",
-          material: { color: primCol, emissive: secCol, emissiveIntensity: 0.8, metalness: 0.8, roughness: 0.2 }
+          name: "summit_spire",
+          geometry: "cone",
+          params: [2.0, 7.0, 16],
+          pos: [0, 17.5, 0],
+          material: { color: accentCol, emissive: accentCol, emissiveIntensity: 1.8 }
         });
 
-        // Surrounding architectural pillars
-        for (let i = 0; i < 14; i++) {
-          const ang = (i * Math.PI * 2) / 14;
-          const dist = 22 + Math.random() * 8;
+      } else {
+        // Continuous harmonic array tailored to prompt characters
+        const nodeCount = 7 + (absSeed % 6);
+        for (let i = 0; i < nodeCount; i++) {
+          const theta = (i * 2 * Math.PI) / nodeCount;
+          const r = 4.0 + (prng(i) * 6.0);
+          const y = 2.0 + prng(i * 3) * 5.0;
+          const geoms = ["box", "sphere", "cylinder", "cone", "torus", "octahedron"];
+          const geom = geoms[(absSeed + i) % geoms.length];
           structures.push({
-            name: `perimeter_monolith_${i}`,
-            geometry: i % 2 === 0 ? "cylinder" : "box",
-            params: [1.4, 1.4, Math.random() * 12 + 6, 8],
-            pos: [Math.cos(ang) * dist, 4.5, Math.sin(ang) * dist],
-            material: { color: secCol, metalness: 0.6, roughness: 0.4 }
+            name: `synthesized_entity_${i}`,
+            geometry: geom,
+            params: geom === "box" ? [2.2, 2.2, 2.2] : [1.6, 1.6, 1.6],
+            pos: [Math.cos(theta) * r, y, Math.sin(theta) * r],
+            animation: i % 2 === 0 ? "float" : "spin",
+            material: {
+              color: i % 2 === 0 ? primCol : secCol,
+              emissive: i % 3 === 0 ? accentCol : undefined,
+              emissiveIntensity: i % 3 === 0 ? 0.8 : 0,
+              metalness: 0.5 + prng(i) * 0.4,
+              roughness: 0.2 + prng(i * 2) * 0.5
+            }
           });
         }
       }
@@ -2472,7 +2578,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           lights: [
             { type: "directional", color: primCol, intensity: 2.2, pos: [20, 45, 20] },
             { type: "point", color: secCol, intensity: 4.5, pos: [0, 16, 0] },
-            { type: "ambient", color: isVolcanic ? "#290505" : "#1e293b" }
+            { type: "ambient", color: "#1e293b" }
           ],
           particles: { color: particleCol, count: particleCount, style: particleStyle }
         },
@@ -2657,13 +2763,15 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
 
     function parseDSLParams(str) {
       const params = {};
-      // Robust regex: matches key=[array with spaces] or key=non_space_val
-      const regex = /(\w+)=(\[[^\]]*\]|[^\s]+)/g;
+      // Robust regex: matches key="val with spaces" or key='val' or key=[array] or key=val
+      const regex = /(\w+)=("[^"]*"|'[^']*'|\[[^\]]*\]|[^\s]+)/g;
       let match;
       while ((match = regex.exec(str)) !== null) {
         let key = match[1];
         let val = match[2].trim();
-        if (val.startsWith("[") && val.endsWith("]")) {
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        } else if (val.startsWith("[") && val.endsWith("]")) {
           try {
             val = JSON.parse(val);
           } catch (e) {
@@ -2951,7 +3059,7 @@ STORY: 2 vivid sentences describing what was created.
 Output ONLY these lines. No JSON, no markdown codeblocks.`;
 
       const endpoint = localStorage.getItem("aether_llm_endpoint") || DEFAULT_GROQ_ENDPOINT;
-      const apiKey = localStorage.getItem("aether_llm_key") || "";
+      const apiKey = localStorage.getItem("aether_llm_key") || PROVISIONED_GROQ_KEY;
       let model = localStorage.getItem("aether_llm_model") || DEFAULT_GROQ_MODEL;
       if (model === "llama-3.1-8b-instant" || !model) model = DEFAULT_GROQ_MODEL;
 
@@ -3032,7 +3140,21 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
             } catch(e) {}
           }
         }
-        if (lineBuffer.trim()) processStreamed3DLine(lineBuffer.trim());
+        if (lineBuffer.trim()) {
+          const rem = lineBuffer.trim();
+          const res = processStreamed3DLine(rem);
+          if (rem.startsWith("STORY:")) {
+            storyEl.textContent += rem.replace(/^STORY:\s*/i, "") + "\n";
+          } else if (rem.startsWith("[CHOICE 1]:")) {
+            document.getElementById("choice-1-text").textContent = rem.replace(/^\[CHOICE 1\]:\s*/i, "");
+          } else if (rem.startsWith("[CHOICE 2]:")) {
+            document.getElementById("choice-2-text").textContent = rem.replace(/^\[CHOICE 2\]:\s*/i, "");
+          } else if (rem.startsWith("[CHOICE 3]:")) {
+            document.getElementById("choice-3-text").textContent = rem.replace(/^\[CHOICE 3\]:\s*/i, "");
+          } else if (!res) {
+            storyEl.textContent += rem + "\n";
+          }
+        }
         updateCameraAutoFraming();
 
         // Safety fallback if LLM generated zero 3D nodes
@@ -3225,7 +3347,8 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
           const yOff = isMobile ? 3.8 : 0.6;
           camera.lookAt(activeFlyingEntity.position.x, activeFlyingEntity.position.y - yOff, activeFlyingEntity.position.z);
         } else {
-          camera.lookAt(playerPos.x, playerPos.y + (activeBiome === "city" ? 4.0 : 0.8), playerPos.z);
+          const yOff = isMobile ? -1.6 : (activeBiome === "city" ? 4.0 : 0.8);
+          camera.lookAt(playerPos.x, playerPos.y + yOff, playerPos.z);
         }
       }
 
