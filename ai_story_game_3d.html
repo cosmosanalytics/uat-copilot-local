@@ -691,18 +691,20 @@
       </div>
 
       <div class="engine-controls">
-        <select id="model-select" class="model-select">
-          <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Fastest, ~100MB)</option>
-          <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (Deep Lore, ~350MB)</option>
-          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (High-Precision, ~800MB)</option>
-        </select>
-        <button id="btn-load-gpu" class="btn-engine" onclick="initWebGPU()">
-          <span>⚡</span><span id="load-btn-label">Load WebGPU AI</span>
-        </button>
+        <div id="webgpu-controls-wrap" style="display:none;align-items:center;gap:8px;">
+          <select id="model-select" class="model-select">
+            <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Fastest, ~100MB)</option>
+            <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (Deep Lore, ~350MB)</option>
+            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (High-Precision, ~800MB)</option>
+          </select>
+          <button id="btn-load-gpu" class="btn-engine" onclick="initWebGPU()">
+            <span>⚡</span><span id="load-btn-label">Load WebGPU AI</span>
+          </button>
+        </div>
         <button id="btn-ai-settings" class="btn-engine" onclick="toggleAiSettingsModal()" style="border-color: rgba(56,189,248,0.4);">
-          <span>⚙️</span><span>AI Provider</span>
+          <span>⚙️</span><span>AI Engine &amp; Keys</span>
         </button>
-        <span id="gpu-status-badge" class="status-badge">WebGPU Ready</span>
+        <span id="gpu-status-badge" class="status-badge" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">⚡ Groq LPU Cloud (Active)</span>
       </div>
     </div>
 
@@ -869,7 +871,10 @@
           </div>
           <div>
             <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">GROQ / CLOUD API KEY (Saved locally in your browser)</label>
-            <input id="cfg-api-key" type="password" style="width:100%;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="gsk_...">
+            <div style="display:flex;gap:6px;">
+              <input id="cfg-api-key" type="password" style="flex:1;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="gsk_...">
+              <button type="button" class="btn-custom-action" style="padding:6px 12px;font-size:0.75rem;background:#0284c7;white-space:nowrap;" onclick="pasteApiKeyFromClipboard()">📋 Paste Key</button>
+            </div>
           </div>
           <div>
             <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">MODEL SELECTION</label>
@@ -954,7 +959,14 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
     const DEFAULT_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-    // Allow instant 1-click key provisioning via URL query param (?key=gsk_...) safely without committing secrets into Git
+    // Set default cloud engine mode and model
+    if (!localStorage.getItem("aether_llm_model") || localStorage.getItem("aether_llm_model") === "llama-3.1-8b-instant") {
+      localStorage.setItem("aether_engine_mode", "cloud");
+      localStorage.setItem("aether_llm_model", DEFAULT_GROQ_MODEL);
+      localStorage.setItem("aether_llm_endpoint", DEFAULT_GROQ_ENDPOINT);
+    }
+
+    // Allow instant key provisioning via URL query param (?key=gsk_...)
     try {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has("key")) {
@@ -977,6 +989,10 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
 
     window.addEventListener("DOMContentLoaded", () => {
       const mode = localStorage.getItem("aether_engine_mode") || "cloud";
+      const webgpuWrap = document.getElementById("webgpu-controls-wrap");
+      if (webgpuWrap) {
+        webgpuWrap.style.display = (mode === "webgpu") ? "flex" : "none";
+      }
       const statusBadge = document.getElementById("gpu-status-badge");
       if (statusBadge) {
         if (mode === "cloud") {
@@ -1657,6 +1673,30 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       }
     };
 
+    window.pasteApiKeyFromClipboard = async function() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          const keyInput = document.getElementById("cfg-api-key");
+          if (keyInput) {
+            keyInput.value = text.trim();
+            saveAiSettings();
+          }
+        } else {
+          throw new Error("Clipboard empty");
+        }
+      } catch(err) {
+        const promptKey = prompt("Paste your Groq API key here (gsk_...):");
+        if (promptKey && promptKey.trim()) {
+          const keyInput = document.getElementById("cfg-api-key");
+          if (keyInput) {
+            keyInput.value = promptKey.trim();
+            saveAiSettings();
+          }
+        }
+      }
+    };
+
     window.applyCloudPreset = function(preset) {
       const endp = document.getElementById("cfg-api-endpoint");
       const modelInput = document.getElementById("cfg-api-model");
@@ -1686,6 +1726,10 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       if (sel && cloudFields) {
         cloudFields.style.display = (sel.value === "cloud") ? "flex" : "none";
       }
+      const webgpuWrap = document.getElementById("webgpu-controls-wrap");
+      if (webgpuWrap && sel) {
+        webgpuWrap.style.display = (sel.value === "webgpu") ? "flex" : "none";
+      }
     };
 
     window.saveAiSettings = function() {
@@ -1699,6 +1743,11 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       const m = document.getElementById("cfg-api-model");
       if (m) localStorage.setItem("aether_llm_model", m.value.trim() || "qwen/qwen3.8-27b");
       window.activeEngineMode = mode;
+
+      const webgpuWrap = document.getElementById("webgpu-controls-wrap");
+      if (webgpuWrap) {
+        webgpuWrap.style.display = (mode === "webgpu") ? "flex" : "none";
+      }
 
       const statusBadge = document.getElementById("gpu-status-badge");
       if (statusBadge) {
@@ -2406,7 +2455,21 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           resolve({
             isGLB: true,
             title: match.name,
-            desc: `High-resolution textured 3D model of ${match.name} streamed directly into the scene.`
+            desc: `High-resolution textured 3D model of ${match.name} streamed directly into the scene.`,
+            storyText: match.isFlying
+              ? `A majestic ${match.name} emerges, soaring effortlessly through the radiant azure sky, its wings beating rhythmically as it catches the updrafts above the valley!`
+              : `A high-fidelity 3D model of ${match.name} materializes before you, gleaming under the ambient light of the realm!`,
+            choices: match.isFlying
+              ? [
+                  `Ascend into the upper clouds alongside the soaring bird`,
+                  `Commune with the soaring creature using Aether resonance`,
+                  `Synthesize a mountain aerie for the bird to rest`
+                ]
+              : [
+                  `Examine the fine physical craftsmanship of ${match.name}`,
+                  `Channel energy into the structure to awaken latent powers`,
+                  `Synthesize another realm with a custom prompt`
+                ]
           });
         }, undefined, (err) => {
           console.warn("GLTF Stream error:", err);
@@ -2714,6 +2777,14 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
       const apiKey = localStorage.getItem("aether_llm_key") || "";
       let model = localStorage.getItem("aether_llm_model") || DEFAULT_GROQ_MODEL;
       if (model === "llama-3.1-8b-instant" || !model) model = DEFAULT_GROQ_MODEL;
+
+      if (!apiKey && endpoint.includes("groq.com")) {
+        storyEl.textContent += `[⚡ Notice: Click "AI Engine & Keys" at top right to paste your free Groq API key for instant 0.1s cloud generation. Running local procedural synthesizer...]\n\n`;
+        const fallback = synthesizeSceneGraph(actionText);
+        compileSceneGraph(fallback);
+        await generateAdaptivePlot(actionText, fallback);
+        return;
+      }
 
       try {
         const resp = await fetch(endpoint, {
@@ -3186,7 +3257,18 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
     // ADAPTIVE SIMULATED STORY GENERATOR (REACTS DIRECTLY TO USER INPUT)
     async function generateAdaptivePlot(actionText, worldInfo) {
       const storyEl = document.getElementById("story-stream");
-      const fullText = `[Action: "${actionText}"]\n\n` + worldInfo.storyText;
+      const storyText = (worldInfo && worldInfo.storyText) 
+        ? worldInfo.storyText 
+        : `The realm transforms in real time as "${actionText}" manifests across the physical 3D horizon!`;
+      const choices = (worldInfo && Array.isArray(worldInfo.choices) && worldInfo.choices.length >= 3)
+        ? worldInfo.choices
+        : [
+            `Explore the newly materialized 3D environment`,
+            `Channel Aether resonance to enhance the surrounding elements`,
+            `Synthesize another realm with a custom command`
+          ];
+
+      const fullText = `[Action: "${actionText}"]\n\n` + storyText;
 
       storyEl.textContent = "";
       const chars = fullText.split("");
@@ -3196,8 +3278,9 @@ Output ONLY these lines. No JSON, no markdown codeblocks.`;
         if (i % 3 === 0) await new Promise(r => setTimeout(r, 12));
       }
 
-      worldInfo.choices.forEach((c, idx) => {
-        document.getElementById(`choice-${idx + 1}-text`).textContent = c;
+      choices.forEach((c, idx) => {
+        const el = document.getElementById(`choice-${idx + 1}-text`);
+        if (el) el.textContent = c;
       });
     }
 
@@ -3220,6 +3303,11 @@ Output only these lines.`;
       const apiKey = localStorage.getItem("aether_llm_key") || "";
       let model = localStorage.getItem("aether_llm_model") || DEFAULT_GROQ_MODEL;
       if (model === "llama-3.1-8b-instant" || !model) model = DEFAULT_GROQ_MODEL;
+
+      if (!apiKey && endpoint.includes("groq.com")) {
+        await generateAdaptivePlot(actionText, worldInfo);
+        return;
+      }
 
       try {
         const resp = await fetch(endpoint, {
