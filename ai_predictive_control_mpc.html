@@ -2285,6 +2285,45 @@ Please provide:
 2. The Mathematical Advantage of Agentic MPC: How the Intelligence Space and parallel WebGPU MPPI horizon rollouts pre-cool the jacket before runaway accelerates.
 3. Recommended Control Hyperparameters: Prediction horizon and penalty weights for zero-trip chemical process safety.`;
 
+      const engineMode = document.getElementById('cfg-engine-mode')?.value || 'groq_fast';
+
+      if (engineMode === 'deterministic') {
+        out.textContent = generateDeterministicControlDiagnostic();
+        badge.textContent = 'Offline Expert Diagnostic';
+        btn.disabled = false;
+        btn.innerHTML = `<span>✨ Analyze Control Diagnostics</span>`;
+        return;
+      }
+
+      if (engineMode === 'webgpu_local' && window.webllm) {
+        try {
+          if (!window._mlcEngine) {
+            badge.textContent = 'Loading WebLLM...';
+            out.textContent = `[WebGPU Local Shader] Initializing in-browser @mlc-ai/web-llm (Qwen2.5-0.5B-Instruct)...`;
+            window._mlcEngine = await window.webllm.CreateMLCEngine("Qwen2.5-0.5B-Instruct-q4f16_1", {
+              initProgressCallback: (report) => {
+                out.textContent = `[WebGPU Local Shader] ${report.text}`;
+              }
+            });
+          }
+          const localReply = await window._mlcEngine.chat.completions.create({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.5,
+            max_tokens: 600
+          });
+          out.textContent = localReply.choices[0]?.message?.content || 'Diagnostic complete.';
+          badge.textContent = 'WebGPU Local Active';
+          btn.disabled = false;
+          btn.innerHTML = `<span>✨ Analyze Control Diagnostics</span>`;
+          return;
+        } catch (webgpuErr) {
+          console.warn('Local WebLLM shader failed or cancelled, using Groq/expert fallback:', webgpuErr);
+        }
+      }
+
       try {
         const customKey = document.getElementById('cfg-custom-key').value.trim();
         const apiKey = customKey || PROVISIONED_GROQ_KEY;
@@ -2627,6 +2666,35 @@ You understand human operational logic, chemical process common sense, and how t
 Current Plant: Exothermic CSTR Chemical Reactor
 Current State: T_ref = 370 K, Runaway Trip = 385 K
 Translate this operator instruction into common-sense reasoning and recommend specific cost weights (Q_temp, R_coolant, Horizon H_p).`;
+
+      const engineMode = document.getElementById('cfg-engine-mode')?.value || 'groq_fast';
+
+      if (engineMode === 'webgpu_local' && window.webllm) {
+        try {
+          if (!window._mlcEngine) {
+            badge.textContent = 'Loading WebLLM...';
+            out.textContent = `[WebGPU Local Shader] Initializing in-browser @mlc-ai/web-llm (Qwen2.5-0.5B-Instruct)...`;
+            window._mlcEngine = await window.webllm.CreateMLCEngine("Qwen2.5-0.5B-Instruct-q4f16_1", {
+              initProgressCallback: (report) => {
+                out.textContent = `[WebGPU Local Shader] ${report.text}`;
+              }
+            });
+          }
+          const localReply = await window._mlcEngine.chat.completions.create({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.5,
+            max_tokens: 600
+          });
+          out.textContent = localReply.choices[0]?.message?.content || 'Directive processed.';
+          badge.textContent = 'WebGPU Local Active';
+          return;
+        } catch (webgpuErr) {
+          console.warn('Local WebLLM shader failed, fallback to Groq:', webgpuErr);
+        }
+      }
 
       try {
         const customKey = document.getElementById('cfg-custom-key').value.trim();
