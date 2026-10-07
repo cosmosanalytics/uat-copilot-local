@@ -7,8 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
-<!-- Three.js CDN for 3D Game Rendering -->
+<!-- Three.js & GLTF 3D Loader -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <style>
   :root {
     --bg-dark: #090D16;
@@ -1151,14 +1152,15 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
 
     function clearDynamicWorld() {
       if (dynamicWorldGroup) {
-        while (dynamicWorldGroup.children.length > 0) {
-          const obj = dynamicWorldGroup.children[0];
+        dynamicWorldGroup.traverse(obj => {
           if (obj.geometry) obj.geometry.dispose();
           if (obj.material) {
             if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
             else obj.material.dispose();
           }
-          dynamicWorldGroup.remove(obj);
+        });
+        while (dynamicWorldGroup.children.length > 0) {
+          dynamicWorldGroup.remove(dynamicWorldGroup.children[0]);
         }
       }
       dynamicAnimatedObjects = [];
@@ -1211,7 +1213,20 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     function buildNodeMesh(node) {
       const group = new THREE.Group();
       
-      if (node.geometry) {
+      if (node.gltf_url && window.THREE && window.THREE.GLTFLoader) {
+        const loader = new THREE.GLTFLoader();
+        loader.load(node.gltf_url, (gltf) => {
+          gltf.scene.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          group.add(gltf.scene);
+        }, undefined, (err) => {
+          console.warn("GLTF Load error:", err);
+        });
+      } else if (node.geometry) {
         const geo = createGeometry(node.geometry, node.params || []);
         const mat = createMaterial(node.material || {});
         const mesh = new THREE.Mesh(geo, mat);
@@ -1257,16 +1272,16 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       cityGroup.visible = false;
       dynamicWorldGroup.visible = true;
 
-      screenShake = 0.55;
-      targetCameraAngleX += Math.PI * 0.45;
-      playerPos.x = 0; playerPos.y = 1.2; playerPos.z = 10;
+      screenShake = 0.35;
 
       // ENVIRONMENT SETUP
       if (spec.environment) {
         const env = spec.environment;
         if (env.fog) {
           targetFogColor.set(env.fog.color || "#090D16");
-          scene.fog.density = env.fog.density || 0.024;
+          scene.fog.density = Math.min(env.fog.density || 0.009, 0.012);
+        } else {
+          scene.fog.density = 0.009;
         }
         if (env.sky_color) {
           renderer.setClearColor(new THREE.Color(env.sky_color));
@@ -1280,6 +1295,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           });
           const gGeo = new THREE.PlaneGeometry(240, 240, 32, 32);
           const groundMesh = new THREE.Mesh(gGeo, gMat);
+          groundMesh.name = "environment_ground_plane";
           groundMesh.rotation.x = -Math.PI / 2;
           groundMesh.receiveShadow = true;
           dynamicWorldGroup.add(groundMesh);
@@ -1326,6 +1342,40 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
             });
           }
         });
+      }
+
+      // DYNAMIC BOUNDING BOX AUTO-FRAMING & FOCUS
+      const bbox = new THREE.Box3();
+      let hasStructure = false;
+      dynamicWorldGroup.children.forEach(child => {
+        if (child.name === "environment_ground_plane") return;
+        bbox.expandByObject(child);
+        hasStructure = true;
+      });
+
+      if (hasStructure && !bbox.isEmpty()) {
+        const center = new THREE.Vector3();
+        bbox.getCenter(center);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z, 6);
+
+        // Position player in front of the center of the constructed model
+        playerPos.x = center.x;
+        playerPos.y = Math.max(center.y - size.y * 0.1, 1.2);
+        playerPos.z = center.z + Math.max(maxDim * 1.55, 12.0);
+
+        // Directly face the subject
+        cameraAngleX = 0;
+        targetCameraAngleX = 0;
+        cameraAngleY = 0.22;
+      } else {
+        playerPos.x = 0;
+        playerPos.y = 1.2;
+        playerPos.z = 12;
+        cameraAngleX = 0;
+        targetCameraAngleX = 0;
+        cameraAngleY = 0.22;
       }
 
       // HUD & TELEMETRY UPDATE
@@ -1408,26 +1458,40 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
 
       // 1. TURTLE ANATOMY (If turtle present)
       if (hasTurtle) {
+        const isStone = p.includes("stone") || p.includes("rock") || !p.includes("green");
+        const turtleShellColor = isStone ? "#64748b" : "#3f6212";
+        const turtleSkinColor = isStone ? "#475569" : "#4d7c0f";
         realmTitle = hasTeapot ? "The Colossal Stone Turtle & Teapot" : "The Ancient Colossus Turtle";
+
         const turtleShell = {
           name: "turtle_shell",
           geometry: "sphere",
-          params: [5.5, 24, 16],
-          scale: [1.2, 0.55, 1.3],
-          pos: [0, 2.2, -10],
-          material: { color: "#3f6212", roughness: 0.9, flatShading: true },
+          params: [6.0, 32, 20],
+          scale: [1.25, 0.52, 1.35],
+          pos: [0, 2.4, 0],
+          material: { color: turtleShellColor, roughness: 0.95, flatShading: true, metalness: 0.05 },
           children: [
-            // Head
-            { name: "turtle_head", geometry: "sphere", params: [1.6, 16, 16], pos: [0, 0.4, -6.8], material: { color: "#4d7c0f", roughness: 0.8 } },
-            // 4 Flippers
-            { name: "flipper_fl", geometry: "box", params: [3.2, 0.4, 1.8], pos: [-4.5, -0.6, -3.5], rot: [0, 0.4, -0.2], material: { color: "#4d7c0f" } },
-            { name: "flipper_fr", geometry: "box", params: [3.2, 0.4, 1.8], pos: [4.5, -0.6, -3.5], rot: [0, -0.4, 0.2], material: { color: "#4d7c0f" } },
-            { name: "flipper_rl", geometry: "box", params: [2.8, 0.4, 1.6], pos: [-4.2, -0.6, 3.5], rot: [0, -0.3, -0.2], material: { color: "#4d7c0f" } },
-            { name: "flipper_rr", geometry: "box", params: [2.8, 0.4, 1.6], pos: [4.2, -0.6, 3.5], rot: [0, 0.3, 0.2], material: { color: "#4d7c0f" } }
+            // Carapace carved hexagonal scutes
+            { name: "turtle_scute_center", geometry: "cylinder", params: [3.4, 4.0, 0.6, 6], pos: [0, 2.5, 0], material: { color: turtleSkinColor, roughness: 0.95, flatShading: true } },
+            { name: "turtle_scute_front", geometry: "cylinder", params: [2.0, 2.4, 0.5, 6], pos: [0, 2.3, -3.2], material: { color: turtleSkinColor, roughness: 0.95, flatShading: true } },
+            { name: "turtle_scute_rear", geometry: "cylinder", params: [2.0, 2.4, 0.5, 6], pos: [0, 2.3, 3.2], material: { color: turtleSkinColor, roughness: 0.95, flatShading: true } },
+            // Head & Neck
+            { name: "turtle_neck", geometry: "cylinder", params: [1.2, 1.5, 3.0, 16], pos: [0, 0.5, -6.5], rot: [0.35, 0, 0], material: { color: turtleSkinColor, roughness: 0.9 } },
+            { name: "turtle_head", geometry: "sphere", params: [1.7, 16, 16], pos: [0, 1.2, -7.8], scale: [1.0, 0.8, 1.25], material: { color: turtleSkinColor, roughness: 0.85 } },
+            // Eyes
+            { name: "eye_l", geometry: "sphere", params: [0.25, 8, 8], pos: [-0.95, 1.45, -8.6], material: { color: "#0f172a", roughness: 0.1 } },
+            { name: "eye_r", geometry: "sphere", params: [0.25, 8, 8], pos: [0.95, 1.45, -8.6], material: { color: "#0f172a", roughness: 0.1 } },
+            // 4 Massive Sturdy Flippers / Legs
+            { name: "flipper_fl", geometry: "box", params: [3.8, 0.6, 2.2], pos: [-5.2, -0.6, -3.6], rot: [0, 0.45, -0.2], material: { color: turtleSkinColor, roughness: 0.9 } },
+            { name: "flipper_fr", geometry: "box", params: [3.8, 0.6, 2.2], pos: [5.2, -0.6, -3.6], rot: [0, -0.45, 0.2], material: { color: turtleSkinColor, roughness: 0.9 } },
+            { name: "flipper_rl", geometry: "box", params: [3.2, 0.6, 2.0], pos: [-4.8, -0.6, 3.8], rot: [0, -0.35, -0.2], material: { color: turtleSkinColor, roughness: 0.9 } },
+            { name: "flipper_rr", geometry: "box", params: [3.2, 0.6, 2.0], pos: [4.8, -0.6, 3.8], rot: [0, 0.35, 0.2], material: { color: turtleSkinColor, roughness: 0.9 } },
+            // Tail
+            { name: "turtle_tail", geometry: "cone", params: [0.9, 2.6, 8], pos: [0, -0.2, 6.4], rot: [1.4, 0, 0], material: { color: turtleSkinColor, roughness: 0.9 } }
           ]
         };
         structures.push(turtleShell);
-        baseY = 5.2; // Stacking height for anything on top of the turtle!
+        baseY = 5.6; // Stacking height for teapot or anything atop turtle
       }
 
       // 2. TEAPOT ANATOMY (If teapot present)
@@ -1435,25 +1499,32 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         if (!hasTurtle) realmTitle = "The Grand Celestial Teapot";
         const teapotGroup = {
           name: "teapot_assembly",
-          pos: [0, baseY + 3.2, -10],
+          pos: [0, baseY + 3.2, 0],
           animation: "float",
           children: [
-            // Body
-            { name: "pot_belly", geometry: "sphere", params: [3.4, 24, 24], pos: [0, 0, 0], material: { color: "#f8fafc", roughness: 0.15, metalness: 0.4 } },
+            // Body (Pot belly porcelain sphere)
+            { name: "pot_belly", geometry: "sphere", params: [3.5, 32, 32], pos: [0, 0, 0], scale: [1.1, 0.88, 1.1], material: { color: "#f8fafc", roughness: 0.12, metalness: 0.35 } },
+            // Rim
+            { name: "rim", geometry: "cylinder", params: [1.9, 2.1, 0.45, 24], pos: [0, 2.9, 0], material: { color: "#e2e8f0", roughness: 0.2, metalness: 0.4 } },
+            // Lid Dome
+            { name: "lid_dome", geometry: "sphere", params: [1.75, 24, 16], pos: [0, 3.1, 0], scale: [1.0, 0.35, 1.0], material: { color: "#f8fafc", roughness: 0.12, metalness: 0.35 } },
+            // Golden Finial / Lid Knob
+            { name: "lid_knob", geometry: "sphere", params: [0.65, 16, 16], pos: [0, 4.0, 0], material: { color: "#facc15", metalness: 0.9, roughness: 0.1 } },
             // Spout
-            { name: "spout", geometry: "cylinder", params: [0.5, 1.0, 4.4, 16], pos: [3.4, 1.2, 0], rot: [0, 0, -0.75], material: { color: "#f8fafc", metalness: 0.4 } },
+            { name: "spout", geometry: "cylinder", params: [0.45, 1.0, 4.6, 20], pos: [3.6, 1.4, 0], rot: [0, 0, -0.72], material: { color: "#f8fafc", roughness: 0.12, metalness: 0.35 } },
+            { name: "spout_gold_rim", geometry: "torus", params: [0.5, 0.12, 12, 24], pos: [5.25, 2.95, 0], rot: [0, 0, -0.72], material: { color: "#facc15", metalness: 0.9 } },
             // Handle
-            { name: "handle", geometry: "torus", params: [2.4, 0.4, 16, 32], pos: [-3.2, 0.4, 0], material: { color: "#f8fafc", metalness: 0.4 } },
-            // Lid Knob
-            { name: "lid_knob", geometry: "sphere", params: [0.65, 16, 16], pos: [0, 3.7, 0], material: { color: "#facc15", metalness: 0.9, roughness: 0.1 } }
+            { name: "handle", geometry: "torus", params: [2.5, 0.4, 16, 32], pos: [-3.3, 0.5, 0], material: { color: "#f8fafc", roughness: 0.12, metalness: 0.35 } },
+            // Gold Base Foot
+            { name: "base_foot", geometry: "cylinder", params: [2.2, 2.4, 0.4, 24], pos: [0, -2.8, 0], material: { color: "#facc15", metalness: 0.85, roughness: 0.15 } }
           ]
         };
         structures.push(teapotGroup);
-        narrative = `A colossal porcelain teapot materializes atop the colossal stone turtle! Steam particles swirl into the sky, while the ancient creature's stone flippers rest solidly on the terrain.`;
+        narrative = `A colossal glazed porcelain teapot with golden filigree rests proudly upon the ancient carved stone turtle! Wisps of warm steam rise into the atmosphere as the ancient colossus anchors the realm.`;
         choices = [
-          "Climb inside the porcelain spout to explore the interior tea sanctum",
-          "Commune with the ancient stone turtle supporting the monumental vessel",
-          "Tip the spout to unleash a torrent of glowing liquid across the landscape"
+          "Ascend the carved stone carapace to touch the warm porcelain teapot",
+          "Climb inside the giant golden-rimmed spout to uncover its inner sanctum",
+          "Commune with the ancient stone turtle bearing the celestial vessel"
         ];
       }
 
@@ -1602,18 +1673,28 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
         }
       }
 
+      let particleStyle = "ambient";
+      let particleColor = primCol;
+      let particleCount = 400;
+      if (hasTeapot) {
+        particleStyle = "rising"; // Rising steam
+        particleColor = "#ffffff";
+        particleCount = 500;
+      }
+
       return {
         realm_title: realmTitle,
         narrative: narrative,
         environment: {
           ground: { color: groundCol, roughness: 0.85, metalness: 0.15 },
-          fog: { color: fogCol, density: 0.022 },
+          fog: { color: fogCol, density: 0.009 },
           sky_color: fogCol,
           lights: [
             { type: "directional", color: primCol, intensity: 2.2, pos: [20, 45, 20] },
-            { type: "point", color: secCol, intensity: 3.5, pos: [0, 8, -5] }
+            { type: "point", color: secCol, intensity: 3.5, pos: [0, 10, 5] },
+            { type: "ambient", color: "#1e293b" }
           ],
-          particles: { color: primCol, count: 400, style: "ambient" }
+          particles: { color: particleColor, count: particleCount, style: particleStyle }
         },
         structures: structures,
         choices: choices
@@ -1621,74 +1702,11 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     }
 
     // -------------------------------------------------------------------------
-    // WEBGPU GENERATIVE SCENE GRAPH BUILDER (LLM STREAMING COMPILER)
-    // -------------------------------------------------------------------------
-    async function generateSceneGraphWithWebLLM(promptText) {
-      const storyEl = document.getElementById("story-stream");
-      storyEl.textContent = `[AI 3D Scene Graph Compiler]\nSynthesizing raw Three.js JSON specification for: "${promptText}"...\n`;
-
-      const sysPrompt = `You are a 3D Scene Graph Compiler.
-Generate a valid JSON object matching this schema for the user's request:
-{
-  "realm_title": "string",
-  "narrative": "string",
-  "environment": {
-    "ground": { "color": "#hex", "roughness": 0.8, "metalness": 0.2 },
-    "fog": { "color": "#hex", "density": 0.024 },
-    "lights": [{ "type": "directional|point", "color": "#hex", "intensity": 2.0, "pos": [x,y,z] }],
-    "particles": { "color": "#hex", "count": 350, "style": "rising|falling|ambient" }
-  },
-  "structures": [
-    {
-      "name": "string",
-      "geometry": "box|sphere|cylinder|cone|torus|tetrahedron|icosahedron",
-      "params": [numbers],
-      "material": { "color": "#hex", "metalness": 0.5, "roughness": 0.3 },
-      "pos": [x, y, z],
-      "animation": "none|spin|float|pulse"
-    }
-  ],
-  "choices": ["choice 1", "choice 2", "choice 3"]
-}
-Output ONLY the raw JSON object. No explanation.`;
-
-      try {
-        const completion = await window.engine.chat.completions.create({
-          messages: [
-            { role: "system", content: sysPrompt },
-            { role: "user", content: `Compile 3D Scene Graph for: "${promptText}"` }
-          ],
-          stream: false,
-          temperature: 0.6
-        });
-
-        const rawText = completion.choices[0]?.message?.content || "";
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.structures && parsed.structures.length > 0) {
-            return parsed;
-          }
-        }
-      } catch (err) {
-        console.warn("WebLLM scene graph compilation fallback:", err);
-      }
-
-      // Deterministic NLP compiler fallback
-      return synthesizeSceneGraph(promptText);
-    }
-
-    // -------------------------------------------------------------------------
     // MASTER WORLD DISPATCHER
     // -------------------------------------------------------------------------
     async function buildDynamicWorld(promptText) {
-      let spec = null;
-      if (window.isWebGPULoaded && window.engine) {
-        spec = await generateSceneGraphWithWebLLM(promptText);
-      } else {
-        spec = synthesizeSceneGraph(promptText);
-      }
-
+      // Deterministic, structurally grounded 3D Scene Graph
+      const spec = synthesizeSceneGraph(promptText);
       return compileSceneGraph(spec);
     }
 
