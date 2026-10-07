@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cognitive Funnel AI: Problem Solving with WebGPU & WebLLM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F8FAFC;
+    --panel: #FFFFFF;
+    --border: #E2E8F0;
+    --border-dark: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    
+    --c-reflect: #0284C7;
+    --c-reflect-bg: #F0F9FF;
+    --c-reflect-border: #BAE6FD;
+
+    --c-reframe: #7C3AED;
+    --c-reframe-bg: #FAF5FF;
+    --c-reframe-border: #E9D5FF;
+
+    --c-analyze: #059669;
+    --c-analyze-bg: #F0FDF4;
+    --c-analyze-border: #A7F3D0;
+
+    --c-synth: #D97706;
+    --c-synth-bg: #FFFBEB;
+    --c-synth-border: #FDE68A;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Public Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* TOP NAVIGATION & ENGINE CONTROL BAR */
+  header {
+    background: #FFFFFF;
+    border-bottom: 2px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+
+  .brand-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0284C7 0%, #7C3AED 50%, #D97706 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.25);
+  }
+  .brand-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+  }
+  .brand-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .engine-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .model-select {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 7px 12px;
+    border: 1.5px solid var(--border-dark);
+    border-radius: 8px;
+    background: #FFFFFF;
+    outline: none;
+    color: var(--text-primary);
+  }
+  .btn-engine {
+    background: linear-gradient(135deg, #0284C7 0%, #7C3AED 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+  }
+  .btn-engine:hover { opacity: 0.94; transform: translateY(-1px); }
+  .btn-engine:active { transform: translateY(0); }
+  .btn-engine:disabled { background: #94A3B8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .badge-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 5px 11px;
+    border-radius: 20px;
+    border: 1px solid var(--border-dark);
+    background: #F1F5F9;
+    color: var(--text-secondary);
+  }
+  .badge-status.ready { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
+  .badge-status.loading { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+
+  /* PROGRESS BAR FOR WEBGPU MODEL DOWNLOAD */
+  .gpu-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #E2E8F0;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .gpu-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #0284C7, #7C3AED, #059669);
+    transition: width 0.2s;
+  }
+
+  /* MAIN APP LAYOUT */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    padding: 24px 28px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* LEFT SIDEBAR: FUNNEL GEOMETRY & TELEMETRY */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .card-funnel-geometry {
+    background: #FFFFFF;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+  }
+
+  .card-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-subtitle {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  /* SVG FUNNEL GRAPHIC */
+  .svg-funnel-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0;
+  }
+  svg.funnel-live-svg {
+    width: 100%;
+    max-width: 320px;
+    height: 380px;
+  }
+  .funnel-polygon {
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .funnel-polygon:hover {
+    filter: brightness(1.1);
+  }
+  .funnel-polygon.active {
+    stroke: #0F172A;
+    stroke-width: 3.5px;
+    filter: drop-shadow(0 0 10px rgba(0,0,0,0.25));
+    animation: pulseTier 1.5s infinite alternate;
+  }
+  @keyframes pulseTier {
+    from { opacity: 0.9; }
+    to { opacity: 1.0; }
+  }
+
+  /* TELEMETRY HUD */
+  .hud-box {
+    background: #F8FAFC;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+  .hud-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+  }
+  .hud-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+  }
+  .hud-label { color: var(--text-secondary); font-weight: 500; }
+  .hud-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text-primary); }
+
+  /* RIGHT STAGE: CONTROLS & STREAMING CARDS */
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* SCENARIO SELECTOR */
+  .scenario-container {
+    background: #FFFFFF;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+  }
+
+  .tabs-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .scenario-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .btn-tab {
+    background: #F8FAFC;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+  }
+  .btn-tab:hover {
+    border-color: var(--border-dark);
+    background: #F1F5F9;
+  }
+  .btn-tab.active {
+    background: #FFFFFF;
+    border-color: #0F172A;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+  }
+  .tab-icon { font-size: 1.2rem; margin-bottom: 4px; display: block; }
+  .tab-domain {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .tab-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .input-prompt-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  textarea.prompt-input {
+    width: 100%;
+    min-height: 72px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border-dark);
+    border-radius: 10px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea.prompt-input:focus {
+    border-color: #0284C7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+  }
+
+  .action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn-run {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 9px;
+    padding: 10px 24px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  }
+  .btn-run:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-run:disabled { background: #94A3B8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .engine-mode-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 4 FUNNEL REASONING CARDS */
+  .reasoning-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .stage-card {
+    background: #FFFFFF;
+    border: 2px solid;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+    transition: all 0.25s ease;
+    opacity: 0.85;
+  }
+  .stage-card.live-active {
+    opacity: 1;
+    border-width: 2.5px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+    transform: translateY(-2px);
+  }
+  .stage-card.completed {
+    opacity: 1;
+  }
+
+  .sc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .sc-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sc-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sc-name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+  .sc-shape-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .sc-triad-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+
+  .sc-question {
+    font-size: 0.84rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .sc-output-box {
+    background: #FFFFFF;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 0.88rem;
+    line-height: 1.48;
+    color: var(--text-primary);
+    min-height: 48px;
+    white-space: pre-wrap;
+  }
+
+  /* COLOR ACCENTS FOR 4 CARDS */
+  .c-reflect { border-color: var(--c-reflect-border); background: var(--c-reflect-bg); }
+  .c-reflect .sc-badge { background: var(--c-reflect); }
+  .c-reflect .sc-name { color: #0369A1; }
+  .c-reflect .sc-shape-tag { color: var(--c-reflect); }
+  .c-reflect .sc-question { color: #0C4A6E; }
+  .c-reflect .sc-triad-pill { background: #E0F2FE; color: #0369A1; border-color: var(--c-reflect-border); }
+
+  .c-reframe { border-color: var(--c-reframe-border); background: var(--c-reframe-bg); }
+  .c-reframe .sc-badge { background: var(--c-reframe); }
+  .c-reframe .sc-name { color: #6D28D9; }
+  .c-reframe .sc-shape-tag { color: var(--c-reframe); }
+  .c-reframe .sc-question { color: #4C1D95; }
+  .c-reframe .sc-triad-pill { background: #F3E8FF; color: #6D28D9; border-color: var(--c-reframe-border); }
+
+  .c-analyze { border-color: var(--c-analyze-border); background: var(--c-analyze-bg); }
+  .c-analyze .sc-badge { background: var(--c-analyze); }
+  .c-analyze .sc-name { color: #047857; }
+  .c-analyze .sc-shape-tag { color: var(--c-analyze); }
+  .c-analyze .sc-question { color: #064E3B; }
+  .c-analyze .sc-triad-pill { background: #DCFCE7; color: #047857; border-color: var(--c-analyze-border); }
+
+  .c-synth { border-color: var(--c-synth-border); background: var(--c-synth-bg); }
+  .c-synth .sc-badge { background: var(--c-synth); }
+  .c-synth .sc-name { color: #B45309; }
+  .c-synth .sc-shape-tag { color: var(--c-synth); }
+  .c-synth .sc-question { color: #78350F; }
+  .c-synth .sc-triad-pill { background: #FEF3C7; color: #B45309; border-color: var(--c-synth-border); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1.5px solid var(--border);
+    padding: 12px 28px;
+    background: #FFFFFF;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER NAVIGATION -->
+  <header>
+    <div class="brand-area">
+      <div class="brand-logo">▼</div>
+      <div>
+        <div class="brand-title">Cognitive Funnel AI</div>
+        <div class="brand-subtitle">4-Stage Reasoning Engine with WebGPU &amp; WebLLM Local In-Browser Intelligence</div>
+      </div>
+    </div>
+
+    <div class="engine-controls">
+      <select id="model-select" class="model-select">
+        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Fastest, ~100MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (Balanced, ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (High-Precision, ~800MB)</option>
+      </select>
+      <button id="btn-load-gpu" class="btn-engine" onclick="initWebGPU()">
+        <span>⚡</span><span id="load-btn-label">Load WebGPU</span>
+      </button>
+      <span id="gpu-status-badge" class="badge-status">WebGPU Available</span>
+    </div>
+  </header>
+
+  <!-- WEBGPU DOWNLOAD PROGRESS BAR -->
+  <div id="gpu-progress" class="gpu-progress-bar">
+    <div id="gpu-fill" class="gpu-progress-fill"></div>
+  </div>
+
+  <!-- MAIN APPLICATION STAGE -->
+  <main>
+
+    <!-- LEFT: THE VISUAL FUNNEL & TELEMETRY -->
+    <aside class="sidebar">
+      
+      <div class="card-funnel-geometry">
+        <div class="card-title">
+          <span>Continuous Funnel</span>
+          <span style="font-size:0.75rem;color:var(--c-reflect);font-family:'JetBrains Mono', monospace;">Narrowing Apex</span>
+        </div>
+        <div class="card-subtitle">Live representation of how the mind filters noise into 1 chosen action.</div>
+
+        <div class="svg-funnel-wrapper">
+          <svg class="funnel-live-svg" viewBox="0 0 320 395" fill="none" xmlns="http://www.w3.org/2000/svg">
+            
+            <!-- TIER 1: REFLECT (Top Aperture) -->
+            <polygon id="poly-reflect" class="funnel-polygon" points="10,8 310,8 275,85 45,85" fill="#0284C7" onclick="focusStage(1)" />
+            <text x="160" y="36" fill="#FFFFFF" font-family="Bricolage Grotesque" font-size="14.5" font-weight="800" text-anchor="middle">1. REFLECT</text>
+            <text x="160" y="54" fill="#F0F9FF" font-family="Public Sans" font-size="9" font-weight="600" text-anchor="middle">Pause &amp; Observe All Signals</text>
+            <text x="160" y="72" fill="#BAE6FD" font-family="JetBrains Mono" font-size="7.5" font-weight="800" text-anchor="middle">WIDE APERTURE</text>
+
+            <!-- TIER 2: REFRAME (Mid) -->
+            <polygon id="poly-reframe" class="funnel-polygon" points="50,92 270,92 238,170 82,170" fill="#7C3AED" onclick="focusStage(2)" />
+            <text x="160" y="120" fill="#FFFFFF" font-family="Bricolage Grotesque" font-size="14" font-weight="800" text-anchor="middle">2. REFRAME</text>
+            <text x="160" y="138" fill="#FAF5FF" font-family="Public Sans" font-size="8.8" font-weight="600" text-anchor="middle">Shift to the Real Problem</text>
+            <text x="160" y="156" fill="#DDD6FE" font-family="JetBrains Mono" font-size="7.5" font-weight="800" text-anchor="middle">FILTER OUT ASSUMPTIONS</text>
+
+            <!-- TIER 3: ANALYZE (Narrowing) -->
+            <polygon id="poly-analyze" class="funnel-polygon" points="86,177 234,177 205,255 115,255" fill="#059669" onclick="focusStage(3)" />
+            <text x="160" y="204" fill="#FFFFFF" font-family="Bricolage Grotesque" font-size="13.5" font-weight="800" text-anchor="middle">3. ANALYZE</text>
+            <text x="160" y="222" fill="#F0FDF4" font-family="Public Sans" font-size="8.5" font-weight="600" text-anchor="middle">Dissect Options &amp; Trade-offs</text>
+            <text x="160" y="240" fill="#A7F3D0" font-family="JetBrains Mono" font-size="7.2" font-weight="800" text-anchor="middle">COMPARE CANDIDATES</text>
+
+            <!-- TIER 4: SYNTHESIZE (The Narrow Apex) -->
+            <polygon id="poly-synth" class="funnel-polygon" points="114,262 206,262 180,336 140,336" fill="#D97706" onclick="focusStage(4)" />
+            <text x="160" y="284" fill="#FFFFFF" font-family="Bricolage Grotesque" font-size="11" font-weight="800" text-anchor="middle">4. SYNTHESIZE</text>
+            <text x="160" y="299" fill="#FFFBEB" font-family="Public Sans" font-size="7.8" font-weight="700" text-anchor="middle">Choose 1 Option</text>
+            <text x="160" y="313" fill="#FEF3C7" font-family="Public Sans" font-size="7.8" font-weight="700" text-anchor="middle">&amp; Explain Why</text>
+            <text x="160" y="328" fill="#FDE68A" font-family="JetBrains Mono" font-size="6.8" font-weight="800" text-anchor="middle">NARROW APEX</text>
+
+            <!-- CONNECTOR ARROW -->
+            <polygon points="155,342 165,342 165,350 170,350 160,360 150,350 155,350" fill="#D97706" />
+
+            <!-- OUTPUT CAPSULE -->
+            <rect id="rect-action" x="25" y="364" width="270" height="24" rx="12" fill="#FFFBEB" stroke="#D97706" stroke-width="2" />
+            <text x="160" y="380" fill="#B45309" font-family="Bricolage Grotesque" font-size="8.8" font-weight="800" text-anchor="middle">🎯 1 COMMITTED PATH &amp; RATIONALE</text>
+
+          </svg>
+        </div>
+
+        <div class="hud-box">
+          <div class="hud-title">Telemetry &amp; Triad Mapping</div>
+          <div class="hud-row">
+            <span class="hud-label">Active Stage:</span>
+            <span id="hud-active-stage" class="hud-value">Idle / Ready</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-label">Triad Ring:</span>
+            <span id="hud-triad-ring" class="hud-value">All Rings Standing By</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-label">Aperture Width:</span>
+            <span id="hud-aperture" class="hud-value">100% (Open)</span>
+          </div>
+          <div class="hud-row">
+            <span class="hud-label">Execution Mode:</span>
+            <span id="hud-exec-mode" class="hud-value">Simulation / WebLLM Ready</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT: SCENARIO WORKSPACE & 4-TIER REASONING -->
+    <section class="workspace">
+
+      <!-- SCENARIO SELECTOR -->
+      <div class="scenario-container">
+        <span class="tabs-label">Step 1: Choose a Problem Domain (or Type Custom Scenario)</span>
+        
+        <div class="scenario-tabs">
+          <div class="btn-tab active" onclick="selectScenario('cognitive', this)">
+            <span class="tab-icon">🧠</span>
+            <div class="tab-domain">Cognitive</div>
+            <div class="tab-desc">Analysis paralysis vs. impulse.</div>
+          </div>
+          <div class="btn-tab" onclick="selectScenario('pm', this)">
+            <span class="tab-icon">📦</span>
+            <div class="tab-domain">Project Delivery</div>
+            <div class="tab-desc">Scope creep &amp; bottleneck slip.</div>
+          </div>
+          <div class="btn-tab" onclick="selectScenario('leadership', this)">
+            <span class="tab-icon">👑</span>
+            <div class="tab-domain">Leadership</div>
+            <div class="tab-desc">Deal closing vs. tech debt conflict.</div>
+          </div>
+          <div class="btn-tab" onclick="selectScenario('mindfulness', this)">
+            <span class="tab-icon">👁️</span>
+            <div class="tab-domain">Mindfulness</div>
+            <div class="tab-desc">Outage panic &amp; stress reaction.</div>
+          </div>
+        </div>
+
+        <div class="input-prompt-area">
+          <textarea id="scenario-prompt" class="prompt-input" rows="3"></textarea>
+          
+          <div class="action-bar">
+            <div class="engine-mode-badge">
+              <span>⚡ Mode:</span>
+              <span id="mode-text" style="color:var(--c-reflect);">Local High-Fidelity Simulator (Click 'Load WebGPU' for Hardware LLM)</span>
+            </div>
+            <button id="btn-run" class="btn-run" onclick="runFunnelReasoning()">
+              <span>Run Cognitive Funnel</span>
+              <span>➔</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 STAGE REASONING STACK -->
+      <div class="reasoning-stack">
+
+        <!-- 1. REFLECT -->
+        <div id="card-stage-1" class="stage-card c-reflect">
+          <div class="sc-header">
+            <div class="sc-title-group">
+              <div class="sc-badge">1</div>
+              <span class="sc-name">REFLECT</span>
+              <span class="sc-shape-tag">▼ Widest Aperture</span>
+            </div>
+            <span class="sc-triad-pill">Ring 2: Core + Center (State &amp; Awareness)</span>
+          </div>
+          <div class="sc-question">💬 "Wait, what is actually happening right now?" (Pause reaction, gather raw logs and baseline facts)</div>
+          <div id="output-stage-1" class="sc-output-box">Standing by. Click 'Run Cognitive Funnel' to trigger Stage 1...</div>
+        </div>
+
+        <!-- 2. REFRAME -->
+        <div id="card-stage-2" class="stage-card c-reframe">
+          <div class="sc-header">
+            <div class="sc-title-group">
+              <div class="sc-badge">2</div>
+              <span class="sc-name">REFRAME</span>
+              <span class="sc-shape-tag">▼ Problem Filter</span>
+            </div>
+            <span class="sc-triad-pill">Ring 3: Outer (The Human World &amp; Empathy)</span>
+          </div>
+          <div class="sc-question">💬 "Are we even trying to solve the right problem?" (Shift angle, strip false assumptions, define root goal)</div>
+          <div id="output-stage-2" class="sc-output-box">Standing by...</div>
+        </div>
+
+        <!-- 3. ANALYZE -->
+        <div id="card-stage-3" class="stage-card c-analyze">
+          <div class="sc-header">
+            <div class="sc-title-group">
+              <div class="sc-badge">3</div>
+              <span class="sc-name">ANALYZE</span>
+              <span class="sc-shape-tag">▼ Option Dissection</span>
+            </div>
+            <span class="sc-triad-pill">Ring 1: Inner (The Engine of Physics &amp; Math)</span>
+          </div>
+          <div class="sc-question">💬 "What are the viable candidate options, costs &amp; trade-offs?" (Dissect options side-by-side, check math &amp; risks)</div>
+          <div id="output-stage-3" class="sc-output-box">Standing by...</div>
+        </div>
+
+        <!-- 4. SYNTHESIZE -->
+        <div id="card-stage-4" class="stage-card c-synth">
+          <div class="sc-header">
+            <div class="sc-title-group">
+              <div class="sc-badge">4</div>
+              <span class="sc-name">SYNTHESIZE</span>
+              <span class="sc-shape-tag">🎯 Narrowest Choice</span>
+            </div>
+            <span class="sc-triad-pill">Unified Integration (High-Conviction Direction)</span>
+          </div>
+          <div class="sc-question">💬 "Which single option do we pick, and why does it win?" (Cut doubts, commit to the 1 winning path with clear rationale)</div>
+          <div id="output-stage-4" class="sc-output-box">Standing by...</div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>Universal Cognitive Funnel &bull; Reflect &bull; Reframe &bull; Analyze &bull; Synthesize</div>
+    <div>Running Locally In-Browser &bull; Zero Server Latency</div>
+  </footer>
+
+  <!-- =========================================================================
+       JAVASCRIPT: WEBGPU + WEBLLM INTEGRATION & FUNNEL REASONING LOGIC
+       ========================================================================= -->
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    window.webllm = webllm;
+    window.engine = null;
+    window.isWebGPULoaded = false;
+
+    // Check WebGPU availability on page load
+    window.addEventListener("DOMContentLoaded", async () => {
+      const statusBadge = document.getElementById("gpu-status-badge");
+      if (navigator.gpu) {
+        statusBadge.textContent = "WebGPU Ready";
+        statusBadge.className = "badge-status ready";
+      } else {
+        statusBadge.textContent = "WebGPU Unavailable (Sim Mode Active)";
+        statusBadge.className = "badge-status";
+      }
+      // Load initial scenario prompt
+      selectScenario('cognitive', document.querySelector('.btn-tab.active'));
+    });
+
+    // Initialize WebGPU & Download Model via WebLLM
+    window.initWebGPU = async function() {
+      const modelId = document.getElementById("model-select").value;
+      const statusBadge = document.getElementById("gpu-status-badge");
+      const btnLabel = document.getElementById("load-btn-label");
+      const btnGpu = document.getElementById("btn-load-gpu");
+      const progressBar = document.getElementById("gpu-progress");
+      const progressFill = document.getElementById("gpu-fill");
+      const modeText = document.getElementById("mode-text");
+      const hudExec = document.getElementById("hud-exec-mode");
+
+      btnGpu.disabled = true;
+      statusBadge.className = "badge-status loading";
+      statusBadge.textContent = "Downloading Weights...";
+      progressBar.style.display = "block";
+
+      try {
+        window.engine = await webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (report) => {
+            const pct = Math.round((report.progress || 0) * 100);
+            progressFill.style.width = pct + "%";
+            btnLabel.textContent = `Downloading ${pct}%`;
+          }
+        });
+
+        window.isWebGPULoaded = true;
+        statusBadge.className = "badge-status ready";
+        statusBadge.textContent = "WebGPU Engine Live";
+        btnLabel.textContent = "Engine Loaded";
+        progressBar.style.display = "none";
+        modeText.textContent = `Active WebGPU Hardware Acceleration (${modelId})`;
+        modeText.style.color = "var(--c-analyze)";
+        hudExec.textContent = `WebGPU Live: ${modelId}`;
+      } catch (err) {
+        console.warn("WebGPU initialization encountered an issue:", err);
+        statusBadge.className = "badge-status";
+        statusBadge.textContent = "Fallback Simulation";
+        btnLabel.textContent = "Sim Mode";
+        btnGpu.disabled = false;
+        progressBar.style.display = "none";
+        modeText.textContent = "Local High-Fidelity Simulator (WebGPU Fallback)";
+        hudExec.textContent = "Simulation Mode";
+      }
+    };
+  </script>
+
+  <script>
+    // PRESET SCENARIOS ACROSS 4 DOMAINS
+    const SCENARIOS = {
+      cognitive: {
+        domain: "Cognitive Problem Solving",
+        prompt: "Our team has 8 competing engineering ideas to optimize LLM query latency. People have been arguing for two weeks in design reviews without building anything, and we are stuck in total analysis paralysis."
+      },
+      pm: {
+        domain: "Project Delivery & Critical Path",
+        prompt: "We are 48 hours away from our scheduled enterprise production release. The core payment webhook microservice is failing intermittent load tests, and the VP of Marketing just requested 2 last-minute checkout features."
+      },
+      leadership: {
+        domain: "Executive Leadership & Alignment",
+        prompt: "Our Enterprise Sales VP wants to sign an annual contract with a Fortune 500 bank by promising custom on-premise deployment. Our Chief Architect warns that this will fork our codebase and saddle engineering with crippling technical debt."
+      },
+      mindfulness: {
+        domain: "Mindfulness & Emotional Self-Regulation",
+        prompt: "A Sev-1 production outage just took our primary API cluster offline. Five senior executives are tagging me simultaneously on Slack with panicked questions, my heart is pounding, and my immediate impulse is to post an unverified excuse."
+      }
+    };
+
+    // CURATED SIMULATION REASONING TRACES (INSTANT HIGH-FIDELITY BACKUP)
+    const SIMULATED_RESPONSES = {
+      cognitive: {
+        reflect: "• Pause immediate instinct: Stop debating opinions in Slack threads without evidence.\n• Audit raw facts: 8 ideas exist, but 0 benchmark scripts have been run against actual production traffic traces.\n• Root baseline: We do not actually know where the 250ms bottleneck originates (token generation vs. network roundtrip vs. database retrieval).",
+        reframe: "• The apparent problem: 'Which of the 8 smart ideas is superior?'\n• The REAL core problem: 'We lack empirical flamegraphs of our bottleneck, so we are arguing about hypotheses instead of data.'\n• Angle shift: Cease debate; establish an automated 1-day telemetry harness.",
+        analyze: "• Option A (Complete Rewriting in Rust): Estimated 4 weeks engineering time. High risk of regression. High long-term payoff.\n• Option B (Aggressive Redis Response Caching): Estimated 1 day to implement. Solves 70% of repeated prompts, but does not help unique cold queries.\n• Option C (Speculative Decoding & Batching): Moderate 3-day effort. Delivers 2.4x speedup across 100% of queries with zero cache invalidation bugs.\n• Key Trade-Off: Option A is premature optimization. Option B is a temporary band-aid. Option C attacks the true compute bottleneck safely.",
+        synth: "🎯 DECISION: Commit to OPTION C (Speculative Decoding & Batching).\n\nWHY THIS WINS:\n1. Solves the irreducible compute bottleneck across 100% of user queries without cache invalidation complexity.\n2. Delivers a verified 2.4x speedup within a strict 3-day sprint timebox.\n3. Completely ends team analysis paralysis by executing a testable, measurable milestone before considering any multi-week rewrite."
+      },
+      pm: {
+        reflect: "• Pause reaction: Resist the panic urge to promise the marketing features or quietly ignore the webhook tests.\n• Audit reality: Webhook fails under 500 concurrent RPS (14% drop rate). Launch date is in 48 hours. Marketing features require ~18 hours of frontend/backend changes.",
+        reframe: "• The apparent problem: 'How do we frantically build 2 new features while fixing the failing microservice before Friday?'\n• The REAL core problem: 'Our release scope has breached our critical path, threatening systemic payment failures and customer churn.'\n• Angle shift: Protect payment safety first. Everything else is secondary.",
+        analyze: "• Option A (Ship on Time with Both Features): Guarantees payment failures in production. Massive brand and revenue damage.\n• Option B (Delay Release by 1 Week for Full Scope): Protects quality, but misses marketing commitment and frustrates external partners.\n• Option C (Strict Scope Cut & Focused Load Fix): Say NO to the 2 marketing features for v1. Dedicate all engineering capacity to the webhook connection pool and rate limiter. Ship core functionality on schedule Friday.\n• Key Trade-Off: Marketing features are 'nice-to-haves'; working payments are non-negotiable.",
+        synth: "🎯 DECISION: Commit to OPTION C (Cut Marketing Features for v1; Fix Webhook Pool; Ship Core Friday).\n\nWHY THIS WINS:\n1. Integrity of the critical path: Working payments are an absolute non-negotiable Done criterion.\n2. Single bottom-line communication: Inform marketing that their features are slated for Sprint v1.1 next Tuesday.\n3. Eliminates rollout risk while preserving the hard production launch deadline."
+      },
+      leadership: {
+        reflect: "• Pause defensiveness: Do not vilify the Sales VP as reckless, nor dismiss the Chief Architect as an obstructionist.\n• Audit state: Fortune 500 deal represents $2.4M ARR. Forking a custom on-prem codebase will consume 3 dedicated engineers (~$900k/yr opportunity cost) indefinitely.",
+        reframe: "• The apparent problem: 'Sales wants revenue vs. Engineering wants clean architecture.'\n• The REAL core problem: 'How do we satisfy the bank's strict data compliance requirements WITHOUT creating a fractured, unmaintainable codebase?'\n• Angle shift: The bank doesn't want custom code; they want verifiable data isolation and regulatory compliance.",
+        analyze: "• Option A (Hard No to Deal): Protects architectural purity, but forfeits $2.4M ARR and damages company growth.\n• Option B (Say Yes to Full Custom Fork): Closes the deal today, but permanently fractures the product roadmap and drains engineering.\n• Option C (Offer Single-Tenant Virtual Private Cloud / VPC Appliance): Package our standard SaaS container stack inside a bank-controlled AWS/Azure VPC. The codebase remains 100% unified, but data remains in the bank's perimeter.\n• Key Trade-Off: Satisfies security mandates without touching single-source code maintenance.",
+        synth: "🎯 DECISION: Commit to OPTION C (Virtual Private Cloud / Single-Tenant VPC Appliance).\n\nWHY THIS WINS:\n1. Unlocks the $2.4M ARR contract by satisfying the bank's information security compliance.\n2. Preserves 100% single-codebase integrity, preventing the technical debt nightmare warned by the Chief Architect.\n3. Unifies Sales and Engineering around a scalable enterprise tier repeatable for future Fortune 500 deals."
+      },
+      mindfulness: {
+        reflect: "• Take one full conscious breath: Put hands on the desk. Notice the pounding heart and the impulse to type defensive Slack messages.\n• Audit the moment: The impulse is fear/ego ('I must look like I am in control'). The reality is an active cluster outage that needs diagnostic clarity, not excuses.",
+        reframe: "• The apparent reaction: 'I need to frantically answer every Slack ping so executives don't blame me.'\n• The REAL core need: 'The incident team needs uninterrupted operational calm to inspect Kubernetes pod telemetry and stabilize the cluster.'\n• Angle shift: Step back from reaction into steady, grounding presence.",
+        analyze: "• Option A (Rapid Reactive Typing): Fire off half-baked guesses on Slack while trying to read logs. Result: high error rate, heightened team panic.\n• Option B (Total Silence): Ignore all messages. Result: executives escalate to phone calls, increasing friction.\n• Option C (Single Anchor Post, Then Focus): Post a single calm, professional anchor update: 'Investigating API cluster pod restarts. Next verified operational update at 14:15. Incident channel active.' Then mute Slack notifications for 15 minutes and inspect logs.\n• Key Trade-Off: Proactive clarity buys uninterrupted focus without abandonment.",
+        synth: "🎯 DECISION: Commit to OPTION C (Post Grounded Anchor Update, Mute Notifications, Execute Diagnostic Protocol).\n\nWHY THIS WINS:\n1. Replaces anxious reactivity with clear executive presence.\n2. Reassures stakeholders with a verified timestamped update, stopping redundant Slack pings.\n3. Preserves total mental clarity to fix the root cause cleanly on the first try."
+      }
+    };
+
+    let currentDomain = "cognitive";
+
+    function selectScenario(domain, tabEl) {
+      currentDomain = domain;
+      document.querySelectorAll(".btn-tab").forEach(t => t.classList.remove("active"));
+      if (tabEl) tabEl.classList.add("active");
+      document.getElementById("scenario-prompt").value = SCENARIOS[domain].prompt;
+    }
+
+    function focusStage(stageNum) {
+      document.querySelectorAll(".funnel-polygon").forEach(p => p.classList.remove("active"));
+      const polyMap = { 1: "poly-reflect", 2: "poly-reframe", 3: "poly-analyze", 4: "poly-synth" };
+      document.getElementById(polyMap[stageNum]).classList.add("active");
+      
+      const card = document.getElementById(`card-stage-${stageNum}`);
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add("live-active");
+      setTimeout(() => card.classList.remove("live-active"), 1200);
+    }
+
+    // MAIN REASONING PIPELINE
+    async function runFunnelReasoning() {
+      const promptText = document.getElementById("scenario-prompt").value.trim();
+      if (!promptText) return;
+
+      const btnRun = document.getElementById("btn-run");
+      btnRun.disabled = true;
+
+      // Reset cards & telemetry
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`output-stage-${i}`).textContent = "Thinking...";
+        document.getElementById(`card-stage-${i}`).classList.remove("live-active", "completed");
+      }
+
+      // Check if WebGPU engine is loaded
+      if (window.isWebGPULoaded && window.engine) {
+        await runLiveWebLLM(promptText);
+      } else {
+        await runSimulatedStreaming(currentDomain);
+      }
+
+      btnRun.disabled = false;
+      document.getElementById("hud-active-stage").textContent = "Complete";
+      document.getElementById("hud-triad-ring").textContent = "All Rings Integrated";
+      document.getElementById("hud-aperture").textContent = "Narrow Apex Committed";
+    }
+
+    // SIMULATED STREAMING FUNCTION
+    async function runSimulatedStreaming(domain) {
+      const data = SIMULATED_RESPONSES[domain] || SIMULATED_RESPONSES.cognitive;
+
+      const stages = [
+        { num: 1, text: data.reflect, ring: "Ring 2: Core + Center (State & Awareness)", aperture: "100% (Wide Open)" },
+        { num: 2, text: data.reframe, ring: "Ring 3: Outer (The Human World)", aperture: "70% (Filtered)" },
+        { num: 3, text: data.analyze, ring: "Ring 1: Inner (The Engine of Physics & Math)", aperture: "45% (Dissecting)" },
+        { num: 4, text: data.synth, ring: "Unified Integration (Commit to One)", aperture: "15% (Razor Apex)" }
+      ];
+
+      for (const st of stages) {
+        // Update Funnel Visual
+        document.querySelectorAll(".funnel-polygon").forEach(p => p.classList.remove("active"));
+        const polyMap = { 1: "poly-reflect", 2: "poly-reframe", 3: "poly-analyze", 4: "poly-synth" };
+        document.getElementById(polyMap[st.num]).classList.add("active");
+
+        // Update Telemetry HUD
+        document.getElementById("hud-active-stage").textContent = `Stage ${st.num} (${polyMap[st.num].split('-')[1].toUpperCase()})`;
+        document.getElementById("hud-triad-ring").textContent = st.ring;
+        document.getElementById("hud-aperture").textContent = st.aperture;
+
+        // Highlight active card
+        const card = document.getElementById(`card-stage-${st.num}`);
+        card.classList.add("live-active");
+
+        // Stream text token by token
+        const outputEl = document.getElementById(`output-stage-${st.num}`);
+        outputEl.textContent = "";
+        const chars = st.text.split("");
+        for (let i = 0; i < chars.length; i++) {
+          outputEl.textContent += chars[i];
+          if (i % 4 === 0) await new Promise(r => setTimeout(r, 12));
+        }
+
+        card.classList.remove("live-active");
+        card.classList.add("completed");
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    // LIVE WEBGPU WEBLLM STREAMING FUNCTION
+    async function runLiveWebLLM(promptText) {
+      const stages = [
+        {
+          num: 1,
+          name: "REFLECT",
+          system: "You are an executive cognitive solver. For Stage 1 (REFLECT), pause all immediate impulse. List the raw facts, empirical data, and past attempts without ego or defensiveness. Keep it to 3 concise bullet points.",
+          user: `Problem scenario:\n${promptText}\n\nExecute STAGE 1: REFLECT.`
+        },
+        {
+          num: 2,
+          name: "REFRAME",
+          system: "You are an executive cognitive solver. For Stage 2 (REFRAME), shift the angle to challenge assumptions. State what the superficial problem seemed to be, and define the single real core problem we must solve. Keep it to 3 concise bullet points.",
+          user: `Problem scenario:\n${promptText}\n\nExecute STAGE 2: REFRAME.`
+        },
+        {
+          num: 3,
+          name: "ANALYZE",
+          system: "You are an executive cognitive solver. For Stage 3 (ANALYZE), break down 3 candidate options (Option A, Option B, Option C) and compare their trade-offs, critical path costs, and risks. Keep it clear and concise.",
+          user: `Problem scenario:\n${promptText}\n\nExecute STAGE 3: ANALYZE candidate options.`
+        },
+        {
+          num: 4,
+          name: "SYNTHESIZE",
+          system: "You are an executive cognitive solver. For Stage 4 (SYNTHESIZE), make the narrowest choice: pick the ONE winning option from your analysis and explain why it wins over the alternatives with rock-solid conviction.",
+          user: `Problem scenario:\n${promptText}\n\nExecute STAGE 4: SYNTHESIZE (Choose 1 option & explain why).`
+        }
+      ];
+
+      for (const st of stages) {
+        document.querySelectorAll(".funnel-polygon").forEach(p => p.classList.remove("active"));
+        const polyMap = { 1: "poly-reflect", 2: "poly-reframe", 3: "poly-analyze", 4: "poly-synth" };
+        document.getElementById(polyMap[st.num]).classList.add("active");
+
+        document.getElementById("hud-active-stage").textContent = `Stage ${st.num} (${st.name}) - Generating via WebGPU...`;
+        const card = document.getElementById(`card-stage-${st.num}`);
+        card.classList.add("live-active");
+
+        const outputEl = document.getElementById(`output-stage-${st.num}`);
+        outputEl.textContent = "";
+
+        try {
+          const completion = await window.engine.chat.completions.create({
+            messages: [
+              { role: "system", content: st.system },
+              { role: "user", content: st.user }
+            ],
+            stream: true,
+            temperature: 0.3
+          });
+
+          for await (const chunk of completion) {
+            const token = chunk.choices[0]?.delta?.content || "";
+            outputEl.textContent += token;
+          }
+        } catch (e) {
+          console.error(`Error generating stage ${st.num}:`, e);
+          outputEl.textContent = `[WebGPU Generation Error: Falling back to local diagnostic trace]\n` + SIMULATED_RESPONSES[currentDomain][st.name.toLowerCase()];
+        }
+
+        card.classList.remove("live-active");
+        card.classList.add("completed");
+      }
+    }
+  </script>
+
+</body>
+</html>

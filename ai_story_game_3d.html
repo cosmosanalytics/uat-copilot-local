@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronicles of the Aether: Real-Time AI Narrative 3D Game (WebGPU + WebLLM)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+<!-- Three.js CDN for 3D Game Rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg-dark: #090D16;
+    --panel-dark: rgba(15, 23, 42, 0.85);
+    --border-dark: rgba(255, 255, 255, 0.12);
+    --accent-cyan: #06B6D4;
+    --accent-purple: #8B5CF6;
+    --accent-amber: #F59E0B;
+    --accent-emerald: #10B981;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Public Sans', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* 3D CANVAS VIEWPORT (FULLSCREEN BACKGROUND) */
+  #game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  /* HUD CONTAINER (OVERLAY LAYER) */
+  .hud-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px 24px;
+  }
+
+  /* TOP STATUS & ENGINE BAR */
+  .top-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: auto;
+  }
+
+  .game-title-card {
+    background: var(--panel-dark);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .title-icon {
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .title-text h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: #FFFFFF;
+  }
+  .title-text p {
+    font-size: 0.72rem;
+    color: var(--accent-cyan);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .engine-controls {
+    background: var(--panel-dark);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-dark);
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .model-select {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--border-dark);
+    border-radius: 6px;
+    color: var(--text-main);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .btn-engine {
+    background: linear-gradient(135deg, var(--accent-purple), #6366F1);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-engine:hover { opacity: 0.9; transform: scale(1.02); }
+  .btn-engine:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 4px 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+  }
+  .status-badge.loading {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-amber);
+  }
+
+  /* PROGRESS BAR FOR WEBGPU MODEL DOWNLOAD */
+  .progress-bar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    z-index: 100;
+    display: none;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-amber));
+    transition: width 0.2s;
+  }
+
+  /* CENTER PLAY AREA: CROSSHAIR & INTERACTION NOTICES */
+  .center-reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .crosshair {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+  }
+  .interact-prompt {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--accent-cyan);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-cyan);
+    display: none;
+    animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse {
+    from { transform: scale(0.96); opacity: 0.8; }
+    to { transform: scale(1.04); opacity: 1; }
+  }
+
+  /* LEFT FLOATING TELEMETRY & WORLD MAP HUD */
+  .left-hud {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 320px;
+    pointer-events: auto;
+  }
+
+  .world-state-card {
+    background: var(--panel-dark);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-dark);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+  .card-header-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .state-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+  }
+  .state-label { color: var(--text-muted); }
+  .state-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+
+  /* PLOT EVOLUTION LOG / QUEST CHRONICLE */
+  .quest-card {
+    background: var(--panel-dark);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-dark);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+  .quest-goal {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent-amber);
+    margin-bottom: 4px;
+    line-height: 1.25;
+  }
+  .quest-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+  }
+
+  /* BOTTOM NARRATIVE TERMINAL & PLAYER CHOICES */
+  .bottom-hud {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 16px;
+    pointer-events: auto;
+    align-items: flex-end;
+  }
+
+  /* NARRATIVE STREAMING CONSOLE */
+  .narrative-console {
+    background: var(--panel-dark);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid var(--border-dark);
+    border-radius: 14px;
+    padding: 18px 22px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    position: relative;
+    max-height: 240px;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-teller-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--accent-purple);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+  }
+  .story-live-stream {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #F1F5F9;
+    overflow-y: auto;
+    max-height: 140px;
+    white-space: pre-wrap;
+    padding-right: 6px;
+  }
+  .story-live-stream::-webkit-scrollbar { width: 4px; }
+  .story-live-stream::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+  /* DYNAMIC AI PLAYER CHOICES */
+  .choices-container {
+    background: var(--panel-dark);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid var(--border-dark);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  }
+  .choice-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #FFFFFF;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .choice-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: var(--accent-purple);
+    transform: translateX(4px);
+  }
+  .choice-key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent-cyan);
+  }
+
+  /* KEYBOARD CONTROLS GUIDE */
+  .controls-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+  <!-- 3D WORLD RENDERING CANVAS -->
+  <div id="game-canvas"></div>
+
+  <!-- WEBGPU DOWNLOAD PROGRESS -->
+  <div id="gpu-progress-bar" class="progress-bar-container">
+    <div id="gpu-progress-fill" class="progress-bar-fill"></div>
+  </div>
+
+  <!-- GAME HUD OVERLAY -->
+  <div class="hud-layer">
+
+    <!-- TOP NAVIGATION & WEBGPU / WEBLLM CONTROLLER -->
+    <div class="top-hud">
+      <div class="game-title-card">
+        <div class="title-icon">⚔️</div>
+        <div class="title-text">
+          <h1>Chronicles of the Aether</h1>
+          <p>Real-Time Procedural Narrative Engine (WebGPU + WebLLM)</p>
+        </div>
+      </div>
+
+      <div class="engine-controls">
+        <select id="model-select" class="model-select">
+          <option value="SmolLM2-135M-Instruct-q4f16_1-MLC">SmolLM2 135M (Ultra-Fast Plot Gen, ~100MB)</option>
+          <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (Deep Lore, ~350MB)</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (Epic Saga, ~800MB)</option>
+        </select>
+        <button id="btn-load-gpu" class="btn-engine" onclick="initWebGPU()">
+          <span>⚡</span><span id="load-btn-label">Load WebGPU AI</span>
+        </button>
+        <span id="gpu-status-badge" class="status-badge">WebGPU Ready</span>
+      </div>
+    </div>
+
+    <!-- CENTER RETICLE & TARGETING INTERACTION -->
+    <div class="center-reticle">
+      <div class="crosshair"></div>
+      <div id="interact-prompt" class="interact-prompt">PRESS [E] OR CLICK TO INTERACT</div>
+    </div>
+
+    <!-- LEFT WORLD TELEMETRY & QUEST COMPASS -->
+    <div class="left-hud">
+      <div class="world-state-card">
+        <div class="card-header-label">
+          <span>World Telemetry</span>
+          <span id="time-of-day">TWILIGHT</span>
+        </div>
+        <div class="state-row">
+          <span class="state-label">Current Realm:</span>
+          <span id="realm-name" class="state-value">The Sunken Obelisk</span>
+        </div>
+        <div class="state-row">
+          <span class="state-label">World Alignment:</span>
+          <span id="world-alignment" class="state-value" style="color:var(--accent-cyan);">Ethereal Balance</span>
+        </div>
+        <div class="state-row">
+          <span class="state-label">Plot Act:</span>
+          <span id="act-number" class="state-value">Act I: The Discovery</span>
+        </div>
+        <div class="state-row">
+          <span class="state-label">Aether Resonance:</span>
+          <span id="resonance-level" class="state-value">78%</span>
+        </div>
+      </div>
+
+      <div class="quest-card">
+        <div class="card-header-label">
+          <span>Active Narrative Goal</span>
+          <span>LIVE</span>
+        </div>
+        <div id="quest-goal" class="quest-goal">Investigate the Whispering Obelisk</div>
+        <div id="quest-desc" class="quest-desc">Strange volumetric runes have ignited across the stone circle. The local guardian awaits your approach.</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM REAL-TIME STORY CONSOLE & ADAPTIVE DECISIONS -->
+    <div class="bottom-hud">
+      <div class="narrative-console">
+        <div class="story-teller-tag">
+          <span>✨</span>
+          <span id="narrator-title">Procedural AI Game Master</span>
+          <span id="engine-telemetry" style="color:var(--accent-cyan);margin-left:auto;font-size:0.65rem;">Engine: Simulation Active</span>
+        </div>
+        <div id="story-stream" class="story-live-stream">You awaken on a suspended island of crystalline obsidian floating above an endless sea of violet nebulae. Before you stands an ancient monolith pulsing with azure light. 
+
+As your footsteps echo across the floating ruins, the monolith shifts its geometry, and a mysterious entity manifests in a shower of glowing aether particles...</div>
+      </div>
+
+      <div class="choices-container">
+        <div class="card-header-label">
+          <span>Real-Time Decisions</span>
+          <span>CHOOSE ACTION</span>
+        </div>
+        <button id="choice-1" class="choice-btn" onclick="executePlayerChoice(1)">
+          <span class="choice-key">[1]</span>
+          <span id="choice-1-text">Touch the monolith to attune with the aether</span>
+        </button>
+        <button id="choice-2" class="choice-btn" onclick="executePlayerChoice(2)">
+          <span class="choice-key">[2]</span>
+          <span id="choice-2-text">Draw your warding sigil and demand its name</span>
+        </button>
+        <button id="choice-3" class="choice-btn" onclick="executePlayerChoice(3)">
+          <span class="choice-key">[3]</span>
+          <span id="choice-3-text">Examine the floating ruin rings for ancient traps</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="controls-hint">
+    [W, A, S, D] Move Player &bull; [Mouse Drag] Orbit Camera &bull; [1, 2, 3] Select Live Plot Choices
+  </div>
+
+  <!-- =========================================================================
+       JAVASCRIPT: WEBGPU + WEBLLM REAL-TIME PLOT ENGINE
+       ========================================================================= -->
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    window.webllm = webllm;
+    window.engine = null;
+    window.isWebGPULoaded = false;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const statusBadge = document.getElementById("gpu-status-badge");
+      if (navigator.gpu) {
+        statusBadge.textContent = "WebGPU Ready";
+        statusBadge.className = "status-badge";
+      } else {
+        statusBadge.textContent = "WebGPU Unsupported";
+        statusBadge.className = "status-badge loading";
+      }
+    });
+
+    window.initWebGPU = async function() {
+      const modelId = document.getElementById("model-select").value;
+      const statusBadge = document.getElementById("gpu-status-badge");
+      const btnLabel = document.getElementById("load-btn-label");
+      const btnGpu = document.getElementById("btn-load-gpu");
+      const progressBar = document.getElementById("gpu-progress-bar");
+      const progressFill = document.getElementById("gpu-progress-fill");
+      const engineTelemetry = document.getElementById("engine-telemetry");
+
+      btnGpu.disabled = true;
+      statusBadge.className = "status-badge loading";
+      statusBadge.textContent = "Loading Weights...";
+      progressBar.style.display = "block";
+
+      try {
+        window.engine = await webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (report) => {
+            const pct = Math.round((report.progress || 0) * 100);
+            progressFill.style.width = pct + "%";
+            btnLabel.textContent = `Downloading ${pct}%`;
+          }
+        });
+
+        window.isWebGPULoaded = true;
+        statusBadge.className = "status-badge";
+        statusBadge.textContent = "WebGPU Online";
+        btnLabel.textContent = "AI Master Active";
+        progressBar.style.display = "none";
+        engineTelemetry.textContent = `WebGPU Hardware Accelerated (${modelId})`;
+        engineTelemetry.style.color = "var(--accent-emerald)";
+      } catch (err) {
+        console.warn("WebGPU initialization failed or fallback needed:", err);
+        statusBadge.className = "status-badge loading";
+        statusBadge.textContent = "Sim Mode (Instant)";
+        btnLabel.textContent = "Simulation Mode";
+        btnGpu.disabled = false;
+        progressBar.style.display = "none";
+        engineTelemetry.textContent = "Simulation Engine (Zero Wait Time)";
+      }
+    };
+  </script>
+
+  <!-- =========================================================================
+       JAVASCRIPT: THREE.JS 3D PROCEDURAL GAME WORLD & PLOT INTEGRATION
+       ========================================================================= -->
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. THREE.JS 3D SCENE SETUP
+    // -------------------------------------------------------------------------
+    let scene, camera, renderer;
+    let islandMesh, monolithMesh, guardianMesh, crystalRunes = [], floatingIslands = [];
+    let particleSystem;
+    let ambientLight, directionalLight, pointLight;
+
+    // Player position and controls
+    let playerPos = { x: 0, y: 1.2, z: 12 };
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let isDragging = false, prevMouseX = 0, prevMouseY = 0;
+    let cameraAngleX = 0, cameraAngleY = 0.25;
+
+    function init3DWorld() {
+      const container = document.getElementById("game-canvas");
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x090D16, 0.025);
+
+      camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 4, 16);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // LIGHTING
+      ambientLight = new THREE.AmbientLight(0x1e1b4b, 1.2);
+      scene.add(ambientLight);
+
+      directionalLight = new THREE.DirectionalLight(0x06B6D4, 2.0);
+      directionalLight.position.set(20, 40, 20);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      pointLight = new THREE.PointLight(0x8B5CF6, 3.5, 30);
+      pointLight.position.set(0, 4, 0);
+      scene.add(pointLight);
+
+      // PROCEDURAL MAIN FLOATING ISLAND
+      const islandGeo = new THREE.CylinderGeometry(14, 2, 7, 32);
+      const islandMat = new THREE.MeshStandardMaterial({
+        color: 0x1E293B,
+        roughness: 0.8,
+        metalness: 0.2,
+        flatShading: true
+      });
+      islandMesh = new THREE.Mesh(islandGeo, islandMat);
+      islandMesh.position.y = -3.5;
+      islandMesh.receiveShadow = true;
+      scene.add(islandMesh);
+
+      // THE ANCIENT MONOLITH (THE NARRATIVE NEXUS)
+      const monolithGeo = new THREE.BoxGeometry(2.4, 8, 2.4);
+      const monolithMat = new THREE.MeshStandardMaterial({
+        color: 0x0284C7,
+        emissive: 0x0369A1,
+        emissiveIntensity: 0.6,
+        roughness: 0.2,
+        metalness: 0.8
+      });
+      monolithMesh = new THREE.Mesh(monolithGeo, monolithMat);
+      monolithMesh.position.set(0, 4, 0);
+      monolithMesh.castShadow = true;
+      scene.add(monolithMesh);
+
+      // GUARDIAN CONSTRUCT (FLOATING ABSTRACT GUARDIAN ENTITY)
+      const guardianGeo = new THREE.OctahedronGeometry(1.4, 0);
+      const guardianMat = new THREE.MeshStandardMaterial({
+        color: 0x8B5CF6,
+        emissive: 0x7C3AED,
+        emissiveIntensity: 0.9,
+        wireframe: false,
+        metalness: 0.9,
+        roughness: 0.1
+      });
+      guardianMesh = new THREE.Mesh(guardianGeo, guardianMat);
+      guardianMesh.position.set(0, 5, -4);
+      scene.add(guardianMesh);
+
+      // RUNIC CRYSTAL ORBITALS
+      const runeGeo = new THREE.TetrahedronGeometry(0.7, 0);
+      for (let i = 0; i < 6; i++) {
+        const runeMat = new THREE.MeshStandardMaterial({
+          color: 0x06B6D4,
+          emissive: 0x0891B2,
+          emissiveIntensity: 0.8
+        });
+        const rune = new THREE.Mesh(runeGeo, runeMat);
+        scene.add(rune);
+        crystalRunes.push(rune);
+      }
+
+      // BACKGROUND DISTANT FLOATING ROCKS
+      for (let i = 0; i < 15; i++) {
+        const rGeo = new THREE.DodecahedronGeometry(Math.random() * 3 + 1, 0);
+        const rMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, flatShading: true });
+        const rock = new THREE.Mesh(rGeo, rMat);
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 60 + 30;
+        rock.position.set(Math.cos(angle) * dist, Math.random() * 30 - 10, Math.sin(angle) * dist);
+        scene.add(rock);
+        floatingIslands.push({ mesh: rock, speed: Math.random() * 0.005 + 0.002, offset: Math.random() * Math.PI });
+      }
+
+      // VOLUMETRIC AETHER PARTICLES
+      const particleCount = 400;
+      const particleGeo = new THREE.BufferGeometry();
+      const pPositions = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        pPositions[i] = (Math.random() - 0.5) * 40;
+        pPositions[i + 1] = Math.random() * 20 - 2;
+        pPositions[i + 2] = (Math.random() - 0.5) * 40;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+      const particleMat = new THREE.PointsMaterial({
+        color: 0x06B6D4,
+        size: 0.18,
+        transparent: true,
+        opacity: 0.7
+      });
+      particleSystem = new THREE.Points(particleGeo, particleMat);
+      scene.add(particleSystem);
+
+      // EVENT LISTENERS FOR CONTROLS
+      window.addEventListener("resize", onWindowResize);
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
+      
+      const canvasEl = renderer.domElement;
+      canvasEl.addEventListener("mousedown", (e) => { isDragging = true; prevMouseX = e.clientX; prevMouseY = e.clientY; });
+      window.addEventListener("mouseup", () => { isDragging = false; });
+      window.addEventListener("mousemove", onMouseMove);
+
+      animate3D();
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'w' || e.key === 'W') moveForward = true;
+      if (e.key === 's' || e.key === 'S') moveBackward = true;
+      if (e.key === 'a' || e.key === 'A') moveLeft = true;
+      if (e.key === 'd' || e.key === 'D') moveRight = true;
+      if (e.key === '1') executePlayerChoice(1);
+      if (e.key === '2') executePlayerChoice(2);
+      if (e.key === '3') executePlayerChoice(3);
+    }
+
+    function onKeyUp(e) {
+      if (e.key === 'w' || e.key === 'W') moveForward = false;
+      if (e.key === 's' || e.key === 'S') moveBackward = false;
+      if (e.key === 'a' || e.key === 'A') moveLeft = false;
+      if (e.key === 'd' || e.key === 'D') moveRight = false;
+    }
+
+    function onMouseMove(e) {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      const deltaY = e.clientY - prevMouseY;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
+
+      cameraAngleX -= deltaX * 0.006;
+      cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.5, cameraAngleY + deltaY * 0.006));
+    }
+
+    // 3D ANIMATION LOOP
+    let clock = new THREE.Clock();
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // PLAYER MOVEMENT
+      const speed = 7.0 * delta;
+      if (moveForward) playerPos.z -= speed;
+      if (moveBackward) playerPos.z += speed;
+      if (moveLeft) playerPos.x -= speed;
+      if (moveRight) playerPos.x += speed;
+
+      // CONSTRAIN TO ISLAND CIRCLE
+      const distFromCenter = Math.sqrt(playerPos.x * playerPos.x + playerPos.z * playerPos.z);
+      if (distFromCenter > 13) {
+        playerPos.x *= 13 / distFromCenter;
+        playerPos.z *= 13 / distFromCenter;
+      }
+
+      // CAMERA FOLLOW ORBIT
+      const camDist = 9.0;
+      camera.position.x = playerPos.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+      camera.position.y = playerPos.y + camDist * Math.sin(cameraAngleY) + 2.0;
+      camera.position.z = playerPos.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+      camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
+
+      // ROTATE MONOLITH & GUARDIAN
+      if (monolithMesh) {
+        monolithMesh.rotation.y = elapsed * 0.35;
+        monolithMesh.position.y = 4 + Math.sin(elapsed * 1.5) * 0.3;
+      }
+      if (guardianMesh) {
+        guardianMesh.rotation.x = elapsed * 0.6;
+        guardianMesh.rotation.y = elapsed * 0.8;
+        guardianMesh.position.y = 5 + Math.cos(elapsed * 1.8) * 0.5;
+      }
+
+      // ORBIT CRYSTAL RUNES
+      crystalRunes.forEach((rune, i) => {
+        const angle = elapsed * 0.8 + (i * Math.PI / 3);
+        const radius = 5.5 + Math.sin(elapsed + i) * 0.5;
+        rune.position.set(Math.cos(angle) * radius, 3.5 + Math.sin(angle * 2) * 1.0, Math.sin(angle) * radius);
+        rune.rotation.x = elapsed;
+        rune.rotation.y = elapsed * 1.4;
+      });
+
+      // FLOAT DISTANT ISLANDS
+      floatingIslands.forEach(item => {
+        item.mesh.position.y += Math.sin(elapsed * 2 + item.offset) * 0.015;
+        item.mesh.rotation.y += item.speed;
+      });
+
+      // SLOW GLOW OF AETHER PARTICLES
+      if (particleSystem) {
+        particleSystem.rotation.y = elapsed * 0.05;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. REAL-TIME AI PLOT EVOLUTION ENGINE
+    // -------------------------------------------------------------------------
+
+    // GAME STATE TRACKER
+    const GAME_STATE = {
+      act: 1,
+      resonance: 78,
+      alignment: "Ethereal Balance",
+      realm: "The Sunken Obelisk",
+      history: []
+    };
+
+    // PROCEDURAL BRANCH SCENARIOS FOR INSTANT SIMULATION / FALLBACK
+    const BRANCHING_PLOT_DB = {
+      1: {
+        act: "Act I: The Resonance Gate",
+        realm: "The Sunken Obelisk",
+        goal: "Attune the Ancient Runes",
+        desc: "The crystal monolith resonates with your aura. Three harmonic paths present themselves.",
+        choices: [
+          { text: "Channel your life energy directly into the stone", nextAct: 2, flavor: "energy" },
+          { text: "Recite the ancient glyphs engraved on the rim", nextAct: 2, flavor: "lore" },
+          { text: "Shatter the binding crystals to free the trapped entity", nextAct: 2, flavor: "combat" }
+        ],
+        story: "As you step closer to the monolith, an azure harmonic hum reverberates through the obsidian ground. The floating crystals accelerate their orbits, casting crystalline refractions across the nebula.\n\nThe guardian construct speaks in a layered choir of reverberating tones: 'Mortal traveler... the stars have aligned after ten millennia. Will you serve the Covenant of Light, unravel the Lost Knowledge, or break the ancient seals?'"
+      },
+      2: {
+        act: "Act II: The Shattered Citadel",
+        realm: "The Citadel of Nebulae",
+        goal: "Navigate the Rift Storm",
+        desc: "The realm shifts violently. A swirling vortex of golden stormclouds opens overhead.",
+        choices: [
+          { text: "Step through the celestial portal into the core chamber", nextAct: 3, flavor: "portal" },
+          { text: "Summon the aether shields to withstand the storm", nextAct: 3, flavor: "defense" },
+          { text: "Commune with the cosmic vortex to absorb its cosmic power", nextAct: 3, flavor: "power" }
+        ],
+        story: "Your choice echoes across the cosmos! The sky shifts from deep obsidian to radiant amethyst and gold. Pillars of light erupt from the floating islands in the distance.\n\nThe monolith blooms outward like a metallic lotus, revealing a glowing cosmic singularity at its heart. The guardian entity bows its multifaceted head: 'The path has been chosen. The timeline bends to your will. Ahead lies the Genesis Gateway.'"
+      },
+      3: {
+        act: "Act III: The Apex Transcendence",
+        realm: "The Genesis Gateway",
+        goal: "Decide the Fate of the Aether",
+        desc: "The celestial matrix is fully unlocked. You stand at the precipice of creation.",
+        choices: [
+          { text: "Rebuild the universe in harmony with all mortal kind", nextAct: 1, flavor: "peace" },
+          { text: "Ascend as the eternal sovereign of the Aether", nextAct: 1, flavor: "ascend" },
+          { text: "Release all cosmic energy into the infinite void", nextAct: 1, flavor: "reset" }
+        ],
+        story: "Blinding radiance fills the 3D void! The islands re-align themselves into an intricate geometric mandala of pure light. The aether storm settles into a tranquil mirror of cosmic stars.\n\nYou have completed the cycle of the Aether. The universe awaits your final decree to shape the next epoch."
+      }
+    };
+
+    // TRIGGER 3D ENVIRONMENT DYNAMIC EFFECTS BASED ON PLOT
+    function update3DEnvironment(theme) {
+      if (theme === 'energy') {
+        monolithMesh.material.color.setHex(0xF59E0B);
+        monolithMesh.material.emissive.setHex(0xD97706);
+        pointLight.color.setHex(0xF59E0B);
+        crystalRunes.forEach(r => r.material.color.setHex(0xFBBF24));
+      } else if (theme === 'lore') {
+        monolithMesh.material.color.setHex(0x10B981);
+        monolithMesh.material.emissive.setHex(0x059669);
+        pointLight.color.setHex(0x10B981);
+        crystalRunes.forEach(r => r.material.color.setHex(0x34D399));
+      } else if (theme === 'combat') {
+        monolithMesh.material.color.setHex(0xEF4444);
+        monolithMesh.material.emissive.setHex(0xDC2626);
+        pointLight.color.setHex(0xEF4444);
+        crystalRunes.forEach(r => r.material.color.setHex(0xF87171));
+      } else {
+        monolithMesh.material.color.setHex(0x8B5CF6);
+        monolithMesh.material.emissive.setHex(0x7C3AED);
+        pointLight.color.setHex(0x06B6D4);
+        crystalRunes.forEach(r => r.material.color.setHex(0x06B6D4));
+      }
+    }
+
+    // EXECUTE PLAYER DECISION & GENERATE PLOT IN REAL TIME
+    async function executePlayerChoice(choiceIndex) {
+      const choiceBtn = document.getElementById(`choice-${choiceIndex}`);
+      const chosenText = document.getElementById(`choice-${choiceIndex}-text`).textContent;
+
+      // Disable choice buttons during generation
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`choice-${i}`).disabled = true;
+      }
+
+      // Record in history
+      GAME_STATE.history.push(chosenText);
+      GAME_STATE.act = (GAME_STATE.act % 3) + 1;
+      GAME_STATE.resonance = Math.min(100, Math.max(20, GAME_STATE.resonance + (choiceIndex === 1 ? 8 : (choiceIndex === 2 ? -5 : 12))));
+
+      // Update UI Telemetry
+      document.getElementById("act-number").textContent = `Act ${GAME_STATE.act}: ${GAME_STATE.act === 1 ? 'Discovery' : (GAME_STATE.act === 2 ? 'The Crucible' : 'Transcendence')}`;
+      document.getElementById("resonance-level").textContent = `${GAME_STATE.resonance}%`;
+
+      const storyEl = document.getElementById("story-stream");
+      storyEl.textContent = `[Player Action: ${chosenText}]\n\nArchitecting next narrative node...\n`;
+
+      // Branch 3D visuals
+      const themeColors = ['energy', 'lore', 'combat', 'portal'];
+      update3DEnvironment(themeColors[choiceIndex % themeColors.length]);
+
+      if (window.isWebGPULoaded && window.engine) {
+        // GENERATE VIA REAL WEBGPU WEBLLM MODEL
+        await generatePlotWithWebLLM(chosenText);
+      } else {
+        // HIGH-FIDELITY PROCEDURAL SIMULATION STREAMING
+        await generateSimulatedPlot(GAME_STATE.act, chosenText);
+      }
+
+      // Re-enable buttons
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`choice-${i}`).disabled = false;
+      }
+    }
+
+    // STREAM SIMULATED PROCEDURAL NARRATIVE
+    async function generateSimulatedPlot(actNum, playerAction) {
+      const plotNode = BRANCHING_PLOT_DB[actNum];
+      document.getElementById("realm-name").textContent = plotNode.realm;
+      document.getElementById("quest-goal").textContent = plotNode.goal;
+      document.getElementById("quest-desc").textContent = plotNode.desc;
+
+      const storyEl = document.getElementById("story-stream");
+      const fullText = `[Action: ${playerAction}]\n\n` + plotNode.story;
+
+      storyEl.textContent = "";
+      const chars = fullText.split("");
+      for (let i = 0; i < chars.length; i++) {
+        storyEl.textContent += chars[i];
+        storyEl.scrollTop = storyEl.scrollHeight;
+        if (i % 3 === 0) await new Promise(r => setTimeout(r, 14));
+      }
+
+      // Update next 3 choices
+      plotNode.choices.forEach((c, idx) => {
+        document.getElementById(`choice-${idx + 1}-text`).textContent = c.text;
+      });
+    }
+
+    // STREAM LIVE WEBGPU WEBLLM PROMPT
+    async function generatePlotWithWebLLM(playerAction) {
+      const storyEl = document.getElementById("story-stream");
+
+      const systemPrompt = `You are the Game Master of a high-fantasy sci-fi 3D game named "Chronicles of the Aether".
+The player just took the following action: "${playerAction}".
+Generate the next exciting narrative segment in 3 to 4 sentences, describing how the 3D aether world reacts.
+Then provide exactly three distinct, dramatic player action options formatted as:
+[CHOICE 1]: <action>
+[CHOICE 2]: <action>
+[CHOICE 3]: <action>`;
+
+      try {
+        const completion = await window.engine.chat.completions.create({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `The player chose: "${playerAction}". Continue the saga.` }
+          ],
+          stream: true,
+          temperature: 0.6
+        });
+
+        let accumulatedText = "";
+        storyEl.textContent = `[Action: ${playerAction}]\n\n`;
+
+        for await (const chunk of completion) {
+          const delta = chunk.choices[0]?.delta?.content || "";
+          accumulatedText += delta;
+          storyEl.textContent += delta;
+          storyEl.scrollTop = storyEl.scrollHeight;
+        }
+
+        // Parse choices from LLM output if present
+        const c1Match = accumulatedText.match(/\[CHOICE 1\]:\s*(.+)/i);
+        const c2Match = accumulatedText.match(/\[CHOICE 2\]:\s*(.+)/i);
+        const c3Match = accumulatedText.match(/\[CHOICE 3\]:\s*(.+)/i);
+
+        if (c1Match) document.getElementById("choice-1-text").textContent = c1Match[1].trim();
+        if (c2Match) document.getElementById("choice-2-text").textContent = c2Match[1].trim();
+        if (c3Match) document.getElementById("choice-3-text").textContent = c3Match[1].trim();
+
+      } catch (err) {
+        console.error("WebLLM generation error:", err);
+        await generateSimulatedPlot(GAME_STATE.act, playerAction);
+      }
+    }
+
+    // START 3D GAME ON LOAD
+    window.addEventListener("load", () => {
+      init3DWorld();
+    });
+  </script>
+
+</body>
+</html>
