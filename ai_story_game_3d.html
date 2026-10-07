@@ -579,26 +579,48 @@
     box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
   }
 
+  /* MODAL BACKDROP & DIALOG STYLES */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 9990;
+    display: none;
+    pointer-events: auto !important;
+  }
+  .modal-backdrop.open {
+    display: block !important;
+  }
+
   .json-modal {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 720px;
-    max-width: 92vw;
-    max-height: 82vh;
-    background: rgba(10, 15, 29, 0.96);
-    backdrop-filter: blur(24px);
+    max-width: 94vw;
+    max-height: 88vh;
+    background: rgba(10, 15, 29, 0.98);
+    backdrop-filter: blur(28px);
     border: 1.5px solid var(--accent-cyan);
     border-radius: 16px;
-    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(6, 182, 212, 0.35);
-    z-index: 200;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(6, 182, 212, 0.4);
+    z-index: 9999;
     display: none;
     flex-direction: column;
-    padding: 20px 24px;
+    padding: 22px 26px;
+    pointer-events: auto !important;
+    overflow-y: auto;
+  }
+  .json-modal * {
+    pointer-events: auto;
   }
   .json-modal.open {
-    display: flex;
+    display: flex !important;
   }
   .json-modal-header {
     display: flex;
@@ -615,14 +637,27 @@
     color: var(--accent-cyan);
   }
   .json-modal-close {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #cbd5e1;
+    font-size: 1.4rem;
     cursor: pointer;
     line-height: 1;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    pointer-events: auto !important;
   }
-  .json-modal-close:hover { color: #FFFFFF; }
+  .json-modal-close:hover {
+    color: #FFFFFF;
+    background: rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.8);
+    transform: scale(1.05);
+  }
   .json-content-area {
     background: #030712;
     border: 1px solid var(--border-dark);
@@ -823,84 +858,6 @@
       </div>
     </div>
 
-    <!-- AI 3D SCENE GRAPH JSON MODAL -->
-    <div id="json-modal" class="json-modal">
-      <div class="json-modal-header">
-        <div class="json-modal-title">⚡ Live Generative 3D Scene Graph (JSON Spec)</div>
-        <button class="json-modal-close" onclick="toggleJsonModal()">&times;</button>
-      </div>
-      <div class="json-modal-desc" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:8px;">
-        This JSON tree was compiled on the fly by the AI. Every 3D primitive, material, coordinate, and lighting property is dynamically parsed by Three.js in real time.
-      </div>
-      <div id="json-viewer-content" class="json-content-area">// Scene graph JSON will appear here after generation...</div>
-      <div class="json-actions-bar">
-        <button class="btn-custom-action" onclick="toggleJsonModal()" style="background:#334155;">Close</button>
-        <button class="btn-custom-action" onclick="copySceneGraphJSON()">Copy JSON</button>
-      </div>
-    </div>
-
-    <!-- AI ENGINE PROVIDER MODAL -->
-    <div id="ai-settings-modal" class="json-modal" style="max-width:540px;">
-      <div class="json-modal-header">
-        <div class="json-modal-title">⚙️ Generative AI Engine Settings</div>
-        <button class="json-modal-close" onclick="toggleAiSettingsModal()">&times;</button>
-      </div>
-      <div class="json-modal-desc" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;">
-        Choose whether to stream generative 3D instructions directly from your browser's WebGPU or from Groq Cloud LPUs (0.1s latency) on the fly.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;">
-        <div>
-          <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">ENGINE MODE</label>
-          <select id="cfg-engine-mode" class="model-select" style="width:100%;" onchange="onEngineModeChange()">
-            <option value="cloud">⚡ Cloud LPU / Groq API (Instant 0.1s, Zero GPU Overhead, Preconfigured)</option>
-            <option value="webgpu">💻 WebGPU Local Neural AI (In-Browser GPU, Private, No API Key)</option>
-          </select>
-        </div>
-        <div id="cfg-cloud-fields" style="display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">QUICK CLOUD PRESETS</label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#0369a1;" onclick="applyCloudPreset('groq-qwen')">⚡ Groq (Qwen 3.8 27B)</button>
-              <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#4338ca;" onclick="applyCloudPreset('groq-gpt120b')">🧠 Groq (GPT OSS 120B)</button>
-              <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#334155;" onclick="applyCloudPreset('ollama')">🏠 Local Ollama</button>
-            </div>
-          </div>
-          <div>
-            <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">API ENDPOINT</label>
-            <input id="cfg-api-endpoint" type="text" style="width:100%;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="https://api.groq.com/openai/v1/chat/completions">
-          </div>
-          <div>
-            <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">GROQ / CLOUD API KEY (Saved locally in your browser)</label>
-            <div style="display:flex;gap:6px;">
-              <input id="cfg-api-key" type="password" style="flex:1;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="gsk_...">
-              <button type="button" class="btn-custom-action" style="padding:6px 12px;font-size:0.75rem;background:#0284c7;white-space:nowrap;" onclick="pasteApiKeyFromClipboard()">📋 Paste Key</button>
-            </div>
-          </div>
-          <div>
-            <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">MODEL SELECTION</label>
-            <select id="cfg-api-model-select" class="model-select" style="width:100%;margin-bottom:6px;" onchange="onModelDropdownChange()">
-              <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Fastest 3D Architect - Recommended)</option>
-              <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Deep Reasoning 120B)</option>
-              <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Fast Reasoning 20B)</option>
-              <option value="custom">Custom Model Name...</option>
-            </select>
-            <input id="cfg-api-model" type="text" style="width:100%;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="qwen/qwen3.8-27b">
-          </div>
-        </div>
-
-        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:0.72rem;color:var(--text-muted);line-height:1.45;">
-          <div style="font-weight:700;color:var(--accent-cyan);margin-bottom:4px;">💡 3D Generation Architecture Note</div>
-          <div><strong>• Real-Time Spatial Architect (Groq LPUs):</strong> Generates full 3D procedural scenes and narrative lore at 500+ tokens/sec using spatial 3D commands.</div>
-          <div style="margin-top:3px;"><strong>• Photorealistic Text-to-3D Models:</strong> For biological creatures like birds, horses, and vehicles, the engine streams animated high-resolution textured <code>.glb</code> models with wing-flapping/running skeletal rigs.</div>
-          <div style="margin-top:3px;"><strong>• Neural Mesh Generators (Tripo3D / Meshy):</strong> Want to create bespoke AI 3D meshes from pure text? Get free API keys from <a href="https://platform.tripo3d.ai" target="_blank" style="color:var(--accent-cyan);">Tripo3D</a> or <a href="https://www.meshy.ai" target="_blank" style="color:var(--accent-cyan);">Meshy.ai</a>.</div>
-        </div>
-      </div>
-      <div class="json-actions-bar">
-        <button class="btn-custom-action" onclick="toggleAiSettingsModal()" style="background:#334155;">Cancel</button>
-        <button class="btn-custom-action" onclick="saveAiSettings()">Save &amp; Apply</button>
-      </div>
-    </div>
-
     <!-- BOTTOM REAL-TIME STORY CONSOLE & DECISIONS -->
     <div class="bottom-hud">
       <div class="narrative-console">
@@ -940,6 +897,87 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL BACKDROP OVERLAY -->
+  <div id="modal-backdrop" class="modal-backdrop" onclick="closeAllModals()"></div>
+
+  <!-- AI 3D SCENE GRAPH JSON MODAL -->
+  <div id="json-modal" class="json-modal" onclick="event.stopPropagation()">
+    <div class="json-modal-header">
+      <div class="json-modal-title">⚡ Live Generative 3D Scene Graph (JSON Spec)</div>
+      <button class="json-modal-close" onclick="closeJsonModal()" title="Close">&times;</button>
+    </div>
+    <div class="json-modal-desc" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:8px;">
+      This JSON tree was compiled on the fly by the AI. Every 3D primitive, material, coordinate, and lighting property is dynamically parsed by Three.js in real time.
+    </div>
+    <div id="json-viewer-content" class="json-content-area">// Scene graph JSON will appear here after generation...</div>
+    <div class="json-actions-bar">
+      <button class="btn-custom-action" onclick="closeJsonModal()" style="background:#334155;">Close</button>
+      <button class="btn-custom-action" onclick="copySceneGraphJSON()">Copy JSON</button>
+    </div>
+  </div>
+
+  <!-- AI ENGINE PROVIDER MODAL -->
+  <div id="ai-settings-modal" class="json-modal" style="max-width:540px;" onclick="event.stopPropagation()">
+    <div class="json-modal-header">
+      <div class="json-modal-title">⚙️ Generative AI Engine Settings</div>
+      <button class="json-modal-close" onclick="closeAiSettingsModal()" title="Close">&times;</button>
+    </div>
+    <div class="json-modal-desc" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;">
+      Choose whether to stream generative 3D instructions directly from your browser's WebGPU or from Groq Cloud LPUs (0.1s latency) on the fly.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">ENGINE MODE</label>
+        <select id="cfg-engine-mode" class="model-select" style="width:100%;" onchange="onEngineModeChange()">
+          <option value="cloud">⚡ Cloud LPU / Groq API (Instant 0.1s, Zero GPU Overhead, Preconfigured)</option>
+          <option value="webgpu">💻 WebGPU Local Neural AI (In-Browser GPU, Private, No API Key)</option>
+        </select>
+      </div>
+      <div id="cfg-cloud-fields" style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">QUICK CLOUD PRESETS</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#0369a1;" onclick="applyCloudPreset('groq-qwen')">⚡ Groq (Qwen 3.8 27B)</button>
+            <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#4338ca;" onclick="applyCloudPreset('groq-gpt120b')">🧠 Groq (GPT OSS 120B)</button>
+            <button type="button" class="btn-custom-action" style="padding:4px 8px;font-size:0.72rem;background:#334155;" onclick="applyCloudPreset('ollama')">🏠 Local Ollama</button>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">API ENDPOINT</label>
+          <input id="cfg-api-endpoint" type="text" style="width:100%;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="https://api.groq.com/openai/v1/chat/completions">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">GROQ / CLOUD API KEY (Saved locally in your browser)</label>
+          <div style="display:flex;gap:6px;">
+            <input id="cfg-api-key" type="password" style="flex:1;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="gsk_...">
+            <button type="button" class="btn-custom-action" style="padding:6px 12px;font-size:0.75rem;background:#0284c7;white-space:nowrap;" onclick="pasteApiKeyFromClipboard()">📋 Paste Key</button>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">MODEL SELECTION</label>
+          <select id="cfg-api-model-select" class="model-select" style="width:100%;margin-bottom:6px;" onchange="onModelDropdownChange()">
+            <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Fastest 3D Architect - Recommended)</option>
+            <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Deep Reasoning 120B)</option>
+            <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Fast Reasoning 20B)</option>
+            <option value="custom">Custom Model Name...</option>
+          </select>
+          <input id="cfg-api-model" type="text" style="width:100%;background:#090d16;border:1px solid var(--border-dark);color:#fff;padding:8px;border-radius:6px;font-family:inherit;font-size:0.8rem;" placeholder="qwen/qwen3.8-27b">
+        </div>
+      </div>
+
+      <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:0.72rem;color:var(--text-muted);line-height:1.45;">
+        <div style="font-weight:700;color:var(--accent-cyan);margin-bottom:4px;">💡 3D Generation Architecture Note</div>
+        <div><strong>• Real-Time Spatial Architect (Groq LPUs):</strong> Generates full 3D procedural scenes and narrative lore at 500+ tokens/sec using spatial 3D commands.</div>
+        <div style="margin-top:3px;"><strong>• Photorealistic Text-to-3D Models:</strong> For biological creatures like birds, horses, and vehicles, the engine streams animated high-resolution textured <code>.glb</code> models with wing-flapping/running skeletal rigs.</div>
+        <div style="margin-top:3px;"><strong>• Neural Mesh Generators (Tripo3D / Meshy):</strong> Want to create bespoke AI 3D meshes from pure text? Get free API keys from <a href="https://platform.tripo3d.ai" target="_blank" style="color:var(--accent-cyan);">Tripo3D</a> or <a href="https://www.meshy.ai" target="_blank" style="color:var(--accent-cyan);">Meshy.ai</a>.</div>
+      </div>
+    </div>
+    <div class="json-actions-bar">
+      <button class="btn-custom-action" onclick="closeAiSettingsModal()" style="background:#334155;">Cancel</button>
+      <button class="btn-custom-action" onclick="saveAiSettings()">Save &amp; Apply</button>
+    </div>
   </div>
 
   <div class="controls-hint">
@@ -1639,9 +1677,12 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
     // -------------------------------------------------------------------------
     let currentSceneGraphJSON = null;
 
-    window.toggleAiSettingsModal = function() {
+    window.openAiSettingsModal = function() {
       const modal = document.getElementById("ai-settings-modal");
-      if (modal) modal.classList.toggle("open");
+      const backdrop = document.getElementById("modal-backdrop");
+      if (backdrop) backdrop.classList.add("open");
+      if (modal) modal.classList.add("open");
+
       const mode = localStorage.getItem("aether_engine_mode") || "cloud";
       const sel = document.getElementById("cfg-engine-mode");
       if (sel) sel.value = mode;
@@ -1664,6 +1705,62 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
       }
       window.onEngineModeChange();
     };
+
+    window.closeAiSettingsModal = function() {
+      const modal = document.getElementById("ai-settings-modal");
+      const backdrop = document.getElementById("modal-backdrop");
+      if (modal) modal.classList.remove("open");
+      const jsonModal = document.getElementById("json-modal");
+      if (backdrop && (!jsonModal || !jsonModal.classList.contains("open"))) {
+        backdrop.classList.remove("open");
+      }
+    };
+
+    window.toggleAiSettingsModal = function() {
+      const modal = document.getElementById("ai-settings-modal");
+      if (modal && modal.classList.contains("open")) {
+        window.closeAiSettingsModal();
+      } else {
+        window.openAiSettingsModal();
+      }
+    };
+
+    window.openJsonModal = function() {
+      const modal = document.getElementById("json-modal");
+      const backdrop = document.getElementById("modal-backdrop");
+      if (backdrop) backdrop.classList.add("open");
+      if (modal) modal.classList.add("open");
+    };
+
+    window.closeJsonModal = function() {
+      const modal = document.getElementById("json-modal");
+      const backdrop = document.getElementById("modal-backdrop");
+      if (modal) modal.classList.remove("open");
+      const aiModal = document.getElementById("ai-settings-modal");
+      if (backdrop && (!aiModal || !aiModal.classList.contains("open"))) {
+        backdrop.classList.remove("open");
+      }
+    };
+
+    window.toggleJsonModal = function() {
+      const modal = document.getElementById("json-modal");
+      if (modal && modal.classList.contains("open")) {
+        window.closeJsonModal();
+      } else {
+        window.openJsonModal();
+      }
+    };
+
+    window.closeAllModals = function() {
+      window.closeAiSettingsModal();
+      window.closeJsonModal();
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        window.closeAllModals();
+      }
+    });
 
     window.onModelDropdownChange = function() {
       const select = document.getElementById("cfg-api-model-select");
@@ -1763,12 +1860,7 @@ Type ANYTHING into the box below (e.g. "take me to desert pyramids", "deep under
           statusBadge.style.color = "var(--text-muted)";
         }
       }
-      window.toggleAiSettingsModal();
-    };
-
-    window.toggleJsonModal = function() {
-      const modal = document.getElementById("json-modal");
-      if (modal) modal.classList.toggle("open");
+      window.closeAiSettingsModal();
     };
 
     window.copySceneGraphJSON = function() {
