@@ -174,7 +174,7 @@ def build_paper_docx():
         footer = section.footer
         fp = footer.paragraphs[0]
         fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        frun = fp.add_run("AI Engineering Lab • Document AIRC-2026-AMPC-01")
+        frun = fp.add_run("Document AIRC-2026-AMPC-01")
         frun.font.name = 'Calibri'
         frun.font.size = Pt(8.5)
         frun.font.color.rgb = RGBColor(148, 163, 184)
@@ -194,9 +194,8 @@ def build_paper_docx():
     meta_p.paragraph_format.space_after = Pt(14)
     runs_data = [
         ("Author: ", True), ("Zhaoyang Wan, PhD, MBA    |    ", False),
-        ("Affiliation: ", True), ("AI Engineering Lab, Cosmos Analytics\n", False),
         ("Date: ", True), ("October 2026    |    ", False),
-        ("Document ID: ", True), ("AIRC-2026-AMPC-01    |    ", False),
+        ("Document ID: ", True), ("AIRC-2026-AMPC-01\n", False),
         ("Repository: ", True), ("cosmosanalytics/uat-copilot-local", False)
     ]
     for text, bold in runs_data:

@@ -1,7 +1,6 @@
 # Agentic Model Predictive Control: Operating in Intelligence Space via Cognitive Agent OS and Differentiable Parallel Rollouts
 
 **Author:** Zhaoyang Wan, PhD, MBA  
-**Affiliation:** AI Engineering Lab, Cosmos Analytics  
 **Date:** October 2026  
 **Document ID:** AIRC-2026-AMPC-01  
 
