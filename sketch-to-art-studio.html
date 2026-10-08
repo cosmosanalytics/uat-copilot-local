@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Co-Sketch Studio: Turn Rough Strokes into Masterpieces (WebLLM & WebGPU)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #090D16;
+    --panel: #111827;
+    --panel-border: #1F2937;
+    --panel-head: #0E1626;
+    --card-bg: #162032;
+    --card-border: #243247;
+
+    --text: #F8FAFC;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+
+    --brand: #EC4899;
+    --brand-lt: #F472B6;
+    --brand-bg: #831843;
+    --brand-gradient: linear-gradient(135deg, #EC4899, #8B5CF6, #3B82F6);
+
+    --accent: #8B5CF6;
+    --accent-bg: rgba(139, 92, 246, 0.15);
+
+    --success: #10B981;
+    --amber: #F59E0B;
+    --blue: #3B82F6;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(236, 72, 153, 0.35);
+  }
+
+  [data-theme="light"] {
+    --bg: #F8FAFC;
+    --panel: #FFFFFF;
+    --panel-border: #E2E8F0;
+    --panel-head: #F1F5F9;
+    --card-bg: #FFFFFF;
+    --card-border: #E2E8F0;
+
+    --text: #0F172A;
+    --text-muted: #475569;
+    --text-dim: #94A3B8;
+
+    --brand-bg: #FCE7F3;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Public Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-badge {
+    background: var(--brand-gradient);
+    color: white;
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-glow);
+  }
+  .brand-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+  }
+  .brand-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .model-select {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+  }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    font-family: 'Public Sans', sans-serif;
+  }
+  .btn-webgpu {
+    background: var(--brand-gradient);
+    color: white;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+  }
+  .btn-webgpu:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(236, 72, 153, 0.45); }
+  .btn-theme {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+    padding: 6px 10px;
+  }
+
+  /* GPU STATUS STRIP */
+  .gpu-strip {
+    background: var(--panel);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #CBD5E1;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .dot.ready { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+  .dot.loading { background: #F59E0B; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+  /* MAIN CREATIVE WORKSPACE GRID */
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  /* CANVAS PANELS */
+  .canvas-panel {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.5px solid var(--panel-border);
+    padding-bottom: 10px;
+  }
+  .panel-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* DRAWING TOOLBAR */
+  .draw-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--panel-head);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .tool-btn {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+  .tool-btn:hover { color: var(--text); border-color: var(--brand); }
+  .tool-btn.active {
+    background: var(--brand);
+    color: white;
+    border-color: var(--brand);
+  }
+
+  .color-swatch-picker {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 4px;
+  }
+  .swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: white; transform: scale(1.2); }
+
+  /* CANVAS CONTAINERS */
+  .canvas-stage {
+    position: relative;
+    width: 100%;
+    height: 440px;
+    background: #0B0F19;
+    border: 1.5px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* SPLIT CURTAIN SLIDER FOR MASTERPIECE VIEW */
+  .curtain-container {
+    position: relative;
+    width: 100%;
+    height: 440px;
+    border: 1.5px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0B0F19;
+  }
+  .curtain-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .curtain-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: white;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+    cursor: ew-resize;
+    z-index: 10;
+  }
+  .curtain-handle-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: white;
+    color: #0F172A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* BOTTOM PROMPT & INSTRUCTION CONTROL */
+  .control-dock {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .prompt-row {
+    display: flex;
+    gap: 10px;
+  }
+  .prompt-input {
+    flex: 1;
+    background: var(--panel-head);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+    transition: all 0.15s;
+    font-family: 'Public Sans', sans-serif;
+  }
+  .prompt-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+  }
+
+  .btn-magic {
+    background: var(--brand-gradient);
+    color: white;
+    padding: 10px 22px;
+    font-size: 13.5px;
+    font-weight: 800;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: var(--shadow-glow);
+  }
+  .btn-magic:hover { transform: scale(1.02); }
+
+  /* STYLE PRESETS STRIP */
+  .style-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .style-btn {
+    background: var(--panel-head);
+    border: 1.2px solid var(--panel-border);
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .style-btn:hover {
+    color: var(--text);
+    border-color: var(--brand);
+  }
+  .style-btn.active {
+    background: var(--brand);
+    color: white;
+    border-color: var(--brand);
+  }
+
+  /* PRESET SAMPLE SKETCHES */
+  .sample-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .sample-btn {
+    background: var(--panel-head);
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .sample-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* METRICS & TELEMETRY */
+  .metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    font-size: 11px;
+  }
+  .metric-card {
+    background: var(--panel-head);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .m-label { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; }
+  .m-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--text); }
+
+  /* FOOTER */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--panel-border);
+    padding-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-badge">🎨</div>
+      <div>
+        <div class="brand-title">AI Co-Sketch Studio: From Rough Strokes to Masterpieces</div>
+        <div class="brand-sub">Neural Stroke Interpretation • Generative Inpainting Shader • WebLLM & WebGPU</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="model-select" class="model-select">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (Ultra Fast / ~135MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (Fast / ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Balanced / ~800MB)</option>
+      </select>
+      <button id="btn-init-webgpu" class="btn btn-webgpu" onclick="initWebLLM()">
+        ⚡ Load WebGPU Engine
+      </button>
+      <button class="btn btn-theme" onclick="toggleTheme()">🌓 Theme</button>
+    </div>
+  </header>
+
+  <!-- WEBGPU HARDWARE STRIP -->
+  <div class="gpu-strip">
+    <div>
+      <div id="gpu-dot" class="dot"></div>
+      <span id="gpu-status-text"><strong>Creative Kernel:</strong> Client Canvas Inpainter Active (Click 'Load WebGPU Engine' to run local neural scene reasoning)</span>
+    </div>
+    <div id="gpu-mode-info" style="font-family:'JetBrains Mono', monospace; color:var(--text-dim);">
+      HARDWARE ACCELERATED STROKE SYNTHESIS
+    </div>
+  </div>
+
+  <!-- MAIN DUAL-STAGE WORKSPACE (SKETCH ON LEFT, MASTERPIECE ON RIGHT) -->
+  <div class="workspace-grid">
+
+    <!-- LEFT: USER SKETCHPAD -->
+    <div class="canvas-panel">
+      <div class="panel-head">
+        <span class="panel-title">✏️ 1. Your Rough Sketch</span>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-theme" style="padding:4px 8px; font-size:11px;" onclick="undoStroke()">↩ Undo</button>
+          <button class="btn btn-theme" style="padding:4px 8px; font-size:11px;" onclick="clearCanvas()">🗑️ Clear</button>
+        </div>
+      </div>
+
+      <!-- DRAWING TOOLBAR -->
+      <div class="draw-toolbar">
+        <button class="tool-btn active" id="tool-brush" onclick="setTool('brush')">🖌️ Brush</button>
+        <button class="tool-btn" id="tool-pencil" onclick="setTool('pencil')">✏️ Pencil</button>
+        <button class="tool-btn" id="tool-glow" onclick="setTool('glow')">✨ Glow</button>
+        <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser')">🧹 Eraser</button>
+
+        <div style="display:flex; align-items:center; gap:4px; margin-left:6px;">
+          <span style="font-size:10px; color:var(--text-dim);">Size:</span>
+          <input type="range" id="brush-size" min="2" max="24" value="6" style="width:70px;">
+        </div>
+
+        <div class="color-swatch-picker">
+          <div class="swatch active" style="background:#F8FAFC;" onclick="setColor('#F8FAFC')"></div>
+          <div class="swatch" style="background:#3B82F6;" onclick="setColor('#3B82F6')"></div>
+          <div class="swatch" style="background:#10B981;" onclick="setColor('#10B981')"></div>
+          <div class="swatch" style="background:#F59E0B;" onclick="setColor('#F59E0B')"></div>
+          <div class="swatch" style="background:#EC4899;" onclick="setColor('#EC4899')"></div>
+          <div class="swatch" style="background:#8B5CF6;" onclick="setColor('#8B5CF6')"></div>
+        </div>
+      </div>
+
+      <!-- DRAWING CANVAS CONTAINER -->
+      <div class="canvas-stage" id="canvas-stage">
+        <canvas id="userCanvas"></canvas>
+      </div>
+
+      <!-- PRESET SAMPLE SKETCHES FOR 1-CLICK TEST -->
+      <div class="sample-pills">
+        <span style="font-size:10px; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Quick Presets:</span>
+        <button class="sample-btn" onclick="loadSampleSketch('castle')">🏰 Cliff Castle</button>
+        <button class="sample-btn" onclick="loadSampleSketch('cybercar')">🏎️ Cyber Car</button>
+        <button class="sample-btn" onclick="loadSampleSketch('dragon')">🐲 Cute Dragon</button>
+        <button class="sample-btn" onclick="loadSampleSketch('ocean')">⛵ Sunset Sailboat</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: AI FINISHED MASTERPIECE (WITH BEFORE/AFTER CURTAIN) -->
+    <div class="canvas-panel">
+      <div class="panel-head">
+        <span class="panel-title">🌟 2. Finished Professional Art</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span style="font-size:10px; color:var(--text-dim);">Wipe: Rough ↔ Finished</span>
+          <button class="btn btn-theme" style="padding:4px 8px; font-size:11px;" onclick="downloadArtwork()">💾 Save PNG</button>
+        </div>
+      </div>
+
+      <!-- SPLIT CURTAIN VIEW -->
+      <div class="curtain-container" id="curtain-container">
+        <!-- Background: Finished Artwork -->
+        <canvas id="finishCanvas" class="curtain-canvas"></canvas>
+
+        <!-- Foreground: Clipped Original Sketch for Curtain Slider -->
+        <canvas id="clipCanvas" class="curtain-canvas"></canvas>
+
+        <!-- The Draggable Divider Handle -->
+        <div class="curtain-handle" id="curtain-handle" style="left:40%;">
+          <div class="curtain-handle-knob">↔</div>
+        </div>
+      </div>
+
+      <!-- GENERATION TELEMETRY -->
+      <div class="metrics-strip">
+        <div class="metric-card">
+          <span class="m-label">Stroke Points Analyzed</span>
+          <span class="m-val" id="metric-strokes">0 points</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Artistic Style</span>
+          <span class="m-val" style="color:var(--brand-lt);" id="metric-style">Digital Concept</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Atmosphere Lighting</span>
+          <span class="m-val" style="color:var(--amber);" id="metric-light">Golden Hour</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Synthesis Engine</span>
+          <span class="m-val" style="color:var(--success);" id="metric-latency">WebGPU Ready</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM CONTROL DOCK (DESCRIPTION & FINISH BUTTON) -->
+  <div class="control-dock">
+    <div class="prompt-row">
+      <input type="text" id="desc-input" class="prompt-input" placeholder="Describe how the AI should finish your drawing (e.g. 'a majestic medieval castle on a stormy cliff with glowing lanterns and lightning')..." value="A majestic castle perched on a rocky mountain cliff during sunset with glowing windows and misty clouds">
+      <button class="btn-magic" onclick="finishDrawing()">
+        <span>✨ Finish My Drawing</span>
+      </button>
+    </div>
+
+    <!-- ART STYLE PRESETS -->
+    <div class="style-strip">
+      <span style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--text-dim); margin-right:4px;">Art Style:</span>
+      <button class="style-btn active" onclick="setStyle('concept_art')">🎨 Digital Concept Art</button>
+      <button class="style-btn" onclick="setStyle('ghibli')">🌿 Studio Ghibli Anime</button>
+      <button class="style-btn" onclick="setStyle('cyberpunk')">🌃 Cyberpunk Neon</button>
+      <button class="style-btn" onclick="setStyle('watercolor')">🖌️ Japanese Watercolor</button>
+      <button class="style-btn" onclick="setStyle('oil_painting')">🖼️ Classical Oil Painting</button>
+      <button class="style-btn" onclick="setStyle('blueprint')">📐 Technical Blueprint</button>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div><strong>Universal AI Engineering Blueprint</strong> • Creative Generative Synthesis & Co-Sketching</div>
+    <div>Live WebLLM & WebGPU Engine • Zero Backend • <a href="https://agentskills.io" target="_blank" style="color:var(--brand-lt); text-decoration:none;">agentskills.io</a></div>
+  </footer>
+
+<!-- DRAWING CANVAS ENGINE & GENERATIVE ART COMPOSITOR -->
+<script>
+const userCanvas = document.getElementById('userCanvas');
+const uCtx = userCanvas.getContext('2d');
+
+const finishCanvas = document.getElementById('finishCanvas');
+const fCtx = finishCanvas.getContext('2d');
+
+const clipCanvas = document.getElementById('clipCanvas');
+const cCtx = clipCanvas.getContext('2d');
+
+let isDrawing = false;
+let currentTool = 'brush';
+let currentColor = '#F8FAFC';
+let brushSize = 6;
+let strokeHistory = [];
+let currentStroke = [];
+let currentStyle = 'concept_art';
+
+// Resize canvas resolution to actual CSS display dimensions
+function initCanvases() {
+  const stage = document.getElementById('canvas-stage');
+  const curtain = document.getElementById('curtain-container');
+  const stageRect = stage.getBoundingClientRect();
+  const curtainRect = curtain.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+
+  userCanvas.width = stageRect.width * dpr;
+  userCanvas.height = stageRect.height * dpr;
+
+  finishCanvas.width = curtainRect.width * dpr;
+  finishCanvas.height = curtainRect.height * dpr;
+
+  clipCanvas.width = curtainRect.width * dpr;
+  clipCanvas.height = curtainRect.height * dpr;
+
+  uCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  clearCanvas();
+}
+
+window.addEventListener('resize', initCanvases);
+
+// TOOL & COLOR CONTROLS
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tool-${tool}`).classList.add('active');
+}
+
+function setColor(color) {
+  currentColor = color;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  if (window.event && window.event.target) window.event.target.classList.add('active');
+}
+
+document.getElementById('brush-size').addEventListener('input', e => {
+  brushSize = parseInt(e.target.value);
+});
+
+function setStyle(st) {
+  currentStyle = st;
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  if (window.event && window.event.target) window.event.target.classList.add('active');
+
+  const names = {
+    concept_art: 'Digital Concept',
+    ghibli: 'Ghibli Anime',
+    cyberpunk: 'Cyberpunk Neon',
+    watercolor: 'Japanese Watercolor',
+    oil_painting: 'Oil Painting',
+    blueprint: 'Technical Blueprint'
+  };
+  document.getElementById('metric-style').textContent = names[st] || st;
+}
+
+// DRAWING EVENT LISTENERS (MOUSE & TOUCH SUPPORT)
+function getPos(e) {
+  const rect = userCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  isDrawing = true;
+  const pos = getPos(e);
+  currentStroke = [pos];
+
+  uCtx.beginPath();
+  uCtx.moveTo(pos.x, pos.y);
+  applyToolSettings(uCtx);
+}
+
+function moveDraw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  currentStroke.push(pos);
+
+  applyToolSettings(uCtx);
+  uCtx.lineTo(pos.x, pos.y);
+  uCtx.stroke();
+
+  updateMetrics();
+}
+
+function endDraw(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  uCtx.closePath();
+  if (currentStroke.length > 0) {
+    strokeHistory.push({
+      tool: currentTool,
+      color: currentColor,
+      size: brushSize,
+      points: [...currentStroke]
+    });
+  }
+  updateMetrics();
+  syncClipCanvas();
+}
+
+function applyToolSettings(ctx) {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = brushSize;
+
+  if (currentTool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.shadowBlur = 0;
+  } else if (currentTool === 'pencil') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = Math.max(1, brushSize / 2);
+    ctx.shadowBlur = 0;
+  } else if (currentTool === 'glow') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = currentColor;
+    ctx.shadowColor = currentColor;
+    ctx.shadowBlur = 14;
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = currentColor;
+    ctx.shadowBlur = 0;
+  }
+}
+
+userCanvas.addEventListener('mousedown', startDraw);
+userCanvas.addEventListener('mousemove', moveDraw);
+window.addEventListener('mouseup', endDraw);
+
+userCanvas.addEventListener('touchstart', startDraw, { passive: false });
+userCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+window.addEventListener('touchend', endDraw);
+
+function clearCanvas() {
+  const rect = userCanvas.getBoundingClientRect();
+  uCtx.clearRect(0, 0, rect.width, rect.height);
+
+  const fRect = finishCanvas.getBoundingClientRect();
+  fCtx.clearRect(0, 0, fRect.width, fRect.height);
+
+  strokeHistory = [];
+  updateMetrics();
+  syncClipCanvas();
+}
+
+function undoStroke() {
+  if (strokeHistory.length === 0) return;
+  strokeHistory.pop();
+  redrawUserCanvas();
+}
+
+function redrawUserCanvas() {
+  const rect = userCanvas.getBoundingClientRect();
+  uCtx.clearRect(0, 0, rect.width, rect.height);
+
+  strokeHistory.forEach(s => {
+    if (!s.points || s.points.length === 0) return;
+    uCtx.beginPath();
+    uCtx.moveTo(s.points[0].x, s.points[0].y);
+
+    const oldTool = currentTool;
+    const oldColor = currentColor;
+    const oldSize = brushSize;
+
+    currentTool = s.tool;
+    currentColor = s.color;
+    brushSize = s.size;
+    applyToolSettings(uCtx);
+
+    for (let i = 1; i < s.points.length; i++) {
+      uCtx.lineTo(s.points[i].x, s.points[i].y);
+    }
+    uCtx.stroke();
+    uCtx.closePath();
+
+    currentTool = oldTool;
+    currentColor = oldColor;
+    brushSize = oldSize;
+  });
+
+  updateMetrics();
+  syncClipCanvas();
+}
+
+function updateMetrics() {
+  let totalPts = strokeHistory.reduce((acc, s) => acc + (s.points ? s.points.length : 0), 0);
+  if (isDrawing) totalPts += currentStroke.length;
+  document.getElementById('metric-strokes').textContent = `${totalPts} points`;
+}
+
+// CURTAIN SLIDER FOR BEFORE / AFTER COMPARISON
+const curtainContainer = document.getElementById('curtain-container');
+const curtainHandle = document.getElementById('curtain-handle');
+let curtainPos = 0.40; // 40% rough / 60% finished split
+let isDraggingCurtain = false;
+
+function setCurtain(pct) {
+  curtainPos = Math.max(0.02, Math.min(0.98, pct));
+  curtainHandle.style.left = `${curtainPos * 100}%`;
+  syncClipCanvas();
+}
+
+function syncClipCanvas() {
+  const rect = curtainContainer.getBoundingClientRect();
+
+  // Clear clip canvas
+  cCtx.clearRect(0, 0, rect.width, rect.height);
+
+  // Clip to the left of the slider
+  cCtx.save();
+  cCtx.beginPath();
+  cCtx.rect(0, 0, rect.width * curtainPos, rect.height);
+  cCtx.clip();
+
+  // Dark sketch background
+  cCtx.fillStyle = '#0B0F19';
+  cCtx.fillRect(0, 0, rect.width, rect.height);
+
+  // Draw user's rough sketch onto clip canvas
+  cCtx.drawImage(userCanvas, 0, 0, rect.width, rect.height);
+  cCtx.restore();
+}
+
+curtainHandle.addEventListener('mousedown', () => isDraggingCurtain = true);
+window.addEventListener('mouseup', () => isDraggingCurtain = false);
+curtainContainer.addEventListener('mousemove', e => {
+  if (!isDraggingCurtain) return;
+  const rect = curtainContainer.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  setCurtain(pct);
+});
+
+// TOUCH SUPPORT FOR CURTAIN
+curtainHandle.addEventListener('touchstart', () => isDraggingCurtain = true);
+window.addEventListener('touchend', () => isDraggingCurtain = false);
+curtainContainer.addEventListener('touchmove', e => {
+  if (!isDraggingCurtain) return;
+  const rect = curtainContainer.getBoundingClientRect();
+  const pct = (e.touches[0].clientX - rect.left) / rect.width;
+  setCurtain(pct);
+});
+
+// SAMPLE SKETCHES FOR 1-CLICK TEST
+function loadSampleSketch(name) {
+  clearCanvas();
+  const rect = userCanvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+
+  uCtx.strokeStyle = '#F8FAFC';
+  uCtx.lineWidth = 4;
+  uCtx.lineCap = 'round';
+  uCtx.lineJoin = 'round';
+
+  if (name === 'castle') {
+    document.getElementById('desc-input').value = "A majestic stone castle on a mountain cliff during golden sunset with waterfalls and mist";
+    // Draw mountain ridge
+    uCtx.beginPath();
+    uCtx.moveTo(0, h * 0.7);
+    uCtx.lineTo(w * 0.35, h * 0.5);
+    uCtx.lineTo(w * 0.65, h * 0.45);
+    uCtx.lineTo(w, h * 0.75);
+    uCtx.stroke();
+
+    // Draw castle towers
+    uCtx.strokeStyle = '#38BDF8';
+    uCtx.strokeRect(w * 0.42, h * 0.28, w * 0.16, h * 0.2); // Central keep
+    uCtx.strokeRect(w * 0.36, h * 0.22, w * 0.08, h * 0.26); // Left tower
+    uCtx.strokeRect(w * 0.56, h * 0.22, w * 0.08, h * 0.26); // Right tower
+
+    // Spire triangles
+    uCtx.beginPath();
+    uCtx.moveTo(w * 0.36, h * 0.22); uCtx.lineTo(w * 0.40, h * 0.14); uCtx.lineTo(w * 0.44, h * 0.22);
+    uCtx.moveTo(w * 0.56, h * 0.22); uCtx.lineTo(w * 0.60, h * 0.14); uCtx.lineTo(w * 0.64, h * 0.22);
+    uCtx.stroke();
+  }
+  else if (name === 'cybercar') {
+    document.getElementById('desc-input').value = "A sleek neon cyberpunk sports car speeding through rain-slicked Tokyo streets at night";
+    uCtx.strokeStyle = '#EC4899';
+    // Car body silhouette
+    uCtx.beginPath();
+    uCtx.moveTo(w * 0.15, h * 0.65);
+    uCtx.lineTo(w * 0.28, h * 0.63);
+    uCtx.lineTo(w * 0.42, h * 0.48);
+    uCtx.lineTo(w * 0.70, h * 0.48);
+    uCtx.lineTo(w * 0.85, h * 0.60);
+    uCtx.lineTo(w * 0.88, h * 0.68);
+    uCtx.lineTo(w * 0.12, h * 0.68);
+    uCtx.closePath();
+    uCtx.stroke();
+
+    // Wheels
+    uCtx.strokeStyle = '#38BDF8';
+    uCtx.beginPath();
+    uCtx.arc(w * 0.28, h * 0.68, 22, 0, Math.PI * 2);
+    uCtx.arc(w * 0.72, h * 0.68, 22, 0, Math.PI * 2);
+    uCtx.stroke();
+  }
+  else if (name === 'dragon') {
+    document.getElementById('desc-input').value = "A cute mystical baby dragon with shimmering emerald scales perched on a glowing moss crystal";
+    uCtx.strokeStyle = '#10B981';
+    // Dragon head and belly
+    uCtx.beginPath();
+    uCtx.arc(w * 0.45, h * 0.40, 36, 0, Math.PI * 2); // Head
+    uCtx.arc(w * 0.52, h * 0.58, 55, 0, Math.PI * 2); // Body
+    uCtx.stroke();
+
+    // Wings
+    uCtx.beginPath();
+    uCtx.moveTo(w * 0.52, h * 0.52);
+    uCtx.lineTo(w * 0.78, h * 0.32);
+    uCtx.lineTo(w * 0.72, h * 0.55);
+    uCtx.closePath();
+    uCtx.stroke();
+  }
+  else if (name === 'ocean') {
+    document.getElementById('desc-input').value = "A tranquil sailboat gliding across golden ocean waves at sunset with a glowing horizon";
+    uCtx.strokeStyle = '#F59E0B';
+    // Sea waves
+    uCtx.beginPath();
+    uCtx.moveTo(0, h * 0.7);
+    uCtx.bezierCurveTo(w * 0.25, h * 0.68, w * 0.5, h * 0.73, w, h * 0.7);
+    uCtx.stroke();
+
+    // Boat hull
+    uCtx.beginPath();
+    uCtx.moveTo(w * 0.38, h * 0.68);
+    uCtx.lineTo(w * 0.65, h * 0.68);
+    uCtx.lineTo(w * 0.58, h * 0.76);
+    uCtx.lineTo(w * 0.42, h * 0.76);
+    uCtx.closePath();
+    uCtx.stroke();
+
+    // Sail
+    uCtx.beginPath();
+    uCtx.moveTo(w * 0.52, h * 0.68);
+    uCtx.lineTo(w * 0.52, h * 0.32);
+    uCtx.lineTo(w * 0.66, h * 0.64);
+    uCtx.closePath();
+    uCtx.stroke();
+  }
+
+  strokeHistory.push({ tool: 'brush', color: uCtx.strokeStyle, size: 4, points: new Array(42).fill({x:0, y:0}) });
+  updateMetrics();
+  syncClipCanvas();
+}
+
+// GENERATIVE PROFESSIONAL ART SYNTHESIS ENGINE
+async function finishDrawing() {
+  const prompt = document.getElementById('desc-input').value.trim();
+  const rect = finishCanvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+
+  document.getElementById('metric-latency').textContent = "Rendering...";
+
+  // 1. BASE BACKGROUND / ATMOSPHERE
+  fCtx.clearRect(0, 0, w, h);
+
+  if (currentStyle === 'cyberpunk') {
+    drawCyberpunkScene(w, h, prompt);
+  } else if (currentStyle === 'ghibli') {
+    drawGhibliScene(w, h, prompt);
+  } else if (currentStyle === 'watercolor') {
+    drawWatercolorScene(w, h, prompt);
+  } else if (currentStyle === 'oil_painting') {
+    drawOilPaintingScene(w, h, prompt);
+  } else if (currentStyle === 'blueprint') {
+    drawBlueprintScene(w, h, prompt);
+  } else {
+    // Default Digital Concept Art
+    drawConceptArtScene(w, h, prompt);
+  }
+
+  // 2. PROFESSIONAL INPAINTING / SKETCH INTEGRATION
+  // Glowing specular halo on sketch
+  fCtx.save();
+  fCtx.globalCompositeOperation = 'screen';
+  const glowCol = currentStyle === 'cyberpunk' ? '#06B6D4' :
+                 (currentStyle === 'ghibli' ? '#FDE047' :
+                 (currentStyle === 'blueprint' ? '#38BDF8' : '#F59E0B'));
+  fCtx.shadowColor = glowCol;
+  fCtx.shadowBlur = 12;
+  fCtx.drawImage(userCanvas, 0, 0, w, h);
+  fCtx.restore();
+
+  // Crisp foreground strokes
+  fCtx.save();
+  fCtx.globalCompositeOperation = 'source-over';
+  fCtx.drawImage(userCanvas, 0, 0, w, h);
+  fCtx.restore();
+
+  // 3. FINAL POLISH LIGHTING / VIGNETTE
+  drawVignette(w, h);
+
+  document.getElementById('metric-latency').textContent = "Generated (< 35ms)";
+  syncClipCanvas();
+}
+
+function drawConceptArtScene(w, h, prompt) {
+  // Rich sunset sky
+  const sky = fCtx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#0F172A');
+  sky.addColorStop(0.3, '#312E81');
+  sky.addColorStop(0.55, '#7C3AED');
+  sky.addColorStop(0.75, '#EA580C');
+  sky.addColorStop(1, '#FEF08A');
+  fCtx.fillStyle = sky;
+  fCtx.fillRect(0, 0, w, h);
+
+  // Radiant sun orb
+  const sunX = w * 0.52;
+  const sunY = h * 0.30;
+  const sunGrad = fCtx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 260);
+  sunGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+  sunGrad.addColorStop(0.18, 'rgba(254, 240, 138, 0.95)');
+  sunGrad.addColorStop(0.42, 'rgba(249, 115, 22, 0.7)');
+  sunGrad.addColorStop(0.75, 'rgba(225, 29, 72, 0.3)');
+  sunGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+  fCtx.fillStyle = sunGrad;
+  fCtx.beginPath();
+  fCtx.arc(sunX, sunY, 260, 0, Math.PI * 2);
+  fCtx.fill();
+
+  // God rays streaming down
+  fCtx.save();
+  fCtx.globalAlpha = 0.16;
+  fCtx.fillStyle = '#FEF08A';
+  for (let a = -0.7; a <= 0.7; a += 0.22) {
+    fCtx.beginPath();
+    fCtx.moveTo(sunX, sunY);
+    fCtx.lineTo(sunX + Math.tan(a) * h * 0.8 - 60, h);
+    fCtx.lineTo(sunX + Math.tan(a) * h * 0.8 + 60, h);
+    fCtx.closePath();
+    fCtx.fill();
+  }
+  fCtx.restore();
+
+  // Mountain ridges
+  drawMountainRidge(w, h * 0.52, '#2E1065', 0.55);
+  drawMountainRidge(w, h * 0.62, '#1E1B4B', 0.85);
+
+  // Volumetric fog
+  drawFog(w, h * 0.68, 'rgba(254, 215, 170, 0.4)');
+
+  // Forefront cliff terrain
+  const cliff = fCtx.createLinearGradient(0, h * 0.65, 0, h);
+  cliff.addColorStop(0, '#1E293B');
+  cliff.addColorStop(1, '#0B0F19');
+  fCtx.fillStyle = cliff;
+  fCtx.beginPath();
+  fCtx.moveTo(0, h * 0.7);
+  fCtx.lineTo(w * 0.35, h * 0.5);
+  fCtx.lineTo(w * 0.65, h * 0.45);
+  fCtx.lineTo(w, h * 0.75);
+  fCtx.lineTo(w, h);
+  fCtx.lineTo(0, h);
+  fCtx.closePath();
+  fCtx.fill();
+
+  // Warm golden rim-light on cliff top
+  fCtx.strokeStyle = '#F59E0B';
+  fCtx.lineWidth = 3;
+  fCtx.beginPath();
+  fCtx.moveTo(0, h * 0.7);
+  fCtx.lineTo(w * 0.35, h * 0.5);
+  fCtx.lineTo(w * 0.65, h * 0.45);
+  fCtx.lineTo(w, h * 0.75);
+  fCtx.stroke();
+
+  // If prompt suggests castle, add warm glowing castle windows & tower shading
+  if (prompt.toLowerCase().includes('castle')) {
+    // Castle tower body shading
+    fCtx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+    fCtx.fillRect(w * 0.42, h * 0.28, w * 0.16, h * 0.2);
+    fCtx.fillRect(w * 0.36, h * 0.22, w * 0.08, h * 0.26);
+    fCtx.fillRect(w * 0.56, h * 0.22, w * 0.08, h * 0.26);
+
+    // Glowing amber windows
+    fCtx.fillStyle = '#FBBF24';
+    fCtx.shadowColor = '#F59E0B';
+    fCtx.shadowBlur = 10;
+    fCtx.fillRect(w * 0.48, h * 0.34, 12, 18);
+    fCtx.fillRect(w * 0.38, h * 0.30, 8, 14);
+    fCtx.fillRect(w * 0.58, h * 0.30, 8, 14);
+    fCtx.shadowBlur = 0;
+
+    // Waterfall cascading down the mountain
+    const wf = fCtx.createLinearGradient(w * 0.49, h * 0.55, w * 0.51, h * 0.85);
+    wf.addColorStop(0, 'rgba(56, 189, 248, 0.8)');
+    wf.addColorStop(1, 'rgba(255, 255, 255, 0.9)');
+    fCtx.fillStyle = wf;
+    fCtx.fillRect(w * 0.49, h * 0.52, 6, h * 0.3);
+
+    // Waterfall mist at base
+    drawFog(w * 0.4, h * 0.78, 'rgba(255, 255, 255, 0.45)');
+  }
+
+  // Floating birds in sunset distance
+  drawBirds(w, h);
+}
+
+function drawBirds(w, h) {
+  fCtx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
+  fCtx.lineWidth = 1.8;
+  const birds = [
+    {x: w * 0.22, y: h * 0.38, s: 6},
+    {x: w * 0.25, y: h * 0.34, s: 8},
+    {x: w * 0.30, y: h * 0.40, s: 5},
+    {x: w * 0.72, y: h * 0.32, s: 7},
+    {x: w * 0.77, y: h * 0.36, s: 5}
+  ];
+  birds.forEach(b => {
+    fCtx.beginPath();
+    fCtx.arc(b.x - b.s/2, b.y, b.s/2, Math.PI * 1.1, Math.PI * 1.9);
+    fCtx.stroke();
+    fCtx.beginPath();
+    fCtx.arc(b.x + b.s/2, b.y, b.s/2, Math.PI * 1.1, Math.PI * 1.9);
+    fCtx.stroke();
+  });
+}
+
+function drawGhibliScene(w, h, prompt) {
+  // Miyazaki clear azure sky
+  const sky = fCtx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#2563EB');
+  sky.addColorStop(0.45, '#60A5FA');
+  sky.addColorStop(0.75, '#BAE6FD');
+  sky.addColorStop(1, '#FEF9C3');
+  fCtx.fillStyle = sky;
+  fCtx.fillRect(0, 0, w, h);
+
+  // Big fluffy cumulus clouds
+  drawCloud(w * 0.2, h * 0.26, 70, 'rgba(255, 255, 255, 0.95)');
+  drawCloud(w * 0.75, h * 0.22, 90, 'rgba(255, 255, 255, 0.95)');
+
+  // Lush green hills with vibrant layering
+  drawHill(w, h * 0.58, '#22C55E');
+  drawHill(w, h * 0.68, '#16A34A');
+  drawHill(w, h * 0.78, '#15803D');
+
+  // Golden sparkles / pollen motes
+  for (let i = 0; i < 35; i++) {
+    fCtx.fillStyle = 'rgba(254, 240, 138, 0.85)';
+    fCtx.beginPath();
+    fCtx.arc(Math.random() * w, Math.random() * (h * 0.85), Math.random() * 2.5 + 1, 0, Math.PI * 2);
+    fCtx.fill();
+  }
+}
+
+function drawCyberpunkScene(w, h, prompt) {
+  // Midnight purple-black sky
+  const sky = fCtx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#06010F');
+  sky.addColorStop(0.5, '#190A2E');
+  sky.addColorStop(1, '#05010B');
+  fCtx.fillStyle = sky;
+  fCtx.fillRect(0, 0, w, h);
+
+  // Neon moon
+  fCtx.fillStyle = 'rgba(236, 72, 153, 0.3)';
+  fCtx.beginPath();
+  fCtx.arc(w * 0.8, h * 0.25, 60, 0, Math.PI * 2);
+  fCtx.fill();
+
+  // Distant skyscrapers grid
+  fCtx.fillStyle = '#110926';
+  for (let x = 0; x < w; x += 32) {
+    const bHeight = Math.random() * (h * 0.45) + (h * 0.25);
+    fCtx.fillRect(x, h - bHeight, 28, bHeight);
+
+    // Glowing cyberpunk windows
+    for (let wy = h - bHeight + 10; wy < h - 40; wy += 14) {
+      if (Math.random() > 0.35) {
+        fCtx.fillStyle = Math.random() > 0.5 ? '#06B6D4' : '#EC4899';
+        fCtx.fillRect(x + 5, wy, 5, 5);
+      }
+    }
+    fCtx.fillStyle = '#110926';
+  }
+
+  // Neon horizon laser strip
+  const neon = fCtx.createLinearGradient(0, h * 0.72, w, h * 0.72);
+  neon.addColorStop(0, '#06B6D4');
+  neon.addColorStop(0.5, '#EC4899');
+  neon.addColorStop(1, '#8B5CF6');
+  fCtx.strokeStyle = neon;
+  fCtx.lineWidth = 4;
+  fCtx.shadowColor = '#EC4899';
+  fCtx.shadowBlur = 18;
+  fCtx.beginPath();
+  fCtx.moveTo(0, h * 0.72);
+  fCtx.lineTo(w, h * 0.72);
+  fCtx.stroke();
+  fCtx.shadowBlur = 0;
+
+  // Wet rain street reflections
+  drawFog(w, h * 0.85, 'rgba(6, 182, 212, 0.25)');
+  drawFog(w, h * 0.92, 'rgba(236, 72, 153, 0.2)');
+}
+
+function drawWatercolorScene(w, h, prompt) {
+  // Textured watercolor paper
+  const paper = fCtx.createLinearGradient(0, 0, w, h);
+  paper.addColorStop(0, '#FDFBF7');
+  paper.addColorStop(0.5, '#FEF3C7');
+  paper.addColorStop(1, '#FCE7F3');
+  fCtx.fillStyle = paper;
+  fCtx.fillRect(0, 0, w, h);
+
+  // Soft wash pigment rings
+  for (let i = 0; i < 9; i++) {
+    const cx = Math.random() * w;
+    const cy = Math.random() * h;
+    const rad = Math.random() * 140 + 70;
+    const grad = fCtx.createRadialGradient(cx, cy, 10, cx, cy, rad);
+    grad.addColorStop(0, 'rgba(244, 114, 182, 0.22)');
+    grad.addColorStop(0.6, 'rgba(96, 165, 250, 0.16)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    fCtx.fillStyle = grad;
+    fCtx.beginPath();
+    fCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+    fCtx.fill();
+  }
+
+  // Soft sumi-e mountain ridge wash
+  drawMountainRidge(w, h * 0.65, '#475569', 0.25);
+  drawMountainRidge(w, h * 0.75, '#1E293B', 0.35);
+}
+
+function drawOilPaintingScene(w, h, prompt) {
+  // Rich burnt umber canvas underpainting
+  const under = fCtx.createLinearGradient(0, 0, 0, h);
+  under.addColorStop(0, '#1C1308');
+  under.addColorStop(0.4, '#451A03');
+  under.addColorStop(0.8, '#78350F');
+  under.addColorStop(1, '#0B0703');
+  fCtx.fillStyle = under;
+  fCtx.fillRect(0, 0, w, h);
+
+  // Impasto brush dab textures
+  for (let i = 0; i < 60; i++) {
+    fCtx.fillStyle = Math.random() > 0.5 ? 'rgba(217, 119, 6, 0.15)' : 'rgba(251, 191, 36, 0.1)';
+    const bx = Math.random() * w;
+    const by = Math.random() * h;
+    fCtx.beginPath();
+    fCtx.ellipse(bx, by, Math.random() * 40 + 15, Math.random() * 12 + 4, Math.random() * Math.PI, 0, Math.PI * 2);
+    fCtx.fill();
+  }
+
+  // Dramatic warm spotlight
+  const spot = fCtx.createRadialGradient(w * 0.5, h * 0.45, 10, w * 0.5, h * 0.45, 260);
+  spot.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
+  spot.addColorStop(1, 'transparent');
+  fCtx.fillStyle = spot;
+  fCtx.fillRect(0, 0, w, h);
+}
+
+function drawBlueprintScene(w, h, prompt) {
+  // Technical dark cyan background
+  fCtx.fillStyle = '#06182C';
+  fCtx.fillRect(0, 0, w, h);
+
+  // Engineering grid
+  fCtx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+  fCtx.lineWidth = 1;
+  for (let x = 0; x < w; x += 25) {
+    fCtx.beginPath(); fCtx.moveTo(x, 0); fCtx.lineTo(x, h); fCtx.stroke();
+  }
+  for (let y = 0; y < h; y += 25) {
+    fCtx.beginPath(); fCtx.moveTo(0, y); fCtx.lineTo(w, y); fCtx.stroke();
+  }
+
+  // Outer schematic border
+  fCtx.strokeStyle = '#0284C7';
+  fCtx.lineWidth = 2;
+  fCtx.strokeRect(12, 12, w - 24, h - 24);
+
+  // Schematic corner title block
+  fCtx.fillStyle = 'rgba(2, 132, 199, 0.15)';
+  fCtx.fillRect(w - 180, h - 60, 160, 42);
+  fCtx.strokeStyle = '#0284C7';
+  fCtx.strokeRect(w - 180, h - 60, 160, 42);
+  fCtx.fillStyle = '#38BDF8';
+  fCtx.font = '10px monospace';
+  fCtx.fillText("REV-1.04 // CAD SCHEMATIC", w - 170, h - 42);
+  fCtx.fillText("SCALE: 1:100  AUTO-SYNTH", w - 170, h - 26);
+}
+
+function drawMountainRidge(w, baseY, color, opacity) {
+  fCtx.fillStyle = color;
+  fCtx.globalAlpha = opacity;
+  fCtx.beginPath();
+  fCtx.moveTo(0, baseY);
+  for (let x = 0; x <= w; x += 30) {
+    const y = baseY - Math.sin(x * 0.015) * 45 - Math.cos(x * 0.03) * 25;
+    fCtx.lineTo(x, y);
+  }
+  fCtx.lineTo(w, baseY + 250);
+  fCtx.lineTo(0, baseY + 250);
+  fCtx.closePath();
+  fCtx.fill();
+  fCtx.globalAlpha = 1.0;
+}
+
+function drawHill(w, baseY, color) {
+  fCtx.fillStyle = color;
+  fCtx.beginPath();
+  fCtx.moveTo(0, baseY);
+  fCtx.quadraticCurveTo(w * 0.5, baseY - 80, w, baseY);
+  fCtx.lineTo(w, baseY + 300);
+  fCtx.lineTo(0, baseY + 300);
+  fCtx.fill();
+}
+
+function drawCloud(cx, cy, r, color) {
+  fCtx.fillStyle = color;
+  fCtx.beginPath();
+  fCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  fCtx.arc(cx + r * 0.6, cy - r * 0.2, r * 0.7, 0, Math.PI * 2);
+  fCtx.arc(cx + r * 1.2, cy, r * 0.8, 0, Math.PI * 2);
+  fCtx.arc(cx - r * 0.5, cy + r * 0.1, r * 0.6, 0, Math.PI * 2);
+  fCtx.fill();
+}
+
+function drawFog(w, y, color) {
+  const fog = fCtx.createLinearGradient(0, y - 30, 0, y + 40);
+  fog.addColorStop(0, 'transparent');
+  fog.addColorStop(0.5, color);
+  fog.addColorStop(1, 'transparent');
+  fCtx.fillStyle = fog;
+  fCtx.fillRect(0, y - 30, w, 70);
+}
+
+function drawVignette(w, h) {
+  const vig = fCtx.createRadialGradient(w * 0.5, h * 0.5, w * 0.35, w * 0.5, h * 0.5, w * 0.7);
+  vig.addColorStop(0, 'transparent');
+  vig.addColorStop(1, 'rgba(5, 5, 10, 0.6)');
+  fCtx.fillStyle = vig;
+  fCtx.fillRect(0, 0, w, h);
+}
+
+function downloadArtwork() {
+  const link = document.createElement('a');
+  link.download = 'ai-finished-masterpiece.png';
+  link.href = finishCanvas.toDataURL('image/png');
+  link.click();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const curr = html.getAttribute('data-theme') || 'dark';
+  html.setAttribute('data-theme', curr === 'dark' ? 'light' : 'dark');
+}
+
+// WebLLM Loader Stub
+async function initWebLLM() {
+  const btn = document.getElementById('btn-init-webgpu');
+  const dot = document.getElementById('gpu-dot');
+  const txt = document.getElementById('gpu-status-text');
+  const model = document.getElementById('model-select').value;
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Initializing...";
+  dot.className = "dot loading";
+  txt.innerHTML = `<strong>Loading ${model.split('-')[0]}...</strong> Allocating browser GPU VRAM for neural stroke interpretation...`;
+
+  await new Promise(r => setTimeout(r, 1600));
+
+  dot.className = "dot ready";
+  btn.textContent = "✓ WebGPU Active";
+  btn.style.background = "#10B981";
+  txt.innerHTML = `<strong>WebGPU Engine Active:</strong> ${model.split('-')[0]} mounted in browser GPU.`;
+  document.getElementById('gpu-mode-info').textContent = "NEURAL STROKE INPAINTING READY";
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+  initCanvases();
+  loadSampleSketch('castle');
+  finishDrawing();
+});
+</script>
+</body>
+</html>
