@@ -1011,10 +1011,11 @@
           <div class="field-group" style="margin-bottom:8px;">
             <label for="select-model">Model Selection (Weights cached in IndexedDB)</label>
             <select id="select-model">
-              <option value="Qwen2.5-0.5B-Instruct-q4f16_1" selected>Qwen2.5-0.5B (Fastest &bull; ~350MB VRAM)</option>
-              <option value="SmolLM2-1.7B-Instruct-q4f16_1">SmolLM2-1.7B (Balanced &bull; ~1.1GB VRAM)</option>
-              <option value="Llama-3.2-1B-Instruct-q4f16_1">Llama-3.2-1B (Creative &bull; ~880MB VRAM)</option>
-              <option value="Qwen2.5-1.5B-Instruct-q4f16_1">Qwen2.5-1.5B (High Quality &bull; ~1.2GB VRAM)</option>
+              <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-0.5B (Fastest &bull; ~350MB VRAM)</option>
+              <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2-360M (Ultra Lightweight &bull; ~200MB VRAM)</option>
+              <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Creative &bull; ~880MB VRAM)</option>
+              <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B (Balanced &bull; ~1.1GB VRAM)</option>
+              <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5-1.5B (High Quality &bull; ~1.2GB VRAM)</option>
             </select>
           </div>
 
@@ -1389,10 +1390,15 @@
         const adapter = await navigator.gpu.requestAdapter();
         if (adapter) {
           State.webgpuSupported = true;
+          State.hasF16 = adapter.features ? adapter.features.has("shader-f16") : false;
           const info = adapter.info || {};
-          badgeGpu.textContent = `WebGPU: Active (${info.architecture || "GPU"})`;
+          const arch = info.architecture || (info.vendor ? info.vendor.toUpperCase() : "GPU");
+          badgeGpu.textContent = `WebGPU: Active (${arch})`;
           badgeGpu.style.color = "var(--accent-cyan)";
           gpuAdapterEl.textContent = info.vendor ? `${info.vendor} GPU` : "Hardware Accelerated";
+
+          // If shader-f16 is unsupported on mobile/integrated GPUs, switch select options to q4f32_1-MLC
+          adaptModelSelectOptions();
           return true;
         }
       } catch (err) {
@@ -1402,8 +1408,50 @@
       return false;
     }
 
+    function adaptModelSelectOptions() {
+      const sel = document.getElementById("select-model");
+      if (!sel) return;
+      const prec = State.hasF16 ? "q4f16_1-MLC" : "q4f32_1-MLC";
+      const tag = State.hasF16 ? "Fast FP16" : "FP32 Mobile Mode";
+
+      sel.innerHTML = `
+        <option value="Qwen2.5-0.5B-Instruct-${prec}" selected>Qwen2.5-0.5B (${tag} • ~350MB VRAM)</option>
+        <option value="SmolLM2-360M-Instruct-${prec}">SmolLM2-360M (Ultra Lightweight • ~200MB VRAM)</option>
+        <option value="Llama-3.2-1B-Instruct-${prec}">Llama-3.2-1B (Creative • ~880MB VRAM)</option>
+        <option value="SmolLM2-1.7B-Instruct-${prec}">SmolLM2-1.7B (Balanced • ~1.1GB VRAM)</option>
+        <option value="Qwen2.5-1.5B-Instruct-${prec}">Qwen2.5-1.5B (High Quality • ~1.2GB VRAM)</option>
+      `;
+    }
+
+    function resolveModelId(desiredId) {
+      if (!desiredId) return "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+      let id = desiredId.trim();
+      if (!id.endsWith("-MLC")) {
+        id = id + "-MLC";
+      }
+
+      if (webllm && webllm.prebuiltAppConfig && webllm.prebuiltAppConfig.model_list) {
+        const validList = webllm.prebuiltAppConfig.model_list.map(m => m.model_id);
+        if (validList.includes(id)) return id;
+
+        // Try precision alternate (q4f16 vs q4f32)
+        if (id.includes("q4f16") && validList.includes(id.replace("q4f16_1", "q4f32_1"))) {
+          return id.replace("q4f16_1", "q4f32_1");
+        }
+        if (id.includes("q4f32") && validList.includes(id.replace("q4f32_1", "q4f16_1"))) {
+          return id.replace("q4f32_1", "q4f16_1");
+        }
+
+        // Fuzzy match on prefix
+        const prefix = id.split("-Instruct")[0] || id.split("-q")[0];
+        const match = validList.find(v => v.startsWith(prefix));
+        if (match) return match;
+      }
+      return id;
+    }
+
     window.initWebLLMEngine = async function() {
-      const modelId = document.getElementById("select-model").value;
+      let rawModelId = document.getElementById("select-model").value;
       const statusText = document.getElementById("engine-status-text");
       const progressWrap = document.getElementById("engine-progress-bar-wrap");
       const progressBar = document.getElementById("engine-progress-bar");
@@ -1415,7 +1463,7 @@
       if (State.engineStatus === "loading") return;
 
       if (!State.webgpuSupported) {
-        alert("WebGPU is not enabled or supported on this device/browser. Please ensure you are using a modern browser (Chrome 113+, Edge, or Firefox Nightly with WebGPU enabled). The app will run in high-speed Simulation Mode.");
+        alert("WebGPU is not enabled or supported on this device/browser. Please ensure you are using a modern browser with WebGPU enabled. The app will run in high-speed Simulation Mode.");
         return;
       }
 
@@ -1425,9 +1473,11 @@
       btnLoad.disabled = true;
       progressWrap.style.display = "block";
 
+      const targetModelId = resolveModelId(rawModelId);
+
       try {
-        progressText.textContent = `Initializing MLC Engine for ${modelId}...`;
-        State.webllmEngine = await webllm.CreateMLCEngine(modelId, {
+        progressText.textContent = `Initializing MLC Engine for ${targetModelId}...`;
+        State.webllmEngine = await webllm.CreateMLCEngine(targetModelId, {
           initProgressCallback: (report) => {
             progressText.textContent = report.text || "Loading shader pipeline...";
             if (report.progress) {
@@ -1443,16 +1493,47 @@
         statusText.textContent = "WebLLM Ready";
         btnLoad.textContent = "Reload Engine";
         btnLoad.disabled = false;
-        badgeModel.textContent = modelId.split("-")[0];
+        badgeModel.textContent = targetModelId.split("-")[0];
         badgeModel.className = "badge badge-gpu";
         progressText.textContent = `Successfully cached & compiled on WebGPU. Ready for inference!`;
       } catch (err) {
         console.error("WebLLM initialization error:", err);
+
+        // Auto-fallback for devices lacking shader-f16
+        if (targetModelId.includes("q4f16_1")) {
+          const fallbackId = targetModelId.replace("q4f16_1", "q4f32_1");
+          console.log(`Retrying with FP32 shader fallback: ${fallbackId}`);
+          progressText.textContent = `Shader FP16 unsupported on device GPU. Retrying with FP32 fallback (${fallbackId})...`;
+          try {
+            State.webllmEngine = await webllm.CreateMLCEngine(fallbackId, {
+              initProgressCallback: (report) => {
+                progressText.textContent = report.text || "Compiling FP32 shaders...";
+                if (report.progress) {
+                  const pct = Math.round(report.progress * 100);
+                  progressBar.style.width = `${pct}%`;
+                  statusText.textContent = `Loading (${pct}%)`;
+                }
+              }
+            });
+            State.engineStatus = "ready";
+            dot.className = "dot ready";
+            statusText.textContent = "WebLLM Ready";
+            btnLoad.textContent = "Reload Engine";
+            btnLoad.disabled = false;
+            badgeModel.textContent = fallbackId.split("-")[0];
+            badgeModel.className = "badge badge-gpu";
+            progressText.textContent = `Successfully compiled via FP32 WebGPU shaders. Ready for inference!`;
+            return;
+          } catch (retryErr) {
+            console.error("FP32 retry error:", retryErr);
+          }
+        }
+
         State.engineStatus = "error";
         dot.className = "dot error";
         statusText.textContent = "Load Failed";
         btnLoad.disabled = false;
-        progressText.textContent = `Error: ${err.message || String(err)}. Falling back to local story generator.`;
+        progressText.textContent = `Notice: ${err.message || String(err)}. You can still create comics instantly with the built-in Local Comic Heuristic Reasoner!`;
       }
     };
 
