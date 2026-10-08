@@ -3189,6 +3189,10 @@ Operator Directive: "${directive}"
     function logMemoryLookupToConsole(storeKey) {
       const out = document.getElementById('copilot-output-text');
       if (!out) return;
+      const S = window.AIPCState;
+      const tStr = (S && S.plant) ? S.plant.T.toFixed(1) : "350.0";
+      const caStr = (S && S.plant) ? S.plant.CA.toFixed(3) : "0.500";
+      const uaStr = (S && S.plant) ? S.plant.UA_scale.toFixed(2) : "1.00";
       const storeNames = {
         playbook: '📘 The Playbook (Procedural)',
         rulebook: '📗 The Rulebook (Semantic)',
@@ -3198,7 +3202,7 @@ Operator Directive: "${directive}"
       const currentText = out.textContent;
       out.textContent = `[MEMORY STORE GROUNDING INSPECTOR: ${storeNames[storeKey] || storeKey}]
 • Status: Verified persistent store synced with Executive Function Harness.
-• Real-time State: T = ${S.plant.T.toFixed(1)} K, C_A = ${S.plant.CA.toFixed(3)} mol/L, UA_est = ${S.plant.UA_scale.toFixed(2)}.
+• Real-time State: T = ${tStr} K, C_A = ${caStr} mol/L, UA_est = ${uaStr}.
 • Grounding: Invariants active, automated contract tests satisfied (< 30ms).
 
 ${currentText.slice(0, 450)}`;
@@ -3215,14 +3219,14 @@ ${currentText.slice(0, 450)}`;
           badge.textContent = `✓ ALL CONTRACT TESTS PASSED (${ms}ms < 30ms)`;
           badge.style.background = '#10b98133';
         }
-        document.getElementById('h-contract-time').textContent = `PASSED (${ms}ms < 30ms)`;
+        const contractBadge = document.getElementById('h-contract-time');
+        if (contractBadge) contractBadge.textContent = `PASSED (${ms}ms < 30ms)`;
       }, 300);
     };
 
     window.injectPlaybookRunbook = function() {
       applyOperatorIntent('safety');
       closeMemoryModal();
-      alert('✓ Verified Runbook "cstr_runaway_mitigation.md" loaded into MPPI Solver. Cost manifold updated to Strict Anti-Runaway.');
     };
 
     window.filterRulebookChunks = function(query) {
@@ -3235,7 +3239,8 @@ ${currentText.slice(0, 450)}`;
     };
 
     window.queryRulebookWithPlantState = function() {
-      const t = S.plant.T.toFixed(1);
+      const S = window.AIPCState;
+      const t = (S && S.plant) ? S.plant.T.toFixed(1) : "350.0";
       const chunks = document.querySelectorAll('#rulebook-chunks-container .vector-chunk');
       chunks.forEach((c, idx) => {
         const badge = c.querySelector('.badge-pass');
@@ -3244,7 +3249,6 @@ ${currentText.slice(0, 450)}`;
           badge.textContent = `Cosine: ${sim} (T=${t}K)`;
         }
       });
-      alert(`Grounding Rulebook with live plant telemetry: T = ${t} K. All safety envelopes confirmed active.`);
     };
 
     window.selectTopoNode = function(nodeId) {
@@ -3288,9 +3292,12 @@ ${currentText.slice(0, 450)}`;
     };
 
     window.refreshWhiteboardStats = function() {
+      const S = window.AIPCState;
+      const t = (S && S.plant) ? S.plant.T.toFixed(1) : "350.0";
+      const ca = (S && S.plant) ? S.plant.CA.toFixed(3) : "0.500";
       const stats = document.getElementById('whiteboard-live-stats');
       if (stats) {
-        stats.textContent = `• Active State Vector x(t): T = ${S.plant.T.toFixed(1)} K, C_A = ${S.plant.CA.toFixed(3)} mol/L`;
+        stats.textContent = `• Active State Vector x(t): T = ${t} K, C_A = ${ca} mol/L`;
       }
     };
 
