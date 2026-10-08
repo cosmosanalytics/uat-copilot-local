@@ -8,10 +8,23 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 TOKEN = 'AQUMlZr1hCCbt6otNDSlGTIQ9_0NImaIEx44nzuKW0cHLaRzNZ5fkcaT-wn-ss73mcLXwmAg6Xja4aT2izHOrm2Vl6NVBUDh9nBlRf_e2DaC87qyaZ2-0a0UDdQq-5LAseuE80LCE6XZ_iQ760Yt94FtORfAPh_f-bwvOx33OD0RzVIsTerHFTWUCVvbtZjPxw565cXQglfXyVpawUu8GhCI3tayZq56oU_badUpMAkq7mM8bqCmVu5eADt-qoXEvzelQ6vsDFlTqeOEzWwFkWdpd3QmnFYWDcJHqkFmm5hLSnfIiSnUsb6hmiPkqMzKUbyIZ4_oNpOOEScJfY0Tmjg1lH55AA'
 MEMBER_URN = 'urn:li:person:muZwZNN9P9'
+PREVIOUS_POST_URN = 'urn:li:share:7513925671245594624'
 
-GITHUB_LINK = 'https://github.com/cosmosanalytics/uat-copilot-local/blob/main/comic_webllm_studio.html'
 LIVE_PAGE_LINK = 'https://cosmosanalytics.github.io/uat-copilot-local/comic_webllm_studio.html'
 TITLE = 'ComicCrafter AI: In-Browser Page-by-Page Comic Studio (WebLLM + WebGPU)'
+
+headers = {
+    'Authorization': f'Bearer {TOKEN}',
+    'Content-Type': 'application/json',
+    'X-Restli-Protocol-Version': '2.0.0',
+    'LinkedIn-Version': '202609'
+}
+
+# 1. Delete previous post containing the file link
+print(f"Deleting previous post {PREVIOUS_POST_URN}...")
+del_url = f"https://api.linkedin.com/rest/posts/{requests.utils.quote(PREVIOUS_POST_URN)}"
+del_res = requests.delete(del_url, headers=headers)
+print(f"Delete status: {del_res.status_code}")
 
 raw_text = """ComicCrafter AI: In-Browser Page-by-Page Comic Studio (WebGPU + WebLLM) 🎨📖⚡
 
@@ -26,29 +39,18 @@ Key Highlights:
 • 100% Client-Side & Zero Cost: In-browser local LLM inference (Qwen2.5 / SmolLM2 / Llama 3.2) running in WebGPU compute shaders — zero data leaves your machine.
 • Live Inspector & Export: Interactive panel editing, 1-click high-res PNG export, print/PDF layout, and full JSON project save/load.
 
-🔗 GitHub Repository:
-https://github.com/cosmosanalytics/uat-copilot-local/blob/main/comic_webllm_studio.html
-
-🌐 Live Web App (GitHub Pages):
+🔗 Live Web App (GitHub Pages):
 https://cosmosanalytics.github.io/uat-copilot-local/comic_webllm_studio.html
 
 #WebGPU #WebLLM #GenerativeAI #OpenSource #CreativeTech #GameDev #JavaScript #AIArt #Comics"""
 
 def escape_little_text(text: str) -> str:
-    # Reserved characters in Little Text: \ | { } @ [ ] ( ) < > * _ ~
     reserved = ['\\', '|', '{', '}', '@', '[', ']', '(', ')', '<', '>', '*', '_', '~']
     for ch in reserved:
         text = text.replace(ch, '\\' + ch)
     return text
 
 escaped_text = escape_little_text(raw_text)
-
-headers = {
-    'Authorization': f'Bearer {TOKEN}',
-    'Content-Type': 'application/json',
-    'X-Restli-Protocol-Version': '2.0.0',
-    'LinkedIn-Version': '202609'
-}
 
 post_url = 'https://api.linkedin.com/rest/posts'
 post_payload = {
@@ -62,7 +64,7 @@ post_payload = {
     },
     'content': {
         'article': {
-            'source': GITHUB_LINK,
+            'source': LIVE_PAGE_LINK,
             'title': TITLE,
             'description': 'Create multi-page comic books page-by-page using natural language directives powered locally by WebLLM and WebGPU shaders.'
         }
@@ -71,7 +73,7 @@ post_payload = {
     'isReshareDisabledByAuthor': False
 }
 
-print(f"Publishing post to LinkedIn...")
+print(f"Publishing updated post with only the live link to LinkedIn...")
 response = requests.post(post_url, headers=headers, json=post_payload)
 
 print(f"Status Code: {response.status_code}")
