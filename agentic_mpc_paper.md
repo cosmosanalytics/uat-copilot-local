@@ -1,7 +1,7 @@
 # Agentic Model Predictive Control: Operating in Intelligence Space via Cognitive Agent OS and Differentiable Parallel Rollouts
 
-**Author:** Advanced Agentic Systems Research  
-**Affiliation:** AI Engineering Lab  
+**Author:** Zhaoyang Wan, PhD, MBA  
+**Affiliation:** AI Engineering Lab, Cosmos Analytics  
 **Date:** October 2026  
 **Document ID:** AIRC-2026-AMPC-01  
 
@@ -41,7 +41,7 @@ To overcome these structural limitations, we propose **Agentic MPC**, which coup
 
 ## 2. The Agentic MPC Architecture
 
-Agentic MPC operates as a symbiotic dual-space control architecture. Rather than replacing numerical control with an unconstrained large language model (LLM), Agentic MPC adopts the **Agent OS framework** (Wan et al., 2026), dividing cognition and execution into **The Two Halves**.
+Agentic MPC operates as a symbiotic dual-space control architecture. Rather than replacing numerical control with an unconstrained large language model (LLM), Agentic MPC adopts an **Agent OS cognitive architecture**, dividing cognition and execution into **The Two Halves**.
 
 ```mermaid
 flowchart TD
@@ -255,14 +255,13 @@ When an operator provides natural language directives in the chat interface, the
 
 ## 7. Conclusion
 
-Agentic Model Predictive Control represents a paradigm shift in industrial automation. By bridging the cognitive capabilities of the **Intelligence Space** with the mathematical rigor of **Differentiable Parallel State Space Execution**, Agentic MPC eliminates the trade-off between flexible human-level reasoning and hard real-time safety. Grounded in Dr. Zhaoyang Wan's Agent OS architecture—featuring four persistent memory tiers, Ring 0 invariants, $<30\text{ms}$ contract testing, and WebGPU MPPI rollout ensembles—Agentic MPC provides a verified foundation for the next generation of autonomous, self-optimizing chemical and industrial plants.
+Agentic Model Predictive Control represents a paradigm shift in industrial automation. By bridging the cognitive capabilities of the **Intelligence Space** with the mathematical rigor of **Differentiable Parallel State Space Execution**, Agentic MPC eliminates the trade-off between flexible human-level reasoning and hard real-time safety. Grounded in an Agent OS architecture—featuring four persistent memory tiers, Ring 0 invariants, $<30\text{ms}$ contract testing, and WebGPU MPPI rollout ensembles—Agentic MPC provides a verified foundation for the next generation of autonomous, self-optimizing chemical and industrial plants.
 
 ---
 
 ## References
 
-1. **Wan, Z., et al. (2026).** *The Agent OS Framework: Neural Reasoners Grounded in Executive Function Kernels and Quad-Tier Memory Architectures.* Journal of Autonomous Systems and AI Engineering.
-2. **Williams, G., Aldrich, A., & Theodorou, E. A. (2017).** *Model Predictive Path Integral Control: Analysis and Real-Time Implementation on GPU.* IEEE Transactions on Control Systems Technology, 26(2), 588–604.
-3. **Rawlings, J. B., Mayne, D. Q., & Diehl, M. (2017).** *Model Predictive Control: Theory, Computation, and Design.* Nob Hill Publishing.
-4. **Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019).** *Physics-Informed Neural Networks: A Deep Learning Framework for Solving Forward and Inverse Problems Involving Nonlinear Partial Differential Equations.* Journal of Computational Physics, 378, 686–707.
-5. **Seborg, D. E., Edgar, T. F., Mellichamp, D. A., & Doyle, F. J. (2016).** *Process Dynamics and Control.* John Wiley & Sons.
+1. **Williams, G., Aldrich, A., & Theodorou, E. A. (2017).** *Model Predictive Path Integral Control: Analysis and Real-Time Implementation on GPU.* IEEE Transactions on Control Systems Technology, 26(2), 588–604.
+2. **Rawlings, J. B., Mayne, D. Q., & Diehl, M. (2017).** *Model Predictive Control: Theory, Computation, and Design* (2nd ed.). Nob Hill Publishing.
+3. **Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019).** *Physics-Informed Neural Networks: A Deep Learning Framework for Solving Forward and Inverse Problems Involving Nonlinear Partial Differential Equations.* Journal of Computational Physics, 378, 686–707.
+4. **Seborg, D. E., Edgar, T. F., Mellichamp, D. A., & Doyle, F. J. (2016).** *Process Dynamics and Control* (4th ed.). John Wiley & Sons.

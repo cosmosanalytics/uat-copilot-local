@@ -193,8 +193,8 @@ def build_paper_docx():
     meta_p = doc.add_paragraph()
     meta_p.paragraph_format.space_after = Pt(14)
     runs_data = [
-        ("Author: ", True), ("Advanced Agentic Systems Research    |    ", False),
-        ("Affiliation: ", True), ("AI Engineering Lab\n", False),
+        ("Author: ", True), ("Zhaoyang Wan, PhD, MBA    |    ", False),
+        ("Affiliation: ", True), ("AI Engineering Lab, Cosmos Analytics\n", False),
         ("Date: ", True), ("October 2026    |    ", False),
         ("Document ID: ", True), ("AIRC-2026-AMPC-01    |    ", False),
         ("Repository: ", True), ("cosmosanalytics/uat-copilot-local", False)
@@ -267,7 +267,7 @@ def build_paper_docx():
     add_heading_with_spacing(doc, "2. The Agentic MPC Architecture", level=1)
     
     p = doc.add_paragraph()
-    p.add_run("Agentic MPC operates as a symbiotic dual-space control architecture. Rather than replacing numerical control with an unconstrained large language model (LLM), Agentic MPC adopts the Agent OS framework (Wan et al., 2026), dividing cognition and execution into The Two Halves:")
+    p.add_run("Agentic MPC operates as a symbiotic dual-space control architecture. Rather than replacing numerical control with an unconstrained large language model (LLM), Agentic MPC adopts an Agent OS cognitive architecture, dividing cognition and execution into The Two Halves:")
 
     arch_diagram = (
         "+-------------------------------------------------------------------------+\n"
@@ -485,7 +485,7 @@ def build_paper_docx():
     p.add_run(
         "Agentic Model Predictive Control represents a paradigm shift in industrial automation. By bridging the cognitive capabilities of the "
         "Intelligence Space with the mathematical rigor of Differentiable Parallel State Space Execution, Agentic MPC eliminates the trade-off "
-        "between flexible human-level reasoning and hard real-time safety. Grounded in Dr. Zhaoyang Wan's Agent OS architecture—featuring four persistent memory tiers, "
+        "between flexible human-level reasoning and hard real-time safety. Grounded in an Agent OS architecture—featuring four persistent memory tiers, "
         "Ring 0 invariants, <30ms contract testing, and WebGPU MPPI rollout ensembles—Agentic MPC provides a verified foundation for the next generation of autonomous, "
         "self-optimizing chemical and industrial plants."
     )
@@ -493,11 +493,10 @@ def build_paper_docx():
     # References
     add_heading_with_spacing(doc, "References", level=1)
     refs = [
-        "Wan, Z., et al. (2026). The Agent OS Framework: Neural Reasoners Grounded in Executive Function Kernels and Quad-Tier Memory Architectures. Journal of Autonomous Systems and AI Engineering.",
         "Williams, G., Aldrich, A., & Theodorou, E. A. (2017). Model Predictive Path Integral Control: Analysis and Real-Time Implementation on GPU. IEEE Transactions on Control Systems Technology, 26(2), 588–604.",
-        "Rawlings, J. B., Mayne, D. Q., & Diehl, M. (2017). Model Predictive Control: Theory, Computation, and Design. Nob Hill Publishing.",
+        "Rawlings, J. B., Mayne, D. Q., & Diehl, M. (2017). Model Predictive Control: Theory, Computation, and Design (2nd ed.). Nob Hill Publishing.",
         "Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019). Physics-Informed Neural Networks: A Deep Learning Framework for Solving Forward and Inverse Problems Involving Nonlinear Partial Differential Equations. Journal of Computational Physics, 378, 686–707.",
-        "Seborg, D. E., Edgar, T. F., Mellichamp, D. A., & Doyle, F. J. (2016). Process Dynamics and Control. John Wiley & Sons."
+        "Seborg, D. E., Edgar, T. F., Mellichamp, D. A., & Doyle, F. J. (2016). Process Dynamics and Control (4th ed.). John Wiley & Sons."
     ]
     for idx, ref in enumerate(refs, 1):
         p = doc.add_paragraph()
