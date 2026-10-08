@@ -174,7 +174,7 @@ def build_paper_docx():
         footer = section.footer
         fp = footer.paragraphs[0]
         fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        frun = fp.add_run("Document AIRC-2026-AMPC-01")
+        frun = fp.add_run("Zhaoyang Wan, PhD, MBA • October 2026")
         frun.font.name = 'Calibri'
         frun.font.size = Pt(8.5)
         frun.font.color.rgb = RGBColor(148, 163, 184)
@@ -195,7 +195,6 @@ def build_paper_docx():
     runs_data = [
         ("Author: ", True), ("Zhaoyang Wan, PhD, MBA    |    ", False),
         ("Date: ", True), ("October 2026    |    ", False),
-        ("Document ID: ", True), ("AIRC-2026-AMPC-01\n", False),
         ("Repository: ", True), ("cosmosanalytics/uat-copilot-local", False)
     ]
     for text, bold in runs_data:

@@ -2,7 +2,6 @@
 
 **Author:** Zhaoyang Wan, PhD, MBA  
 **Date:** October 2026  
-**Document ID:** AIRC-2026-AMPC-01  
 
 ---
 
