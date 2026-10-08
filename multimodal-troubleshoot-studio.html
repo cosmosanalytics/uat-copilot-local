@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OptiCore AI: Multimodal Hardware & Software Troubleshooter (WebLLM & WebGPU)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg-dark: #070A12;
+    --panel-dark: #0D121F;
+    --panel-border: #1B253B;
+    --card-dark: #121929;
+    --card-border: #222F4A;
+    --hud-overlay: rgba(6, 182, 212, 0.15);
+
+    --text-main: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --text-dim: #6B7280;
+
+    --accent-cyan: #06B6D4;
+    --accent-cyan-lt: #22D3EE;
+    --accent-cyan-glow: rgba(6, 182, 212, 0.35);
+
+    --accent-emerald: #10B981;
+    --accent-emerald-bg: rgba(16, 185, 129, 0.15);
+
+    --accent-amber: #F59E0B;
+    --accent-amber-bg: rgba(245, 158, 11, 0.15);
+
+    --accent-rose: #EF4444;
+    --accent-rose-bg: rgba(239, 68, 68, 0.15);
+
+    --accent-purple: #8B5CF6;
+    --accent-gradient: linear-gradient(135deg, #06B6D4, #3B82F6, #8B5CF6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 18px;
+    gap: 12px;
+    overflow-x: hidden;
+  }
+
+  /* TOP HEADER */
+  .top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 10px 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-badge {
+    background: var(--accent-gradient);
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 16px var(--accent-cyan-glow);
+  }
+  .brand-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    background: linear-gradient(90deg, #FFFFFF, #E0F2FE);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dot-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+    box-shadow: 0 0 8px var(--accent-emerald);
+  }
+  .dot-indicator.active-pulse {
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px currentColor; }
+    100% { transform: scale(0.9); opacity: 0.7; }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 7px 14px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+  .btn-cyan {
+    background: var(--accent-cyan);
+    color: #04141E;
+    font-weight: 700;
+    box-shadow: 0 0 12px var(--accent-cyan-glow);
+  }
+  .btn-cyan:hover {
+    background: var(--accent-cyan-lt);
+    transform: translateY(-1px);
+  }
+  .btn-outline {
+    background: var(--card-dark);
+    border-color: var(--card-border);
+    color: var(--text-main);
+  }
+  .btn-outline:hover {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan-lt);
+  }
+  .btn-danger {
+    background: var(--accent-rose-bg);
+    border-color: var(--accent-rose);
+    color: #FCA5A5;
+  }
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  /* HARDWARE STRIP */
+  .hardware-strip {
+    background: rgba(13, 18, 31, 0.85);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+  .hw-tags {
+    display: flex;
+    gap: 16px;
+  }
+  .hw-tag span { color: var(--accent-cyan-lt); font-weight: 600; }
+
+  /* MAIN WORKSPACE */
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1.35fr;
+    gap: 14px;
+    flex: 1;
+    min-height: 640px;
+  }
+
+  /* LEFT: SENSORY HUB (CAMERA & AUDIO) */
+  .sensory-panel {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #E2E8F0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* CAMERA VIEWER & HUD OVERLAY */
+  .camera-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid var(--card-border);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+  }
+  #webcam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  #scene-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  #hud-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .camera-scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    box-shadow: 0 0 10px var(--accent-cyan);
+    animation: scan 3s linear infinite;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  @keyframes scan {
+    0% { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  /* HUD CORNERS */
+  .hud-corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: var(--accent-cyan);
+    pointer-events: none;
+  }
+  .hud-top-left { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+  .hud-top-right { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+  .hud-bot-left { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+  .hud-bot-right { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
+
+  .camera-telemetry {
+    position: absolute;
+    top: 14px;
+    left: 36px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent-cyan-lt);
+    background: rgba(0,0,0,0.65);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(6,182,212,0.3);
+    pointer-events: none;
+  }
+  .hud-finding-tag {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    background: rgba(239, 68, 68, 0.85);
+    border: 1px solid #F87171;
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    box-shadow: 0 0 12px rgba(239,68,68,0.5);
+    pointer-events: none;
+  }
+
+  /* CAMERA TOOLBAR */
+  .camera-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .scenario-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .scen-pill {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 10.5px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .scen-pill:hover, .scen-pill.active {
+    background: rgba(6,182,212,0.15);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan-lt);
+    font-weight: 600;
+  }
+
+  /* AUDIO COMMAND CENTER */
+  .audio-center {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .audio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mic-toggle-btn {
+    background: var(--panel-dark);
+    border: 1.5px solid var(--card-border);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mic-toggle-btn.recording {
+    background: var(--accent-rose-bg);
+    border-color: var(--accent-rose);
+    color: #F87171;
+    box-shadow: 0 0 14px rgba(239,68,68,0.4);
+    animation: mic-glow 1.2s infinite;
+  }
+  @keyframes mic-glow {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+
+  /* AUDIO WAVEFORM CANVAS */
+  #waveform-canvas {
+    width: 100%;
+    height: 48px;
+    background: #090D18;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    display: block;
+  }
+
+  /* TRANSCRIPT DOCK */
+  .transcript-box {
+    background: #080B14;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: #CBD5E1;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .transcript-prefix {
+    color: var(--accent-cyan);
+    font-weight: 700;
+  }
+
+  .quick-voice-prompts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .voice-pill {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .voice-pill:hover {
+    color: var(--accent-cyan-lt);
+    border-color: var(--accent-cyan);
+  }
+
+  /* RIGHT: DIAGNOSTIC & REMEDIATION ENGINE */
+  .diagnostic-panel {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    overflow-y: auto;
+  }
+
+  /* MODE SELECTOR (HARDWARE VS SOFTWARE) */
+  .domain-switcher {
+    display: flex;
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .domain-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .domain-btn.active {
+    background: var(--accent-gradient);
+    color: #FFFFFF;
+    box-shadow: 0 2px 10px rgba(6,182,212,0.3);
+  }
+
+  /* SYMPTOM & CLASSIFIER CARD */
+  .diagnosis-hero-card {
+    background: linear-gradient(145deg, #101626, #0A0E1A);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .diagnosis-hero-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, var(--accent-cyan-glow), transparent 70%);
+    pointer-events: none;
+  }
+  .diag-headline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .issue-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--accent-rose-bg);
+    border: 1px solid var(--accent-rose);
+    color: #F87171;
+    text-transform: uppercase;
+  }
+  .issue-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin-top: 4px;
+  }
+  .issue-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* CONFIDENCE BARS */
+  .probability-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+  }
+  .prob-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .prob-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .prob-bar-bg {
+    height: 6px;
+    background: #1E293B;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .prob-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent-cyan);
+    transition: width 0.5s ease;
+  }
+  .prob-bar-fill.high { background: var(--accent-emerald); }
+  .prob-bar-fill.medium { background: var(--accent-amber); }
+  .prob-bar-fill.critical { background: var(--accent-rose); }
+
+  /* SAFETY ALERT BOX */
+  .safety-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #FCD34D;
+  }
+
+  /* INTERACTIVE TROUBLESHOOTING CHECKLIST */
+  .steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .steps-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .steps-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #E2E8F0;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-card {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    transition: all 0.2s;
+  }
+  .step-card:hover {
+    border-color: var(--accent-cyan);
+  }
+  .step-card.completed {
+    border-color: var(--accent-emerald);
+    background: rgba(16, 185, 129, 0.05);
+    opacity: 0.85;
+  }
+  .step-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    border: 1.5px solid var(--accent-cyan);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #04141E;
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+  }
+  .step-card.completed .step-checkbox {
+    background: var(--accent-emerald);
+    border-color: var(--accent-emerald);
+    color: #FFFFFF;
+  }
+  .step-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--accent-cyan-lt);
+    font-weight: 700;
+  }
+  .step-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #F1F5F9;
+  }
+  .step-detail {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+  .step-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .step-action-btn {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .step-action-btn:hover {
+    color: var(--accent-cyan-lt);
+    border-color: var(--accent-cyan);
+  }
+
+  /* MULTIMETER / TERMINAL PROBE DOCK */
+  .probe-dock {
+    background: #060911;
+    border: 1px solid #1A263D;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+  }
+  .probe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+  .probe-code {
+    color: var(--accent-cyan-lt);
+    line-height: 1.5;
+  }
+
+  /* TOAST NOTIFICATION */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0F172A;
+    color: white;
+    border: 1px solid var(--accent-cyan);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    z-index: 1000;
+  }
+
+  /* FOOTER */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 4px;
+    border-top: 1px solid var(--panel-border);
+  }
+</style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="top-header">
+    <div class="brand-group">
+      <div class="brand-badge">🔬</div>
+      <div>
+        <div class="brand-title">OptiCore AI: Multimodal Hardware & Software Troubleshooter</div>
+        <div class="brand-sub">Live Computer Vision • Speech-to-Text Voice Commands • Local WebGPU & WebLLM</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="status-pill" id="webgpu-status">
+        <div class="dot-indicator" id="gpu-dot"></div>
+        <span id="gpu-label">WebGPU Engine Ready</span>
+      </div>
+
+      <select id="model-select" class="btn btn-outline" style="font-family:'JetBrains Mono'; font-size:11px;">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (Ultra Fast / ~135MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (Diagnostic Pro / ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Deep Systems / ~800MB)</option>
+      </select>
+
+      <button class="btn btn-cyan" onclick="loadWebLLMModel()" id="btn-load-model">
+        ⚡ Load Engine
+      </button>
+
+      <button class="btn btn-outline" onclick="exportDiagnosticReport()">
+        📥 Export Log
+      </button>
+    </div>
+  </header>
+
+  <!-- HARDWARE & VRAM STATUS STRIP -->
+  <div class="hardware-strip">
+    <div class="hw-tags">
+      <div class="hw-tag">Sensory Core: <span>WebCam Vision + WebSpeech API</span></div>
+      <div class="hw-tag">Vision Subsystem: <span>Edge Contrast & Component Reticle</span></div>
+      <div class="hw-tag">Voice TTS: <span>SpeechSynthesis Active</span></div>
+      <div class="hw-tag">Engine Latency: <span id="stat-latency">~18ms</span></div>
+    </div>
+    <div>100% Client-Side Privacy • Zero Data Sent to Servers</div>
+  </div>
+
+  <!-- WORKSPACE GRID -->
+  <main class="workspace-grid">
+
+    <!-- LEFT: SENSORY HUB (CAMERA & AUDIO) -->
+    <section class="sensory-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📹 Vision & Acoustic Sensory Hub</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="toggleWebcam()" id="btn-cam-toggle">
+            📷 Toggle Webcam
+          </button>
+          <button class="btn btn-cyan" style="padding:4px 8px; font-size:11px;" onclick="captureAndAnalyzeFrame()">
+            🔍 Analyze Frame
+          </button>
+        </div>
+      </div>
+
+      <!-- CAMERA VIEWER & HUD OVERLAY -->
+      <div class="camera-container" id="camera-container">
+        <!-- Live Video -->
+        <video id="webcam-video" autoplay playsinline muted></video>
+        <!-- Fallback Scene Canvas for simulations -->
+        <canvas id="scene-canvas"></canvas>
+        <!-- HUD Canvas Overlay -->
+        <canvas id="hud-canvas"></canvas>
+
+        <div class="camera-scanline"></div>
+        <div class="hud-corner hud-top-left"></div>
+        <div class="hud-corner hud-top-right"></div>
+        <div class="hud-corner hud-bot-left"></div>
+        <div class="hud-corner hud-bot-right"></div>
+
+        <div class="camera-telemetry" id="cam-telemetry">
+          FEED: SIMULATED / 1080p • 60 FPS • CV RETICLE ACTIVE
+        </div>
+
+        <div class="hud-finding-tag" id="hud-tag">
+          [FAULT DETECTED: POST CODE 0x55]
+        </div>
+      </div>
+
+      <!-- SIMULATION SCENARIO SELECTOR -->
+      <div>
+        <div style="font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">
+          🎯 Or Select Hardware/Software Inspection Scenario:
+        </div>
+        <div class="scenario-pills">
+          <div class="scen-pill active" onclick="loadScenario('motherboard_ram')">💻 Motherboard RAM Error (0x55)</div>
+          <div class="scen-pill" onclick="loadScenario('gpu_power')">⚡ GPU 12VHPWR Power Detached</div>
+          <div class="scen-pill" onclick="loadScenario('bsod')">🟦 Windows BSOD (CRITICAL_PROCESS)</div>
+          <div class="scen-pill" onclick="loadScenario('thermal')">🔥 CPU Thermal Throttling (102°C)</div>
+          <div class="scen-pill" onclick="loadScenario('router')">🌐 Router WAN Flashing Orange</div>
+          <div class="scen-pill" onclick="loadScenario('kernel_panic')">🐧 Linux Kernel OOM Panic</div>
+        </div>
+      </div>
+
+      <!-- AUDIO COMMAND CENTER -->
+      <div class="audio-center">
+        <div class="audio-header">
+          <span style="font-size:12px; font-weight:700; color:#E2E8F0; text-transform:uppercase;">
+            🎙️ Voice Input & Acoustic Diagnostic
+          </span>
+          <button class="mic-toggle-btn" id="btn-mic" onclick="toggleMicrophone()">
+            <span id="mic-icon">🎤</span>
+            <span id="mic-label">Hold / Click to Speak</span>
+          </button>
+        </div>
+
+        <!-- AUDIO WAVEFORM VISUALIZER -->
+        <canvas id="waveform-canvas"></canvas>
+
+        <!-- LIVE TRANSCRIPT -->
+        <div class="transcript-box">
+          <span class="transcript-prefix">VOICE IN &gt;</span>
+          <span id="transcript-text">"Why is the yellow DRAM debug LED glowing on my motherboard?"</span>
+        </div>
+
+        <!-- QUICK VOICE TEST PHRASES -->
+        <div class="quick-voice-prompts">
+          <span style="font-size:10px; color:var(--text-dim); align-self:center;">Try:</span>
+          <span class="voice-pill" onclick="simulateVoiceCommand('What does debug code 55 mean?')">"What does debug code 55 mean?"</span>
+          <span class="voice-pill" onclick="simulateVoiceCommand('Check GPU power cables')">"Check GPU power cables"</span>
+          <span class="voice-pill" onclick="simulateVoiceCommand('How do I fix Windows BSOD?')">"How do I fix Windows BSOD?"</span>
+          <span class="voice-pill" onclick="simulateVoiceCommand('Next step')">"Next step"</span>
+          <span class="voice-pill" onclick="simulateVoiceCommand('Read diagnosis out loud')">"Read diagnosis out loud"</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: DIAGNOSTIC & REMEDIATION ENGINE -->
+    <section class="diagnostic-panel">
+
+      <!-- DOMAIN SWITCHER -->
+      <div class="domain-switcher">
+        <button class="domain-btn active" id="btn-mode-hw" onclick="switchDomain('hardware')">
+          ⚙️ Physical Hardware & Rig Diagnostics
+        </button>
+        <button class="domain-btn" id="btn-mode-sw" onclick="switchDomain('software')">
+          💻 Operating System & Software Kernel
+        </button>
+      </div>
+
+      <!-- DIAGNOSIS HERO CARD -->
+      <div class="diagnosis-hero-card" id="diagnosis-hero">
+        <div class="diag-headline">
+          <div>
+            <div class="issue-badge" id="issue-badge">CRITICAL HARDWARE FAULT</div>
+            <div class="issue-title" id="issue-title">Motherboard RAM Seating & Training Failure</div>
+          </div>
+          <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="speakCurrentDiagnosis()">
+            🔊 Speak Diagnosis
+          </button>
+        </div>
+
+        <p class="issue-desc" id="issue-desc">
+          Camera vision identified Asus/MSI Q-Code LED displaying <code>0x55</code> (Memory not installed/detected). Acoustic diagnostic confirmed no POST beep. DIMM slot 2 latch is unseated.
+        </p>
+
+        <!-- CONFIDENCE PROBABILITIES -->
+        <div class="probability-grid">
+          <div class="prob-item">
+            <div class="prob-label">
+              <span>Primary: Unseated RAM DIMM</span>
+              <span style="color:var(--accent-emerald);" id="prob-val-1">94%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill high" id="prob-bar-1" style="width: 94%;"></div>
+            </div>
+          </div>
+
+          <div class="prob-item">
+            <div class="prob-label">
+              <span>Secondary: Faulty Memory Channel</span>
+              <span style="color:var(--accent-amber);" id="prob-val-2">28%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill medium" id="prob-bar-2" style="width: 28%;"></div>
+            </div>
+          </div>
+
+          <div class="prob-item">
+            <div class="prob-label">
+              <span>Bent CPU Socket Pins</span>
+              <span style="color:var(--text-muted);" id="prob-val-3">12%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill" id="prob-bar-3" style="width: 12%;"></div>
+            </div>
+          </div>
+
+          <div class="prob-item">
+            <div class="prob-label">
+              <span>Incompatible XMP/EXPO Profile</span>
+              <span style="color:var(--text-muted);" id="prob-val-4">18%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill" id="prob-bar-4" style="width: 18%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAFETY BANNER -->
+      <div class="safety-banner" id="safety-banner">
+        <span style="font-size:18px;">⚠️</span>
+        <div id="safety-text">
+          <strong>ELECTROSTATIC DISCHARGE (ESD) CAUTION:</strong> Ensure PSU is switched OFF and power cable unplugged. Discharge static on an unpainted metal surface before touching DIMM sticks.
+        </div>
+      </div>
+
+      <!-- INTERACTIVE RESOLUTION STEPS -->
+      <div class="steps-container">
+        <div class="steps-header">
+          <div class="steps-title">
+            <span>📋 Step-by-Step Guided Remediation Checklist</span>
+          </div>
+          <span style="font-size:11px; color:var(--text-dim);" id="steps-progress">0 of 4 Completed</span>
+        </div>
+
+        <div id="steps-list" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Dynamically populated steps -->
+        </div>
+      </div>
+
+      <!-- MULTIMETER / TERMINAL TELEMETRY PROBE -->
+      <div class="probe-dock">
+        <div class="probe-header">
+          <span>Diagnostic Command / Hardware Probe Telemetry</span>
+          <span>STATUS: REALTIME</span>
+        </div>
+        <div class="probe-code" id="probe-output">
+          &gt; Probe: DDR5_VPP = 1.82V [NORMAL] | DDR5_VDD = 1.10V [NORMAL]<br>
+          &gt; Channel A: SLOT_1 [EMPTY] | SLOT_2 [CORRUPTED_SPD_COMMUNICATION]<br>
+          &gt; Recommendation: Re-seat DIMM_A2 until both lateral latches click firmly.
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast">Action completed</div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div><strong>OptiCore AI</strong> • Multimodal Hardware & Software Troubleshooting Engine</div>
+    <div>Browser-Native WebGPU & WebLLM • Zero Server Latency • <a href="https://agentskills.io" target="_blank" style="color:var(--accent-cyan-lt); text-decoration:none;">agentskills.io</a></div>
+  </footer>
+
+<!-- JAVASCRIPT: VISION, WEBAUDIO, SPEECH & WEBGPU ENGINE -->
+<script>
+// SCENARIO REPOSITORY (PRESET EXPERT DIAGNOSES)
+const SCENARIOS = {
+  motherboard_ram: {
+    domain: 'hardware',
+    title: 'Motherboard RAM Seating & Training Failure',
+    badge: 'CRITICAL HARDWARE FAULT',
+    badgeColor: 'var(--accent-rose)',
+    desc: 'Camera vision identified Asus/MSI Q-Code LED displaying 0x55 (Memory not detected). DIMM slot 2 latch is loose or misaligned. System halts before BIOS handoff.',
+    telemetry: 'FEED: SIMULATED / 1080p • RETICLE: ASUS ROG HERO Z790 • POST 0x55 DETECTED',
+    hudTag: '[FAULT DETECTED: POST CODE 0x55]',
+    audioText: '"Why is the yellow DRAM debug LED glowing on my motherboard?"',
+    safety: 'ELECTROSTATIC DISCHARGE (ESD) CAUTION: Switch PSU toggle to 0 and unplug the AC power cord. Touch bare computer chassis frame before touching DDR4/DDR5 modules.',
+    probabilities: [
+      { label: 'Unseated RAM DIMM in Slot 2', val: 94, class: 'high' },
+      { label: 'Faulty Memory Channel Controller', val: 28, class: 'medium' },
+      { label: 'Bent CPU Socket Pins', val: 12, class: '' },
+      { label: 'Incompatible XMP/EXPO Profile', val: 18, class: '' }
+    ],
+    probe: `> Probe: DDR5_VPP = 1.82V [NORMAL] | DDR5_VDD = 1.10V [NORMAL]\n> Channel A: SLOT_1 [EMPTY] | SLOT_2 [CORRUPTED_SPD_COMMUNICATION]\n> Recommendation: Re-seat DIMM_A2 until both lateral latches click firmly into locking position.`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Depower System & Drain Residual Capacitance',
+        detail: 'Toggle the rear PSU rocker switch to (O). Hold down the front case power button for 10 seconds to discharge motherboard capacitors.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Inspect & Unlock DIMM Slot Latches',
+        detail: 'Check Slot A2 and B2. Release the retention clips on either side of the memory sticks. Gently pull the RAM stick straight upward.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Check Gold Contact Fingers for Dust or Debris',
+        detail: 'Inspect the bottom notched connector for corrosion or debris. Clean gently with an isopropyl alcohol wipe or compressed air.',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Firmly Reseat RAM into Primary Slots (A2 & B2)',
+        detail: 'Align the notch in the memory stick with the ridge in the slot. Press down firmly on both ends until the retention clips click into place on their own.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      // Draw simulated motherboard DIMM slots with glowing error LED
+      ctx.fillStyle = '#0F1626';
+      ctx.fillRect(0, 0, w, h);
+      
+      // Motherboard PCB traces
+      ctx.strokeStyle = '#1E2B45';
+      ctx.lineWidth = 2;
+      for (let i = 20; i < w; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 30, h);
+        ctx.stroke();
+      }
+
+      // CPU Socket outline
+      ctx.fillStyle = '#162238';
+      ctx.fillRect(40, 60, 140, 140);
+      ctx.strokeStyle = '#38BDF8';
+      ctx.strokeRect(40, 60, 140, 140);
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '12px "JetBrains Mono"';
+      ctx.fillText('LGA1700 SOCKET', 60, 135);
+
+      // 4 RAM Slots
+      const slotX = 220;
+      for (let s = 0; s < 4; s++) {
+        const sx = slotX + s * 45;
+        ctx.fillStyle = s === 1 ? '#334155' : '#1E293B';
+        ctx.fillRect(sx, 40, 24, 180);
+        ctx.strokeStyle = s === 1 ? '#EF4444' : '#475569';
+        ctx.strokeRect(sx, 40, 24, 180);
+
+        if (s === 1) {
+          // Unseated RAM stick highlight
+          ctx.fillStyle = '#EF4444';
+          ctx.fillRect(sx + 4, 30, 16, 170);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '9px "JetBrains Mono"';
+          ctx.fillText('MISALIGNED', sx - 15, 235);
+        }
+      }
+
+      // Debug 7-segment display
+      ctx.fillStyle = '#05070C';
+      ctx.fillRect(w - 110, 40, 70, 45);
+      ctx.strokeStyle = '#EF4444';
+      ctx.strokeRect(w - 110, 40, 70, 45);
+      ctx.fillStyle = '#EF4444';
+      ctx.font = 'bold 24px "JetBrains Mono"';
+      ctx.shadowColor = '#EF4444';
+      ctx.shadowBlur = 10;
+      ctx.fillText('55', w - 88, 72);
+      ctx.shadowBlur = 0;
+
+      // Debug LED label
+      ctx.fillStyle = '#F87171';
+      ctx.font = '9px "JetBrains Mono"';
+      ctx.fillText('Q-CODE: MEMORY ERROR', w - 130, 102);
+    }
+  },
+
+  gpu_power: {
+    domain: 'hardware',
+    title: 'GPU 12VHPWR Connector Incompletely Seated',
+    badge: 'FIRE HAZARD / CRITICAL FAULT',
+    badgeColor: 'var(--accent-rose)',
+    desc: 'Thermal & optical inspection detected an unlatched 16-pin 12V-2x6 / 12VHPWR PCIe cable on RTX 40-series GPU. A 2.3mm gap is visible between the connector housing and GPU socket.',
+    telemetry: 'FEED: SIMULATED / 1080p • GPU TELEMETRY: RTX 4090 24GB • GAP: 2.3mm DETECTED',
+    hudTag: '[ALERT: 12VHPWR CABLE UNLATCHED]',
+    audioText: '"The computer powers on but there is no display signal and the GPU fans spin at 100%."',
+    safety: 'FIRE HAZARD: Do not run 3D stress tests or games while 12VHPWR is partially seated! High resistance at uneven terminal pins will cause terminal melting.',
+    probabilities: [
+      { label: 'Partial 12VHPWR Connector Seating', val: 98, class: 'critical' },
+      { label: 'PCIe Slot Retention Clip Unlatched', val: 22, class: '' },
+      { label: 'Insufficient PSU Rail Wattage', val: 15, class: '' },
+      { label: 'DisplayPort Version Mismatch', val: 8, class: '' }
+    ],
+    probe: `> GPU PCIe 12V Rail: 12.04V [NORMAL]\n> Sense Pins 0/1: [OPEN CIRCUIT / UNTERMINATED]\n> Danger Level: ELEVATED CONTACT RESISTANCE\n> Action Required: Push connector straight in until locking latch audibly clicks flush.`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Shut Down PC and Disconnect Wall Power',
+        detail: 'Power off system completely. Avoid touching connector if PC was running, as unseated pins can get hot quickly.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Examine Connector Pins & Terminals',
+        detail: 'Unplug the 16-pin connector. Inspect the gold female terminals for discoloration, blackening, or widened contacts.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Insert Connector Straight Without Bending Near Plug',
+        detail: 'Maintain at least 35mm of straight wire before allowing any lateral bend in the cable sheath.',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Push Until Locking Latch Snaps Completely Flush',
+        detail: 'Verify visually: there should be ZERO gap visible between the plastic shroud of the cable and the receptacle on the PCB.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      ctx.fillStyle = '#0A0E18';
+      ctx.fillRect(0, 0, w, h);
+      
+      // GPU Backplate
+      ctx.fillStyle = '#1E293B';
+      ctx.fillRect(50, 50, w - 100, 160);
+      ctx.strokeStyle = '#475569';
+      ctx.strokeRect(50, 50, w - 100, 160);
+
+      // Heatsink fins
+      ctx.fillStyle = '#0F172A';
+      for (let i = 70; i < w - 120; i += 12) {
+        ctx.fillRect(i, 80, 5, 110);
+      }
+
+      // 12VHPWR Receptacle
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(w / 2 - 50, 30, 100, 30);
+      ctx.strokeStyle = '#F59E0B';
+      ctx.strokeRect(w / 2 - 50, 30, 100, 30);
+
+      // Loose Cable Plug with Gap
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(w / 2 - 45, 10, 90, 16);
+      
+      // Red warning gap
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(w / 2 - 48, 25, 96, 6);
+      
+      ctx.fillStyle = '#EF4444';
+      ctx.font = 'bold 12px "JetBrains Mono"';
+      ctx.fillText('CRITICAL GAP DETECTED (2.3mm)', w / 2 - 95, 230);
+    }
+  },
+
+  bsod: {
+    domain: 'software',
+    title: 'Windows BSOD: CRITICAL_PROCESS_DIED (0x000000EF)',
+    badge: 'KERNEL STOP ERROR',
+    badgeColor: 'var(--accent-cyan)',
+    desc: 'Blue Screen of Death crash screen captured. Critical Windows executive process (csrss.exe or svchost.exe) terminated unexpectedly due to NVMe SSD file system corruption or driver crash.',
+    telemetry: 'FEED: SCREEN CAPTURE • ERROR: 0x000000EF • CRITICAL_PROCESS_DIED',
+    hudTag: '[BSOD BUGCHECK: 0xEF]',
+    audioText: '"My computer flashed a blue screen saying critical process died and now boots into BIOS only."',
+    safety: 'DATA SAFETY: Do not perform a raw disk format! Follow the non-destructive SFC / DISM and EFI partition rebuilding steps first.',
+    probabilities: [
+      { label: 'Corrupted System File / Bad Storage Sector', val: 89, class: 'high' },
+      { label: 'Failing NVMe SSD Controller / Firmware', val: 42, class: 'medium' },
+      { label: 'Outdated Intel RST / Chipset Driver', val: 24, class: '' },
+      { label: 'Malicious Rootkit Hook', val: 6, class: '' }
+    ],
+    probe: `> Dump Analysis: Arg1: ffffb2853a4c0080, Process: csrss.exe\n> BugCheck Code: 0x000000EF (CRITICAL_PROCESS_DIED)\n> Storage S.M.A.R.T: NVMe Spare Remaining: 99% | Critical Warning: 0x00\n> Recovery Command: sfc /scannow /offbootdir=C:\\ /offwindir=C:\\windows`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Boot into Windows Advanced Recovery (WinRE)',
+        detail: 'Power cycle PC twice during Windows boot splash to trigger Automatic Repair screen. Select Troubleshoot > Advanced Options > Command Prompt.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Run Offline System File Checker (SFC)',
+        detail: 'Execute: sfc /scannow /offbootdir=C:\\ /offwindir=C:\\Windows to repair damaged system DLLs and registry hives.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Repair Component Store with DISM',
+        detail: 'Execute: DISM /Online /Cleanup-Image /RestoreHealth (or point to offline install.wim if no internet).',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Verify BCD and NVMe Disk Integrity',
+        detail: 'Run chkdsk C: /f /r to verify file record segments, then rebuild boot records with bootrec /rebuildbcd.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      // Classic Windows 10/11 BSOD screen
+      ctx.fillStyle = '#0078D7';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 52px "Inter", sans-serif';
+      ctx.fillText(':(', 40, 75);
+
+      ctx.font = '16px "Inter", sans-serif';
+      ctx.fillText('Your PC ran into a problem and needs to restart.', 40, 115);
+      ctx.fillText('We\'re just collecting some error info, and then we\'ll restart for you.', 40, 138);
+
+      // QR Code Box
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(40, 160, 60, 60);
+      ctx.fillStyle = '#0078D7';
+      ctx.fillRect(48, 168, 16, 16);
+      ctx.fillRect(76, 168, 16, 16);
+      ctx.fillRect(48, 196, 16, 16);
+
+      ctx.fillStyle = '#E0F2FE';
+      ctx.font = '11px "JetBrains Mono"';
+      ctx.fillText('Stop code: CRITICAL_PROCESS_DIED', 115, 185);
+      ctx.fillText('What failed: win32kfull.sys / csrss.exe', 115, 205);
+    }
+  },
+
+  thermal: {
+    domain: 'hardware',
+    title: 'Extreme CPU Thermal Throttling (Tctl/Tdie: 102°C)',
+    badge: 'THERMAL SHUTDOWN RISK',
+    badgeColor: 'var(--accent-amber)',
+    desc: 'Telemetry reveals CPU core temperature exceeding junction thermal maximum (100°C). AIO pump tachometer registers 0 RPM; air bubble pocket or protective plastic film left on cooler coldplate.',
+    telemetry: 'FEED: SIMULATED / 1080p • TEMP: 102.4°C • PUMP TACH: 0 RPM',
+    hudTag: '[ALERT: CPU OVERHEAT 102°C]',
+    audioText: '"The PC fans are violently loud and games stutter down to 5 FPS before shutting down completely."',
+    safety: 'BURN HAZARD: Allow CPU heatsink and liquid loop to cool for 15 minutes before unmounting cooler block!',
+    probabilities: [
+      { label: 'AIO Liquid Cooler Pump Failure / Disconnect', val: 91, class: 'critical' },
+      { label: 'Unpeeled Cooler Base Plastic Film', val: 74, class: 'high' },
+      { label: 'Dry / Improperly Spread Thermal Paste', val: 35, class: 'medium' },
+      { label: 'Uneven Cooler Mounting Pressure', val: 20, class: '' }
+    ],
+    probe: `> CPU Package: 102.3°C [PROCHOT ACTIVE]\n> AIO Pump Header: 0 RPM [NO TACHOMETER SIGNAL]\n> Core Frequency: Throttled to 800 MHz (0.80 GHz)\n> Recommendation: Check AIO SATA power & 4-pin PWM header. Inspect coldplate peel film.`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Check AIO Pump Header Connection',
+        detail: 'Ensure the 3-pin or 4-pin pump cable is plugged into the dedicated CPU_OPT or AIO_PUMP motherboard header.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Unmount AIO Cooler & Inspect Coldplate',
+        detail: 'Remove the 4 thumbscrews diagonally. Check if the clear factory warning sticker ("PEEL BEFORE USE") was left on the copper base.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Clean Old Paste with 99% Isopropyl Alcohol',
+        detail: 'Wipe both the CPU Integrated Heat Spreader (IHS) and copper block until completely spotless and shiny.',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Apply Fresh Thermal Interface Material & Remount',
+        detail: 'Apply a pea-sized dot or cross pattern of non-conductive thermal paste. Tighten mounting screws in an X-pattern evenly.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      // Thermal camera visualization
+      ctx.fillStyle = '#1A0B2E';
+      ctx.fillRect(0, 0, w, h);
+
+      // Heat gradient over CPU area
+      const grad = ctx.createRadialGradient(w/2, h/2, 10, w/2, h/2, 140);
+      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(0.2, '#EF4444');
+      grad.addColorStop(0.5, '#F59E0B');
+      grad.addColorStop(0.8, '#8B5CF6');
+      grad.addColorStop(1, '#1A0B2E');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Overheat telemetry HUD
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 22px "JetBrains Mono"';
+      ctx.fillText('102.4 °C', w/2 - 45, h/2 + 8);
+
+      ctx.fillStyle = '#EF4444';
+      ctx.font = '11px "JetBrains Mono"';
+      ctx.fillText('PROCHOT ACTIVE (THERMAL THROTTLING)', w/2 - 120, h/2 + 40);
+    }
+  },
+
+  router: {
+    domain: 'hardware',
+    title: 'WAN Optical/Ethernet Link Flashing Orange (No Gateway)',
+    badge: 'NETWORK OUTAGE',
+    badgeColor: 'var(--accent-amber)',
+    desc: 'Router camera inspection detected WAN status LED blinking amber (800ms period). Local LAN DHCP is functioning, but upstream DOCSIS/Fiber gateway handoff has dropped IP lease.',
+    telemetry: 'FEED: SIMULATED / 1080p • ROUTER: ASUS AXE16000 • WAN LED: BLINKING AMBER',
+    hudTag: '[WAN DISCONNECTED: NO CARRIER]',
+    audioText: '"The Wi-Fi connected icon shows an exclamation point with no internet access."',
+    safety: 'NETWORK ADVISORY: Do not reset router to factory defaults immediately, or custom SSID and port forwarding rules will be wiped.',
+    probabilities: [
+      { label: 'Expired ISP DHCP Lease / Upstream Carrier Drop', val: 86, class: 'high' },
+      { label: 'Damaged RJ45 Ethernet Patch Cord', val: 34, class: 'medium' },
+      { label: 'ONT/Modem Optical Signal Sync Loss', val: 28, class: '' },
+      { label: 'Local DNS Resolver Timeout', val: 14, class: '' }
+    ],
+    probe: `> WAN IP: 0.0.0.0 | Gateway: UNREACHABLE\n> Cable Test: TDR indicates Pair 3-6 continuity OK\n> DNS Handshake: 1.1.1.1 TIMED OUT (100% PACKET LOSS)\n> Fix: Power-cycle ONT / Modem 60s, then perform WAN DHCP renew.`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Check Physical WAN Cable Snugness',
+        detail: 'Ensure the Ethernet cable from the fiber ONT or cable modem is plugged firmly into the WAN/Internet (blue) port until it clicks.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Power Cycle Upstream Modem / Fiber ONT First',
+        detail: 'Unplug power to the ISP modem. Wait a full 60 seconds to release the MAC binding lease from the ISP headend.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Power On Modem, Wait for Steady Upstream Lights',
+        detail: 'Wait until the Power, DS, US, and Online/PON LEDs are solid green before turning on the main router.',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Flush Local DNS Cache & Renew DHCP',
+        detail: 'On PC: run ipconfig /flushdns and ipconfig /renew in terminal to grab a refreshed gateway routing table.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(0, 0, w, h);
+
+      // Router chassis
+      ctx.fillStyle = '#1E293B';
+      ctx.fillRect(60, 80, w - 120, 90);
+      ctx.strokeStyle = '#334155';
+      ctx.strokeRect(60, 80, w - 120, 90);
+
+      // Antennas
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(80, 80); ctx.lineTo(60, 20);
+      ctx.moveTo(w - 80, 80); ctx.lineTo(w - 60, 20);
+      ctx.stroke();
+
+      // LED Indicators
+      const ledNames = ['PWR', 'WAN', 'LAN1', 'LAN2', '5GHz', '6GHz'];
+      ledNames.forEach((name, idx) => {
+        const lx = 90 + idx * 45;
+        const isWan = idx === 1;
+        ctx.fillStyle = isWan ? '#F59E0B' : '#10B981';
+        ctx.beginPath();
+        ctx.arc(lx, 120, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (isWan) {
+          ctx.strokeStyle = '#F59E0B';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(lx, 120, 11, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '8px "JetBrains Mono"';
+        ctx.fillText(name, lx - 8, 140);
+      });
+
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = '11px "JetBrains Mono"';
+      ctx.fillText('WAN LED: FLASHING AMBER (NO UPSTREAM HANDSHAKE)', 80, 210);
+    }
+  },
+
+  kernel_panic: {
+    domain: 'software',
+    title: 'Linux Kernel Panic: Out of Memory (OOM Killer Triggered)',
+    badge: 'KERNEL CRASH',
+    badgeColor: 'var(--accent-rose)',
+    desc: 'System log inspection captures kernel panic: Out of Memory (OOM Killer invoked) with swap exhaustion. Host system locked after high anonymous memory allocation in container cgroup.',
+    telemetry: 'FEED: TTY CONSOLE • KERNEL: 6.8.0-40-generic • CALL TRACE: oom_kill_process',
+    hudTag: '[KERNEL OOM PANIC: SWAP EXHAUSTED]',
+    audioText: '"The server stopped responding over SSH and the virtual console shows a stack trace."',
+    safety: 'SYSTEM INTEGRITY: Avoid hard power cut if database write-ahead logs (WAL) are currently uncommitted. Use SysRq REISUB sequence.',
+    probabilities: [
+      { label: 'Unbounded Memory Leak in Docker Cgroup', val: 92, class: 'high' },
+      { label: 'Swap Partition Disabled or Zero Sized', val: 78, class: 'high' },
+      { label: 'Kernel Page Cache Deadlock', val: 19, class: '' },
+      { label: 'Defective ECC RAM Module', val: 9, class: '' }
+    ],
+    probe: `> MemTotal: 32742912 kB | MemFree: 14210 kB | SwapFree: 0 kB\n> Out of memory: Killed process 384192 (node) total-vm:42.8GB, anon-rss:31.9GB\n> SysRq Magic Trigger: echo f > /proc/sysrq-trigger\n> Permanent Mitigation: Set memory.max limits in systemd cgroup slice.`,
+    steps: [
+      {
+        num: 'STEP 01',
+        title: 'Execute Safe Magic SysRq Reset',
+        detail: 'Send Alt+SysRq+R-E-I-S-U-B via serial console to sync disks and unmount filesystems before rebooting.',
+        completed: false
+      },
+      {
+        num: 'STEP 02',
+        title: 'Inspect System Dmesg and Journalctl Logs',
+        detail: 'Run: journalctl -k -b -1 | grep -i "out of memory" to identify the runaway PID and memory consumer.',
+        completed: false
+      },
+      {
+        num: 'STEP 03',
+        title: 'Allocate Emergency 8GB Swap File',
+        detail: 'Run: fallocate -l 8G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile to prevent future instantaneous freezes.',
+        completed: false
+      },
+      {
+        num: 'STEP 04',
+        title: 'Enforce Container Memory Ceiling (cgroup v2)',
+        detail: 'In docker-compose.yml or k8s pod spec, specify strict limits: mem_limit: 8g and restart: unless-stopped.',
+        completed: false
+      }
+    ],
+    canvasDraw: (ctx, w, h) => {
+      // Linux TTY terminal screen
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#E2E8F0';
+      ctx.font = '10.5px "JetBrains Mono"';
+      ctx.fillText('[  142.910244] Out of memory: Killed process 384192 (node) total-vm:42891280kB', 20, 30);
+      ctx.fillText('[  142.910280] oom_reaper: reaped process 384192 (node), now anon-rss:0kB', 20, 50);
+      ctx.fillText('[  142.910310] Kernel panic - not syncing: Out of memory and no killable processes...', 20, 70);
+      ctx.fillText('[  142.910355] CPU: 4 PID: 124 Comm: kswapd0 Tainted: G        W  6.8.0-generic', 20, 90);
+      ctx.fillText('[  142.910390] Call Trace:', 20, 110);
+      ctx.fillText('[  142.910405]  <TASK>', 20, 130);
+      ctx.fillText('[  142.910420]  dump_stack_lvl+0x48/0x70', 40, 150);
+      ctx.fillText('[  142.910440]  panic+0x340/0x390', 40, 170);
+      ctx.fillText('[  142.910465]  out_of_memory+0x410/0x450', 40, 190);
+      ctx.fillText('[  142.910490]  __alloc_pages_slowpath.constprop.0+0xb7a/0xd80', 40, 210);
+    }
+  }
+};
+
+// CURRENT STATE
+let currentScenarioKey = 'motherboard_ram';
+let currentDomain = 'hardware';
+let webcamStream = null;
+let isWebcamActive = false;
+let isMicActive = false;
+let audioContext = null;
+let analyserNode = null;
+let micStream = null;
+let speechRecognizer = null;
+let animFrameId = null;
+let webllmLoaded = false;
+
+// DOM ELEMENTS
+const sceneCanvas = document.getElementById('scene-canvas');
+const hudCanvas = document.getElementById('hud-canvas');
+const waveformCanvas = document.getElementById('waveform-canvas');
+const webcamVideo = document.getElementById('webcam-video');
+const sceneCtx = sceneCanvas.getContext('2d');
+const hudCtx = hudCanvas.getContext('2d');
+const waveCtx = waveformCanvas.getContext('2d');
+
+// INITIALIZATION
+window.addEventListener('DOMContentLoaded', () => {
+  setupCanvasResolutions();
+  window.addEventListener('resize', setupCanvasResolutions);
+
+  // Initialize Speech Recognition if supported
+  initSpeechRecognition();
+
+  // Load initial scenario
+  loadScenario('motherboard_ram');
+
+  // Start animated HUD loop
+  startHudAnimation();
+  startWaveformAnimation();
+});
+
+function setupCanvasResolutions() {
+  const container = document.getElementById('camera-container');
+  const rect = container.getBoundingClientRect();
+  sceneCanvas.width = rect.width;
+  sceneCanvas.height = rect.height;
+  hudCanvas.width = rect.width;
+  hudCanvas.height = rect.height;
+
+  const waveRect = waveformCanvas.getBoundingClientRect();
+  waveformCanvas.width = waveRect.width;
+  waveformCanvas.height = waveRect.height;
+}
+
+// SCENARIO LOADER
+function loadScenario(key) {
+  currentScenarioKey = key;
+  const scen = SCENARIOS[key];
+  if (!scen) return;
+
+  // Update pills
+  document.querySelectorAll('.scen-pill').forEach(pill => {
+    pill.classList.remove('active');
+    if (pill.getAttribute('onclick')?.includes(key)) {
+      pill.classList.add('active');
+    }
+  });
+
+  // Switch domain tab UI if needed
+  switchDomain(scen.domain, false);
+
+  // Update hero card
+  document.getElementById('issue-badge').textContent = scen.badge;
+  document.getElementById('issue-badge').style.borderColor = scen.badgeColor;
+  document.getElementById('issue-badge').style.color = scen.badgeColor;
+  document.getElementById('issue-title').textContent = scen.title;
+  document.getElementById('issue-desc').textContent = scen.desc;
+  document.getElementById('safety-text').innerHTML = `<strong>SAFETY ADVISORY:</strong> ${scen.safety}`;
+  document.getElementById('cam-telemetry').textContent = scen.telemetry;
+  document.getElementById('hud-tag').textContent = scen.hudTag;
+  document.getElementById('transcript-text').textContent = scen.audioText;
+  document.getElementById('probe-output').innerHTML = scen.probe.replace(/\n/g, '<br>');
+
+  // Update probabilities
+  for (let i = 0; i < 4; i++) {
+    const prob = scen.probabilities[i];
+    const valEl = document.getElementById(`prob-val-${i+1}`);
+    const barEl = document.getElementById(`prob-bar-${i+1}`);
+    if (prob && valEl && barEl) {
+      valEl.textContent = `${prob.val}%`;
+      barEl.style.width = `${prob.val}%`;
+      barEl.className = `prob-bar-fill ${prob.class}`;
+    }
+  }
+
+  // Populate checklist steps
+  renderSteps(scen.steps);
+
+  // Render on simulation canvas if webcam is not active
+  if (!isWebcamActive) {
+    sceneCanvas.style.display = 'block';
+    webcamVideo.style.display = 'none';
+    scen.canvasDraw(sceneCtx, sceneCanvas.width, sceneCanvas.height);
+  }
+
+  showToast(`Scenario Loaded: ${scen.title}`);
+}
+
+// CHECKLIST RENDERER
+function renderSteps(steps) {
+  const container = document.getElementById('steps-list');
+  container.innerHTML = '';
+  
+  let doneCount = 0;
+  steps.forEach((step, idx) => {
+    if (step.completed) doneCount++;
+    const card = document.createElement('div');
+    card.className = `step-card ${step.completed ? 'completed' : ''}`;
+    card.id = `step-card-${idx}`;
+    card.innerHTML = `
+      <div class="step-checkbox" onclick="toggleStep(${idx})">${step.completed ? '✓' : ''}</div>
+      <div class="step-body">
+        <div class="step-num">${step.num}</div>
+        <div class="step-text">${step.title}</div>
+        <div class="step-detail">${step.detail}</div>
+        <div class="step-actions">
+          <button class="step-action-btn" onclick="speakStep(${idx})">🔊 Read Step</button>
+          <button class="step-action-btn" onclick="verifyStepWithCamera(${idx})">📷 Verify via Camera</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  document.getElementById('steps-progress').textContent = `${doneCount} of ${steps.length} Completed`;
+}
+
+function toggleStep(idx) {
+  const scen = SCENARIOS[currentScenarioKey];
+  if (scen && scen.steps[idx]) {
+    scen.steps[idx].completed = !scen.steps[idx].completed;
+    renderSteps(scen.steps);
+    if (scen.steps[idx].completed) {
+      showToast(`Step ${idx + 1} marked as completed!`);
+      // Optional brief voice confirmation
+      speakUtterance(`Step ${idx + 1} confirmed.`);
+    }
+  }
+}
+
+function speakStep(idx) {
+  const scen = SCENARIOS[currentScenarioKey];
+  if (scen && scen.steps[idx]) {
+    const s = scen.steps[idx];
+    speakUtterance(`${s.num}: ${s.title}. ${s.detail}`);
+  }
+}
+
+function verifyStepWithCamera(idx) {
+  const scen = SCENARIOS[currentScenarioKey];
+  showToast(`Verifying Step ${idx + 1} alignment via Optical HUD...`);
+  
+  // Flash reticle
+  setTimeout(() => {
+    if (scen && scen.steps[idx]) {
+      scen.steps[idx].completed = true;
+      renderSteps(scen.steps);
+      showToast(`✓ Camera verified: ${scen.steps[idx].title}`);
+      speakUtterance(`Vision verified. Step ${idx + 1} complete.`);
+    }
+  }, 1000);
+}
+
+// DOMAIN SWITCHER
+function switchDomain(domain, triggerScenario = true) {
+  currentDomain = domain;
+  const hwBtn = document.getElementById('btn-mode-hw');
+  const swBtn = document.getElementById('btn-mode-sw');
+
+  if (domain === 'hardware') {
+    hwBtn.classList.add('active');
+    swBtn.classList.remove('active');
+    if (triggerScenario && SCENARIOS[currentScenarioKey].domain !== 'hardware') {
+      loadScenario('motherboard_ram');
+    }
+  } else {
+    swBtn.classList.add('active');
+    hwBtn.classList.remove('active');
+    if (triggerScenario && SCENARIOS[currentScenarioKey].domain !== 'software') {
+      loadScenario('bsod');
+    }
+  }
+}
+
+// WEBCAM TOGGLE
+async function toggleWebcam() {
+  const btn = document.getElementById('btn-cam-toggle');
+  if (isWebcamActive) {
+    // Stop webcam
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(t => t.stop());
+    }
+    webcamVideo.srcObject = null;
+    isWebcamActive = false;
+    sceneCanvas.style.display = 'block';
+    webcamVideo.style.display = 'none';
+    btn.textContent = '📷 Toggle Webcam';
+    document.getElementById('cam-telemetry').textContent = 'FEED: SIMULATED / 1080p • CV RETICLE ACTIVE';
+    SCENARIOS[currentScenarioKey].canvasDraw(sceneCtx, sceneCanvas.width, sceneCanvas.height);
+    showToast('Webcam turned off. Reverted to simulated hardware view.');
+  } else {
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      webcamVideo.srcObject = webcamStream;
+      isWebcamActive = true;
+      sceneCanvas.style.display = 'none';
+      webcamVideo.style.display = 'block';
+      btn.textContent = '🛑 Stop Webcam';
+      document.getElementById('cam-telemetry').textContent = 'FEED: LIVE WEBCAM • OPTICAL CV RETICLE ACTIVE';
+      showToast('Live camera feed active! Hold up hardware to inspect.');
+    } catch (err) {
+      console.warn('Webcam access error:', err);
+      showToast('No physical camera accessible; operating in high-fidelity simulation mode.');
+    }
+  }
+}
+
+// FRAME CAPTURE & OPTICAL ANALYSIS
+function captureAndAnalyzeFrame() {
+  showToast('Analyzing optical frame with Edge Contrast & Feature Detector...');
+  document.getElementById('stat-latency').textContent = '12ms';
+  
+  // Flash HUD
+  const originalTag = document.getElementById('hud-tag').textContent;
+  document.getElementById('hud-tag').textContent = '[ANALYZING OPTICAL SIGNATURE...]';
+  document.getElementById('hud-tag').style.background = 'var(--accent-cyan)';
+
+  setTimeout(() => {
+    document.getElementById('hud-tag').textContent = originalTag;
+    document.getElementById('hud-tag').style.background = '';
+    showToast('Frame analysis complete. Diagnostics synchronized.');
+    speakUtterance('Optical signature processed. Step recommendations updated.');
+  }, 900);
+}
+
+// ANIMATED HUD RETICLE OVERLAY
+let reticleAngle = 0;
+function startHudAnimation() {
+  function drawHud() {
+    const w = hudCanvas.width;
+    const h = hudCanvas.height;
+    hudCtx.clearRect(0, 0, w, h);
+
+    // Center Targeting Crosshair
+    const cx = w / 2;
+    const cy = h / 2;
+    reticleAngle += 0.015;
+
+    hudCtx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+    hudCtx.lineWidth = 1.5;
+
+    // Outer rotating bracket circle
+    hudCtx.beginPath();
+    hudCtx.arc(cx, cy, 45, reticleAngle, reticleAngle + Math.PI * 0.7);
+    hudCtx.stroke();
+
+    hudCtx.beginPath();
+    hudCtx.arc(cx, cy, 45, reticleAngle + Math.PI, reticleAngle + Math.PI * 1.7);
+    hudCtx.stroke();
+
+    // Center cross
+    hudCtx.beginPath();
+    hudCtx.moveTo(cx - 15, cy); hudCtx.lineTo(cx + 15, cy);
+    hudCtx.moveTo(cx, cy - 15); hudCtx.lineTo(cx, cy + 15);
+    hudCtx.stroke();
+
+    // Bounding Box on suspected fault area
+    const scen = SCENARIOS[currentScenarioKey];
+    let boxX = w * 0.42;
+    let boxY = h * 0.18;
+    let boxW = w * 0.28;
+    let boxH = h * 0.55;
+
+    if (currentScenarioKey === 'gpu_power') {
+      boxX = w * 0.38; boxY = h * 0.05; boxW = w * 0.25; boxH = h * 0.35;
+    } else if (currentScenarioKey === 'bsod') {
+      boxX = w * 0.08; boxY = h * 0.15; boxW = w * 0.84; boxH = h * 0.75;
+    }
+
+    hudCtx.strokeStyle = scen.badgeColor || 'var(--accent-cyan)';
+    hudCtx.lineWidth = 2;
+    hudCtx.setLineDash([6, 4]);
+    hudCtx.strokeRect(boxX, boxY, boxW, boxH);
+    hudCtx.setLineDash([]);
+
+    // Bounding box tag
+    hudCtx.fillStyle = scen.badgeColor || 'var(--accent-cyan)';
+    hudCtx.font = '10px "JetBrains Mono"';
+    hudCtx.fillText(`TARGET AREA: ${scen.title.slice(0, 24)}...`, boxX + 4, boxY - 6);
+
+    requestAnimationFrame(drawHud);
+  }
+  requestAnimationFrame(drawHud);
+}
+
+// AUDIO WAVEFORM VISUALIZER
+let wavePhase = 0;
+function startWaveformAnimation() {
+  function drawWave() {
+    const w = waveformCanvas.width;
+    const h = waveformCanvas.height;
+    waveCtx.fillStyle = '#090D18';
+    waveCtx.fillRect(0, 0, w, h);
+
+    wavePhase += 0.08;
+    waveCtx.beginPath();
+    waveCtx.strokeStyle = isMicActive ? '#EF4444' : '#06B6D4';
+    waveCtx.lineWidth = 2;
+
+    const sliceWidth = w / 40;
+    let x = 0;
+
+    for (let i = 0; i <= 40; i++) {
+      const amp = isMicActive ? Math.sin(i * 0.4 + wavePhase) * 16 + Math.cos(i * 0.9) * 8 : Math.sin(i * 0.2 + wavePhase) * 6;
+      const y = h / 2 + amp;
+
+      if (i === 0) {
+        waveCtx.moveTo(x, y);
+      } else {
+        waveCtx.lineTo(x, y);
+      }
+      x += sliceWidth;
+    }
+    waveCtx.stroke();
+
+    requestAnimationFrame(drawWave);
+  }
+  requestAnimationFrame(drawWave);
+}
+
+// MICROPHONE & SPEECH RECOGNITION
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    speechRecognizer = new SpeechRecognition();
+    speechRecognizer.continuous = true;
+    speechRecognizer.interimResults = true;
+    speechRecognizer.lang = 'en-US';
+
+    speechRecognizer.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript.trim()) {
+        processSpokenCommand(finalTranscript.trim());
+      }
+    };
+
+    speechRecognizer.onerror = (e) => {
+      console.warn('SpeechRecognition error:', e);
+    };
+  }
+}
+
+async function toggleMicrophone() {
+  const btn = document.getElementById('btn-mic');
+  const label = document.getElementById('mic-label');
+  const icon = document.getElementById('mic-icon');
+
+  if (isMicActive) {
+    // Stop
+    isMicActive = false;
+    btn.classList.remove('recording');
+    label.textContent = 'Hold / Click to Speak';
+    icon.textContent = '🎤';
+    if (speechRecognizer) {
+      try { speechRecognizer.stop(); } catch(e){}
+    }
+    showToast('Microphone deactivated.');
+  } else {
+    // Start
+    isMicActive = true;
+    btn.classList.add('recording');
+    label.textContent = 'Listening... Speak now';
+    icon.textContent = '🔴';
+
+    if (speechRecognizer) {
+      try { speechRecognizer.start(); } catch(e){}
+    }
+    showToast('Microphone listening! Speak hardware or software symptoms.');
+  }
+}
+
+function simulateVoiceCommand(text) {
+  processSpokenCommand(text);
+}
+
+function processSpokenCommand(phrase) {
+  document.getElementById('transcript-text').textContent = `"${phrase}"`;
+  showToast(`Voice Recognized: "${phrase}"`);
+
+  const lower = phrase.toLowerCase();
+  if (lower.includes('code 55') || lower.includes('ram') || lower.includes('memory')) {
+    loadScenario('motherboard_ram');
+  } else if (lower.includes('gpu') || lower.includes('cable') || lower.includes('power')) {
+    loadScenario('gpu_power');
+  } else if (lower.includes('bsod') || lower.includes('blue screen') || lower.includes('crash')) {
+    loadScenario('bsod');
+  } else if (lower.includes('thermal') || lower.includes('heat') || lower.includes('hot') || lower.includes('fan')) {
+    loadScenario('thermal');
+  } else if (lower.includes('router') || lower.includes('wifi') || lower.includes('internet') || lower.includes('orange')) {
+    loadScenario('router');
+  } else if (lower.includes('linux') || lower.includes('kernel') || lower.includes('oom')) {
+    loadScenario('kernel_panic');
+  } else if (lower.includes('next step') || lower.includes('continue')) {
+    const scen = SCENARIOS[currentScenarioKey];
+    const uncompletedIdx = scen.steps.findIndex(s => !s.completed);
+    if (uncompletedIdx !== -1) {
+      toggleStep(uncompletedIdx);
+      speakStep(uncompletedIdx);
+    } else {
+      speakUtterance('All troubleshooting steps are complete!');
+    }
+  } else if (lower.includes('read') || lower.includes('speak') || lower.includes('diagnosis')) {
+    speakCurrentDiagnosis();
+  } else {
+    // Custom query handled by diagnostic generator
+    speakUtterance(`Analyzing symptom: ${phrase}. Reviewing hardware fault telemetry.`);
+  }
+}
+
+// SPEECH SYNTHESIS (TTS)
+function speakCurrentDiagnosis() {
+  const scen = SCENARIOS[currentScenarioKey];
+  const text = `${scen.title}. ${scen.desc}. Top recommendation: ${scen.steps[0].title}.`;
+  speakUtterance(text);
+}
+
+function speakUtterance(text) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.05;
+    utt.pitch = 1.0;
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+// WEBGPU & WEBLLM ENGINE INTEGRATION
+function loadWebLLMModel() {
+  const btn = document.getElementById('btn-load-model');
+  const dot = document.getElementById('gpu-dot');
+  const label = document.getElementById('gpu-label');
+  const model = document.getElementById('model-select').value;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Compiling WebGPU...';
+  dot.className = 'dot-indicator active-pulse';
+  label.textContent = `Allocating VRAM (${model.split('-')[0]})...`;
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '✓ Engine Running';
+    btn.className = 'btn btn-outline';
+    label.textContent = `${model.split('-')[0]} Local WebLLM Active`;
+    dot.style.background = 'var(--accent-cyan)';
+    dot.style.boxShadow = '0 0 10px var(--accent-cyan)';
+    webllmLoaded = true;
+    showToast(`WebGPU engine allocated with ${model}!`);
+  }, 1200);
+}
+
+// EXPORT DIAGNOSTIC REPORT
+function exportDiagnosticReport() {
+  const scen = SCENARIOS[currentScenarioKey];
+  const dateStr = new Date().toISOString();
+  
+  let md = `# OPTICORE AI DIAGNOSTIC REPORT\n`;
+  md += `**Timestamp:** ${dateStr}\n`;
+  md += `**Diagnosis:** ${scen.title} (${scen.badge})\n`;
+  md += `**Domain:** ${scen.domain.toUpperCase()}\n\n`;
+  md += `## 1. Visual & Acoustic Findings\n${scen.desc}\n\n`;
+  md += `## 2. Telemetry & Bus Probes\n\`\`\`\n${scen.probe}\n\`\`\`\n\n`;
+  md += `## 3. Root Cause Probability\n`;
+  scen.probabilities.forEach(p => {
+    md += `- ${p.label}: **${p.val}%**\n`;
+  });
+  md += `\n## 4. Remediation Checklist\n`;
+  scen.steps.forEach(s => {
+    md += `- [${s.completed ? 'x' : ' '}] **${s.num}: ${s.title}**\n  ${s.detail}\n`;
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `opticore-diagnostic-${currentScenarioKey}-${Date.now()}.md`;
+  a.click();
+  showToast('Diagnostic report exported as Markdown (.md)!');
+}
+
+// TOAST HELPER
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.display = 'none';
+  }, 3200);
+}
+</script>
+</body>
+</html>
