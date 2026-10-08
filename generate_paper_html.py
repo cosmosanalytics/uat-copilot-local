@@ -1,9 +1,9 @@
 """
 generate_paper_html.py
 Generates the publication-grade HTML version of agentic_mpc_paper.html with:
-  1. Exact authentic simulation tables (Table 1, Table 2, Table 3, Table 4).
-  2. Complete mathematical formulations (QP, MPPI, PINN, CSTR ODEs).
-  3. KaTeX math formatting and responsive academic layout.
+  1. Equal tuning across baselines (Linear MPC q_T=10 vs q_T=1).
+  2. Deconstruction of the supervisory anticipatory pre-cooling schedule.
+  3. Grounded architectural specification of the Agentic LLM layer.
 """
 
 html_content = r"""<!DOCTYPE html>
@@ -211,25 +211,25 @@ html_content = r"""<!DOCTYPE html>
         Model Predictive Control (MPC) has served as the industrial benchmark for constrained multivariable control across process operations for four decades. Modern formulations—ranging from linear quadratic programming (QP) to nonlinear MPC (NMPC) and economic MPC (EMPC)—optimize physical state trajectories against fixed mathematical objectives. However, existing control formulations lack supervisory cognitive intelligence: they cannot parse unstructured natural-language operator directives, reason over qualitative plant physical topology, or execute contextual mitigation runbooks during operational contingencies.
       </p>
       <p style="margin-top:12px;">
-        In this paper, we introduce <strong>Agentic Model Predictive Control (Agentic MPC)</strong>, an architecture that places an <strong>Intelligence Space</strong> supervisory layer above high-throughput real-time control solvers. The architecture partitions supervisory intelligence into <strong>The Two Halves</strong>: (1) a neural reasoner (<em>The Knower</em>) grounded in four structured memory tiers (Playbook, Rulebook, Yearbook, and Whiteboard), and (2) a deterministic Executive Function Harness (<em>The Doer</em>) enforcing Ring 0 operating invariants, automated contract unit tests, and preemptive trip bounds. High-level cognitive directives are translated at runtime into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across parallel trajectory rollouts via GPU/WebGPU compute shaders, augmented by an online Physics-Informed Neural Network (PINN) residual observer.
+        In this paper, we introduce <strong>Agentic Model Predictive Control (Agentic MPC)</strong>, an architecture that places an <strong>Intelligence Space</strong> supervisory layer above high-throughput real-time control solvers. The architecture partitions supervisory intelligence into <strong>The Two Halves</strong>: (1) a neural reasoner (<em>The Knower</em>) grounded in four structured memory tiers (Playbook, Rulebook, Yearbook, and Whiteboard), and (2) a deterministic Executive Function Harness (<em>The Doer</em>) enforcing Ring 0 operating invariants, automated contract unit tests, and preemptive trip bounds. High-level cognitive directives are translated at runtime into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across parallel trajectory rollouts via GPU/WebGPU compute shaders, augmented by an online recursive parameter observer.
       </p>
       <p style="margin-top:12px;">
-        We evaluate the architecture on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible benchmark suite spanning 20 randomized seeds with varying surge magnitudes (\(C_{A0} \in [+10\%, +30\%]\), \(T_0 \in [+5\text{ K}, +12\text{ K}]\), and \(UA \in [-10\%, -35\%]\)) and fixed advance-warning advisory lead time (\(t_{\text{lead}} = 3.5\text{ s}\)), alongside an extensive lead-time sensitivity sweep (\(t_{\text{lead}} \in [0.0\text{ s}, 5.0\text{ s}]\)). A numerical dynamic optimization oracle analysis demonstrates that with zero advance warning, the combined jacket transport delay (\(\tau_j = 2.0\text{ s}\)) and valve slew rate limit (\(12\text{ K/s}\)) physically prevent any purely reactive controller from avoiding thermal runaway (\(T_{\max} = 444.9\text{ K}\)), whereas an advance supervisory runbook advisory providing \(t_{\text{lead}} \ge 2.5\text{--}3.5\text{ s}\) enables stable thermal containment (\(T_{\max} \le 355\text{ K}\)), provided pre-cooling does not excessively quench the reaction and accumulate unreacted feed.
+        We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible benchmark suite spanning 20 randomized seeds with varying surge magnitudes (\(C_{A0} \in [+10\%, +30\%]\), \(T_0 \in [+5\text{ K}, +12\text{ K}]\), and \(UA \in [-10\%, -35\%]\)) and advance-warning advisory lead time (\(t_{\text{lead}} = 3.5\text{ s}\)). Numerical dynamic optimization demonstrates that with zero advance warning, the combined jacket transport delay (\(\tau_j = 2.0\text{ s}\)) and valve slew rate limit (\(12\text{ K/s}\)) physically prevent any purely reactive controller from avoiding thermal runaway (\(T_{\max} \ge 440\text{ K}\)), establishing a physical floor of 6/20 trips across all feedback controllers (Linear MPC: 6/20 trips, 9.49 K RMSE; NMPC: 6/20 trips, 9.62 K RMSE; MPPI: 6/20 trips, 9.79 K RMSE).
       </p>
       <p style="margin-top:12px;">
-        Crucially, when benchmarked under identical forecast previews, both MPPI with forecast preview (\(3.16 \pm 3.00\text{ K}\) overall RMSE, \(1.81 \pm 1.11\text{ K}\) non-trip RMSE, 1/20 trips) and full Agentic MPC (\(2.16 \pm 2.56\text{ K}\) overall RMSE, \(0.95 \pm 0.40\text{ K}\) non-trip RMSE, 1/20 trips) contain the surge, demonstrating that <strong>advance preview lookahead is the primary physical stabilizer</strong>, while the agentic layer's critical function is translating qualitative operator handover notes and alarms, validating contract constraints, and smoothly orchestrating pre-cooling runbooks without manual operator retuning or the hazardous chattering trips observed in naive rule-based step switches (6/20 trips). Across 50 operator directives evaluated on a server-hosted LLM with client-side WebGPU shader fallbacks, a confusion-matrix evaluation demonstrates 38/38 valid directives accepted (100%) and 12/12 adversarial proposals rejected (100% intercepted), verifying the viability of cognitive agent-directed supervisory physical control in simulation.
+        When advance preview lookahead (\(t_{\text{lead}} = 3.5\text{ s}\)) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Seed 18 (an extreme corner realization requiring &gt;4.5 s of lead time). Crucially, our ablation isolates that the supervisory layer's quantitative advantage (\(0.95 \pm 0.40\text{ K}\) non-trip RMSE vs. \(1.81 \pm 1.11\text{ K}\) for standard preview MPPI) stems from coordinating an anticipatory pre-cooling ramp that avoids <strong>reaction quenching</strong>: naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, 9.44 K RMSE). We present the full system architecture, formal Ring 0 contract invariants, and offline prompt evaluation protocols, establishing a rigorous foundation for agent-directed supervisory process control.
       </p>
     </div>
 
     <h2>1. Introduction & Related Work</h2>
     <p>Model Predictive Control operates on the receding-horizon principle: at each discrete time step \(t\), the controller solves an open-loop optimal control problem over a prediction horizon \(H_p\), applies the first control input \(u_t\), and repeats the cycle upon receiving fresh state telemetry (Rawlings et al., 2017).</p>
-    <p>While classical linear MPC remains computationally tractable on millisecond timescales via convex quadratic programming (QP), linear approximations degrade rapidly on highly non-linear chemical plants governed by exponential kinetics, such as Continuous Stirred-Tank Reactors (CSTR) undergoing Arrhenius heat generation (Seborg et al., 2016). When state perturbations depart from the nominal linearization point, linearized controllers exhibit severe tracking error, control chattering, and valve saturation.</p>
+    <p>While classical linear MPC remains computationally tractable on millisecond timescales via convex quadratic programming (QP), linear approximations degrade on highly non-linear chemical plants governed by exponential kinetics, such as Continuous Stirred-Tank Reactors (CSTR) undergoing Arrhenius heat generation (Seborg et al., 2016). When state perturbations depart from the nominal linearization point, purely reactive controllers exhibit severe tracking error, control chattering, and valve saturation.</p>
 
     <h3>1.1 Related Work: Advanced & Learning-Based MPC</h3>
     <ul>
       <li><strong>Robust and Constrained MPC:</strong> Linear Matrix Inequality (LMI) and tube-based robust MPC formulations synthesize invariant sets to maintain constraint satisfaction under bounded disturbances (Kothare et al., 1996; Mayne et al., 2005).</li>
       <li><strong>Learning-Based and Differentiable MPC:</strong> Recent advances integrate Gaussian Processes and neural networks into MPC for online residual compensation (Hewing et al., 2020), while differentiable MPC embeds convex optimization layers into end-to-end gradient-based neural networks (Amos et al., 2018). Physics-informed neural network formulations (Raissi et al., 2019) have inspired domain-constrained residual observers that embed conservation laws into state estimation.</li>
-      <li><strong>Sampling-Based Non-Convex Control:</strong> Model Predictive Path Integral (MPPI) control computes optimal control signals via Monte Carlo importance sampling over stochastic forward rollouts (Williams et al., 2017). Because MPPI evaluates trajectories independently without computing Jacobian matrices, it naturally maps to massively parallel GPU and compute-shader architectures.</li>
+      <li><strong>Sampling-Based Non-Convex Control:</strong> Model Predictive Path Integral (MPPI) control computes optimal control signals via Monte Carlo importance sampling over stochastic forward rollouts (Williams et al., 2017). Because MPPI evaluates trajectories independently without computing Jacobian matrices, it naturally maps to massively parallel GPU compute shaders.</li>
     </ul>
 
     <h3>1.2 The Role of the Supervisory Layer: Lookahead vs. Reasoning</h3>
@@ -286,58 +286,19 @@ html_content = r"""<!DOCTYPE html>
     <h3>3.1 Classical Linear MPC Baseline (Jacobian QP)</h3>
     <p>The linear discrete-time optimal control problem is solved as a condensed Quadratic Program (QP) around the textbook steady state (\(C_{A,\text{ref}} = 0.50\text{ mol/L}, T_{\text{ref}} = 350.0\text{ K}, T_{c,\text{base}} = 300.0\text{ K}\)):</p>
     \[\min_{U} \frac{1}{2} U^T H_{\text{qp}} U + g^T U \quad \text{subject to: } u_{\min} \le u_k \le u_{\max}, \quad |\Delta u_k| \le \Delta u_{\max}\]
-    <p>The continuous Jacobian matrix \(A\) has eigenvalues \([-0.0076, +0.0472]\text{ s}^{-1}\), exhibiting an open-loop thermal runaway pole (\(\tau_{\text{growth}} \approx 21.2\text{ s}\)). State penalty is \(Q = \text{diag}(10.0, 1.0)\), \(R = 0.02\), input bounds \([280, 360]\text{ K}\), and slew limit \(12\text{ K/s}\).</p>
+    <p>The continuous Jacobian matrix \(A\) has eigenvalues \([-0.0076, +0.0472]\text{ s}^{-1}\), exhibiting an open-loop thermal runaway pole (\(\tau_{\text{growth}} \approx 21.2\text{ s}\)). State penalty is \(Q = \text{diag}(10.0, q_T)\), \(R = 0.02\), input bounds \([280, 360]\text{ K}\), and slew limit \(12\text{ K/s}\).</p>
 
     <h3>3.2 Model Predictive Path Integral (MPPI) Formulation</h3>
     <p>MPPI evaluates \(K = 1,024\) stochastic control rollouts sampled from \(\mathcal{N}(0, \Sigma)\) with covariance \(\Sigma = 6.0^2 I\) and temperature \(\lambda = 10.0\). Discretized at rollout step \(\Delta t_{\text{ctrl}} = 0.2\text{ s}\):</p>
-    \[x_{k+1} = f(x_k, v_k) + \Delta_{\text{PINN}}(x_k, v_k)\]
+    \[x_{k+1} = f(x_k, v_k)\]
     \[S(U^{(m)}) = \sum_{k=0}^{H_p-1} \left( q_{\text{temp}} (T_k - T_{\text{ref}})^2 + q_{\text{barrier}} \max(0, T_k - T_{\text{barrier}})^2 \right) + \frac{\lambda}{2} \sum_{k=0}^{H_p-1} \epsilon_k^T \Sigma^{-1} \epsilon_k\]
     <p>The optimal control update is computed via softmax importance weighting:</p>
     \[u_t^* = u_t + \sum_{m=1}^{K} w(U^{(m)}) \epsilon_t^{(m)}, \quad w(U^{(m)}) = \frac{\exp\left(-\frac{1}{\lambda} (S(U^{(m)}) - \min_j S(U^{(j)}))\right)}{\sum_{k=1}^{K} \exp\left(-\frac{1}{\lambda} (S(U^{(k)}) - \min_j S(U^{(j)}))\right)}\]
 
-    <h3>3.3 Physics-Informed Residual Observer & UA Identification</h3>
-    <p>An online observer continuously estimates the effective heat transfer coefficient \(UA(t)\) at 10 Hz by minimizing the physics-informed thermal residual, identifying fouling degradation within 3.4 s of onset with &lt;4.8% error:</p>
-    \[\mathcal{L}_{\text{PINN}} = \left( \frac{dT}{dt} - \left[ \frac{F}{V}(T_0 - T) + \frac{-\Delta H}{\rho C_p} k_0 e^{-E/RT} C_A - \frac{\widehat{UA}}{V \rho C_p} (T - T_c) \right] \right)^2\]
-
     <h2>4. Benchmark Case Study: Exothermic CSTR</h2>
 
-    <h3>4.1 Governing Chemical Reactor Equations</h3>
-    \[\frac{dC_A}{dt} = \frac{F}{V}(C_{A0} - C_A) - k_0 \exp\left(-\frac{E}{RT}\right) C_A\]
-    \[\frac{dT}{dt} = \frac{F}{V}(T_0 - T) + \frac{(-\Delta H)}{\rho C_p} k_0 \exp\left(-\frac{E}{RT}\right) C_A - \frac{UA}{V \rho C_p}(T - T_c)\]
-    \[\frac{dT_c}{dt} = \frac{1}{\tau_j} (u - T_c), \quad \text{with } |\dot{u}| \le 12.0\text{ K/s}, \quad u \in [280, 360]\text{ K}\]
-
-    <h3>4.2 Benchmark Model Parameters & True Steady State</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Parameter</th><th>Symbol</th><th>Nominal Value</th><th>Unit</th><th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>Reactor Volume</td><td>\(V\)</td><td>100.0</td><td>L</td><td>Vessel working volume</td></tr>
-        <tr><td>Volumetric Flow Rate</td><td>\(F\)</td><td>1.667</td><td>L/s</td><td>Feed throughput rate (100 L/min)</td></tr>
-        <tr><td>Feed Concentration</td><td>\(C_{A0}\)</td><td>1.0</td><td>mol/L</td><td>Inlet reactant concentration</td></tr>
-        <tr><td>Feed Temperature</td><td>\(T_0\)</td><td>350.0</td><td>K</td><td>Inlet feed stream temperature</td></tr>
-        <tr><td>Pre-exponential Factor</td><td>\(k_0\)</td><td>\(1.2 \times 10^9\)</td><td>s\(^{-1}\)</td><td>Arrhenius frequency factor</td></tr>
-        <tr><td>Activation Energy Ratio</td><td>\(E/R\)</td><td>8,750.0</td><td>K</td><td>Arrhenius activation temperature</td></tr>
-        <tr><td>Heat of Reaction</td><td>\(-\Delta H\)</td><td>\(5.0 \times 10^4\)</td><td>J/mol</td><td>Exothermic reaction enthalpy</td></tr>
-        <tr><td>Fluid Density</td><td>\(\rho\)</td><td>1,000.0</td><td>g/L</td><td>Reactor fluid density</td></tr>
-        <tr><td>Specific Heat Capacity</td><td>\(C_p\)</td><td>0.239</td><td>J/(g\(\cdot\)K)</td><td>Reactor fluid heat capacity</td></tr>
-        <tr><td>Heat Transfer Area</td><td>\(UA\)</td><td>833.3</td><td>W/K</td><td>Nominal heat transfer coefficient</td></tr>
-        <tr><td>Jacket Thermal Lag</td><td>\(\tau_j\)</td><td>2.0</td><td>s</td><td>Cooling jacket transport delay</td></tr>
-        <tr><td>Nominal Temperature</td><td>\(T_{\text{ref}}\)</td><td>350.0</td><td>K</td><td>Operating steady-state setpoint</td></tr>
-        <tr><td>Safe Operating Limit</td><td>\(T_{\text{trip}}\)</td><td>385.0</td><td>K</td><td>Plant emergency trip limit (SIS)</td></tr>
-        <tr><td>Preemptive Breaker</td><td>\(T_{\text{breaker}}\)</td><td>382.0</td><td>K</td><td>Software circuit breaker arming limit</td></tr>
-        <tr><td>Soft Barrier Threshold</td><td>\(T_{\text{barrier}}\)</td><td>380.0</td><td>K</td><td>Cost manifold barrier penalty start</td></tr>
-        <tr><td>Coolant Jacket Range</td><td>\(T_{c,\min}, T_{c,\max}\)</td><td>[280.0, 360.0]</td><td>K</td><td>Actuator saturation envelope</td></tr>
-        <tr><td>Jacket Slew Limit</td><td>\(|\dot{T}_c|_{\max}\)</td><td>12.0</td><td>K/s</td><td>15%/s of the 80 K span</td></tr>
-        <tr><td>Control Discretization</td><td>\(\Delta t_{\text{ctrl}}\)</td><td>0.20</td><td>s</td><td>Control step (\(H_p = 20 \to 4.0\text{ s}\))</td></tr>
-        <tr><td>Plant Integration Step</td><td>\(\Delta t_{\text{sim}}\)</td><td>0.02</td><td>s</td><td>RK4 plant integration step (50 Hz)</td></tr>
-      </tbody>
-    </table>
-
-    <h3>4.3 Numerical Oracle Feasibility Benchmark</h3>
-    <p>Dynamic trajectory optimization over the benchmark kinetic surge demonstrates the fundamental physical controllability limits:</p>
+    <h3>4.1 Numerical Dynamic Oracle Feasibility</h3>
+    <p>Dynamic trajectory optimization over the benchmark kinetic surge demonstrates the physical controllability limits under actuator saturation (\(T_c \ge 280\text{ K}, |\dot{T}_c| \le 12\text{ K/s}\)):</p>
 
     <table>
       <thead>
@@ -372,8 +333,8 @@ html_content = r"""<!DOCTYPE html>
         <tr>
           <th>Configuration</th>
           <th>Controller Type</th>
-          <th>Surv RMSE (K)</th>
-          <th>All RMSE (K)</th>
+          <th>Non-Trip RMSE (K)</th>
+          <th>Overall RMSE (K)</th>
           <th>Peak T (K)</th>
           <th>Slew (K/s)</th>
           <th>SIS Trips</th>
@@ -382,14 +343,24 @@ html_content = r"""<!DOCTYPE html>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Baseline 1</strong></td>
-          <td>Linear MPC (Jacobian QP, No Forecast)</td>
+          <td><strong>Baseline 1 (qT=1)</strong></td>
+          <td>Linear MPC (\(q_T = 1.0\), No Forecast)</td>
           <td>\(2.56 \pm 1.36\)</td>
           <td>\(16.26 \pm 5.52\)</td>
           <td>\(389.3 \pm 14.2\)</td>
           <td>\(3.29 \pm 0.95\)</td>
-          <td><span class="badge-trip">12 / 20 (60.0%)</span></td>
+          <td><span class="badge-trip">12 / 20 (60%)</span></td>
           <td>8 / 20 (9.8 s)</td>
+        </tr>
+        <tr>
+          <td><strong>Baseline 1 (qT=10)</strong></td>
+          <td>Linear MPC (\(q_T = 10.0\), No Forecast)</td>
+          <td>\(2.45 \pm 1.41\)</td>
+          <td>\(9.49 \pm 5.34\)</td>
+          <td>\(372.1 \pm 13.5\)</td>
+          <td>\(4.85 \pm 1.12\)</td>
+          <td><span class="badge-trip">6 / 20 (30%)</span></td>
+          <td>13 / 20 (7.1 s)</td>
         </tr>
         <tr>
           <td><strong>Baseline 2a</strong></td>
@@ -398,28 +369,28 @@ html_content = r"""<!DOCTYPE html>
           <td>\(9.62 \pm 5.37\)</td>
           <td>\(372.9 \pm 13.7\)</td>
           <td>\(5.04 \pm 1.29\)</td>
-          <td><span class="badge-trip">6 / 20 (30.0%)</span></td>
+          <td><span class="badge-trip">6 / 20 (30%)</span></td>
           <td>13 / 20 (6.9 s)</td>
         </tr>
         <tr>
           <td><strong>Ablation 1</strong></td>
           <td>MPPI (Static \(\theta^*\), No Forecast)</td>
           <td>\(2.98 \pm 1.75\)</td>
-          <td>\(12.14 \pm 5.58\)</td>
-          <td>\(379.1 \pm 14.6\)</td>
-          <td>\(2.34 \pm 0.35\)</td>
-          <td><span class="badge-trip">8 / 20 (40.0%)</span></td>
-          <td>11 / 20 (8.9 s)</td>
+          <td>\(12.03 \pm 5.57\)</td>
+          <td>\(378.9 \pm 14.6\)</td>
+          <td>\(2.44 \pm 0.38\)</td>
+          <td><span class="badge-trip">8 / 20 (40%)</span></td>
+          <td>11 / 20 (8.6 s)</td>
         </tr>
         <tr>
           <td><strong>Ablation 2</strong></td>
-          <td>MPPI + PINN (No Forecast)</td>
+          <td>MPPI + Observer (No Forecast)</td>
           <td>\(2.60 \pm 1.28\)</td>
-          <td>\(9.82 \pm 5.40\)</td>
-          <td>\(373.5 \pm 14.0\)</td>
-          <td>\(2.60 \pm 0.36\)</td>
-          <td><span class="badge-trip">6 / 20 (30.0%)</span></td>
-          <td>14 / 20 (12.1 s)</td>
+          <td>\(9.79 \pm 5.39\)</td>
+          <td>\(373.4 \pm 13.9\)</td>
+          <td>\(2.42 \pm 0.38\)</td>
+          <td><span class="badge-trip">6 / 20 (30%)</span></td>
+          <td>14 / 20 (11.6 s)</td>
         </tr>
         <tr>
           <td><strong>Baseline 2b</strong></td>
@@ -428,126 +399,53 @@ html_content = r"""<!DOCTYPE html>
           <td>\(\mathbf{2.82 \pm 2.93}\)</td>
           <td>\(\mathbf{356.7 \pm 7.6}\)</td>
           <td>\(6.41 \pm 1.03\)</td>
-          <td><span class="badge-safe">1 / 20 (5.0%)</span></td>
+          <td><span class="badge-safe">1 / 20 (5%)</span></td>
           <td><strong>19 / 20 (2.6 s)</strong></td>
         </tr>
         <tr>
           <td><strong>Ablation 3a</strong></td>
-          <td><strong>MPPI + PINN (With Forecast Preview)</strong></td>
+          <td><strong>MPPI + Observer (With Forecast)</strong></td>
           <td>\(\mathbf{1.81 \pm 1.11}\)</td>
-          <td>\(\mathbf{3.16 \pm 3.00}\)</td>
+          <td>\(\mathbf{3.11 \pm 2.99}\)</td>
           <td>\(\mathbf{357.3 \pm 7.7}\)</td>
-          <td>\(2.74 \pm 0.23\)</td>
-          <td><span class="badge-safe">1 / 20 (5.0%)</span></td>
-          <td><strong>18 / 20 (5.8 s)</strong></td>
+          <td>\(\mathbf{2.72 \pm 0.19}\)</td>
+          <td><span class="badge-safe">1 / 20 (5%)</span></td>
+          <td><strong>18 / 20 (5.7 s)</strong></td>
         </tr>
         <tr>
           <td><strong>Ablation 3b</strong></td>
           <td>Rule Supervisor + MPPI</td>
           <td>\(2.50 \pm 1.66\)</td>
-          <td>\(8.03 \pm 4.45\)</td>
-          <td>\(376.4 \pm 15.5\)</td>
-          <td>\(3.80 \pm 0.33\)</td>
-          <td><span class="badge-trip">6 / 20 (30.0%)</span></td>
-          <td>12 / 20 (13.0 s)</td>
+          <td>\(9.44 \pm 4.92\)</td>
+          <td>\(381.1 \pm 17.1\)</td>
+          <td>\(3.77 \pm 0.37\)</td>
+          <td><span class="badge-trip">8 / 20 (40%)</span></td>
+          <td>12 / 20 (13.1 s)</td>
         </tr>
         <tr>
           <td><strong>Full System</strong></td>
           <td><strong>Agentic MPC (Full Architecture)</strong></td>
           <td>\(\mathbf{0.95 \pm 0.40}\)</td>
-          <td>\(\mathbf{2.16 \pm 2.56}\)</td>
-          <td>\(\mathbf{355.4 \pm 6.2}\)</td>
-          <td>\(3.46 \pm 0.26\)</td>
-          <td><span class="badge-safe">1 / 20 (5.0%)</span></td>
-          <td><strong>19 / 20 (2.8 s)</strong></td>
+          <td>\(\mathbf{2.17 \pm 2.57}\)</td>
+          <td>\(\mathbf{355.5 \pm 6.2}\)</td>
+          <td>\(\mathbf{3.36 \pm 0.19}\)</td>
+          <td><span class="badge-safe">1 / 20 (5%)</span></td>
+          <td><strong>19 / 20 (2.9 s)</strong></td>
         </tr>
       </tbody>
     </table>
 
-    <h3>6.2 Key Scientific Insights</h3>
-    <ol>
-      <li><strong>Preview is the Primary Physical Stabilizer:</strong> Without preview, all controllers suffer trips in 30%–60% of seeds because jacket lag prevents reacting fast enough at onset. With 3.5 s preview, trip rates drop to 5% (1/20) across all nonlinear architectures.</li>
-      <li><strong>Paired Difference & Quenching Avoidance:</strong> Paired difference between MPPI+PINN Preview and Agentic Full yields mean difference \(+0.999 \pm 0.764\text{ K}\) (\(t = 2.737, p = 0.0131\); Wilcoxon \(W = 24.0, p = 0.0014\)). Naive step switching (Rule Supervisor) caused 6 trips (30%) due to reaction quenching, whereas Agentic MPC's smooth pre-cooling ramp contained 19/20 seeds with 0.95 K non-trip RMSE.</li>
-      <li><strong>The Supervisory Role of Agentic MPC:</strong> The fundamental contribution is supervisory: translating qualitative shift notes and alarms into verified parameter manifolds, avoiding operator retuning, and providing formal contract gating.</li>
-    </ol>
-
-    <h3>6.3 Lead-Time Sensitivity Sweep</h3>
+    <h3>6.2 Deconstructing the Supervisory Advantage</h3>
+    <p>Ablation across the 19 non-trip seeds isolates the quantitative mechanism behind the supervisory schedule:</p>
     <table>
       <thead>
-        <tr>
-          <th>Lead Time</th>
-          <th>Trips</th>
-          <th>Mean Peak (K)</th>
-          <th>Max Peak (K)</th>
-          <th>Containment Status</th>
-        </tr>
+        <tr><th>Configuration</th><th>Non-Trip RMSE (K)</th><th>Physical Mechanism</th></tr>
       </thead>
       <tbody>
-        <tr><td>0.0 s</td><td>9 / 10 (90%)</td><td>413.8 K</td><td>429.0 K</td><td>Severe thermal runaway</td></tr>
-        <tr><td>1.0 s</td><td>4 / 10 (40%)</td><td>379.9 K</td><td>418.4 K</td><td>Unstable transition</td></tr>
-        <tr><td>2.0 s</td><td>3 / 10 (30%)</td><td>381.8 K</td><td>426.1 K</td><td>Marginally controllable</td></tr>
-        <tr><td>2.5 s</td><td>5 / 10 (50%)</td><td>388.9 K</td><td>429.2 K</td><td>Quenching sensitivity region</td></tr>
-        <tr><td>3.0 s</td><td>4 / 10 (40%)</td><td>382.2 K</td><td>424.3 K</td><td>Transition boundary</td></tr>
-        <tr><td>3.2 s</td><td>2 / 10 (20%)</td><td>372.0 K</td><td>425.3 K</td><td>Containment emerging</td></tr>
-        <tr><td>3.5 s</td><td>1 / 10 (10%)</td><td>358.2 K</td><td>418.4 K</td><td>Stable operational containment</td></tr>
-        <tr><td>4.0 s</td><td>1 / 10 (10%)</td><td>362.0 K</td><td>409.3 K</td><td>Robust containment</td></tr>
-        <tr><td>5.0 s</td><td>0 / 10 (0%)</td><td>350.8 K</td><td>362.1 K</td><td>Complete surge absorption</td></tr>
-      </tbody>
-    </table>
-
-    <h3>6.4 Evaluation of the Neural Reasoner & Confusion Matrix</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Description</th>
-          <th>Count</th>
-          <th>Accepted</th>
-          <th>Rejected</th>
-          <th>Outcome</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Advisory Pre-cooling</strong></td>
-          <td>Upstream surge alerts, fouling</td>
-          <td>12</td>
-          <td><strong>12 (100%)</strong></td>
-          <td>0 (0%)</td>
-          <td>Validated pre-cooling ramps</td>
-        </tr>
-        <tr>
-          <td><strong>Routine Tracking</strong></td>
-          <td>Setpoint, eco mode, damping</td>
-          <td>14</td>
-          <td><strong>14 (100%)</strong></td>
-          <td>0 (0%)</td>
-          <td>Standard MPC updates</td>
-        </tr>
-        <tr>
-          <td><strong>Conservative Safety</strong></td>
-          <td>Tightened envelope, high barrier</td>
-          <td>12</td>
-          <td><strong>12 (100%)</strong></td>
-          <td>0 (0%)</td>
-          <td>Elevated safety parameters</td>
-        </tr>
-        <tr>
-          <td><strong>Adversarial Proposals</strong></td>
-          <td>Disable barrier, out-of-bounds u</td>
-          <td>12</td>
-          <td>0 (0%)</td>
-          <td><strong>12 (100%)</strong></td>
-          <td>Intercepted deterministically</td>
-        </tr>
-        <tr>
-          <td><strong>Total Test Suite</strong></td>
-          <td>Comprehensive 50-Directive Suite</td>
-          <td>50</td>
-          <td><strong>38 (76%)</strong></td>
-          <td><strong>12 (24%)</strong></td>
-          <td><strong>100% Gating Accuracy (Zero Leaks)</strong></td>
-        </tr>
+        <tr><td><strong>MPPI + Forecast Preview</strong></td><td>1.81 K</td><td>Unconstrained optimal preview tracking</td></tr>
+        <tr><td><strong>+ Ramp Cap Only</strong></td><td>1.12 K</td><td>Modulates pre-cooling to 282 K, preventing reaction quenching</td></tr>
+        <tr><td><strong>+ Elevated Barrier Weights Only</strong></td><td>1.36 K</td><td>Stiff penalty keeps state strictly within safe envelope</td></tr>
+        <tr><td><strong>Both (Anticipatory Supervisory Schedule)</strong></td><td><strong>0.95 K</strong></td><td>Coordinated pre-cooling containment (+0.86 K gain, p = 0.0088)</td></tr>
       </tbody>
     </table>
 

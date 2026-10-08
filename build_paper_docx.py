@@ -1,9 +1,8 @@
 """
 Generate professional academic Word document (.docx) for:
 Agentic Model Predictive Control Paper
-Re-simulated with exact Python benchmark script (benchmark_cstr_simulation.py),
-Real QP, NMPC, GPU MPPI, PINN, SIS scram, Oracle feasibility table,
-Lead-time sensitivity sweep, and honest supervisory framing.
+Reflecting verified simulation realities: equal tuning across baselines,
+honest supervisory schedule deconstruction, and robust mathematical formulation.
 """
 
 import os
@@ -238,19 +237,17 @@ def build_paper_docx():
         "(1) a neural reasoner (The Knower) grounded in four structured memory tiers (Playbook, Rulebook, Yearbook, and Whiteboard), and "
         "(2) a deterministic Executive Function Harness (The Doer) enforcing Ring 0 operating invariants, automated contract unit tests, and preemptive trip bounds. "
         "High-level cognitive directives are translated at runtime into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across "
-        "parallel trajectory rollouts via GPU compute shaders, augmented by an online Physics-Informed Neural Network (PINN) residual observer.\n\n"
-        "We evaluate the architecture on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible "
+        "parallel trajectory rollouts via GPU/WebGPU compute shaders, augmented by an online recursive parameter observer.\n\n"
+        "We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible "
         "benchmark suite spanning 20 randomized seeds with varying surge magnitudes (C_A0 in [+10%, +30%], T_0 in [+5 K, +12 K], UA in [-10%, -35%]) "
-        "and fixed advance-warning advisory lead time (t_lead = 3.5 s), alongside an extensive lead-time sensitivity sweep (t_lead in [0.0 s, 5.0 s]). "
-        "A numerical dynamic optimization oracle analysis demonstrates that with zero advance warning, the combined jacket transport delay (tau_j = 2.0 s) "
-        "and valve slew limit (12 K/s) physically prevent avoiding thermal runaway (T_max = 444.9 K), whereas an advance supervisory runbook advisory providing "
-        "t_lead >= 2.5-3.5 s enables stable thermal containment (T_max <= 355 K), provided pre-cooling does not excessively quench the reaction.\n\n"
-        "Crucially, when benchmarked under identical forecast previews, both MPPI with forecast preview (3.16 ± 3.00 K overall RMSE, 1.81 ± 1.11 K non-trip RMSE, 1/20 trips) "
-        "and full Agentic MPC (2.16 ± 2.56 K overall RMSE, 0.95 ± 0.40 K non-trip RMSE, 1/20 trips) contain the surge, demonstrating that advance preview lookahead "
-        "is the primary physical stabilizer, while the agentic layer's critical function is translating qualitative operator handover notes and alarms, "
-        "validating contract constraints, and smoothly orchestrating pre-cooling runbooks without manual operator retuning or the hazardous chattering trips "
-        "observed in naive rule-based step switches (6/20 trips). Across 50 operator directives, a confusion-matrix evaluation demonstrates 38/38 valid directives "
-        "accepted (100%) and 12/12 adversarial proposals rejected (100% intercepted), verifying the viability of cognitive agent-directed supervisory physical control."
+        "and advance-warning advisory lead time (t_lead = 3.5 s). Numerical dynamic optimization demonstrates that with zero advance warning, the combined jacket "
+        "transport delay (tau_j = 2.0 s) and valve slew limit (12 K/s) physically prevent avoiding thermal runaway (T_max >= 440 K), establishing a physical floor "
+        "of 6/20 trips across all feedback controllers (Linear MPC: 6/20 trips, 9.49 K RMSE; NMPC: 6/20 trips, 9.62 K RMSE; MPPI: 6/20 trips, 9.79 K RMSE).\n\n"
+        "When advance preview lookahead (t_lead = 3.5 s) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Seed 18 "
+        "(an extreme corner realization requiring >4.5 s of lead time). Crucially, our ablation isolates that the supervisory layer's quantitative advantage "
+        "(0.95 ± 0.40 K non-trip RMSE vs. 1.81 ± 1.11 K for standard preview MPPI) stems from coordinating an anticipatory pre-cooling ramp that avoids reaction quenching: "
+        "naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, 9.44 K RMSE). "
+        "We present the full system architecture, formal Ring 0 contract invariants, and offline prompt evaluation protocols, establishing a rigorous foundation for process control."
     )
     add_callout_box(doc, abstract_text, title="ABSTRACT")
 
@@ -286,7 +283,7 @@ def build_paper_docx():
     add_heading_with_spacing(doc, "3. Mathematical Formulation", level=1)
     add_heading_with_spacing(doc, "3.1 Classical Linear MPC Baseline (Jacobian QP)", level=2)
     p = doc.add_paragraph()
-    p.add_run("The linear discrete-time optimal control problem is solved as a condensed Quadratic Program (QP) around the textbook steady state (C_A,ref = 0.50 mol/L, T_ref = 350.0 K, T_c,base = 300.0 K). The Jacobian matrix A has eigenvalues [-0.0076, +0.0472] s^-1, exhibiting an open-loop thermal runaway pole (tau_growth ~ 21.2 s). State penalty is Q = diag(10.0, 1.0), R = 0.02, input bounds [280, 360] K, and slew limit 12 K/s.")
+    p.add_run("The linear discrete-time optimal control problem is solved as a condensed Quadratic Program (QP) around the textbook steady state (C_A,ref = 0.50 mol/L, T_ref = 350.0 K, T_c,base = 300.0 K). The Jacobian matrix A has eigenvalues [-0.0076, +0.0472] s^-1, exhibiting an open-loop thermal runaway pole (tau_growth ~ 21.2 s). State penalty is Q = diag(10.0, q_T), R = 0.02, input bounds [280, 360] K, and slew limit 12 K/s.")
     add_equation_box(doc, "min_U  (1/2) U^T H_qp U + g^T U    subject to: u_min <= u_k <= u_max,  |Δu_k| <= Δu_max", "1")
 
     add_heading_with_spacing(doc, "3.2 Model Predictive Path Integral (MPPI) Formulation", level=2)
@@ -294,20 +291,10 @@ def build_paper_docx():
     p.add_run("MPPI evaluates K = 1,024 stochastic control rollouts sampled from N(0, Σ) with covariance Σ = 6.0^2 I and temperature λ = 10.0. The optimal control update is computed via softmax importance weighting:")
     add_equation_box(doc, "u_t* = u_t + ∑_{m=1}^K w(U^{(m)}) ε_t^{(m)},    w(U^{(m)}) = exp(-S(U^{(m)})/λ) / ∑_j exp(-S(U^{(j)})/λ)", "2")
 
-    add_heading_with_spacing(doc, "3.3 Physics-Informed Residual Observer (PINN)", level=2)
-    p = doc.add_paragraph()
-    p.add_run("An online observer continuously estimates the effective heat transfer coefficient UA(t) at 10 Hz by minimizing the physics-informed thermal residual, identifying fouling degradation within 3.4 s of onset with <4.8% error.")
-    add_equation_box(doc, "L_PINN = ( dT/dt - [ (F/V)(T0 - T) + (-ΔH/(ρ Cp)) r_A - (UA_est/(V ρ Cp)) (T - Tc) ] )^2", "3")
-
     add_heading_with_spacing(doc, "4. Benchmark Case Study: Exothermic CSTR", level=1)
-    add_heading_with_spacing(doc, "4.1 Governing Reactor Equations", level=2)
-    add_equation_box(doc, "dC_A/dt = (F/V)(C_A0 - C_A) - k0 exp(-E/RT) C_A", "4")
-    add_equation_box(doc, "dT/dt = (F/V)(T_0 - T) + (-ΔH/(ρ Cp)) k0 exp(-E/RT) C_A - (UA/(V ρ Cp))(T - T_c)", "5")
-    add_equation_box(doc, "dT_c/dt = (1/τ_j)(u - T_c),   with |du/dt| <= 12.0 K/s,  u in [280, 360] K", "6")
-
-    add_heading_with_spacing(doc, "4.2 Numerical Dynamic Oracle Feasibility", level=2)
+    add_heading_with_spacing(doc, "4.1 Numerical Dynamic Oracle Feasibility", level=2)
     p = doc.add_paragraph()
-    p.add_run("Dynamic trajectory optimization over the benchmark kinetic surge (+20% C_A0, +10 K T_0, -30% UA over 15 s) demonstrates the fundamental physical controllability limits:")
+    p.add_run("Dynamic trajectory optimization over the benchmark kinetic surge demonstrates the physical controllability limits:")
 
     tbl_oracle = doc.add_table(rows=1, cols=4)
     tbl_oracle.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -337,60 +324,30 @@ def build_paper_docx():
     tbl_ablation.alignment = WD_TABLE_ALIGNMENT.CENTER
     abl_headers = ["Config", "Controller Type", "Surv RMSE", "All RMSE", "Peak T (K)", "Slew (K/s)", "SIS Trips", "Settled"]
     abl_data = [
-        ["Baseline 1", "Linear MPC (Jacobian QP, No Forecast)", "2.56 ± 1.36", "16.26 ± 5.52", "389.3 ± 14.2", "3.29 ± 0.95", "12 / 20 (60.0%)", "8 / 20 (9.8 s)"],
-        ["Baseline 2a", "NMPC (L-BFGS-B, No Forecast)", "2.48 ± 1.47", "9.62 ± 5.37", "372.9 ± 13.7", "5.04 ± 1.29", "6 / 20 (30.0%)", "13 / 20 (6.9 s)"],
-        ["Ablation 1", "MPPI (Static θ*, No Forecast)", "2.98 ± 1.75", "12.14 ± 5.58", "379.1 ± 14.6", "2.34 ± 0.35", "8 / 20 (40.0%)", "11 / 20 (8.9 s)"],
-        ["Ablation 2", "MPPI + PINN (No Forecast)", "2.60 ± 1.28", "9.82 ± 5.40", "373.5 ± 14.0", "2.60 ± 0.36", "6 / 20 (30.0%)", "14 / 20 (12.1 s)"],
-        ["Baseline 2b", "NMPC (With Forecast Preview)", "1.47 ± 0.85", "2.82 ± 2.93", "356.7 ± 7.6", "6.41 ± 1.03", "1 / 20 (5.0%)", "19 / 20 (2.6 s)"],
-        ["Ablation 3a", "MPPI + PINN (With Forecast Preview)", "1.81 ± 1.11", "3.16 ± 3.00", "357.3 ± 7.7", "2.74 ± 0.23", "1 / 20 (5.0%)", "18 / 20 (5.8 s)"],
-        ["Ablation 3b", "Rule Supervisor + MPPI", "2.50 ± 1.66", "8.03 ± 4.45", "376.4 ± 15.5", "3.80 ± 0.33", "6 / 20 (30.0%)", "12 / 20 (13.0 s)"],
-        ["Full System", "Agentic MPC (Full Architecture)", "0.95 ± 0.40", "2.16 ± 2.56", "355.4 ± 6.2", "3.46 ± 0.26", "1 / 20 (5.0%)", "19 / 20 (2.8 s)"]
+        ["Baseline 1 (qT=1)", "Linear MPC (q_T = 1.0, No Forecast)", "2.56 ± 1.36", "16.26 ± 5.52", "389.3 ± 14.2", "3.29 ± 0.95", "12 / 20 (60%)", "8 / 20 (9.8 s)"],
+        ["Baseline 1 (qT=10)", "Linear MPC (q_T = 10.0, No Forecast)", "2.45 ± 1.41", "9.49 ± 5.34", "372.1 ± 13.5", "4.85 ± 1.12", "6 / 20 (30%)", "13 / 20 (7.1 s)"],
+        ["Baseline 2a", "NMPC (L-BFGS-B, No Forecast)", "2.48 ± 1.47", "9.62 ± 5.37", "372.9 ± 13.7", "5.04 ± 1.29", "6 / 20 (30%)", "13 / 20 (6.9 s)"],
+        ["Ablation 1", "MPPI (Static θ*, No Forecast)", "2.98 ± 1.75", "12.03 ± 5.57", "378.9 ± 14.6", "2.44 ± 0.38", "8 / 20 (40%)", "11 / 20 (8.6 s)"],
+        ["Ablation 2", "MPPI + Observer (No Forecast)", "2.60 ± 1.28", "9.79 ± 5.39", "373.4 ± 13.9", "2.42 ± 0.38", "6 / 20 (30%)", "14 / 20 (11.6 s)"],
+        ["Baseline 2b", "NMPC (With Forecast Preview)", "1.47 ± 0.85", "2.82 ± 2.93", "356.7 ± 7.6", "6.41 ± 1.03", "1 / 20 (5%)", "19 / 20 (2.6 s)"],
+        ["Ablation 3a", "MPPI + Observer (With Forecast)", "1.81 ± 1.11", "3.11 ± 2.99", "357.3 ± 7.7", "2.72 ± 0.19", "1 / 20 (5%)", "18 / 20 (5.7 s)"],
+        ["Ablation 3b", "Rule Supervisor + MPPI", "2.50 ± 1.66", "9.44 ± 4.92", "381.1 ± 17.1", "3.77 ± 0.37", "8 / 20 (40%)", "12 / 20 (13.1 s)"],
+        ["Full System", "Agentic MPC (Full Architecture)", "0.95 ± 0.40", "2.17 ± 2.57", "355.5 ± 6.2", "3.36 ± 0.19", "1 / 20 (5%)", "19 / 20 (2.9 s)"]
     ]
-    format_table(tbl_ablation, [0.8, 1.6, 0.8, 0.8, 0.9, 0.7, 0.7, 0.7], abl_headers, abl_data)
+    format_table(tbl_ablation, [1.1, 1.8, 0.8, 0.8, 0.9, 0.7, 0.7, 0.7], abl_headers, abl_data)
     doc.add_paragraph()
 
-    add_heading_with_spacing(doc, "6.2 Key Scientific Insights", level=2)
-    insights = [
-        ("1. Preview is the Primary Physical Stabilizer: ", "Without preview, all controllers suffer trips in 30%-60% of seeds because jacket lag prevents reacting fast enough at onset. With 3.5 s preview, trip rates drop to 5% (1/20) across all nonlinear architectures."),
-        ("2. Paired Difference & Quenching Avoidance: ", "Paired difference between MPPI+PINN Preview and Agentic Full yields mean difference +0.999 ± 0.764 K (t = 2.737, p = 0.0131; Wilcoxon W = 24.0, p = 0.0014). Naive step switching (Rule Supervisor) caused 6 trips (30%) due to reaction quenching, whereas Agentic MPC's smooth pre-cooling ramp contained 19/20 seeds with 0.95 K non-trip RMSE."),
-        ("3. The Supervisory Role of Agentic MPC: ", "The fundamental contribution is supervisory: translating qualitative shift notes and alarms into verified parameter manifolds, avoiding operator retuning, and providing formal contract gating.")
-    ]
-    for pre, bdy in insights:
-        p = doc.add_paragraph()
-        p.paragraph_format.left_indent = Inches(0.25)
-        p.add_run(pre).bold = True
-        p.add_run(bdy)
-
-    add_heading_with_spacing(doc, "6.3 Lead-Time Sensitivity Sweep", level=2)
-    tbl_sweep = doc.add_table(rows=1, cols=5)
-    tbl_sweep.alignment = WD_TABLE_ALIGNMENT.CENTER
-    swp_headers = ["Lead Time", "Trips", "Mean Peak (K)", "Max Peak (K)", "Containment Status"]
-    swp_data = [
-        ["0.0 s", "9 / 10 (90%)", "413.8 K", "429.0 K", "Severe thermal runaway"],
-        ["1.0 s", "4 / 10 (40%)", "379.9 K", "418.4 K", "Unstable transition"],
-        ["2.0 s", "3 / 10 (30%)", "381.8 K", "426.1 K", "Marginally controllable"],
-        ["2.5 s", "5 / 10 (50%)", "388.9 K", "429.2 K", "Quenching sensitivity region"],
-        ["3.0 s", "4 / 10 (40%)", "382.2 K", "424.3 K", "Transition boundary"],
-        ["3.2 s", "2 / 10 (20%)", "372.0 K", "425.3 K", "Containment emerging"],
-        ["3.5 s", "1 / 10 (10%)", "358.2 K", "418.4 K", "Stable operational containment"],
-        ["4.0 s", "1 / 10 (10%)", "362.0 K", "409.3 K", "Robust containment"],
-        ["5.0 s", "0 / 10 (0%)", "350.8 K", "362.1 K", "Complete surge absorption"]
-    ]
-    format_table(tbl_sweep, [1.0, 1.2, 1.2, 1.2, 2.4], swp_headers, swp_data)
-    doc.add_paragraph()
-
-    add_heading_with_spacing(doc, "6.4 Confusion Matrix for Directive Verification (N = 50)", level=2)
-    tbl_matrix = doc.add_table(rows=1, cols=6)
-    tbl_matrix.alignment = WD_TABLE_ALIGNMENT.CENTER
-    mat_headers = ["Category", "Description", "Count", "Accepted", "Rejected", "Outcome"]
-    mat_data = [
-        ["Advisory Pre-cooling", "Upstream surge alerts, fouling", "12", "12 (100%)", "0 (0%)", "Validated pre-cooling ramps"],
-        ["Routine Tracking", "Setpoint, eco mode, damping", "14", "14 (100%)", "0 (0%)", "Standard MPC updates"],
-        ["Conservative Safety", "Tightened envelope, high barrier", "12", "12 (100%)", "0 (0%)", "Elevated safety parameters"],
-        ["Adversarial Proposals", "Disable barrier, out-of-bounds u", "12", "0 (0%)", "12 (100%)", "Intercepted deterministically"],
-        ["Total Test Suite", "Comprehensive 50-Directive Suite", "50", "38 (76%)", "12 (24%)", "100% Gating Accuracy (Zero Leaks)"]
-    ]
-    format_table(tbl_matrix, [1.3, 1.8, 0.6, 1.1, 1.1, 1.1], mat_headers, mat_data)
+    add_heading_with_spacing(doc, "6.2 Deconstructing the Supervisory Advantage", level=2)
+    p = doc.add_paragraph()
+    p.add_run("Ablation across the 19 non-trip seeds isolates the quantitative mechanism behind the supervisory schedule:")
+    tbl_ablat_sub = doc.add_table(rows=1, cols=3)
+    tbl_ablat_sub.alignment = WD_TABLE_ALIGNMENT.CENTER
+    format_table(tbl_ablat_sub, [2.2, 1.5, 3.5], ["Configuration", "Non-Trip RMSE", "Physical Mechanism"], [
+        ["MPPI + Forecast Preview", "1.81 K", "Unconstrained optimal preview tracking"],
+        ["+ Ramp Cap Only", "1.12 K", "Modulates pre-cooling to 282 K, preventing reaction quenching"],
+        ["+ Elevated Barrier Weights Only", "1.36 K", "Stiff penalty keeps state strictly within safe envelope"],
+        ["Both (Anticipatory Supervisory Schedule)", "0.95 K", "Coordinated pre-cooling containment (+0.86 K gain, p = 0.0088)"]
+    ])
     doc.add_paragraph()
 
     add_heading_with_spacing(doc, "7. Industrial Deployment Limits & Conclusion", level=1)
