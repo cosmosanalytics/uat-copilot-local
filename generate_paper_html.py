@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+"""
+generate_paper_html.py
+Generates the publication-grade HTML version of agentic_mpc_paper.html with:
+  1. Exact authentic simulation tables (Table 1, Table 2, Table 3, Table 4).
+  2. Complete mathematical formulations (QP, MPPI, PINN, CSTR ODEs).
+  3. KaTeX math formatting and responsive academic layout.
+"""
+
+html_content = r"""<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -592,3 +600,9 @@
   </script>
 </body>
 </html>
+"""
+
+with open(r"C:\Users\richa\ai-engineering\agentic_mpc_paper.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("Successfully generated agentic_mpc_paper.html")
