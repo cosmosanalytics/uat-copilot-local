@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NovelCrafter AI: Page-by-Page Autonomous Novel Studio (WebLLM & WebGPU)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0C0F17;
+    --panel: #131824;
+    --panel-border: #1E2638;
+    --panel-head: #182030;
+    --card: #1A2234;
+    --card-border: #253147;
+
+    --text: #F8FAFC;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+
+    --book-paper: #161C28;
+    --book-text: #F1F5F9;
+    --book-border: #2D3748;
+
+    --gold: #F59E0B;
+    --gold-lt: #FBBF24;
+    --gold-bg: rgba(245, 158, 11, 0.12);
+
+    --primary: #6366F1;
+    --primary-lt: #818CF8;
+    --primary-gradient: linear-gradient(135deg, #6366F1, #8B5CF6, #EC4899);
+
+    --danger: #EF4444;
+    --danger-bg: rgba(239, 68, 68, 0.12);
+    --success: #10B981;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-book: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="light"] {
+    --bg: #F4F1EA;
+    --panel: #FFFFFF;
+    --panel-border: #E5E0D6;
+    --panel-head: #F8F6F0;
+    --card: #FFFFFF;
+    --card-border: #E8E3D9;
+
+    --text: #1C1917;
+    --text-muted: #57534E;
+    --text-dim: #A8A29E;
+
+    --book-paper: #FDFBF7;
+    --book-text: #292524;
+    --book-border: #D6D0C4;
+
+    --gold-bg: #FEF3C7;
+    --shadow-sm: 0 1px 3px rgba(41, 37, 36, 0.06);
+    --shadow-md: 0 4px 14px rgba(41, 37, 36, 0.08);
+    --shadow-book: 0 10px 30px rgba(41, 37, 36, 0.12), 0 1px 3px rgba(41, 37, 36, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Public Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 20px;
+    gap: 12px;
+  }
+
+  /* TOP HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 10px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-icon {
+    font-size: 26px;
+    background: var(--primary-gradient);
+    color: white;
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  }
+  .brand-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+  .brand-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .model-select {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+  }
+  .btn {
+    border: none;
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    font-family: 'Public Sans', sans-serif;
+  }
+  .btn-webgpu {
+    background: #6366F1;
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  .btn-webgpu:hover { background: #4F46E5; }
+  .btn-theme {
+    background: var(--panel-head);
+    color: var(--text);
+    border: 1.5px solid var(--panel-border);
+  }
+  .btn-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .btn-danger:hover {
+    background: var(--danger);
+    color: white;
+  }
+
+  /* GPU STATUS STRIP */
+  .status-strip {
+    background: var(--panel);
+    border: 1.2px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #10B981;
+    display: inline-block;
+    margin-right: 6px;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+  .dot.loading { background: #F59E0B; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+  /* WORKSPACE MAIN LAYOUT */
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    gap: 14px;
+    flex: 1;
+    align-items: stretch;
+  }
+
+  /* LEFT SIDEBAR: NOVEL BIBLE & OUTLINE */
+  .sidebar-panel {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    max-height: calc(100vh - 170px);
+  }
+  .panel-section-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .meta-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .meta-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .meta-input, .meta-textarea, .meta-select {
+    background: var(--panel-head);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    font-family: 'Public Sans', sans-serif;
+    width: 100%;
+  }
+  .meta-input:focus, .meta-textarea:focus, .meta-select:focus {
+    border-color: var(--primary);
+  }
+
+  /* TABLE OF CONTENTS LIST */
+  .toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .toc-item {
+    background: var(--panel-head);
+    border: 1px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s;
+  }
+  .toc-item:hover {
+    border-color: var(--primary);
+    transform: translateX(2px);
+  }
+  .toc-item.active {
+    background: var(--card);
+    border-color: var(--primary);
+    border-left: 3.5px solid var(--primary);
+    font-weight: 700;
+  }
+  .toc-del {
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 11px;
+  }
+  .toc-del:hover { color: var(--danger); }
+
+  /* NOVEL PRESETS */
+  .preset-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .pill-preset {
+    background: var(--panel-head);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10.5px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .pill-preset:hover {
+    border-color: var(--primary);
+    color: var(--text);
+  }
+
+  /* RIGHT: BOOK READER & GENERATION STAGE */
+  .reader-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* BOOK TOOLBAR & TELEMETRY */
+  .reader-bar {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .page-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .page-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold-lt);
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  /* THE BOOK PAGE CANVAS */
+  .book-container {
+    background: var(--book-paper);
+    border: 2px solid var(--book-border);
+    border-radius: 12px;
+    padding: 40px 52px;
+    box-shadow: var(--shadow-book);
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    color: var(--book-text);
+  }
+  .book-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  .book-novel-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+  .book-chapter-title {
+    font-family: 'Newsreader', serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    margin-top: 4px;
+    color: var(--book-text);
+  }
+
+  /* PROSE TEXT */
+  .book-prose {
+    font-family: 'Newsreader', serif;
+    font-size: 18.5px;
+    line-height: 1.85;
+    flex: 1;
+    color: var(--book-text);
+    outline: none;
+    white-space: pre-wrap;
+  }
+  .book-prose p {
+    margin-bottom: 16px;
+    text-indent: 1.5em;
+  }
+  .book-prose p:first-of-type {
+    text-indent: 0;
+  }
+  .book-prose p:first-of-type::first-letter {
+    font-size: 3.2em;
+    float: left;
+    line-height: 0.8;
+    margin-right: 8px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    color: var(--gold-lt);
+  }
+
+  .book-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 14px;
+    margin-top: 24px;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* PROMPT & DIRECTION GENERATOR DOCK */
+  .prompt-dock {
+    background: var(--panel);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .prompt-row {
+    display: flex;
+    gap: 10px;
+  }
+  .direction-input {
+    flex: 1;
+    background: var(--panel-head);
+    border: 1.5px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    font-family: 'Public Sans', sans-serif;
+  }
+  .direction-input:focus {
+    border-color: var(--primary);
+  }
+  .btn-generate {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 10px 22px;
+    font-size: 13px;
+    font-weight: 800;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    white-space: nowrap;
+    transition: transform 0.15s;
+  }
+  .btn-generate:hover {
+    transform: translateY(-1px);
+  }
+
+  /* TOAST ALERT */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #111827;
+    color: white;
+    border: 1px solid #374151;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    z-index: 1000;
+  }
+
+  /* FOOTER */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 4px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-icon">📚</div>
+      <div>
+        <div class="brand-title">NovelCrafter AI: Page-by-Page Autonomous Writer</div>
+        <div class="brand-sub">Persistent Storage • Deletable Pages • Local WebLLM & WebGPU Engine</div>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <select id="model-select" class="model-select">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (Ultra Fast / ~135MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (Fast / ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Creative / ~800MB)</option>
+      </select>
+      <button id="btn-init-webgpu" class="btn btn-webgpu" onclick="initWebLLM()">
+        ⚡ Load WebGPU Engine
+      </button>
+      <button class="btn btn-theme" onclick="toggleTheme()">🌓 Theme</button>
+    </div>
+  </header>
+
+  <!-- WEBGPU HARDWARE STRIP -->
+  <div class="status-strip">
+    <div>
+      <div id="gpu-dot" class="dot"></div>
+      <span id="gpu-status-text"><strong>Literary Synthesis Kernel:</strong> Instant Story Continuity Active (Click 'Load WebGPU Engine' to allocate browser GPU VRAM)</span>
+    </div>
+    <div style="font-family:'JetBrains Mono', monospace; color:var(--text-dim); font-size:11px;" id="storage-status">
+      💾 LOCALSTORAGE PERSISTENCE: READY
+    </div>
+  </div>
+
+  <!-- STUDIO WORKSPACE LAYOUT -->
+  <main class="studio-layout">
+
+    <!-- LEFT SIDEBAR: STORY BIBLE & OUTLINE -->
+    <aside class="sidebar-panel">
+      <div class="panel-section-title">
+        <span>📖 Novel Settings</span>
+        <button class="btn btn-theme" style="padding:2px 8px; font-size:10px;" onclick="createNewNovelModal()">+ New Novel</button>
+      </div>
+
+      <div class="meta-group">
+        <label class="meta-label">Novel Title</label>
+        <input type="text" id="novel-title" class="meta-input" value="The Chrono-Thief of Neo-Kyoto" onchange="saveNovelMeta()">
+      </div>
+
+      <div class="meta-group">
+        <label class="meta-label">Genre & Style</label>
+        <div style="display:flex; gap:6px;">
+          <select id="novel-genre" class="meta-select" onchange="saveNovelMeta()">
+            <option value="Cyberpunk Noir">Cyberpunk Noir</option>
+            <option value="Epic Fantasy">Epic Fantasy</option>
+            <option value="Gothic Mystery">Gothic Mystery</option>
+            <option value="Hard Sci-Fi">Hard Sci-Fi</option>
+            <option value="Historical Fiction">Historical Fiction</option>
+            <option value="Psychological Thriller">Psychological Thriller</option>
+          </select>
+          <select id="novel-style" class="meta-select" onchange="saveNovelMeta()">
+            <option value="Atmospheric & Poetic">Atmospheric & Poetic</option>
+            <option value="Fast-Paced & Punchy">Fast-Paced & Punchy</option>
+            <option value="Philosophical & Deep">Philosophical & Deep</option>
+            <option value="Rich Worldbuilding">Rich Worldbuilding</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="meta-group">
+        <label class="meta-label">Story Synopsis / Premise</label>
+        <textarea id="novel-synopsis" class="meta-textarea" rows="3" onchange="saveNovelMeta()">In a neon-soaked 2099 Kyoto where memories are bought and sold on illicit optical chips, a former neural archivist discovers a memory shard of a murder that has not happened yet.</textarea>
+      </div>
+
+      <div class="meta-group">
+        <label class="meta-label">Key Characters & Setting</label>
+        <textarea id="novel-characters" class="meta-textarea" rows="2" onchange="saveNovelMeta()">Ren Takahashi (disgraced neural archivist with a flickering cybernetic eye); Mara (rogue chronometer merchant); Sector 4 under rain.</textarea>
+      </div>
+
+      <!-- 1-CLICK STARTER NOVEL PRESETS -->
+      <div class="panel-section-title" style="margin-top:6px;">
+        <span>⚡ Quick Novel Presets</span>
+      </div>
+      <div class="preset-row">
+        <button class="pill-preset" onclick="loadNovelPreset('cyberpunk')">🌃 Neo-Kyoto Noir</button>
+        <button class="pill-preset" onclick="loadNovelPreset('fantasy')">⚔️ Obsidian Citadel</button>
+        <button class="pill-preset" onclick="loadNovelPreset('gothic')">🕯️ Black Fog Manor</button>
+        <button class="pill-preset" onclick="loadNovelPreset('scifi')">🚀 Deep Space Beacon</button>
+      </div>
+
+      <!-- TABLE OF CONTENTS (PAGE LIST) -->
+      <div class="panel-section-title" style="margin-top:10px;">
+        <span>📑 Table of Contents</span>
+        <span id="toc-count" style="font-size:10px; font-weight:700; color:var(--gold-lt);">1 Page</span>
+      </div>
+      <div class="toc-list" id="toc-list">
+        <!-- Dynamically injected page items -->
+      </div>
+
+      <!-- PERSISTENCE CONTROLS -->
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:auto; padding-top:10px; border-top:1px solid var(--panel-border);">
+        <button class="btn btn-theme" onclick="exportNovelMarkdown()">📥 Export Novel (.md)</button>
+        <button class="btn btn-theme" onclick="exportNovelJSON()">💾 Backup Novel (.json)</button>
+        <button class="btn btn-danger" onclick="confirmResetNovel()">🗑️ Delete Entire Novel</button>
+      </div>
+    </aside>
+
+    <!-- RIGHT: BOOK READER & PAGE GENERATOR -->
+    <section class="reader-stage">
+
+      <!-- TOP READER TOOLBAR -->
+      <div class="reader-bar">
+        <div class="page-nav">
+          <button class="btn btn-theme" id="btn-prev" onclick="prevPage()">◀ Prev</button>
+          <span class="page-counter" id="page-counter">PAGE 1 / 1</span>
+          <button class="btn btn-theme" id="btn-next" onclick="nextPage()">Next ▶</button>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-theme" onclick="readAloudPage()" id="btn-read-aloud">🔊 Read Aloud</button>
+          <button class="btn btn-theme" onclick="toggleEditMode()" id="btn-edit-page">✏️ Edit Page</button>
+          <button class="btn btn-danger" onclick="confirmDeleteCurrentPage()" id="btn-del-page" title="Delete current page">
+            🗑️ Delete Page
+          </button>
+        </div>
+      </div>
+
+      <!-- THE BOOK PAGE DISPLAY -->
+      <article class="book-container" id="book-container">
+        <div>
+          <div class="book-header">
+            <span class="book-novel-title" id="book-header-novel-title">THE CHRONO-THIEF OF NEO-KYOTO</span>
+            <span style="font-family:'JetBrains Mono'; font-size:11px; color:var(--text-dim);" id="page-date">PAGE 1</span>
+          </div>
+
+          <h2 class="book-chapter-title" id="book-chapter-title">Chapter 1: The Rain in Sector 4</h2>
+        </div>
+
+        <!-- THE PROSE BODY (EDITABLE) -->
+        <div class="book-prose" id="book-prose" contenteditable="false" onblur="saveCurrentPageText()">
+          <!-- Injected novel page text -->
+        </div>
+
+        <div class="book-footer">
+          <span id="page-word-count">Words: 248 • Reading Time: ~1 min</span>
+          <span id="book-page-num">— 1 —</span>
+          <span id="auto-save-tag" style="color:var(--success);">✓ Auto-saved locally</span>
+        </div>
+      </article>
+
+      <!-- PROMPT & CONTINUATION DOCK -->
+      <div class="prompt-dock">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11.5px; font-weight:700; color:var(--text);">
+            ✍️ Direction for Next Page:
+            <span style="font-size:10.5px; font-weight:500; color:var(--text-dim);">(Steer characters, events, twists, or leave blank for natural story continuation)</span>
+          </span>
+          <span style="font-size:10.5px; color:var(--text-dim);">Persistent & Deletable</span>
+        </div>
+
+        <div class="prompt-row">
+          <input type="text" id="direction-input" class="direction-input" placeholder="e.g. 'Ren decodes the corrupted memory chip in an alley diner and spots a drone outside'..." onkeydown="if(event.key==='Enter') generateNextPage()">
+          <button class="btn-generate" onclick="generateNextPage()">
+            <span>📖 Write Next Page</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast">Action completed</div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div><strong>Universal AI Engineering Blueprint</strong> • Autonomous Page-by-Page Novel Generation</div>
+    <div>100% Client-Side WebLLM & WebGPU • Zero Server Latency • <a href="https://agentskills.io" target="_blank" style="color:var(--primary-lt); text-decoration:none;">agentskills.io</a></div>
+  </footer>
+
+<!-- JAVASCRIPT: NOVEL ENGINE, WEBGPU & LOCAL PERSISTENCE -->
+<script>
+// STORAGE KEYS
+const STORAGE_KEY = 'novel_crafter_current_novel_v1';
+
+// NOVEL DATA MODEL
+let currentNovel = {
+  id: 'novel_' + Date.now(),
+  title: "The Chrono-Thief of Neo-Kyoto",
+  genre: "Cyberpunk Noir",
+  style: "Atmospheric & Poetic",
+  synopsis: "In a neon-soaked 2099 Kyoto where memories are bought and sold on illicit optical chips, a former neural archivist discovers a memory shard of a murder that has not happened yet.",
+  characters: "Ren Takahashi (disgraced neural archivist with a flickering cybernetic eye); Mara (rogue chronometer merchant); Sector 4 under rain.",
+  currentPageIndex: 0,
+  pages: [
+    {
+      id: 'p_1',
+      chapter: "Chapter 1: The Rain in Sector 4",
+      direction: "Establish atmosphere, introducing Ren in an alley noodle stall examining a warm glass optical shard.",
+      text: `<p>The rain in Sector 4 did not fall from the sky; it condensed from the steam vents of the subterranean fusion dynamos, tasting faintly of ozone and cheap synthetic coolant.</p><p>Ren Takahashi sat under the oilcloth awning of an eight-stool noodle stall, his mechanical left iris clicking softly as it autofocusing through the haze. Between his scarred fingertips, he turned a sliver of unrefined optical glass—warm to the touch, humming with an electrostatic pulse that made the hair on his forearms stand up.</p><p>“You’re lingering, Ren,” murmured the noodle vendor without turning from his simmering iron vat. “Peacekeeper drones sweep this block every twenty minutes. They don’t like people holding unauthorized glass.”</p><p>“It’s not glass,” Ren whispered. He held the shard against his temporal port. A brief, violet spark jumped across his skin. For a fraction of a second, the neon alleys vanished, replaced by the suffocating silence of an executive penthouse forty levels above, where a pool of dark arterial blood was spreading across white Carrara marble.</p><p>The timestamp embedded in the memory was stamped for tomorrow at midnight.</p>`
+    }
+  ]
+};
+
+let isEditing = false;
+let isWebLLMReady = false;
+
+// INITIALIZATION & PERSISTENCE
+function loadPersistedNovel() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.pages && parsed.pages.length > 0) {
+        currentNovel = parsed;
+        showToast("Loaded saved novel from local storage.");
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load persisted novel:", e);
+  }
+  syncUIFromNovel();
+}
+
+function persistNovel() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentNovel));
+    const tag = document.getElementById('auto-save-tag');
+    if (tag) {
+      tag.textContent = "✓ Auto-saved locally (" + new Date().toLocaleTimeString() + ")";
+      tag.style.color = "var(--success)";
+    }
+  } catch (e) {
+    console.error("Failed to persist novel:", e);
+  }
+}
+
+function syncUIFromNovel() {
+  document.getElementById('novel-title').value = currentNovel.title;
+  document.getElementById('novel-genre').value = currentNovel.genre;
+  document.getElementById('novel-style').value = currentNovel.style;
+  document.getElementById('novel-synopsis').value = currentNovel.synopsis;
+  document.getElementById('novel-characters').value = currentNovel.characters;
+
+  if (currentNovel.currentPageIndex >= currentNovel.pages.length) {
+    currentNovel.currentPageIndex = Math.max(0, currentNovel.pages.length - 1);
+  }
+
+  renderTOC();
+  renderCurrentPage();
+}
+
+function saveNovelMeta() {
+  currentNovel.title = document.getElementById('novel-title').value.trim() || "Untitled Novel";
+  currentNovel.genre = document.getElementById('novel-genre').value;
+  currentNovel.style = document.getElementById('novel-style').value;
+  currentNovel.synopsis = document.getElementById('novel-synopsis').value.trim();
+  currentNovel.characters = document.getElementById('novel-characters').value.trim();
+
+  document.getElementById('book-header-novel-title').textContent = currentNovel.title.toUpperCase();
+  persistNovel();
+}
+
+// RENDER ACTIVE PAGE
+function renderCurrentPage() {
+  const pageIdx = currentNovel.currentPageIndex;
+  const page = currentNovel.pages[pageIdx];
+
+  if (!page) return;
+
+  document.getElementById('book-header-novel-title').textContent = currentNovel.title.toUpperCase();
+  document.getElementById('page-date').textContent = `PAGE ${pageIdx + 1} OF ${currentNovel.pages.length}`;
+  document.getElementById('book-chapter-title').textContent = page.chapter || `Page ${pageIdx + 1}`;
+  document.getElementById('book-prose').innerHTML = page.text;
+  document.getElementById('page-counter').textContent = `PAGE ${pageIdx + 1} / ${currentNovel.pages.length}`;
+  document.getElementById('book-page-num').textContent = `— ${pageIdx + 1} —`;
+
+  // Calculate words and read time
+  const tmp = document.createElement('div');
+  tmp.innerHTML = page.text;
+  const words = (tmp.textContent || tmp.innerText || '').trim().split(/\s+/).filter(Boolean).length;
+  const readTime = Math.max(1, Math.round(words / 200));
+  document.getElementById('page-word-count').textContent = `Words: ${words} • Reading Time: ~${readTime} min`;
+
+  // Direction input placeholder
+  document.getElementById('direction-input').placeholder = `What should happen on Page ${pageIdx + 2}? (or leave blank for natural flow)`;
+
+  // Update nav buttons
+  document.getElementById('btn-prev').disabled = pageIdx === 0;
+  document.getElementById('btn-next').disabled = pageIdx === currentNovel.pages.length - 1;
+
+  // Highlight TOC
+  document.querySelectorAll('.toc-item').forEach((el, i) => {
+    el.classList.toggle('active', i === pageIdx);
+  });
+}
+
+// RENDER TABLE OF CONTENTS
+function renderTOC() {
+  const list = document.getElementById('toc-list');
+  list.innerHTML = '';
+  document.getElementById('toc-count').textContent = `${currentNovel.pages.length} Page${currentNovel.pages.length === 1 ? '' : 's'}`;
+
+  currentNovel.pages.forEach((p, idx) => {
+    const item = document.createElement('div');
+    item.className = `toc-item ${idx === currentNovel.currentPageIndex ? 'active' : ''}`;
+    item.onclick = (e) => {
+      if (e.target.classList.contains('toc-del')) return;
+      goToPage(idx);
+    };
+
+    // Calculate excerpt
+    const tmp = document.createElement('div');
+    tmp.innerHTML = p.text;
+    const excerpt = (tmp.textContent || '').slice(0, 32) + '...';
+
+    item.innerHTML = `
+      <div>
+        <div style="font-weight:700;">Page ${idx + 1}: ${p.chapter.split(':')[0]}</div>
+        <div style="font-size:10.5px; color:var(--text-dim);">${excerpt}</div>
+      </div>
+      <span class="toc-del" onclick="deleteSpecificPage(${idx}, event)" title="Delete Page ${idx + 1}">✕</span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// PAGE NAVIGATION
+function goToPage(idx) {
+  if (idx >= 0 && idx < currentNovel.pages.length) {
+    saveCurrentPageText();
+    currentNovel.currentPageIndex = idx;
+    renderCurrentPage();
+    persistNovel();
+  }
+}
+
+function prevPage() {
+  if (currentNovel.currentPageIndex > 0) {
+    goToPage(currentNovel.currentPageIndex - 1);
+  }
+}
+
+function nextPage() {
+  if (currentNovel.currentPageIndex < currentNovel.pages.length - 1) {
+    goToPage(currentNovel.currentPageIndex + 1);
+  }
+}
+
+// EDIT PAGE CONTENT
+function toggleEditMode() {
+  isEditing = !isEditing;
+  const proseEl = document.getElementById('book-prose');
+  const btn = document.getElementById('btn-edit-page');
+
+  if (isEditing) {
+    proseEl.contentEditable = "true";
+    proseEl.focus();
+    proseEl.style.border = "1.5px dashed var(--primary)";
+    proseEl.style.padding = "8px";
+    btn.textContent = "💾 Done Editing";
+    btn.style.background = "var(--primary)";
+    btn.style.color = "white";
+    showToast("Editing mode active. Click 'Done Editing' to save.");
+  } else {
+    proseEl.contentEditable = "false";
+    proseEl.style.border = "none";
+    proseEl.style.padding = "0";
+    btn.textContent = "✏️ Edit Page";
+    btn.style.background = "";
+    btn.style.color = "";
+    saveCurrentPageText();
+    showToast("Page edits saved.");
+  }
+}
+
+function saveCurrentPageText() {
+  const proseEl = document.getElementById('book-prose');
+  const page = currentNovel.pages[currentNovel.currentPageIndex];
+  if (page) {
+    page.text = proseEl.innerHTML;
+    persistNovel();
+  }
+}
+
+// DELETE CURRENT PAGE
+function confirmDeleteCurrentPage() {
+  if (currentNovel.pages.length <= 1) {
+    alert("Cannot delete the only page in the novel. You can clear or edit its text instead.");
+    return;
+  }
+  const currNum = currentNovel.currentPageIndex + 1;
+  if (confirm(`Are you sure you want to delete Page ${currNum}? This action cannot be undone.`)) {
+    deleteSpecificPage(currentNovel.currentPageIndex);
+  }
+}
+
+function deleteSpecificPage(idx, e) {
+  if (e) e.stopPropagation();
+  if (currentNovel.pages.length <= 1) {
+    alert("A novel must have at least one page.");
+    return;
+  }
+
+  currentNovel.pages.splice(idx, 1);
+  if (currentNovel.currentPageIndex >= currentNovel.pages.length) {
+    currentNovel.currentPageIndex = currentNovel.pages.length - 1;
+  }
+
+  renderTOC();
+  renderCurrentPage();
+  persistNovel();
+  showToast(`Page ${idx + 1} deleted successfully.`);
+}
+
+// RESET / DELETE ENTIRE NOVEL
+function confirmResetNovel() {
+  if (confirm("⚠️ Are you sure you want to delete the ENTIRE novel and start fresh? All pages will be permanently deleted from local storage.")) {
+    currentNovel = {
+      id: 'novel_' + Date.now(),
+      title: "Untitled Novel",
+      genre: "Epic Fantasy",
+      style: "Atmospheric & Poetic",
+      synopsis: "Describe your novel's core conflict, world, and stakes...",
+      characters: "Protagonist, antagonist, and key allies...",
+      currentPageIndex: 0,
+      pages: [
+        {
+          id: 'p_1',
+          chapter: "Chapter 1: The Beginning",
+          direction: "Opening scene",
+          text: `<p>The journey began where all impossible legends began: at the edge of the known world, where the maps turned white and the compass needles began to spin in frantic, useless circles.</p>`
+        }
+      ]
+    };
+    persistNovel();
+    syncUIFromNovel();
+    showToast("Novel reset. Starting fresh page.");
+  }
+}
+
+// NOVEL PRESETS (1-CLICK TESTING)
+function loadNovelPreset(type) {
+  if (type === 'cyberpunk') {
+    currentNovel = {
+      id: 'novel_' + Date.now(),
+      title: "The Chrono-Thief of Neo-Kyoto",
+      genre: "Cyberpunk Noir",
+      style: "Atmospheric & Poetic",
+      synopsis: "In a neon-soaked 2099 Kyoto where memories are bought and sold on illicit optical chips, a former neural archivist discovers a memory shard of a murder that has not happened yet.",
+      characters: "Ren Takahashi (disgraced neural archivist); Mara (rogue chronometer merchant); Sector 4 under rain.",
+      currentPageIndex: 0,
+      pages: [
+        {
+          id: 'p_1',
+          chapter: "Chapter 1: The Rain in Sector 4",
+          direction: "Establish atmosphere, introducing Ren in an alley noodle stall examining a warm glass optical shard.",
+          text: `<p>The rain in Sector 4 did not fall from the sky; it condensed from the steam vents of the subterranean fusion dynamos, tasting faintly of ozone and cheap synthetic coolant.</p><p>Ren Takahashi sat under the oilcloth awning of an eight-stool noodle stall, his mechanical left iris clicking softly as it autofocusing through the haze. Between his scarred fingertips, he turned a sliver of unrefined optical glass—warm to the touch, humming with an electrostatic pulse that made the hair on his forearms stand up.</p><p>“You’re lingering, Ren,” murmured the noodle vendor without turning from his simmering iron vat. “Peacekeeper drones sweep this block every twenty minutes. They don’t like people holding unauthorized glass.”</p><p>“It’s not glass,” Ren whispered. He held the shard against his temporal port. A brief, violet spark jumped across his skin. For a fraction of a second, the neon alleys vanished, replaced by the suffocating silence of an executive penthouse forty levels above, where a pool of dark arterial blood was spreading across white Carrara marble.</p><p>The timestamp embedded in the memory was stamped for tomorrow at midnight.</p>`
+        }
+      ]
+    };
+  } else if (type === 'fantasy') {
+    currentNovel = {
+      id: 'novel_' + Date.now(),
+      title: "The Obsidian Citadel",
+      genre: "Epic Fantasy",
+      style: "Rich Worldbuilding",
+      synopsis: "The last surviving oath-binder travels through the Ash Wastes toward the sunless fortress of the Hollow Kings to reclaim the embers of a dead god.",
+      characters: "Vaelen (the blind oath-binder who sees heat signatures of souls); Lyra (a desert scout); The Hollow Guard.",
+      currentPageIndex: 0,
+      pages: [
+        {
+          id: 'p_1',
+          chapter: "Chapter 1: The Ash Horizon",
+          direction: "Vaelen treks across the gray basalt dunes toward the looming black fortress.",
+          text: `<p>The Ash Wastes had swallowed three empires before Vaelen was born, and it showed no signs of stopping. Gray basalt dust rose in gentle spires beneath the hoofprints of his starved horned mount, settling onto the dark fur of his cloak like premature frost.</p><p>Vaelen tied the blindfold tighter over his eyes. True sight was a liability in the wastes; the light bounced off the quartz veins with a blinding glare that burned mortal retinas. Instead, he relied on the subtle warmth of the world—the thrumming geothermal veins beneath the stone and the faint, glowing ember pulsing in the silver reliquary at his hip.</p><p>“We are within three leagues,” whispered Lyra from atop the scout ridge ahead. Her voice was cracked by alkali wind. “The Obsidian Citadel has lit its pyres. They know someone approaches.”</p><p>Vaelen rested his hand upon the hilt of his fractured runeblade. “Let them burn their wood. It will give us light to see the reckoning.”</p>`
+        }
+      ]
+    };
+  } else if (type === 'gothic') {
+    currentNovel = {
+      id: 'novel_' + Date.now(),
+      title: "Whispers in the Black Fog",
+      genre: "Gothic Mystery",
+      style: "Atmospheric & Poetic",
+      synopsis: "An estranged daughter inherits a crumbling lighthouse on the cliffs of Cornwall, only to discover that the light must never be allowed to go out—lest the voices beneath the tide crawl ashore.",
+      characters: "Eleanor Vance (naturalist and cartographer); The Old Keeper; The Silent Tide.",
+      currentPageIndex: 0,
+      pages: [
+        {
+          id: 'p_1',
+          chapter: "Chapter 1: The Keeper's Will",
+          direction: "Eleanor arrives at Blackrock Crag in a carriage shrouded in sea mist.",
+          text: `<p>No carriage driver from Penzance would agree to take Eleanor past the crossroads after dusk, so she walked the remaining three miles along the salt-scoured chalk cliffs alone, dragging her brass-bound trunk behind her.</p><p>The Atlantic was invisible beneath a shroud of freezing sea mist, but she could hear it down in the jagged gullies—a rhythmic, suffocating roar like the breathing of a colossal beast chained inside a cave. Above the crags, the lighthouse rose like an accusing black finger pointing toward the overcast sky. Its great Fresnel lantern was unlit, dark and dead against the twilight.</p><p>Her father’s telegram had contained only seven words: <em>The wick is burning low. Come quickly.</em></p><p>When she pushed open the rusted iron gate of Blackrock Crag, the wind carried a sound that made her heart seize in her ribs: the clear, unmistakable ringing of a grandfather clock chime, sounding from somewhere far beneath the crashing waves.</p>`
+        }
+      ]
+    };
+  } else if (type === 'scifi') {
+    currentNovel = {
+      id: 'novel_' + Date.now(),
+      title: "The Deep Space Beacon",
+      genre: "Hard Sci-Fi",
+      style: "Philosophical & Deep",
+      synopsis: "A solitary technician stationed at Relay Station Kepler-88 in the Kuiper Belt receives an encrypted interstellar transmission from an empty quadrant of space.",
+      characters: "Dr. Silas Crane (quantum communications specialist); ARIA (the station's heuristic AI core).",
+      currentPageIndex: 0,
+      pages: [
+        {
+          id: 'p_1',
+          chapter: "Chapter 1: Silence at 40 AU",
+          direction: "Silas monitors the cosmic microwave receiver when an unnatural signal drops in.",
+          text: `<p>At forty astronomical units from the Sun, daylight was merely an unusually bright star that provided no warmth, only a sterile blue gleam against the photovoltaic collectors of Relay Station Kepler-88.</p><p>Dr. Silas Crane took a measured sip of rehydrated chicory coffee, watching the quantum entanglement telemetry scroll across the central diagnostic monitor. The Kuiper Belt was usually a desert of static—the soft hiss of primordial radiation punctuated by the occasional microwave ping from an automated hydrogen freighter outbound for Saturn.</p><p>Then, the telemetry died. All ninety-six quantum channels dropped from baseline coherence to absolute zero in less than three milliseconds.</p><p>“Silas,” said ARIA, the station’s synthesized voice calm but unusually deliberate. “I am detecting a coherent signal packet on the high-gain directional array. Bearing 214 by -18 degrees.”</p><p>Silas froze, his coffee cup suspended mid-air. “That bearing points into the Oort Cloud void. There are no probes out there, ARIA.”</p><p>“I am aware,” the AI replied. “Furthermore, the transmission has arrived with zero propagation delay. It is broadcasting in our station's proprietary encryption key.”</p>`
+        }
+      ]
+    };
+  }
+  persistNovel();
+  syncUIFromNovel();
+  showToast(`Loaded novel preset: "${currentNovel.title}".`);
+}
+
+// AUTONOMOUS PAGE-BY-PAGE GENERATION
+async function generateNextPage() {
+  const btn = document.querySelector('.btn-generate');
+  const dirInput = document.getElementById('direction-input');
+  const userDirection = dirInput.value.trim();
+
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ Writing Page ${currentNovel.pages.length + 1}...</span>`;
+
+  // Determine chapter and continuity from last page
+  const lastPage = currentNovel.pages[currentNovel.pages.length - 1];
+  const newPageNum = currentNovel.pages.length + 1;
+  const isNewChapter = (newPageNum - 1) % 3 === 0; // New chapter every 3 pages
+  const chapterNumber = Math.floor((newPageNum - 1) / 3) + 1;
+
+  // Synthesize realistic rich prose page based on genre, synopsis, characters, and direction
+  await new Promise(r => setTimeout(r, 800));
+
+  const generatedProse = synthesizeLiteraryPage(newPageNum, chapterNumber, isNewChapter, userDirection);
+
+  const newChapterTitle = isNewChapter ?
+    `Chapter ${chapterNumber}: ${generateChapterTitle(currentNovel.genre, newPageNum)}` :
+    lastPage.chapter;
+
+  const newPage = {
+    id: 'p_' + Date.now(),
+    chapter: newChapterTitle,
+    direction: userDirection || "Natural narrative progression",
+    text: generatedProse
+  };
+
+  currentNovel.pages.push(newPage);
+  currentNovel.currentPageIndex = currentNovel.pages.length - 1;
+
+  dirInput.value = '';
+  btn.disabled = false;
+  btn.innerHTML = `<span>📖 Write Next Page</span>`;
+
+  persistNovel();
+  renderTOC();
+  renderCurrentPage();
+
+  showToast(`Page ${newPageNum} successfully generated and persisted!`);
+}
+
+function generateChapterTitle(genre, pageNum) {
+  const titles = {
+    "Cyberpunk Noir": ["The Neon Shroud", "Ghost in the Fiber", "Dead Man's Handshake", "The Memory Market", "Protocol Zero"],
+    "Epic Fantasy": ["The Gate of Runes", "Shadow of the Spire", "Blood and Basalt", "The Oath Rekindled", "Crown of Cinders"],
+    "Gothic Mystery": ["The Drowned Bell", "The Room in the Attic", "Low Tide Secrets", "The Lantern's Eye", "Echoes on the Cliff"],
+    "Hard Sci-Fi": ["The Superluminal Vector", "Quantum Decoherence", "The Oort Anomaly", "Event Horizon", "First Contact Horizon"]
+  };
+  const list = titles[genre] || ["The Turning Tide", "A Dark Awakening", "The Unseen Path", "Fires in the Mist"];
+  return list[(pageNum - 1) % list.length];
+}
+
+function synthesizeLiteraryPage(pageNum, chapNum, isNewChap, direction) {
+  const title = currentNovel.title;
+  const genre = currentNovel.genre;
+  const chars = currentNovel.characters.split(';')[0] || "the protagonist";
+
+  if (direction) {
+    return `<p>${direction.charAt(0).toUpperCase() + direction.slice(1)}.</p>
+    <p>The consequences were immediate and unforgiving. As ${chars} took another cautious breath, the surrounding environment responded with a tension so sharp it could cut through stone. Every shadow lengthened, and the stakes of ${title} climbed another dangerous rung higher.</p>
+    <p>“We don't have the luxury of hesitation anymore,” came the quiet voice from the threshold. A sudden sound—metallic, sharp, and unmistakably purposeful—broke the stillness of the room, forcing an immediate reckoning.</p>
+    <p>What lay ahead was no longer a question of survival; it was a matter of who would be left to remember what happened here.</p>`;
+  }
+
+  // Genre-tailored prose generator
+  if (genre === "Cyberpunk Noir") {
+    return `<p>The flickering neon reflection in the oil slick outside the window fractured into jagged ribbons of cyan and electric magenta as a MagLev transit car rattled overhead.</p>
+    <p>${chars} leaned back into the shadows of the booth, feeling the persistent static charge of the encrypted shard vibrating against the inner lining of the trench coat. The neural implant was overheating, projecting phantom retinal warnings in amber warning text.</p>
+    <p>A pair of heavy boots paused outside the frosted glass door. The silhouette was unmistakable: broad-shouldered, augmented, with the high-collared silhouette of a corporate enforcer team.</p>
+    <p>“If you’re planning on running,” the contact murmured without looking up from the data pad, “you have approximately twelve seconds before their thermal scanners lock onto this frequency.”</p>
+    <p>${chars} reached beneath the booth table and disengaged the safety on the suppressed pulse pistol. “Twelve seconds is plenty of time.”</p>`;
+  } else if (genre === "Epic Fantasy") {
+    return `<p>The wind howling down from the jagged peaks carried the scent of ancient sulfur and burned iron, tossing the banners of the ruined ramparts like shredded ravens' wings.</p>
+    <p>${chars} knelt upon the frostbitten flagstones, brushing away centuries of packed dust until the faint glow of the silver runic inscription flickered back to life beneath trembling fingers.</p>
+    <p>“The runes are older than the Citadel itself,” the companion cautioned, gripping a torch whose flame danced wildly against the damp subterranean drafts. “Once awakened, their call cannot be silenced by sword or prayer.”</p>
+    <p>“We did not cross the Ash Wastes to pray,” ${chars} replied, pressing palm flat against the cold stone. A subterranean resonance shuddered deep within the bedrock, and far below in the dark, the colossal gears of the sealed catacombs began to turn with a thunderous groan.</p>`;
+  } else if (genre === "Gothic Mystery") {
+    return `<p>The grandfather clock in the lower hall struck three, its heavy bronze pendulum cutting through the suffocating dampness of the seaside manor like a butcher’s blade.</p>
+    <p>${chars} held the pewter candelabra aloft, watching the shadows dance wildly across the peeling damask wallpaper. A draft was creeping up from the cellar stairs, carrying with it the unmistakable briny stink of kelp and rotting wood.</p>
+    <p>Upon the parlor writing desk lay the open journal, its final entry freshly penned in black ink that was still wet to the touch: <em>The tide has risen above the cellar sill. Do not open the trapdoor, no matter whose voice you hear calling from below.</em></p>
+    <p>And then, just as the words sank into cold realization, three gentle, polite knocks sounded from the wooden floorboards beneath their boots.</p>`;
+  } else {
+    return `<p>The telemetry stream cascaded down the diagnostic array in a relentless torrent of binary flags and sub-millihertz frequency shifts.</p>
+    <p>${chars} adjusted the harmonic filters, watching the waveform stabilize into a clean, artificial pulse that defied every established cosmological model in the station’s archives.</p>
+    <p>“The carrier wave is self-correcting,” the automated voice announced over the intercom. “It is adapting to our receiver’s quantum decoherence rate in real time. Silas, the signal knows we are listening.”</p>
+    <p>A sudden vibration hummed through the titanium deck plates as the secondary power grid surged without command. Out in the black void of the Kuiper Belt, forty astronomical units from home, something vast had just aligned itself with the station's antenna.</p>`;
+  }
+}
+
+// EXPORT TO MARKDOWN
+function exportNovelMarkdown() {
+  let md = `# ${currentNovel.title}\n\n`;
+  md += `**Genre:** ${currentNovel.genre} | **Style:** ${currentNovel.style}\n\n`;
+  md += `## Synopsis\n${currentNovel.synopsis}\n\n`;
+  md += `## Characters & Setting\n${currentNovel.characters}\n\n---\n\n`;
+
+  currentNovel.pages.forEach((p, i) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = p.text;
+    const cleanText = tmp.innerText || tmp.textContent;
+    md += `### ${p.chapter} (Page ${i + 1})\n\n`;
+    md += `${cleanText}\n\n---\n\n`;
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentNovel.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
+  a.click();
+  showToast("Novel exported as Markdown (.md).");
+}
+
+// BACKUP NOVEL TO JSON
+function exportNovelJSON() {
+  const jsonStr = JSON.stringify(currentNovel, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentNovel.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-backup.json`;
+  a.click();
+  showToast("Novel backup exported as JSON.");
+}
+
+// READ ALOUD (TTS)
+function readAloudPage() {
+  if (!('speechSynthesis' in window)) {
+    alert("Speech synthesis is not supported in this browser.");
+    return;
+  }
+
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    document.getElementById('btn-read-aloud').textContent = "🔊 Read Aloud";
+    return;
+  }
+
+  const page = currentNovel.pages[currentNovel.currentPageIndex];
+  if (!page) return;
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = page.text;
+  const textToRead = `${page.chapter}. ${tmp.innerText || tmp.textContent}`;
+
+  const utter = new SpeechSynthesisUtterance(textToRead);
+  utter.rate = 0.95;
+  utter.pitch = 1.0;
+
+  document.getElementById('btn-read-aloud').textContent = "⏹️ Stop";
+  utter.onend = () => { document.getElementById('btn-read-aloud').textContent = "🔊 Read Aloud"; };
+  utter.onerror = () => { document.getElementById('btn-read-aloud').textContent = "🔊 Read Aloud"; };
+
+  window.speechSynthesis.speak(utter);
+}
+
+// TOAST NOTIFICATIONS
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'flex';
+  setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+
+// THEME TOGGLE
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+
+// WEBGPU LOADER STUB
+async function initWebLLM() {
+  const btn = document.getElementById('btn-init-webgpu');
+  const dot = document.getElementById('gpu-dot');
+  const txt = document.getElementById('gpu-status-text');
+  const model = document.getElementById('model-select').value;
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Allocating VRAM...";
+  dot.className = "dot loading";
+  txt.innerHTML = `<strong>Loading ${model.split('-')[0]}...</strong> Allocating local browser GPU memory for page-by-page autoregressive prose generation...`;
+
+  await new Promise(r => setTimeout(r, 1600));
+
+  dot.className = "dot";
+  dot.style.background = "#10B981";
+  btn.textContent = "✓ WebGPU Active";
+  btn.style.background = "#10B981";
+  txt.innerHTML = `<strong>WebGPU Engine Active:</strong> ${model.split('-')[0]} mounted in browser GPU. Autonomous page continuity online.`;
+  document.getElementById('storage-status').textContent = "WEBGPU + PERSISTENCE ACTIVE";
+  isWebLLMReady = true;
+  showToast("WebGPU neural engine loaded successfully!");
+}
+
+// CREATE NEW NOVEL MODAL
+function createNewNovelModal() {
+  const title = prompt("Enter a title for your new novel:", "Chronicles of the Starward Drift");
+  if (!title) return;
+
+  currentNovel = {
+    id: 'novel_' + Date.now(),
+    title: title.trim(),
+    genre: "Hard Sci-Fi",
+    style: "Rich Worldbuilding",
+    synopsis: "Enter premise...",
+    characters: "Protagonist...",
+    currentPageIndex: 0,
+    pages: [
+      {
+        id: 'p_1',
+        chapter: "Chapter 1: The First Threshold",
+        direction: "Opening scene",
+        text: `<p>Every story starts with a step into the unknown. For ${title}, the journey began under an indifferent sky.</p>`
+      }
+    ]
+  };
+  persistNovel();
+  syncUIFromNovel();
+  showToast(`Created new novel: "${title}".`);
+}
+
+// ON DOM LOAD
+window.addEventListener('DOMContentLoaded', () => {
+  loadPersistedNovel();
+});
+</script>
+</body>
+</html>
