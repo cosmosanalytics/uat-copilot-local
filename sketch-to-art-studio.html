@@ -576,7 +576,10 @@
   <!-- BOTTOM CONTROL DOCK (DESCRIPTION & FINISH BUTTON) -->
   <div class="control-dock">
     <div class="prompt-row">
-      <input type="text" id="desc-input" class="prompt-input" placeholder="Describe how the AI should finish your drawing (e.g. 'a majestic medieval castle on a stormy cliff with glowing lanterns and lightning')..." value="A majestic castle perched on a rocky mountain cliff during sunset with glowing windows and misty clouds">
+      <input type="text" id="desc-input" class="prompt-input" placeholder="Describe how the AI should finish your drawing (e.g. 'a majestic medieval castle on a stormy cliff with glowing lanterns and lightning')..." value="A majestic castle perched on a rocky mountain cliff during sunset with glowing windows and misty clouds" onkeydown="if(event.key==='Enter') finishDrawing()">
+      <button class="btn btn-theme" style="padding:10px 14px; font-size:12.5px; white-space:nowrap;" onclick="randomizeDescription()" title="Randomize description prompt">
+        🎲 Surprise Prompt
+      </button>
       <button class="btn-magic" onclick="finishDrawing()">
         <span>✨ Finish My Drawing</span>
       </button>
@@ -665,7 +668,9 @@ document.getElementById('brush-size').addEventListener('input', e => {
 function setStyle(st) {
   currentStyle = st;
   document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
-  if (window.event && window.event.target) window.event.target.classList.add('active');
+  const target = document.querySelector(`.style-btn[onclick*="${st}"]`);
+  if (target) target.classList.add('active');
+  else if (window.event && window.event.target) window.event.target.classList.add('active');
 
   const names = {
     concept_art: 'Digital Concept',
@@ -676,6 +681,7 @@ function setStyle(st) {
     blueprint: 'Technical Blueprint'
   };
   document.getElementById('metric-style').textContent = names[st] || st;
+  finishDrawing();
 }
 
 // DRAWING EVENT LISTENERS (MOUSE & TOUCH SUPPORT)
@@ -872,6 +878,51 @@ curtainContainer.addEventListener('touchmove', e => {
   setCurtain(pct);
 });
 
+// RANDOM INSPIRATION PROMPTS
+const RANDOM_PROMPTS = [
+  { p: "A majestic stone castle perched on a mountain cliff during golden sunset with waterfalls and mist", s: "concept_art" },
+  { p: "A sleek neon cyberpunk sports car speeding through rain-slicked Tokyo streets at night with neon reflections", s: "cyberpunk" },
+  { p: "A cute mystical baby dragon with shimmering emerald scales perched on a glowing moss crystal in an enchanted forest", s: "ghibli" },
+  { p: "A tranquil sailboat gliding across golden ocean waves at sunset with glowing horizon and clouds", s: "watercolor" },
+  { p: "A glowing futuristic starship cruising past a swirling purple cosmic nebula and ringed planet", s: "concept_art" },
+  { p: "A cozy rustic wooden cabin in snowy pine mountains under vibrant emerald northern lights", s: "oil_painting" },
+  { p: "A high-precision futuristic cybernetic exoskeleton schematic with dimensional measurement callouts", s: "blueprint" },
+  { p: "A field of glowing bioluminescent wildflowers under a giant luminous full moon with fireflies", s: "ghibli" }
+];
+
+function randomizeDescription() {
+  const current = document.getElementById('desc-input').value.trim();
+  const available = RANDOM_PROMPTS.filter(item => item.p !== current);
+  const choice = available[Math.floor(Math.random() * available.length)];
+  document.getElementById('desc-input').value = choice.p;
+  setStyle(choice.s);
+}
+
+// STROKE BOUNDING BOX & GEOMETRY EXTRACTION
+function getStrokeBounds() {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let count = 0;
+  strokeHistory.forEach(s => {
+    if (s.points) {
+      s.points.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+        count++;
+      });
+    }
+  });
+  if (count === 0 || minX === Infinity) return null;
+  return {
+    minX, minY, maxX, maxY,
+    width: Math.max(20, maxX - minX),
+    height: Math.max(20, maxY - minY),
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2
+  };
+}
+
 // SAMPLE SKETCHES FOR 1-CLICK TEST
 function loadSampleSketch(name) {
   clearCanvas();
@@ -885,7 +936,8 @@ function loadSampleSketch(name) {
   uCtx.lineJoin = 'round';
 
   if (name === 'castle') {
-    document.getElementById('desc-input').value = "A majestic stone castle on a mountain cliff during golden sunset with waterfalls and mist";
+    document.getElementById('desc-input').value = "A majestic stone castle perched on a mountain cliff during golden sunset with waterfalls and mist";
+    currentStyle = 'concept_art';
     // Draw mountain ridge
     uCtx.beginPath();
     uCtx.moveTo(0, h * 0.7);
@@ -905,9 +957,12 @@ function loadSampleSketch(name) {
     uCtx.moveTo(w * 0.36, h * 0.22); uCtx.lineTo(w * 0.40, h * 0.14); uCtx.lineTo(w * 0.44, h * 0.22);
     uCtx.moveTo(w * 0.56, h * 0.22); uCtx.lineTo(w * 0.60, h * 0.14); uCtx.lineTo(w * 0.64, h * 0.22);
     uCtx.stroke();
+    strokeHistory.push({ tool: 'brush', color: '#F8FAFC', size: 4, points: [{x: 0, y: h * 0.7}, {x: w * 0.35, y: h * 0.5}, {x: w * 0.65, y: h * 0.45}, {x: w, y: h * 0.75}] });
+    strokeHistory.push({ tool: 'brush', color: '#38BDF8', size: 4, points: [{x: w * 0.42, y: h * 0.28}, {x: w * 0.58, y: h * 0.48}] });
   }
   else if (name === 'cybercar') {
-    document.getElementById('desc-input').value = "A sleek neon cyberpunk sports car speeding through rain-slicked Tokyo streets at night";
+    document.getElementById('desc-input').value = "A sleek neon cyberpunk sports car speeding through rain-slicked Tokyo streets at night with neon reflections";
+    currentStyle = 'cyberpunk';
     uCtx.strokeStyle = '#EC4899';
     // Car body silhouette
     uCtx.beginPath();
@@ -927,9 +982,12 @@ function loadSampleSketch(name) {
     uCtx.arc(w * 0.28, h * 0.68, 22, 0, Math.PI * 2);
     uCtx.arc(w * 0.72, h * 0.68, 22, 0, Math.PI * 2);
     uCtx.stroke();
+    strokeHistory.push({ tool: 'brush', color: '#EC4899', size: 4, points: [{x: w * 0.15, y: h * 0.65}, {x: w * 0.42, y: h * 0.48}, {x: w * 0.70, y: h * 0.48}, {x: w * 0.88, y: h * 0.68}] });
+    strokeHistory.push({ tool: 'brush', color: '#38BDF8', size: 4, points: [{x: w * 0.28, y: h * 0.68}, {x: w * 0.72, y: h * 0.68}] });
   }
   else if (name === 'dragon') {
-    document.getElementById('desc-input').value = "A cute mystical baby dragon with shimmering emerald scales perched on a glowing moss crystal";
+    document.getElementById('desc-input').value = "A cute mystical baby dragon with shimmering emerald scales perched on a glowing moss crystal in an enchanted forest";
+    currentStyle = 'ghibli';
     uCtx.strokeStyle = '#10B981';
     // Dragon head and belly
     uCtx.beginPath();
@@ -944,9 +1002,11 @@ function loadSampleSketch(name) {
     uCtx.lineTo(w * 0.72, h * 0.55);
     uCtx.closePath();
     uCtx.stroke();
+    strokeHistory.push({ tool: 'brush', color: '#10B981', size: 4, points: [{x: w * 0.45, y: h * 0.40}, {x: w * 0.52, y: h * 0.58}, {x: w * 0.78, y: h * 0.32}] });
   }
   else if (name === 'ocean') {
-    document.getElementById('desc-input').value = "A tranquil sailboat gliding across golden ocean waves at sunset with a glowing horizon";
+    document.getElementById('desc-input').value = "A tranquil sailboat gliding across golden ocean waves at sunset with glowing horizon and clouds";
+    currentStyle = 'watercolor';
     uCtx.strokeStyle = '#F59E0B';
     // Sea waves
     uCtx.beginPath();
@@ -970,11 +1030,105 @@ function loadSampleSketch(name) {
     uCtx.lineTo(w * 0.66, h * 0.64);
     uCtx.closePath();
     uCtx.stroke();
+    strokeHistory.push({ tool: 'brush', color: '#F59E0B', size: 4, points: [{x: 0, y: h * 0.7}, {x: w * 0.52, y: h * 0.32}, {x: w * 0.58, y: h * 0.76}] });
   }
 
-  strokeHistory.push({ tool: 'brush', color: uCtx.strokeStyle, size: 4, points: new Array(42).fill({x:0, y:0}) });
+  // Update style button UI
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.querySelector(`.style-btn[onclick*="${currentStyle}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  const names = {
+    concept_art: 'Digital Concept',
+    ghibli: 'Ghibli Anime',
+    cyberpunk: 'Cyberpunk Neon',
+    watercolor: 'Japanese Watercolor',
+    oil_painting: 'Oil Painting',
+    blueprint: 'Technical Blueprint'
+  };
+  document.getElementById('metric-style').textContent = names[currentStyle] || currentStyle;
+
   updateMetrics();
   syncClipCanvas();
+  finishDrawing();
+}
+
+function inpaintUserDrawing(w, h, prompt) {
+  const b = getStrokeBounds();
+  if (!b) return;
+
+  fCtx.save();
+  const pLower = prompt.toLowerCase();
+
+  if (currentStyle === 'cyberpunk' || pLower.includes('car') || pLower.includes('cyber')) {
+    // Cyberpunk underglow beneath drawn object
+    const glow = fCtx.createRadialGradient(b.centerX, b.maxY, 10, b.centerX, b.maxY, b.width * 0.7);
+    glow.addColorStop(0, 'rgba(6, 182, 212, 0.5)');
+    glow.addColorStop(0.5, 'rgba(236, 72, 153, 0.3)');
+    glow.addColorStop(1, 'transparent');
+    fCtx.fillStyle = glow;
+    fCtx.fillRect(b.minX - 40, b.maxY - 15, b.width + 80, 50);
+
+    // Headlight forward projection cone
+    const beam = fCtx.createRadialGradient(b.maxX, b.centerY + 8, 5, b.maxX + 180, b.centerY + 25, 160);
+    beam.addColorStop(0, 'rgba(255, 255, 255, 0.75)');
+    beam.addColorStop(0.35, 'rgba(56, 189, 248, 0.35)');
+    beam.addColorStop(1, 'transparent');
+    fCtx.fillStyle = beam;
+    fCtx.beginPath();
+    fCtx.moveTo(b.maxX - 5, b.centerY + 8);
+    fCtx.lineTo(Math.min(w, b.maxX + 260), b.centerY - 25);
+    fCtx.lineTo(Math.min(w, b.maxX + 260), b.centerY + 55);
+    fCtx.closePath();
+    fCtx.fill();
+  }
+  else if (currentStyle === 'ghibli' || pLower.includes('dragon')) {
+    // Bioluminescent moss crystal base
+    const moss = fCtx.createRadialGradient(b.centerX, b.maxY, 5, b.centerX, b.maxY, b.width * 0.55);
+    moss.addColorStop(0, 'rgba(52, 211, 153, 0.55)');
+    moss.addColorStop(0.6, 'rgba(16, 185, 129, 0.2)');
+    moss.addColorStop(1, 'transparent');
+    fCtx.fillStyle = moss;
+    fCtx.fillRect(b.minX - 30, b.maxY - 15, b.width + 60, 45);
+
+    // Soft emerald dragon volume fill
+    const bodyGrad = fCtx.createRadialGradient(b.centerX, b.centerY, 10, b.centerX, b.centerY, b.width * 0.45);
+    bodyGrad.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+    bodyGrad.addColorStop(0.7, 'rgba(5, 150, 105, 0.15)');
+    bodyGrad.addColorStop(1, 'transparent');
+    fCtx.fillStyle = bodyGrad;
+    fCtx.beginPath();
+    fCtx.ellipse(b.centerX, b.centerY, b.width * 0.45, b.height * 0.45, 0, 0, Math.PI * 2);
+    fCtx.fill();
+  }
+  else if (currentStyle === 'watercolor' || pLower.includes('boat') || pLower.includes('ocean')) {
+    // Water surface reflection
+    const waterGlow = fCtx.createLinearGradient(0, b.maxY, 0, b.maxY + 50);
+    waterGlow.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+    waterGlow.addColorStop(0.6, 'rgba(245, 158, 11, 0.15)');
+    waterGlow.addColorStop(1, 'transparent');
+    fCtx.fillStyle = waterGlow;
+    fCtx.fillRect(b.minX - 25, b.maxY, b.width + 50, 50);
+  }
+  else {
+    // Ambient core depth and ground shadow
+    const ambient = fCtx.createRadialGradient(b.centerX, b.centerY, 10, b.centerX, b.centerY, b.width * 0.6);
+    ambient.addColorStop(0, 'rgba(251, 191, 36, 0.25)');
+    ambient.addColorStop(0.7, 'rgba(124, 58, 237, 0.1)');
+    ambient.addColorStop(1, 'transparent');
+    fCtx.fillStyle = ambient;
+    fCtx.beginPath();
+    fCtx.ellipse(b.centerX, b.centerY, b.width * 0.5, b.height * 0.5, 0, 0, Math.PI * 2);
+    fCtx.fill();
+
+    // Soft drop shadow
+    const shadow = fCtx.createRadialGradient(b.centerX, b.maxY, 5, b.centerX, b.maxY, b.width * 0.5);
+    shadow.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+    shadow.addColorStop(1, 'transparent');
+    fCtx.fillStyle = shadow;
+    fCtx.fillRect(b.minX - 20, b.maxY - 8, b.width + 40, 25);
+  }
+  fCtx.restore();
 }
 
 // GENERATIVE PROFESSIONAL ART SYNTHESIS ENGINE
@@ -1004,8 +1158,10 @@ async function finishDrawing() {
     drawConceptArtScene(w, h, prompt);
   }
 
-  // 2. PROFESSIONAL INPAINTING / SKETCH INTEGRATION
-  // Glowing specular halo on sketch
+  // 2. INPAINTING & VOLUMETRIC SYNTHESIS UNDER STROKES
+  inpaintUserDrawing(w, h, prompt);
+
+  // 3. BLEND USER'S STROKES WITH GLOWING INPAINTING OVERLAY
   fCtx.save();
   fCtx.globalCompositeOperation = 'screen';
   const glowCol = currentStyle === 'cyberpunk' ? '#06B6D4' :
@@ -1016,13 +1172,13 @@ async function finishDrawing() {
   fCtx.drawImage(userCanvas, 0, 0, w, h);
   fCtx.restore();
 
-  // Crisp foreground strokes
+  // 4. CRISP FOREGROUND DEFINITION
   fCtx.save();
   fCtx.globalCompositeOperation = 'source-over';
   fCtx.drawImage(userCanvas, 0, 0, w, h);
   fCtx.restore();
 
-  // 3. FINAL POLISH LIGHTING / VIGNETTE
+  // 5. FINAL POLISH LIGHTING / VIGNETTE
   drawVignette(w, h);
 
   document.getElementById('metric-latency').textContent = "Generated (< 35ms)";
