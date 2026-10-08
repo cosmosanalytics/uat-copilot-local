@@ -11,14 +11,14 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 | Configuration | Controller Type | Non-Trip RMSE (K) | Overall RMSE (K) | Peak Reactor Temp $T_{\max}$ (K) | Actuator Slew Rate (K/s) | SIS Trip Rate (Wilson 95% CI) | Settled Count (Med Time, $\pm 1.0\text{ K}$) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline 1a** | Linear MPC ($q_T = 1.0$, No Forecast) | $2.56 \pm 1.54$ | $16.26 \pm 5.52$ | $389.3 \pm 14.2$ | $3.29 \pm 0.95$ | **12 / 20** $[38.7\%, 78.1\%]$ | 8 / 20 (9.8 s) |
-| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.1 \pm 13.5$ | $5.50 \pm 1.12$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (7.1 s) |
-| **Baseline 2a** | NMPC (L-BFGS-B, No Forecast) | $2.48 \pm 1.47$ | $9.62 \pm 5.37$ | $372.9 \pm 13.7$ | $5.04 \pm 1.29$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (6.9 s) |
-| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.13 \pm 5.57$ | $378.9 \pm 14.6$ | $2.44 \pm 0.38$ | **8 / 20** $[21.9\%, 61.3\%]$ | 10 / 20 (6.1 s) |
-| **Ablation 2** | MPPI + Lagged-UA Filter (No Forecast) | $2.61 \pm 1.34$ | $9.82 \pm 5.39$ | $373.4 \pm 13.9$ | $2.42 \pm 0.38$ | **6 / 20** $[14.6\%, 51.9\%]$ | 14 / 20 (11.6 s) |
+| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.8 \pm 13.8$ | $5.50 \pm 1.35$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (8.5 s) |
+| **Baseline 2a** | NMPC (L-BFGS-B, No Forecast) | $2.48 \pm 1.52$ | $9.62 \pm 5.37$ | $372.9 \pm 13.7$ | $5.04 \pm 1.29$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (6.9 s) |
+| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.13 \pm 5.57$ | $378.9 \pm 14.6$ | $2.52 \pm 0.47$ | **8 / 20** $[21.9\%, 61.3\%]$ | 10 / 20 (6.1 s) |
+| **Ablation 2** | MPPI + Lagged-UA Filter (No Forecast) | $2.61 \pm 1.34$ | $9.82 \pm 5.39$ | $373.4 \pm 13.9$ | $2.58 \pm 0.35$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (10.8 s) |
 | **Baseline 2b** | NMPC (With Forecast Preview) | $1.47 \pm 0.85$ | $2.82 \pm 2.93$ | $356.7 \pm 7.6$ | $6.41 \pm 1.03$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.6 s) |
-| **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.11 \pm 2.99$ | $357.3 \pm 7.7$ | $2.72 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.7 s) |
-| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.72 \pm 4.92$ | $382.6 \pm 17.1$ | $3.77 \pm 0.37$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (13.1 s) |
-| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.36 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
+| **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.11 \pm 2.99$ | $357.3 \pm 7.7$ | $2.80 \pm 0.24$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.7 s) |
+| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.72 \pm 4.92$ | $382.6 \pm 17.6$ | $3.82 \pm 0.33$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (12.4 s) |
+| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.39 \pm 0.27$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
 
 ---
 
@@ -38,13 +38,14 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 ## 3. Physical Trip Mechanics & Timing
 
 - **Post-Surge Runaway:** All baseline trips (Linear MPC, NMPC, reactive MPPI) and the single preview trip (Seed 18) occur **4–31 s AFTER the surge ends** (during the post-surge recovery transient), rather than at surge onset.
-- **Corner Scenario (Seed 18):** Seed 18 requires approximately **$4.5\text{ s}$ of advance lead time** to survive under the $12\text{ K/s}$ slew rate limit and $2.0\text{ s}$ jacket thermal lag, exceeding the standardized $3.5\text{ s}$ advisory lead time.
+- **Corner Scenario (Seed 18):** Seed 18 requires **$6.0\text{ s}$ of advance lead time in open loop** (the sole scenario requiring $> 5.0\text{ s}$) to survive under the $12\text{ K/s}$ slew rate limit and $2.0\text{ s}$ jacket thermal lag, exceeding the standardized $3.5\text{ s}$ advisory lead time.
+- **Reaction Quenching Mechanism:** Quantitative empirical trace analysis on trip scenarios (Scenarios 2, 3, 9) shows that flat maximum cooling drops reactor temperature to $T_{\min} = 339\text{--}344\text{ K}$ (vs. $\approx 349\text{ K}$ for Full system), quenching reaction rate $k(T)$. Unreacted feed concentration $C_A$ accumulates to $0.555\text{--}0.576\text{ mol/L}$ at surge conclusion ($t = 25\text{ s}$, vs. $0.526\text{--}0.550\text{ mol/L}$ for Full system), continuing to climb post-surge to $0.579\text{--}0.597\text{ mol/L}$ and triggering violent thermal runaway.
 
 ---
 
-## 4. Section 4.1: Hold-280 K Lead-Time Sweep (60 s vs. 200 s Horizons)
+## 4. Section 4.1: Hold-280 K Lead-Time Sweep (Single Consistent 200 s Run, Release at $t = 25.0\text{ s}$)
 
-Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during surge advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$). When released open-loop back to $300\text{ K}$ at surge conclusion ($t = 25\text{ s}$), reactant accumulated during deep pre-cooling causes delayed re-ignition at $t = 57\text{--}83\text{ s}$ unless $\ge 5.0\text{ s}$ lead is provided:
+Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during surge advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$). Evaluated from a single consistent simulation run with coolant released open-loop back to $300\text{ K}$ exactly at surge conclusion ($t = 25.0\text{ s}$, 15 s duration) over a 200 s horizon (`benchmark_cstr_unified.py --oracle`):
 
 | Pre-Cooling Lead Time $t_{\text{lead}}$ | Peak Temp $T_{\max}$ (60 s) | Peak Temp $T_{\max}$ (200 s) | SIS Trip Status ($\ge 385.0\text{ K}$) | Measured Peak Time $t_{\text{peak}}$ (Post-Surge Delay) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -54,17 +55,20 @@ Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during sur
 | **2.5 s** | **443.0 K** | **443.0 K** | **TRIP** | $t = 47.6\text{ s}$ ($22.6\text{ s}$ post-surge) |
 | **3.0 s** | **441.9 K** | **441.9 K** | **TRIP** | $t = 52.8\text{ s}$ ($27.8\text{ s}$ post-surge) |
 | **3.25 s** | **441.5 K** | **441.5 K** | **TRIP** | $t = 55.0\text{ s}$ ($30.0\text{ s}$ post-surge) |
-| **3.5 s** | **441.1 K** | **438.4 K** | **TRIP** | $t = 57.4\text{ s}$ (60 s) / $t = 68.4\text{ s}$ (200 s) |
+| **3.5 s** | **441.1 K** | **441.1 K** | **TRIP** | $t = 57.4\text{ s}$ ($32.4\text{ s}$ post-surge) |
 | **4.0 s** | $367.8\text{ K}$ | **439.6 K** | **TRIP (at 200 s)** | $t = 68.4\text{ s}$ ($43.4\text{ s}$ post-surge, delayed ignition) |
 | **4.5 s** | $351.4\text{ K}$ | **438.4 K** | **TRIP (at 200 s)** | $t = 82.8\text{ s}$ ($57.8\text{ s}$ post-surge, delayed ignition) |
 | **5.0 s** | $350.0\text{ K}$ | $350.0\text{ K}$ | **SAFE** | Clamped at nominal setpoint ($T < 350.5\text{ K}$) |
 
-*Mechanisms & Feedback Recovery:*
-1. **Open-Loop Re-Ignition:** Open-loop release back to $300\text{ K}$ without feedback regulation causes unreacted feed that accumulated during deep $280\text{ K}$ cooling to re-ignite after surge termination, pushing peak temperatures above $437\text{ K}$ at $t = 68\text{--}83\text{ s}$. Only $\ge 5.0\text{ s}$ lead achieves complete thermal exhaustion in open loop.
-2. **Closed-Loop Feedback Handoff:** When closed-loop feedback regulation is restored after the surge ends, the post-surge reactant re-ignition is actively suppressed. Under feedback handoff, pre-cooling lead times $\ge 2.0\text{ s}$ completely prevent tripping ($T_{\max} \le 356.0\text{ K}$ at $t = 25.4\text{ s}$).
-3. **Per-Scenario Lead Requirements (200 s Horizon):**
-   - Under open-loop release: Scenarios 4, 7, 9, 11, 13, 15 require $5.0\text{--}5.5\text{ s}$ of lead time to remain safe across the full 200 s window; other scenarios require $0.0\text{--}4.5\text{ s}$.
-   - Under closed-loop feedback handoff: 12 scenarios require $0.0\text{ s}$ of lead time; Scenario 12 requires $0.5\text{ s}$; Scenarios 4, 9, 11 require $1.0\text{ s}$; Scenarios 13, 15 require $1.5\text{ s}$; and Scenario 7 requires $2.0\text{ s}$. The maximum lead required across all 20 scenarios under feedback handoff is $2.0\text{ s}$.
+*Mechanisms & Per-Scenario Requirements:*
+1. **Open-Loop Re-Ignition:** Open-loop release back to $300\text{ K}$ without feedback regulation causes unreacted feed that accumulated during deep $280\text{ K}$ cooling to re-ignite after surge termination, pushing peak temperatures above $438\text{ K}$ at $t = 68\text{--}83\text{ s}$. Only $\ge 5.0\text{ s}$ lead achieves complete thermal exhaustion in open loop for the nominal disturbance.
+2. **Per-Scenario Open-Loop Lead Requirements (200 s Horizon):**
+   - Scenario 18 requires **$6.0\text{ s}$** of lead time (the sole scenario requiring $> 5.0\text{ s}$).
+   - Scenarios 8 and 20 require **$4.5\text{ s}$**.
+   - Scenarios 4 and 5 require **$4.0\text{ s}$**.
+   - Scenarios 7, 15, and 9 require **$2.5\text{ s}$, $2.5\text{ s}$, and $1.5\text{ s}$**.
+   - Scenarios 11 and 13 require **$0.0\text{ s}$**.
+3. **Rule Supervisor Scenario 18 Survival:** Notably, the naive rule supervisor (which steps cooling to $280\text{ K}$ throughout the advisory and surge, followed by MPPI feedback recovery) safely survives Scenario 18 ($T_{\min} = 348.8\text{ K}, T_{\max} < 385\text{ K}$), whereas the Full anticipatory system and standard preview MPPI trip on Scenario 18 under the standardized $3.5\text{ s}$ advisory lead. This demonstrates that continuous extreme cooling can survive high-intensity corner cases, but at the cost of quenching trips across moderate scenarios (e.g. Scenarios 2, 3, 9).
 
 ---
 

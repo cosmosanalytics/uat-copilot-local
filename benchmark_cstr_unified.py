@@ -341,10 +341,117 @@ def run_scenario(controller_type, sc, rep=0):
         'T_history': T_arr
     }
 
+def run_oracle_sweep(t_total=200.0, release_t=25.0):
+    """Evaluates the hold-280 K pre-cooling lead-time sweep and per-scenario lead requirements."""
+    print("=" * 70)
+    print(f"HOLD-280 K LEAD-TIME SWEEP (t_total = {t_total:.1f} s, release at t = {release_t:.1f} s)")
+    print("=" * 70)
+    t_start = 10.0
+    surge_dur = 15.0
+    leads = [0.0, 1.0, 2.0, 2.5, 3.0, 3.25, 3.5, 4.0, 4.5, 5.0]
+
+    for lead in leads:
+        adv_start = t_start - lead
+        CA, T, Tc = C_A_ref, T_ref, T_c_base
+        u_applied = T_c_base
+        max_T = T
+        t_peak = 0.0
+        n_steps = int(round(t_total / dt_ctrl))
+
+        for step in range(n_steps):
+            t_now = step * dt_ctrl
+            if t_now < t_start:
+                CA0, T0, UA = 1.0, 350.0, UA_nom
+            elif t_now < t_start + 2.0:
+                frac = (t_now - t_start) / 2.0
+                CA0 = 1.0 + frac * 0.20
+                T0 = 350.0 + frac * 10.0
+                UA = UA_nom * (1.0 - frac * 0.30)
+            elif t_now < t_start + surge_dur:
+                CA0 = 1.20
+                T0 = 360.0
+                UA = UA_nom * 0.70
+            else:
+                CA0, T0, UA = 1.0, 350.0, UA_nom
+
+            if adv_start <= t_now < release_t:
+                u_target = 280.0
+            else:
+                u_target = 300.0
+
+            for _ in range(sim_substeps):
+                max_step = slew_limit * dt_sim
+                u_applied += np.clip(u_target - u_applied, -max_step, max_step)
+                Tc += (dt_sim / tau_j) * (u_applied - Tc)
+                CA, T = rk4_step(CA, T, Tc, CA0, T0, UA, dt_sim)
+
+            if T > max_T:
+                max_T = T
+                t_peak = t_now
+
+        status = "TRIP (Breached)" if max_T >= T_trip else "SAFE (Zero Trip)"
+        print(f"Lead {lead:4.2f} s: Peak {max_T:5.1f} K at t = {t_peak:5.1f} s | {status}")
+
+    print("\n" + "=" * 70)
+    print("PER-SCENARIO OPEN-LOOP LEAD REQUIREMENTS (200 s horizon, 0.5 s grid)")
+    print("=" * 70)
+    scenarios = generate_scenarios(20, seed=42)
+    grid = np.arange(0.0, 10.0, 0.5)
+
+    for sc in scenarios:
+        sid = sc['id']
+        req_lead = "> 9.5"
+        for l in grid:
+            adv_start = sc['t_start'] - l
+            CA, T, Tc = C_A_ref, T_ref, T_c_base
+            u_applied = T_c_base
+            max_T = T
+            n_steps = int(round(t_total / dt_ctrl))
+
+            for step in range(n_steps):
+                t_now = step * dt_ctrl
+                if t_now < sc['t_start']:
+                    CA0, T0, UA = 1.0, 350.0, UA_nom
+                elif t_now < sc['t_start'] + 2.0:
+                    frac = (t_now - sc['t_start']) / 2.0
+                    CA0 = 1.0 + frac * sc['d_CA0']
+                    T0 = 350.0 + frac * sc['d_T0']
+                    UA = UA_nom * (1.0 + frac * sc['d_UA'])
+                elif t_now < sc['t_start'] + 15.0:
+                    CA0 = 1.0 + sc['d_CA0']
+                    T0 = 350.0 + sc['d_T0']
+                    UA = UA_nom * (1.0 + sc['d_UA'])
+                else:
+                    CA0, T0, UA = 1.0, 350.0, UA_nom
+
+                if adv_start <= t_now < 25.0:
+                    u_target = 280.0
+                else:
+                    u_target = 300.0
+
+                for _ in range(sim_substeps):
+                    max_step = slew_limit * dt_sim
+                    u_applied += np.clip(u_target - u_applied, -max_step, max_step)
+                    Tc += (dt_sim / tau_j) * (u_applied - Tc)
+                    CA, T = rk4_step(CA, T, Tc, CA0, T0, UA, dt_sim)
+
+                if T > max_T:
+                    max_T = T
+
+            if max_T < T_trip:
+                req_lead = f"{l:.1f}"
+                break
+        print(f"Scenario {sid:2d}: Required Lead = {req_lead:>5s} s")
+
 def main():
     parser = argparse.ArgumentParser(description="Unified CSTR Benchmark Suite")
     parser.add_argument("--reps", type=int, default=1, help="Number of repetitions across MPPI streams")
+    parser.add_argument("--oracle", action="store_true", help="Run 200 s hold-280 K lead-time sweep and per-scenario open-loop analysis")
     args = parser.parse_args()
+
+    if args.oracle:
+        run_oracle_sweep()
+        return
 
     scenarios = generate_scenarios(20, seed=42)
     print(f"Generated 20 scenarios (seed=42). Running benchmark with reps={args.reps}...")
