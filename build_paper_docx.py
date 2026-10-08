@@ -240,7 +240,7 @@ def build_paper_docx():
         "parallel trajectory rollouts via GPU/WebGPU compute shaders, supported by an online lagged parameter filter.\n\n"
         "We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible "
         "numerical simulation case study spanning 20 randomized scenarios (C_A0 in [+10%, +30%], T_0 in [+5 K, +12 K], UA in [-10%, -35%]) "
-        "and advance-warning advisory lead time (t_lead = 3.5 s). In all preview evaluations, controllers receive an exact disturbance forecast (both onset timing and magnitude); "
+        "evaluated over a standardized 60.0 s benchmark window with advance-warning advisory lead time (t_lead = 3.5 s). In all preview evaluations, controllers receive an exact disturbance forecast (both onset timing and magnitude); "
         "reported preview results thus represent a perfect-forecast upper bound, while forecast timing jitter and magnitude errors remain untested. "
         "Numerical simulation demonstrates an empirical feedback floor of 6/20 trips across feedback controllers on this scenario set: "
         "when tuned equally (q_T = 10.0), Linear MPC trips in 6/20 scenarios (2.26 ± 1.14 K non-trip RMSE, 9.49 ± 5.39 K overall RMSE), matching NMPC (6/20 trips, 2.48 ± 1.52 K non-trip, 9.62 ± 5.37 K overall) "
@@ -250,7 +250,7 @@ def build_paper_docx():
         "(an extreme corner realization requiring 6.0 s of advance lead in open loop, the sole scenario requiring > 5.0 s). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage "
         "(0.94 ± 0.41 K non-trip RMSE vs. 1.75 ± 1.00 K for standard preview MPPI, representing a 0.81 K gain across 19 shared survivors, paired t-test p = 0.013, but p = 0.063 after Holm-Bonferroni correction, "
         "rendering this gain suggestive rather than confirmed) stems from coordinating an anticipatory pre-cooling ramp that is consistent with avoiding reaction quenching: "
-        "naive rule-based step switching quenches the reactor (T_min = 339–344 K), accumulates unreacted feed (C_A = 0.555–0.576 mol/L at surge conclusion, climbing post-surge to 0.579–0.597 mol/L), and triggers delayed thermal blowout (8/20 trips, 1.45 ± 0.68 K non-trip RMSE). "
+        "naive rule-based step switching quenches the reactor (T_min = 339–344 K), accumulates unreacted feed (C_A = 0.555–0.576 mol/L at surge conclusion, climbing post-surge to 0.578–0.597 mol/L), and triggers delayed thermal blowout (8/20 trips, 1.45 ± 0.68 K non-trip RMSE). "
         "We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control."
     )
     add_callout_box(doc, abstract_text, title="ABSTRACT")
@@ -312,21 +312,21 @@ def build_paper_docx():
     tbl_oracle.alignment = WD_TABLE_ALIGNMENT.CENTER
     oracle_headers = ["Lead Time", "Peak T (60s)", "Peak T (200s)", "Trip Status", "Measured Peak Time (Delay)"]
     oracle_data = [
-        ["0.0 s (At Onset)", "446.8 K", "446.8 K", "TRIP", "t = 37.4 s (12.4 s post-surge)"],
-        ["1.0 s Lead Time", "445.3 K", "445.3 K", "TRIP", "t = 40.4 s (15.4 s post-surge)"],
-        ["2.0 s Lead Time", "443.7 K", "443.7 K", "TRIP", "t = 45.2 s (20.2 s post-surge)"],
-        ["2.5 s Lead Time", "443.0 K", "443.0 K", "TRIP", "t = 47.6 s (22.6 s post-surge)"],
-        ["3.0 s Lead Time", "441.9 K", "441.9 K", "TRIP", "t = 52.8 s (27.8 s post-surge)"],
-        ["3.25 s Lead Time", "441.5 K", "441.5 K", "TRIP", "t = 55.0 s (30.0 s post-surge)"],
-        ["3.5 s Lead Time", "441.1 K", "441.1 K", "TRIP", "t = 57.4 s (32.4 s post-surge)"],
-        ["4.0 s Lead Time", "367.8 K", "439.6 K", "TRIP (200s)", "t = 68.4 s (43.4 s post-surge)"],
-        ["4.5 s Lead Time", "351.4 K", "438.4 K", "TRIP (200s)", "t = 82.8 s (57.8 s post-surge)"],
+        ["0.0 s (At Onset)", "447.0 K", "447.0 K", "TRIP", "t = 37.2 s (12.2 s post-surge)"],
+        ["1.0 s Lead Time", "445.6 K", "445.6 K", "TRIP", "t = 40.1 s (15.1 s post-surge)"],
+        ["2.0 s Lead Time", "444.0 K", "444.0 K", "TRIP", "t = 44.6 s (19.6 s post-surge)"],
+        ["2.5 s Lead Time", "443.1 K", "443.1 K", "TRIP", "t = 47.7 s (22.7 s post-surge)"],
+        ["3.0 s Lead Time", "442.2 K", "442.2 K", "TRIP", "t = 51.7 s (26.7 s post-surge)"],
+        ["3.25 s Lead Time", "441.7 K", "441.7 K", "TRIP", "t = 54.2 s (29.2 s post-surge)"],
+        ["3.5 s Lead Time", "441.2 K", "441.2 K", "TRIP", "t = 57.3 s (32.3 s post-surge)"],
+        ["4.0 s Lead Time", "375.7 K", "440.0 K", "TRIP (200s)", "t = 65.8 s (40.8 s post-surge)"],
+        ["4.5 s Lead Time", "355.0 K", "438.5 K", "TRIP (200s)", "t = 82.1 s (57.1 s post-surge)"],
         ["5.0 s Lead Time", "350.0 K", "350.0 K", "SAFE", "Clamped at nominal setpoint"]
     ]
     format_table(tbl_oracle, [1.4, 1.1, 1.1, 1.1, 2.3], oracle_headers, oracle_data)
     
     p = doc.add_paragraph()
-    p.add_run("Mechanisms & Per-Scenario Requirements: In open-loop release back to 300 K without feedback regulation, unreacted feed that accumulated during deep 280 K cooling re-ignites after surge termination, pushing peak temperatures above 438 K at t = 68–83 s. Only >= 5.0 s lead achieves complete thermal exhaustion in open loop for the nominal disturbance. Per-scenario open-loop requirements (200 s horizon): Scenario 18 requires 6.0 s of lead (the sole scenario requiring > 5.0 s); Scenarios 8 and 20 require 4.5 s; Scenarios 4 and 5 require 4.0 s; Scenarios 7, 15, and 9 require 2.5 s, 2.5 s, and 1.5 s; and Scenarios 11 and 13 require 0.0 s. Notably, the naive rule supervisor (stepping cooling to 280 K throughout alert and surge, followed by MPPI feedback) survives Scenario 18 (T_min = 348.8 K, T_max < 385 K), whereas the Full anticipatory system and standard preview MPPI trip on Scenario 18 at 3.5 s lead.")
+    p.add_run("Mechanisms & Per-Scenario Requirements: In open-loop release back to 300 K without feedback regulation, unreacted feed that accumulated during deep 280 K cooling re-ignites after surge termination, pushing peak temperatures above 438 K at t = 65–83 s. Only >= 5.0 s lead achieves complete thermal exhaustion in open loop for the nominal disturbance. Open-loop lead times are simulated at 50 Hz (Δt_sim = 0.02 s), exactly matching the physical plant dynamics and benchmark_cstr_unified.py --oracle. Release back to 300 K occurs at t = 25.0 s. In contrast, closed-loop benchmark runs in Section 6 evaluate over a standardized 60.0 s horizon. Per-scenario open-loop requirements (200 s horizon): Scenario 18 requires 6.0 s of lead (the sole scenario requiring > 5.0 s); Scenarios 8 and 20 require 4.5 s; Scenarios 4 and 5 require 4.0 s; Scenarios 7, 15, and 9 require 2.5 s, 2.5 s, and 1.5 s; and Scenarios 11 and 13 require 0.0 s. Notably, the naive rule supervisor (stepping cooling to 280 K throughout alert and surge, followed by MPPI feedback) survives Scenario 18 (T_min = 348.8 K, T_max < 385 K), whereas the Full anticipatory system and standard preview MPPI trip on Scenario 18 at 3.5 s lead.")
 
     add_heading_with_spacing(doc, "5. Verification & Safety Architecture", level=1)
     p = doc.add_paragraph()
@@ -346,15 +346,15 @@ def build_paper_docx():
         ["Baseline 2a", "NMPC (L-BFGS-B, No Forecast)", "2.48 ± 1.52", "9.62 ± 5.37", "372.9 ± 13.7", "5.04 ± 1.29", "6 / 20 (30%)", "13 / 20 (6.9 s)"],
         ["Ablation 1", "MPPI (Static θ*, No Forecast)", "3.00 ± 1.80", "12.13 ± 5.57", "378.9 ± 14.6", "2.52 ± 0.47", "8 / 20 (40%)", "10 / 20 (6.1 s)"],
         ["Ablation 2", "MPPI + Lagged-UA (No Forecast)", "2.61 ± 1.34", "9.82 ± 5.39", "373.4 ± 13.9", "2.58 ± 0.35", "6 / 20 (30%)", "13 / 20 (10.8 s)"],
-        ["Baseline 2b", "NMPC (With Forecast Preview)", "1.47 ± 0.85", "2.82 ± 2.93", "356.7 ± 7.6", "6.41 ± 1.03", "1 / 20 (5%)", "19 / 20 (2.6 s)"],
-        ["Ablation 3a", "MPPI + Filter (With Forecast)", "1.75 ± 1.00", "3.11 ± 2.99", "357.3 ± 7.7", "2.80 ± 0.24", "1 / 20 (5%)", "18 / 20 (5.7 s)"],
+        ["Baseline 2b", "NMPC (With Forecast Preview)", "1.47 ± 0.85", "2.82 ± 2.93", "356.8 ± 7.6", "6.42 ± 1.03", "1 / 20 (5%)", "19 / 20 (2.7 s)"],
+        ["Ablation 3a", "MPPI + Filter (With Forecast)", "1.75 ± 1.00", "3.10 ± 2.98", "357.3 ± 7.7", "2.80 ± 0.24", "1 / 20 (5%)", "18 / 20 (5.6 s)"],
         ["Ablation 3b", "Rule Supervisor + MPPI", "1.45 ± 0.68", "9.72 ± 4.92", "382.6 ± 17.6", "3.82 ± 0.33", "8 / 20 (40%)", "12 / 20 (12.4 s)"],
-        ["Full System", "Anticipatory Schedule (Full)", "0.94 ± 0.41", "2.17 ± 2.57", "355.5 ± 6.2", "3.39 ± 0.27", "1 / 20 (5%)", "19 / 20 (2.4 s)"]
+        ["Full System", "Anticipatory Schedule (Full)", "0.94 ± 0.41", "2.15 ± 2.55", "355.4 ± 6.1", "3.39 ± 0.27", "1 / 20 (5%)", "19 / 20 (2.4 s)"]
     ]
     format_table(tbl_ablation, [1.1, 1.8, 0.8, 0.8, 0.9, 0.7, 0.7, 0.7], abl_headers, abl_data)
     
     p = doc.add_paragraph()
-    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. Scenario 18 requires 6.0 s of advance lead in open loop (the sole scenario requiring > 5.0 s). Trajectory inspection on rule supervisor trip cases (Scenarios 2, 3, 9) shows reactor quenching to T_min = 339–344 K (vs. ~349 K for Full system), allowing reactant to accumulate to C_A = 0.555–0.576 mol/L at surge end and climbing to 0.579–0.597 mol/L before exploding into thermal blowout. Crucially, the rule supervisor survives Scenario 18 (T_min = 348.8 K) while preview MPPI and Full system trip at 3.5 s lead.")
+    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. Scenario 18 requires 6.0 s of advance lead in open loop (the sole scenario requiring > 5.0 s). Closed-loop runs are evaluated over a standardized 60.0 s window; baseline trips occur as late as t = 56 s, and eight surviving baseline runs remain unsettled at the 60 s boundary. Trajectory inspection on rule supervisor trip cases (Scenarios 2, 3, 9) shows reactor quenching to T_min = 339–344 K (vs. ~349 K for Full system), allowing reactant to accumulate to C_A = 0.555–0.576 mol/L at surge end and climbing to 0.578–0.597 mol/L (with Scenario 9 reaching a peak of 0.578 mol/L) before exploding into thermal blowout. Crucially, the rule supervisor survives Scenario 18 (T_min = 348.8 K) while preview MPPI and Full system trip at 3.5 s lead.")
 
     add_heading_with_spacing(doc, "6.2 Deconstructing the Supervisory Advantage", level=2)
     p = doc.add_paragraph()
@@ -372,7 +372,7 @@ def build_paper_docx():
 
     add_heading_with_spacing(doc, "6.3 Reproducibility & Computational Budget", level=2)
     p = doc.add_paragraph()
-    p.add_run("All tables were generated using a pure NumPy implementation (benchmark_cstr_unified.py): scenario generation with np.random.seed(42); sensor noise default_rng(1000 + i); MPPI sampling default_rng(10000 + 100*rep + seed); NMPC with L-BFGS-B (maxiter = 10, warm-started); oracle sweep verified via python benchmark_cstr_unified.py --oracle; runtime approximately 12 minutes on 2 CPU cores.")
+    p.add_run("All tables were generated using a pure NumPy implementation (benchmark_cstr_unified.py): scenario generation with np.random.seed(42); sensor noise default_rng(1000 + i); MPPI sampling default_rng(10000 + 100*rep + seed); NMPC with L-BFGS-B (maxiter = 10, warm-started); oracle sweep verified via python benchmark_cstr_unified.py --oracle at 50 Hz; standardized evaluation window t_total = 60.0 s; runtime approximately 12 minutes on 2 CPU cores.")
 
     add_heading_with_spacing(doc, "7. Industrial Deployment Limits & Conclusion", level=1)
     add_heading_with_spacing(doc, "7.1 Industrial Deployment Limits", level=2)
@@ -383,7 +383,8 @@ def build_paper_docx():
         "in the basic process control system (BPCS) supervisory space and must never share hardware, sensors, or actuators with the emergency shutdown interlock. "
         "Perfect-Forecast Assumption: All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. "
         "In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. "
-        "Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation."
+        "Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation. "
+        "Evaluation Horizon Limitations: The closed-loop benchmark tests were evaluated over a 60 s time horizon. Because open-loop sweeps reveal delayed thermal re-ignition transients extending up to 83 s when unreacted feed accumulates (Section 4.1), and reactive baselines exhibited trips as late as 56 s with eight surviving runs unsettled at 60 s, extending the closed-loop evaluation window to 120–200 s is recommended to capture full asymptotic settling in industrial certification."
     )
     add_heading_with_spacing(doc, "7.2 Conclusion", level=2)
     p = doc.add_paragraph()

@@ -15,10 +15,10 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 | **Baseline 2a** | NMPC (L-BFGS-B, No Forecast) | $2.48 \pm 1.52$ | $9.62 \pm 5.37$ | $372.9 \pm 13.7$ | $5.04 \pm 1.29$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (6.9 s) |
 | **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.13 \pm 5.57$ | $378.9 \pm 14.6$ | $2.52 \pm 0.47$ | **8 / 20** $[21.9\%, 61.3\%]$ | 10 / 20 (6.1 s) |
 | **Ablation 2** | MPPI + Lagged-UA Filter (No Forecast) | $2.61 \pm 1.34$ | $9.82 \pm 5.39$ | $373.4 \pm 13.9$ | $2.58 \pm 0.35$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (10.8 s) |
-| **Baseline 2b** | NMPC (With Forecast Preview) | $1.47 \pm 0.85$ | $2.82 \pm 2.93$ | $356.7 \pm 7.6$ | $6.41 \pm 1.03$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.6 s) |
-| **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.11 \pm 2.99$ | $357.3 \pm 7.7$ | $2.80 \pm 0.24$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.7 s) |
+| **Baseline 2b** | NMPC (With Forecast Preview) | $1.47 \pm 0.85$ | $2.82 \pm 2.93$ | $356.8 \pm 7.6$ | $6.42 \pm 1.03$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.7 s) |
+| **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.10 \pm 2.98$ | $357.3 \pm 7.7$ | $2.80 \pm 0.24$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.6 s) |
 | **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.72 \pm 4.92$ | $382.6 \pm 17.6$ | $3.82 \pm 0.33$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (12.4 s) |
-| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.39 \pm 0.27$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
+| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.15 \pm 2.55$ | $355.4 \pm 6.1$ | $3.39 \pm 0.27$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
 
 ---
 
@@ -39,26 +39,27 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 
 - **Post-Surge Runaway:** All baseline trips (Linear MPC, NMPC, reactive MPPI) and the single preview trip (Seed 18) occur **4–31 s AFTER the surge ends** (during the post-surge recovery transient), rather than at surge onset.
 - **Corner Scenario (Seed 18):** Seed 18 requires **$6.0\text{ s}$ of advance lead time in open loop** (the sole scenario requiring $> 5.0\text{ s}$) to survive under the $12\text{ K/s}$ slew rate limit and $2.0\text{ s}$ jacket thermal lag, exceeding the standardized $3.5\text{ s}$ advisory lead time.
-- **Reaction Quenching Mechanism:** Quantitative empirical trace analysis on trip scenarios (Scenarios 2, 3, 9) shows that flat maximum cooling drops reactor temperature to $T_{\min} = 339\text{--}344\text{ K}$ (vs. $\approx 349\text{ K}$ for Full system), quenching reaction rate $k(T)$. Unreacted feed concentration $C_A$ accumulates to $0.555\text{--}0.576\text{ mol/L}$ at surge conclusion ($t = 25\text{ s}$, vs. $0.526\text{--}0.550\text{ mol/L}$ for Full system), continuing to climb post-surge to $0.579\text{--}0.597\text{ mol/L}$ and triggering violent thermal runaway.
+- **Reaction Quenching Mechanism:** Quantitative empirical trace analysis on trip scenarios (Scenarios 2, 3, 9) shows that flat maximum cooling drops reactor temperature to $T_{\min} = 339\text{--}344\text{ K}$ (vs. $\approx 349\text{ K}$ for Full system), quenching reaction rate $k(T)$. Unreacted feed concentration $C_A$ accumulates to $0.555\text{--}0.576\text{ mol/L}$ at surge conclusion ($t = 25\text{ s}$, vs. $0.526\text{--}0.550\text{ mol/L}$ for Full system), continuing to climb post-surge to $0.578\text{--}0.597\text{ mol/L}$ (with Scenario 9 peaking at $0.578\text{ mol/L}$) and triggering violent thermal runaway.
+- **Evaluation Window Disclosure (60 s Horizon):** Closed-loop evaluations in Table 2 are simulated over $t_{\text{total}} = 60.0\text{ s}$. Baseline trips occur as late as $t = 56\text{ s}$, and eight surviving baseline runs remain unsettled at the end of the 60 s window. Longer horizons (e.g., $120\text{ s}$) are recommended for post-surge asymptotic settling verification.
 
 ---
 
-## 4. Section 4.1: Hold-280 K Lead-Time Sweep (Single Consistent 200 s Run, Release at $t = 25.0\text{ s}$)
+## 4. Section 4.1: Hold-280 K Lead-Time Sweep (50 Hz Simulation, Release at $t = 25.0\text{ s}$)
 
-Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during surge advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$). Evaluated from a single consistent simulation run with coolant released open-loop back to $300\text{ K}$ exactly at surge conclusion ($t = 25.0\text{ s}$, 15 s duration) over a 200 s horizon (`benchmark_cstr_unified.py --oracle`):
+Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during surge advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$). Evaluated from a single consistent 50 Hz simulation run (`dt_sim = 0.02 s`) with coolant released open-loop back to $300\text{ K}$ exactly at surge conclusion ($t = 25.0\text{ s}$, 15 s duration) over a 200 s horizon (`benchmark_cstr_unified.py --oracle`):
 
 | Pre-Cooling Lead Time $t_{\text{lead}}$ | Peak Temp $T_{\max}$ (60 s) | Peak Temp $T_{\max}$ (200 s) | SIS Trip Status ($\ge 385.0\text{ K}$) | Measured Peak Time $t_{\text{peak}}$ (Post-Surge Delay) |
 | :--- | :--- | :--- | :--- | :--- |
-| **0.0 s (At Onset)** | **446.8 K** | **446.8 K** | **TRIP** | $t = 37.4\text{ s}$ ($12.4\text{ s}$ post-surge) |
-| **1.0 s** | **445.3 K** | **445.3 K** | **TRIP** | $t = 40.4\text{ s}$ ($15.4\text{ s}$ post-surge) |
-| **2.0 s** | **443.7 K** | **443.7 K** | **TRIP** | $t = 45.2\text{ s}$ ($20.2\text{ s}$ post-surge) |
-| **2.5 s** | **443.0 K** | **443.0 K** | **TRIP** | $t = 47.6\text{ s}$ ($22.6\text{ s}$ post-surge) |
-| **3.0 s** | **441.9 K** | **441.9 K** | **TRIP** | $t = 52.8\text{ s}$ ($27.8\text{ s}$ post-surge) |
-| **3.25 s** | **441.5 K** | **441.5 K** | **TRIP** | $t = 55.0\text{ s}$ ($30.0\text{ s}$ post-surge) |
-| **3.5 s** | **441.1 K** | **441.1 K** | **TRIP** | $t = 57.4\text{ s}$ ($32.4\text{ s}$ post-surge) |
-| **4.0 s** | $367.8\text{ K}$ | **439.6 K** | **TRIP (at 200 s)** | $t = 68.4\text{ s}$ ($43.4\text{ s}$ post-surge, delayed ignition) |
-| **4.5 s** | $351.4\text{ K}$ | **438.4 K** | **TRIP (at 200 s)** | $t = 82.8\text{ s}$ ($57.8\text{ s}$ post-surge, delayed ignition) |
-| **5.0 s** | $350.0\text{ K}$ | $350.0\text{ K}$ | **SAFE** | Clamped at nominal setpoint ($T < 350.5\text{ K}$) |
+| **0.0 s (At Onset)** | **447.0 K** | **447.0 K** | **TRIP** | $t = 37.2\text{ s}$ ($12.2\text{ s}$ post-surge) |
+| **1.0 s** | **445.6 K** | **445.6 K** | **TRIP** | $t = 40.1\text{ s}$ ($15.1\text{ s}$ post-surge) |
+| **2.0 s** | **444.0 K** | **444.0 K** | **TRIP** | $t = 44.6\text{ s}$ ($19.6\text{ s}$ post-surge) |
+| **2.5 s** | **443.1 K** | **443.1 K** | **TRIP** | $t = 47.7\text{ s}$ ($22.7\text{ s}$ post-surge) |
+| **3.0 s** | **442.2 K** | **442.2 K** | **TRIP** | $t = 51.7\text{ s}$ ($26.7\text{ s}$ post-surge) |
+| **3.25 s** | **441.7 K** | **441.7 K** | **TRIP** | $t = 54.2\text{ s}$ ($29.2\text{ s}$ post-surge) |
+| **3.5 s** | **441.2 K** | **441.2 K** | **TRIP** | $t = 57.3\text{ s}$ ($32.3\text{ s}$ post-surge) |
+| **4.0 s** | **375.7 K** | **440.0 K** | **TRIP (at 200 s)** | $t = 65.8\text{ s}$ ($40.8\text{ s}$ post-surge, delayed ignition) |
+| **4.5 s** | **355.0 K** | **438.5 K** | **TRIP (at 200 s)** | $t = 82.1\text{ s}$ ($57.1\text{ s}$ post-surge, delayed ignition) |
+| **5.0 s** | **350.0 K** | **350.0 K** | **SAFE** | Clamped at nominal setpoint ($T < 350.5\text{ K}$) |
 
 *Mechanisms & Per-Scenario Requirements:*
 1. **Open-Loop Re-Ignition:** Open-loop release back to $300\text{ K}$ without feedback regulation causes unreacted feed that accumulated during deep $280\text{ K}$ cooling to re-ignite after surge termination, pushing peak temperatures above $438\text{ K}$ at $t = 68\text{--}83\text{ s}$. Only $\ge 5.0\text{ s}$ lead achieves complete thermal exhaustion in open loop for the nominal disturbance.
