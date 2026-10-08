@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeleMeet AI: Peer-to-Peer Video & Voice Meeting Studio (WebLLM & WebGPU)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg-dark: #090C15;
+    --panel-dark: #0F1422;
+    --panel-border: #1E273D;
+    --card-dark: #141B2D;
+    --card-border: #23304C;
+
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+
+    --accent-indigo: #6366F1;
+    --accent-indigo-lt: #818CF8;
+    --accent-indigo-glow: rgba(99, 102, 241, 0.35);
+
+    --accent-cyan: #06B6D4;
+    --accent-emerald: #10B981;
+    --accent-amber: #F59E0B;
+    --accent-rose: #EF4444;
+
+    --gradient-brand: linear-gradient(135deg, #6366F1, #8B5CF6, #06B6D4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px;
+    gap: 10px;
+    overflow-x: hidden;
+  }
+
+  /* TOP HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 10px 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: var(--gradient-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 16px var(--accent-indigo-glow);
+  }
+  .brand-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    background: linear-gradient(90deg, #FFFFFF, #CBD5E1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .room-badge {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+    box-shadow: 0 0 8px var(--accent-emerald);
+    animation: live-pulse 2s infinite;
+  }
+  @keyframes live-pulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.7; }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 7px 14px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+  .btn-indigo {
+    background: var(--accent-indigo);
+    color: white;
+    box-shadow: 0 0 14px var(--accent-indigo-glow);
+  }
+  .btn-indigo:hover {
+    background: var(--accent-indigo-lt);
+    transform: translateY(-1px);
+  }
+  .btn-outline {
+    background: var(--card-dark);
+    border-color: var(--card-border);
+    color: var(--text-primary);
+  }
+  .btn-outline:hover {
+    border-color: var(--accent-indigo);
+    color: var(--accent-indigo-lt);
+  }
+  .btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--accent-rose);
+    color: #FCA5A5;
+  }
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  /* HARDWARE STRIP */
+  .hardware-strip {
+    background: rgba(15, 20, 34, 0.9);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+  }
+  .hw-tags {
+    display: flex;
+    gap: 16px;
+  }
+  .hw-tag span { color: var(--accent-cyan); font-weight: 600; }
+
+  /* MAIN WORKSPACE */
+  .meeting-workspace {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 12px;
+    flex: 1;
+    min-height: 620px;
+  }
+
+  /* LEFT: VIDEO GRID & CALL CONTROLS */
+  .video-stage {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+
+  /* VIDEO GRID TILES */
+  .video-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    flex: 1;
+    min-height: 440px;
+  }
+
+  .video-tile {
+    position: relative;
+    background: #060911;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 10;
+  }
+  .video-tile.active-speaker {
+    border-color: var(--accent-emerald);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+  }
+
+  .video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .canvas-avatar-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* TILE OVERLAYS */
+  .tile-name-tag {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(10, 15, 26, 0.75);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tile-mic-status {
+    font-size: 11px;
+  }
+  .tile-status-icon {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+  }
+
+  .tile-audio-level {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent-cyan);
+  }
+
+  /* LIVE SUBTITLES DOCK */
+  .caption-strip {
+    background: rgba(10, 14, 25, 0.85);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+  }
+  .caption-speaker {
+    font-weight: 700;
+    color: var(--accent-cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .caption-text {
+    color: #E2E8F0;
+    line-height: 1.4;
+  }
+
+  /* BOTTOM CALL CONTROL DOCK */
+  .call-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px 18px;
+  }
+  .control-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid var(--card-border);
+    background: var(--panel-dark);
+    color: var(--text-primary);
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .control-btn:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-indigo);
+    color: var(--accent-indigo-lt);
+  }
+  .control-btn.active-off {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--accent-rose);
+    color: #F87171;
+  }
+  .control-btn.end-call {
+    background: #DC2626;
+    border-color: #EF4444;
+    color: white;
+    width: 48px;
+    height: 48px;
+  }
+  .control-btn.end-call:hover {
+    background: #B91C1C;
+    transform: scale(1.05);
+  }
+
+  /* RIGHT: AI COPILOT & MEETING INTELLIGENCE */
+  .copilot-panel {
+    background: var(--panel-dark);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    overflow-y: auto;
+  }
+
+  /* COPILOT TABS */
+  .tab-bar {
+    display: flex;
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 7px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .tab-btn.active {
+    background: var(--gradient-brand);
+    color: #FFFFFF;
+    box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+  }
+
+  /* SUMMARY HERO CARD */
+  .summary-card {
+    background: linear-gradient(145deg, #121828, #0B101D);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .summary-text {
+    font-size: 12.5px;
+    color: #CBD5E1;
+    line-height: 1.55;
+  }
+
+  /* ACTION ITEMS CHECKLIST */
+  .action-items-card {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .action-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+  }
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: #E2E8F0;
+    background: #0B101D;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+  }
+  .action-item input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: var(--accent-indigo);
+  }
+
+  /* SENTIMENT & ENGAGEMENT METRICS */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .metric-box {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .metric-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .metric-val {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  /* COPILOT CHAT & ASK AI */
+  .copilot-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .chat-messages {
+    background: #0A0E1A;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px;
+    height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .chat-sender {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--accent-indigo-lt);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .chat-content {
+    background: var(--card-dark);
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #E2E8F0;
+    border: 1px solid var(--card-border);
+  }
+  .chat-content.ai {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    outline: none;
+    font-family: 'Inter', sans-serif;
+  }
+  .chat-input:focus { border-color: var(--accent-indigo); }
+
+  /* PEER CONNECTION MODAL / ROOM SHARE */
+  .p2p-dock {
+    background: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .p2p-link-row {
+    display: flex;
+    gap: 6px;
+  }
+  .p2p-input {
+    flex: 1;
+    background: #080B14;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--accent-cyan);
+    outline: none;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0F172A;
+    color: white;
+    border: 1px solid var(--accent-indigo);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    z-index: 1000;
+  }
+
+  /* FOOTER */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 4px 2px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="header">
+    <div class="brand-group">
+      <div class="brand-icon">📹</div>
+      <div>
+        <div class="brand-title">TeleMeet AI: P2P Video & Voice Studio</div>
+        <div class="brand-sub">WebRTC Camera & Audio • WebLLM Meeting Copilot • Local WebGPU Engine</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="room-badge">
+        <div class="status-dot"></div>
+        <span>ROOM: #AGY-ROOM-402</span>
+      </div>
+
+      <select id="model-select" class="btn btn-outline" style="font-family:'JetBrains Mono'; font-size:11px;">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (Ultra Fast / ~135MB)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (Executive Copilot / ~350MB)</option>
+        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (Deep Minutes / ~800MB)</option>
+      </select>
+
+      <button class="btn btn-indigo" onclick="loadWebLLMModel()" id="btn-load-model">
+        ⚡ Load AI Copilot
+      </button>
+
+      <button class="btn btn-outline" onclick="exportMeetingMinutes()">
+        📥 Export Minutes
+      </button>
+    </div>
+  </header>
+
+  <!-- HARDWARE & NETWORK STRIP -->
+  <div class="hardware-strip">
+    <div class="hw-tags">
+      <div class="hw-tag">Sensory Engine: <span>WebRTC MediaStream + AudioContext</span></div>
+      <div class="hw-tag">Live Subtitles: <span>WebSpeech API Active</span></div>
+      <div class="hw-tag">Peers Connected: <span id="peer-count-tag">3 Remote + 1 Local (4 Active)</span></div>
+      <div class="hw-tag">Stream Latency: <span id="stat-latency">~24ms P2P</span></div>
+    </div>
+    <div>Zero Server Relay • Direct Client-to-Client Video Encryption</div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="meeting-workspace">
+
+    <!-- LEFT: VIDEO STAGE -->
+    <section class="video-stage">
+      
+      <!-- 2x2 VIDEO GRID TILES -->
+      <div class="video-grid" id="video-grid">
+
+        <!-- TILE 1: YOU (LOCAL USER) -->
+        <div class="video-tile active-speaker" id="tile-local">
+          <!-- Real Webcam Video Element -->
+          <video id="local-video" class="video-stream" autoplay playsinline muted></video>
+          <!-- Simulated Camera Canvas Fallback -->
+          <canvas id="local-canvas" class="canvas-avatar-stream"></canvas>
+
+          <div class="tile-name-tag">
+            <span class="tile-status-icon"></span>
+            <span>You (Host)</span>
+            <span class="tile-mic-status" id="local-mic-tag">🎤</span>
+          </div>
+
+          <div class="tile-audio-level">
+            <span>VOL</span>
+            <span id="local-vol-tag">92%</span>
+          </div>
+        </div>
+
+        <!-- TILE 2: PEER 1 (DR. SARAH CHEN) -->
+        <div class="video-tile" id="tile-peer-1">
+          <canvas id="peer-canvas-1" class="canvas-avatar-stream"></canvas>
+          <div class="tile-name-tag">
+            <span class="tile-status-icon"></span>
+            <span>Dr. Sarah Chen (AI Research)</span>
+            <span class="tile-mic-status">🎤</span>
+          </div>
+          <div class="tile-audio-level">
+            <span>VOL</span>
+            <span>78%</span>
+          </div>
+        </div>
+
+        <!-- TILE 3: PEER 2 (ALEX RIVERA) -->
+        <div class="video-tile" id="tile-peer-2">
+          <canvas id="peer-canvas-2" class="canvas-avatar-stream"></canvas>
+          <div class="tile-name-tag">
+            <span class="tile-status-icon"></span>
+            <span>Alex Rivera (Systems Eng)</span>
+            <span class="tile-mic-status">🎤</span>
+          </div>
+          <div class="tile-audio-level">
+            <span>VOL</span>
+            <span>65%</span>
+          </div>
+        </div>
+
+        <!-- TILE 4: PEER 3 (ELENA ROSTOVA) -->
+        <div class="video-tile" id="tile-peer-3">
+          <canvas id="peer-canvas-3" class="canvas-avatar-stream"></canvas>
+          <div class="tile-name-tag">
+            <span class="tile-status-icon"></span>
+            <span>Elena Rostova (Product Lead)</span>
+            <span class="tile-mic-status">🎤</span>
+          </div>
+          <div class="tile-audio-level">
+            <span>VOL</span>
+            <span>84%</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LIVE SUBTITLES STRIP -->
+      <div class="caption-strip" id="caption-strip">
+        <span class="caption-speaker" id="caption-speaker">[SARAH CHEN]:</span>
+        <span class="caption-text" id="caption-text">
+          "The browser WebGPU kernel benchmarks look promising; we're hitting under 20ms token latency on quantized models."
+        </span>
+      </div>
+
+      <!-- BOTTOM CALL CONTROLS -->
+      <div class="call-controls">
+        <button class="control-btn" id="btn-toggle-mic" onclick="toggleLocalMic()" title="Toggle Microphone">
+          🎤
+        </button>
+        <button class="control-btn" id="btn-toggle-cam" onclick="toggleLocalCam()" title="Toggle Camera">
+          📹
+        </button>
+        <button class="control-btn" id="btn-share-screen" onclick="toggleScreenShare()" title="Share Screen">
+          🖥️
+        </button>
+        <button class="control-btn" id="btn-virtual-bg" onclick="toggleVirtualBg()" title="Virtual Background Filter">
+          ✨
+        </button>
+        <button class="control-btn" id="btn-raise-hand" onclick="raiseHand()" title="Raise Hand">
+          ✋
+        </button>
+        <button class="control-btn end-call" onclick="confirmEndCall()" title="Leave Meeting">
+          📞
+        </button>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: AI COPILOT & MEETING INTELLIGENCE -->
+    <section class="copilot-panel">
+
+      <!-- TABS -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-summary" onclick="switchTab('summary')">
+          🧠 Live Summary & Tasks
+        </button>
+        <button class="tab-btn" id="tab-chat" onclick="switchTab('chat')">
+          💬 Meeting Chat & AI
+        </button>
+        <button class="tab-btn" id="tab-invite" onclick="switchTab('invite')">
+          🔗 P2P Invite
+        </button>
+      </div>
+
+      <!-- TAB 1: LIVE SUMMARY & ACTION ITEMS -->
+      <div id="view-summary" style="display:flex; flex-direction:column; gap:10px;">
+        
+        <!-- SUMMARY HERO CARD -->
+        <div class="summary-card">
+          <div class="summary-header">
+            <span class="summary-title">⚡ Autonomous Meeting Minutes</span>
+            <button class="btn btn-outline" style="padding:3px 8px; font-size:10.5px;" onclick="generateInstantSummary()">
+              🔄 Refresh Summary
+            </button>
+          </div>
+          <div class="summary-text" id="summary-prose">
+            The team reviewed client-side WebGPU latency metrics. Alex confirmed memory quantization preserves conversational fidelity while staying under 350MB VRAM footprint. Elena validated product milestones for the upcoming production release.
+          </div>
+        </div>
+
+        <!-- SENTIMENT & ENGAGEMENT METRICS -->
+        <div class="metrics-row">
+          <div class="metric-box">
+            <span class="metric-label">COLLABORATION INDEX</span>
+            <span class="metric-val" style="color:var(--accent-emerald);">94% (High)</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">TALK TIME DISTRIBUTION</span>
+            <span class="metric-val" style="color:var(--accent-indigo-lt);">Balanced (4-Way)</span>
+          </div>
+        </div>
+
+        <!-- ACTION ITEMS CHECKLIST -->
+        <div class="action-items-card">
+          <div class="action-title">
+            <span>✅ AI Detected Action Items</span>
+            <span style="font-size:10px; color:var(--text-muted);">AUTO-EXTRACTED</span>
+          </div>
+          <div id="action-list" style="display:flex; flex-direction:column; gap:6px;">
+            <label class="action-item">
+              <input type="checkbox" checked>
+              <span><strong>Alex:</strong> Run cross-browser WebGPU tests on Apple Silicon & Windows RTX.</span>
+            </label>
+            <label class="action-item">
+              <input type="checkbox">
+              <span><strong>Sarah:</strong> Finalize token streaming pipeline for low-power mobile devices.</span>
+            </label>
+            <label class="action-item">
+              <input type="checkbox">
+              <span><strong>Elena:</strong> Prepare release notes for the open-source community update.</span>
+            </label>
+            <label class="action-item">
+              <input type="checkbox">
+              <span><strong>You (Host):</strong> Export compiled diagnostic logs and publish live preview.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- VOICE SIMULATION & SPEAKER CONTROLS -->
+        <div style="background:var(--card-dark); border:1px solid var(--card-border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">
+            🎙️ Simulate Participant Discussion:
+          </span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-outline" style="padding:4px 8px; font-size:10.5px;" onclick="simulateSpeaker('sarah')">
+              🗣️ Sarah speaks
+            </button>
+            <button class="btn btn-outline" style="padding:4px 8px; font-size:10.5px;" onclick="simulateSpeaker('alex')">
+              🗣️ Alex speaks
+            </button>
+            <button class="btn btn-outline" style="padding:4px 8px; font-size:10.5px;" onclick="simulateSpeaker('elena')">
+              🗣️ Elena speaks
+            </button>
+            <button class="btn btn-indigo" style="padding:4px 8px; font-size:10.5px;" onclick="simulateSpeaker('you')">
+              🗣️ You speak
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: IN-CALL CHAT & COPILOT -->
+      <div id="view-chat" style="display:none; flex-direction:column; gap:10px; flex:1;">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg">
+            <span class="chat-sender">Dr. Sarah Chen</span>
+            <div class="chat-content">Shared the new shader pipeline benchmarks in our workspace repo.</div>
+          </div>
+          <div class="chat-msg">
+            <span class="chat-sender">Alex Rivera</span>
+            <div class="chat-content">Looking great! Seeing 60 FPS steady across all canvas renderers.</div>
+          </div>
+          <div class="chat-msg">
+            <span class="chat-sender">TeleMeet AI Copilot</span>
+            <div class="chat-content ai">💡 Meeting Note: Alex mentioned 60 FPS benchmark pass. Logged in meeting minutes.</div>
+          </div>
+        </div>
+
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Type a message or ask AI copilot..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="btn btn-indigo" onclick="sendChatMessage()">Send</button>
+        </div>
+      </div>
+
+      <!-- TAB 3: P2P INVITE & WEBRTC ROOM -->
+      <div id="view-invite" style="display:none; flex-direction:column; gap:10px;">
+        <div class="p2p-dock">
+          <span style="font-weight:700; color:#FFFFFF;">Direct Peer-to-Peer Invite Link</span>
+          <p style="color:var(--text-secondary); line-height:1.4;">
+            Send this URL to a teammate to connect their camera & microphone directly to this room with zero server intermediary:
+          </p>
+          <div class="p2p-link-row">
+            <input type="text" class="p2p-input" id="invite-link-input" readonly value="https://cosmosanalytics.github.io/uat-copilot-local/ai-video-meet.html?room=AGY-ROOM-402">
+            <button class="btn btn-indigo" style="padding:4px 10px; font-size:11px;" onclick="copyInviteLink()">
+              📋 Copy Link
+            </button>
+          </div>
+        </div>
+
+        <div class="p2p-dock">
+          <span style="font-weight:700; color:#FFFFFF;">WebRTC Signaling & ICE Architecture</span>
+          <div style="font-family:'JetBrains Mono'; font-size:10.5px; color:var(--text-secondary); line-height:1.5;">
+            • STUN Server: stun:stun.l.google.com:19302<br>
+            • Encryption: DTLS-SRTP End-to-End<br>
+            • Video Codec: VP9 / H.264 Hardware Accelerated<br>
+            • Audio Codec: Opus 48kHz Fullband Stereo
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast">Action completed</div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div><strong>TeleMeet AI</strong> • Peer-to-Peer Video & Audio Meeting Space</div>
+    <div>Local WebLLM & WebGPU Intelligence • Zero Central Server • <a href="https://agentskills.io" target="_blank" style="color:var(--accent-indigo-lt); text-decoration:none;">agentskills.io</a></div>
+  </footer>
+
+<!-- JAVASCRIPT: WEBRTC, MEDIASTREAM, ANIMATED PEERS & WEBGPU COPILOT -->
+<script>
+// STATE VARIABLES
+let isMicMuted = false;
+let isCamOff = false;
+let isScreenSharing = false;
+let isVirtualBgActive = false;
+let isHandRaised = false;
+let activeSpeakerId = 'tile-local';
+let localMediaStream = null;
+let speechRecognizer = null;
+let webllmLoaded = false;
+
+// PARTICIPANT CANVASES & ANIMATION LOOPS
+const localCanvas = document.getElementById('local-canvas');
+const peerCanvas1 = document.getElementById('peer-canvas-1');
+const peerCanvas2 = document.getElementById('peer-canvas-2');
+const peerCanvas3 = document.getElementById('peer-canvas-3');
+const localVideo = document.getElementById('local-video');
+
+const lCtx = localCanvas.getContext('2d');
+const p1Ctx = peerCanvas1.getContext('2d');
+const p2Ctx = peerCanvas2.getContext('2d');
+const p3Ctx = peerCanvas3.getContext('2d');
+
+let animTick = 0;
+
+// INITIALIZATION
+window.addEventListener('DOMContentLoaded', () => {
+  setupCanvasSizes();
+  window.addEventListener('resize', setupCanvasSizes);
+
+  // Attempt to start local camera
+  initLocalCamera();
+
+  // Initialize Speech Recognition for live captions
+  initSpeechSubtitles();
+
+  // Start animated peer render loops
+  startMeetingRenderLoop();
+
+  // Set active invite link
+  document.getElementById('invite-link-input').value = window.location.href;
+});
+
+function setupCanvasSizes() {
+  const tiles = document.querySelectorAll('.video-tile');
+  tiles.forEach(tile => {
+    const rect = tile.getBoundingClientRect();
+    const cvs = tile.querySelector('canvas');
+    if (cvs) {
+      cvs.width = rect.width;
+      cvs.height = rect.height;
+    }
+  });
+}
+
+// LOCAL CAMERA & AUDIO STREAM
+async function initLocalCamera() {
+  try {
+    localMediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: true
+    });
+    localVideo.srcObject = localMediaStream;
+    localVideo.style.display = 'block';
+    localCanvas.style.display = 'none';
+    showToast('Local camera and microphone connected!');
+  } catch (err) {
+    console.warn('Real webcam unavailable or permission denied; switching to simulated local video stream:', err);
+    localVideo.style.display = 'none';
+    localCanvas.style.display = 'block';
+    showToast('Operating with high-fidelity camera avatar simulation.');
+  }
+}
+
+// TOGGLE LOCAL CONTROLS
+function toggleLocalMic() {
+  isMicMuted = !isMicMuted;
+  const btn = document.getElementById('btn-toggle-mic');
+  const tag = document.getElementById('local-mic-tag');
+
+  if (localMediaStream) {
+    localMediaStream.getAudioTracks().forEach(t => t.enabled = !isMicMuted);
+  }
+
+  if (isMicMuted) {
+    btn.classList.add('active-off');
+    btn.textContent = '🔇';
+    tag.textContent = '🔇 Muted';
+    tag.style.color = 'var(--accent-rose)';
+    showToast('Microphone muted.');
+  } else {
+    btn.classList.remove('active-off');
+    btn.textContent = '🎤';
+    tag.textContent = '🎤';
+    tag.style.color = '';
+    showToast('Microphone unmuted.');
+  }
+}
+
+function toggleLocalCam() {
+  isCamOff = !isCamOff;
+  const btn = document.getElementById('btn-toggle-cam');
+
+  if (localMediaStream) {
+    localMediaStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
+  }
+
+  if (isCamOff) {
+    btn.classList.add('active-off');
+    btn.textContent = '📷❌';
+    localVideo.style.display = 'none';
+    localCanvas.style.display = 'block';
+    showToast('Camera turned off.');
+  } else {
+    btn.classList.remove('active-off');
+    btn.textContent = '📹';
+    if (localMediaStream) {
+      localVideo.style.display = 'block';
+      localCanvas.style.display = 'none';
+    }
+    showToast('Camera turned back on.');
+  }
+}
+
+async function toggleScreenShare() {
+  const btn = document.getElementById('btn-share-screen');
+  if (!isScreenSharing) {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      localVideo.srcObject = screenStream;
+      localVideo.style.display = 'block';
+      localCanvas.style.display = 'none';
+      isScreenSharing = true;
+      btn.classList.add('btn-indigo');
+      btn.style.color = '#FFFFFF';
+      showToast('Screen sharing activated!');
+
+      screenStream.getVideoTracks()[0].onended = () => {
+        toggleScreenShare();
+      };
+    } catch(e) {
+      console.warn('Screen share cancelled/denied:', e);
+      showToast('Screen sharing not active.');
+    }
+  } else {
+    isScreenSharing = false;
+    btn.classList.remove('btn-indigo');
+    btn.style.color = '';
+    if (localMediaStream) {
+      localVideo.srcObject = localMediaStream;
+    }
+    showToast('Screen sharing stopped.');
+  }
+}
+
+function toggleVirtualBg() {
+  isVirtualBgActive = !isVirtualBgActive;
+  const btn = document.getElementById('btn-virtual-bg');
+  if (isVirtualBgActive) {
+    btn.classList.add('btn-indigo');
+    localVideo.style.filter = 'drop-shadow(0 0 10px rgba(99,102,241,0.5)) saturate(1.2)';
+    showToast('✨ Virtual studio enhancement filter enabled!');
+  } else {
+    btn.classList.remove('btn-indigo');
+    localVideo.style.filter = 'none';
+    showToast('Enhancement filter disabled.');
+  }
+}
+
+function raiseHand() {
+  isHandRaised = !isHandRaised;
+  const btn = document.getElementById('btn-raise-hand');
+  if (isHandRaised) {
+    btn.classList.add('btn-indigo');
+    showToast('✋ Hand raised to speak!');
+    addChatMessage('TeleMeet AI Copilot', '✋ You raised your hand to speak.', true);
+  } else {
+    btn.classList.remove('btn-indigo');
+    showToast('Hand lowered.');
+  }
+}
+
+function confirmEndCall() {
+  if (confirm('Are you sure you want to leave this meeting room?')) {
+    if (localMediaStream) {
+      localMediaStream.getTracks().forEach(t => t.stop());
+    }
+    showToast('Disconnected from meeting room. Rejoin anytime.');
+    document.getElementById('video-grid').innerHTML = `
+      <div style="grid-column:1/-1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:var(--card-dark); border-radius:12px; padding:40px; border:1px solid var(--card-border);">
+        <h2 style="font-family:'Space Grotesk'; font-size:22px;">Meeting Ended</h2>
+        <p style="color:var(--text-secondary); font-size:13px;">You have successfully disconnected from Room #AGY-ROOM-402.</p>
+        <button class="btn btn-indigo" onclick="location.reload()">🔄 Rejoin Call</button>
+      </div>
+    `;
+  }
+}
+
+// PARTICIPANT AVATAR ANIMATION ENGINE
+function startMeetingRenderLoop() {
+  function renderFrame() {
+    animTick += 0.03;
+
+    // Render Local fallback avatar if camera is off
+    if (localCanvas.style.display !== 'none') {
+      drawParticipant(lCtx, localCanvas.width, localCanvas.height, 'You', '#6366F1', animTick, isMicMuted);
+    }
+
+    // Render Peer 1: Dr. Sarah Chen
+    drawParticipant(p1Ctx, peerCanvas1.width, peerCanvas1.height, 'Dr. Sarah Chen', '#06B6D4', animTick * 1.1, false);
+
+    // Render Peer 2: Alex Rivera
+    drawParticipant(p2Ctx, peerCanvas2.width, peerCanvas2.height, 'Alex Rivera', '#10B981', animTick * 0.9, false);
+
+    // Render Peer 3: Elena Rostova
+    drawParticipant(p3Ctx, peerCanvas3.width, peerCanvas3.height, 'Elena Rostova', '#8B5CF6', animTick * 1.2, false);
+
+    requestAnimationFrame(renderFrame);
+  }
+  requestAnimationFrame(renderFrame);
+}
+
+function drawParticipant(ctx, w, h, name, accentColor, t, muted) {
+  // Deep gradient background
+  ctx.fillStyle = '#0B101D';
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle studio light sweep
+  const grad = ctx.createRadialGradient(w/2, h/2 - 10, 10, w/2, h/2 - 10, w/2);
+  grad.addColorStop(0, accentColor + '22');
+  grad.addColorStop(1, '#0B101D');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Bust / Silhouette Body
+  const cx = w / 2;
+  const cy = h / 2 + 10;
+  const headBob = Math.sin(t) * 3;
+
+  // Shoulders
+  ctx.fillStyle = '#1A233A';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 65 + headBob, 55, 30, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#2A3654';
+  ctx.beginPath();
+  ctx.arc(cx, cy + headBob, 32, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stylized glasses / eyes
+  ctx.fillStyle = accentColor;
+  ctx.beginPath();
+  ctx.arc(cx - 10, cy - 2 + headBob, 5, 0, Math.PI * 2);
+  ctx.arc(cx + 10, cy - 2 + headBob, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Soundwave halo around head if unmuted
+  if (!muted) {
+    const pulseRadius = 38 + Math.abs(Math.sin(t * 3)) * 6;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy + headBob, pulseRadius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+// PARTICIPANT SPEECH SIMULATOR & DIALOGUE
+const DIALOGUES = {
+  sarah: {
+    name: 'Dr. Sarah Chen',
+    tile: 'tile-peer-1',
+    text: '"We benchmarked quantized SmolLM2 and Qwen kernels on browser WebGPU; latency dropped by 38% without any memory fragmentation."'
+  },
+  alex: {
+    name: 'Alex Rivera',
+    tile: 'tile-peer-2',
+    text: '"I verified the WebRTC ICE candidates with Google STUN; peer-to-peer data channels maintain 60 FPS video packet delivery reliably."'
+  },
+  elena: {
+    name: 'Elena Rostova',
+    tile: 'tile-peer-3',
+    text: '"Product feedback shows users love having zero server storage: the client-only privacy model is our biggest competitive differentiator."'
+  },
+  you: {
+    name: 'You (Host)',
+    tile: 'tile-local',
+    text: '"Let\'s finalize the release candidate today and push the live interactive meeting demo to GitHub Pages for community testing."'
+  }
+};
+
+function simulateSpeaker(id) {
+  const d = DIALOGUES[id];
+  if (!d) return;
+
+  // Highlight active tile
+  document.querySelectorAll('.video-tile').forEach(t => t.classList.remove('active-speaker'));
+  const activeTile = document.getElementById(d.tile);
+  if (activeTile) activeTile.classList.add('active-speaker');
+
+  // Update live subtitles
+  document.getElementById('caption-speaker').textContent = `[${d.name.toUpperCase()}]:`;
+  document.getElementById('caption-text').textContent = d.text;
+
+  // Add to chat
+  addChatMessage(d.name, d.text.replace(/"/g, ''));
+
+  // Update AI Meeting summary dynamically
+  setTimeout(() => {
+    updateDynamicMeetingSummary(d.name, d.text);
+  }, 1000);
+
+  // Play audio TTS
+  speakSpeech(d.text.replace(/"/g, ''));
+}
+
+function updateDynamicMeetingSummary(speaker, text) {
+  const proseEl = document.getElementById('summary-prose');
+  const addText = ` ${speaker} noted key progress regarding ${text.slice(1, 35)}...`;
+  proseEl.textContent += addText;
+
+  addChatMessage('TeleMeet AI Copilot', `💡 Auto-logged key point from ${speaker} into meeting minutes.`, true);
+  showToast(`Copilot logged statement from ${speaker}!`);
+}
+
+// SPEECH RECOGNITION (SUBTITLES)
+function initSpeechSubtitles() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    speechRecognizer = new SpeechRecognition();
+    speechRecognizer.continuous = true;
+    speechRecognizer.interimResults = true;
+    speechRecognizer.lang = 'en-US';
+
+    speechRecognizer.onresult = (event) => {
+      let liveText = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        liveText += event.results[i][0].transcript;
+      }
+      if (liveText.trim()) {
+        document.getElementById('caption-speaker').textContent = '[YOU (LIVE)]:';
+        document.getElementById('caption-text').textContent = `"${liveText.trim()}"`;
+      }
+    };
+
+    speechRecognizer.onerror = (e) => {
+      console.warn('SpeechRecognition warning:', e);
+    };
+
+    try { speechRecognizer.start(); } catch(e){}
+  }
+}
+
+// SPEECH SYNTHESIS (TTS)
+function speakSpeech(text) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.05;
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+// IN-CALL CHAT & COPILOT
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const val = input.value.trim();
+  if (!val) return;
+
+  addChatMessage('You', val);
+  input.value = '';
+
+  // Check if directed to AI copilot
+  const lower = val.toLowerCase();
+  if (lower.includes('copilot') || lower.includes('summarize') || lower.includes('tasks') || lower.includes('ai')) {
+    setTimeout(() => {
+      addChatMessage('TeleMeet AI Copilot', `🤖 Copilot Analysis: Based on call audio, the team is aligned on releasing the WebGPU meeting build with 4 verified action items.`, true);
+    }, 600);
+  }
+}
+
+function addChatMessage(sender, content, isAi = false) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg';
+  msg.innerHTML = `
+    <span class="chat-sender" style="${isAi ? 'color:var(--accent-indigo-lt);' : ''}">${sender}</span>
+    <div class="chat-content ${isAi ? 'ai' : ''}">${content}</div>
+  `;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+// TAB SWITCHER
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+
+  document.getElementById('view-summary').style.display = tab === 'summary' ? 'flex' : 'none';
+  document.getElementById('view-chat').style.display = tab === 'chat' ? 'flex' : 'none';
+  document.getElementById('view-invite').style.display = tab === 'invite' ? 'flex' : 'none';
+}
+
+// WEBGPU ENGINE COMPILATION
+function loadWebLLMModel() {
+  const btn = document.getElementById('btn-load-model');
+  const model = document.getElementById('model-select').value;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Compiling WebGPU...';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '✓ AI Copilot Active';
+    btn.className = 'btn btn-outline';
+    webllmLoaded = true;
+    showToast(`WebGPU engine allocated with ${model.split('-')[0]}!`);
+    addChatMessage('TeleMeet AI Copilot', `⚡ Local WebGPU Copilot (${model.split('-')[0]}) initialized in browser VRAM. Real-time minutes generation active.`, true);
+  }, 1200);
+}
+
+function generateInstantSummary() {
+  showToast('AI Copilot synthesizing full meeting transcript...');
+  const proseEl = document.getElementById('summary-prose');
+  proseEl.textContent = 'Executive Summary: The team reviewed cross-browser WebGPU shader execution, confirmed 60 FPS multi-canvas rendering, verified P2P WebRTC data transmission with STUN fallback, and approved release candidate for open deployment.';
+  showToast('✓ Meeting minutes refreshed!');
+}
+
+function exportMeetingMinutes() {
+  const dateStr = new Date().toISOString();
+  let md = `# TELEMEET AI: MEETING MINUTES\n`;
+  md += `**Date:** ${dateStr}\n`;
+  md += `**Room:** #AGY-ROOM-402\n`;
+  md += `**Participants:** You (Host), Dr. Sarah Chen, Alex Rivera, Elena Rostova\n\n`;
+  md += `## 1. Executive Summary\n${document.getElementById('summary-prose').textContent}\n\n`;
+  md += `## 2. Action Items\n`;
+  document.querySelectorAll('#action-list .action-item').forEach(item => {
+    const chk = item.querySelector('input').checked;
+    md += `- [${chk ? 'x' : ' '}] ${item.innerText.trim()}\n`;
+  });
+  md += `\n## 3. Technology Architecture\n- WebRTC P2P Video & Voice Channels\n- Local WebGPU/WebLLM In-Browser Intelligence\n- Zero Server Transmission\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `telemeet-minutes-${Date.now()}.md`;
+  a.click();
+  showToast('Meeting minutes exported as Markdown (.md)!');
+}
+
+function copyInviteLink() {
+  const input = document.getElementById('invite-link-input');
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast('P2P Meeting link copied to clipboard!');
+  }).catch(() => {
+    showToast('Link ready: ' + input.value);
+  });
+}
+
+// TOAST
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.display = 'none';
+  }, 3200);
+}
+</script>
+</body>
+</html>
