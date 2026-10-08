@@ -206,7 +206,7 @@ def build_paper_docx():
     title_p = doc.add_paragraph()
     title_p.paragraph_format.space_before = Pt(0)
     title_p.paragraph_format.space_after = Pt(8)
-    title_run = title_p.add_run("Agentic Model Predictive Control: Operating in Intelligence Space via Cognitive Supervisory Layers and Parallel Path Integral Rollouts")
+    title_run = title_p.add_run("Agentic Model Predictive Control: Operating in Intelligence Space via Cognitive Supervisory Layers and Parallel Path Integral Rollouts — A Simulation Case Study")
     title_run.font.name = 'Calibri'
     title_run.font.size = Pt(18)
     title_run.font.bold = True
@@ -354,7 +354,7 @@ def build_paper_docx():
     format_table(tbl_ablation, [1.1, 1.8, 0.8, 0.8, 0.9, 0.7, 0.7, 0.7], abl_headers, abl_data)
     
     p = doc.add_paragraph()
-    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. Scenario 18 requires 6.0 s of advance lead in open loop (the sole scenario requiring > 5.0 s). Closed-loop runs are evaluated over a standardized 60.0 s window; baseline trips occur as late as t = 56 s, and eight surviving baseline runs remain unsettled at the 60 s boundary. Trajectory inspection on rule supervisor trip cases (Scenarios 2, 3, 9) shows reactor quenching to T_min = 339–344 K (vs. ~349 K for Full system), allowing reactant to accumulate to C_A = 0.555–0.576 mol/L at surge end and climbing to 0.578–0.597 mol/L (with Scenario 9 reaching a peak of 0.578 mol/L) before exploding into thermal blowout. Crucially, the rule supervisor survives Scenario 18 (T_min = 348.8 K) while preview MPPI and Full system trip at 3.5 s lead.")
+    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. Scenario 18 requires 6.0 s of advance lead in open loop (the sole scenario requiring > 5.0 s). Closed-loop runs are evaluated over a standardized 60.0 s window; baseline trips occur as late as t = 56 s, and six surviving baseline runs remain unsettled at the 60 s boundary. Trajectory inspection on rule supervisor trip cases (Scenarios 2, 3, 9) shows reactor quenching to T_min = 339–344 K (vs. ~349 K for Full system), allowing reactant to accumulate to C_A = 0.555–0.576 mol/L at surge end and climbing to 0.578–0.597 mol/L (with Scenario 9 reaching a peak of 0.578 mol/L) before exploding into thermal blowout. Crucially, the rule supervisor survives Scenario 18 (T_min = 348.8 K) while preview MPPI and Full system trip at 3.5 s lead.")
 
     add_heading_with_spacing(doc, "6.2 Deconstructing the Supervisory Advantage", level=2)
     p = doc.add_paragraph()
@@ -384,7 +384,7 @@ def build_paper_docx():
         "Perfect-Forecast Assumption: All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. "
         "In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. "
         "Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation. "
-        "Evaluation Horizon Limitations: The closed-loop benchmark tests were evaluated over a 60 s time horizon. Because open-loop sweeps reveal delayed thermal re-ignition transients extending up to 83 s when unreacted feed accumulates (Section 4.1), and reactive baselines exhibited trips as late as 56 s with eight surviving runs unsettled at 60 s, extending the closed-loop evaluation window to 120–200 s is recommended to capture full asymptotic settling in industrial certification."
+        "Evaluation Horizon Limitations: The closed-loop benchmark tests were evaluated over a 60 s time horizon. Because open-loop sweeps reveal delayed thermal re-ignition transients extending up to 83 s when unreacted feed accumulates (Section 4.1), and reactive baselines exhibited trips as late as 56 s with six surviving baseline runs unsettled at 60 s, extending the closed-loop evaluation window to 120–200 s is recommended to capture full asymptotic settling in industrial certification."
     )
     add_heading_with_spacing(doc, "7.2 Conclusion", level=2)
     p = doc.add_paragraph()

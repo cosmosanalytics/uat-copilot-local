@@ -350,6 +350,7 @@ def run_oracle_sweep(t_total=200.0, release_t=25.0):
     surge_dur = 15.0
     leads = [0.0, 1.0, 2.0, 2.5, 3.0, 3.25, 3.5, 4.0, 4.5, 5.0]
     n_sim = int(round(t_total / dt_sim))
+    oracle_rows = []
 
     for lead in leads:
         adv_start = t_start - lead
@@ -392,8 +393,17 @@ def run_oracle_sweep(t_total=200.0, release_t=25.0):
                 t_peak_200 = t_now
 
         status = "TRIP (Breached)" if max_T_200 >= T_trip else "SAFE (Zero Trip)"
+        delay_val = (t_peak_200 - release_t) if max_T_200 >= T_trip else 0.0
         delay_str = f"({t_peak_200 - release_t:4.1f} s post-surge)" if max_T_200 >= T_trip else ""
         print(f"Lead {lead:4.2f} s: 60s max = {max_T_60:5.1f} K | 200s max = {max_T_200:5.1f} K at t = {t_peak_200:5.1f} s {delay_str:<22s} | {status}")
+        oracle_rows.append([lead, round(max_T_60, 1), round(max_T_200, 1), status, round(t_peak_200, 1), round(delay_val, 1)])
+
+    import csv
+    with open("cstr_oracle_lead_sweep.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["lead_time_s", "peak_T_60s_K", "peak_T_200s_K", "trip_status", "peak_time_200s_s", "post_surge_delay_s"])
+        writer.writerows(oracle_rows)
+    print("Saved oracle lead sweep to cstr_oracle_lead_sweep.csv")
 
     print("\n" + "=" * 80)
     print("PER-SCENARIO OPEN-LOOP LEAD REQUIREMENTS (200 s horizon, 0.5 s grid)")
@@ -404,6 +414,7 @@ def run_oracle_sweep(t_total=200.0, release_t=25.0):
     }
     scenarios = generate_scenarios(20, seed=42)
     grid = np.arange(0.0, 10.0, 0.5)
+    scenario_rows = []
 
     for sc in scenarios:
         sid = sc['id']
@@ -450,11 +461,21 @@ def run_oracle_sweep(t_total=200.0, release_t=25.0):
                     break
             if req_lead is None:
                 req_lead_str = "> 9.5"
+                lead_val = 9.5
             else:
                 req_lead_str = f"{req_lead:.1f}"
+                lead_val = req_lead
         else:
             req_lead_str = f"{req_lead:.1f}"
+            lead_val = req_lead
         print(f"Scenario {sid:2d}: Required Lead = {req_lead_str:>5s} s")
+        scenario_rows.append([sid, lead_val, round(sc['t_start'], 2), round(sc['d_CA0'], 3), round(sc['d_T0'], 2), round(sc['d_UA'], 3)])
+
+    with open("cstr_scenario_leads.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["scenario_id", "required_lead_s", "t_start_s", "delta_CA0", "delta_T0_K", "delta_UA"])
+        writer.writerows(scenario_rows)
+    print("Saved scenario lead requirements to cstr_scenario_leads.csv")
 
 def main():
     parser = argparse.ArgumentParser(description="Unified CSTR Benchmark Suite")
