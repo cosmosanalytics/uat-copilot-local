@@ -29,8 +29,12 @@ def generate_pdf():
     try:
         driver.get(f"file:///{html_path.replace(os.sep, '/')}")
         
-        # Ensure light mode is forced for printing
-        driver.execute_script("document.documentElement.setAttribute('data-theme', 'light');")
+        # Ensure light mode is forced for printing and remove web-only top navbar
+        driver.execute_script("""
+            document.documentElement.setAttribute('data-theme', 'light');
+            const nav = document.getElementById('top-nav');
+            if (nav) nav.remove();
+        """)
         
         # Wait for KaTeX and Mermaid scripts to finish executing
         time.sleep(4)

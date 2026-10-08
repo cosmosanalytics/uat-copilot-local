@@ -4,6 +4,7 @@ Generates the publication-grade HTML version of agentic_mpc_paper.html with:
   1. Equal tuning across baselines (Linear MPC q_T=10 vs q_T=1).
   2. Deconstruction of the supervisory anticipatory pre-cooling schedule.
   3. Grounded architectural specification of the Agentic LLM layer.
+  4. Complete 19-point + Round 2 review reconciliation (measured peak times, 200s horizon sweep, exact forecast statement, Holm p=0.063, print CSS without dark mode button, unclipped table cells).
 """
 
 html_content = r"""<!DOCTYPE html>
@@ -77,8 +78,20 @@ html_content = r"""<!DOCTYPE html>
       font-size: 14px;
     }
 
+    @media print {
+      header#top-nav { display: none !important; }
+      body { padding: 0 !important; background: #ffffff !important; }
+      article#paper-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+      }
+    }
+
     article#paper-container {
-      max-width: 860px;
+      max-width: 890px;
       margin: 40px auto;
       background: var(--bg-surface);
       padding: 56px 64px;
@@ -106,26 +119,22 @@ html_content = r"""<!DOCTYPE html>
       gap: 16px;
       flex-wrap: wrap;
     }
-    .meta-byline span strong { color: var(--text-main); }
 
     .abstract-box {
       background: var(--bg-panel);
       border-left: 4px solid var(--accent);
       padding: 24px 28px;
-      border-radius: 6px;
-      margin-bottom: 40px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 36px;
+      font-size: 0.96rem;
+      line-height: 1.65;
     }
     .abstract-box h3 {
       font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
+      font-size: 1.05rem;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--accent);
+      letter-spacing: 0.05em;
       margin-bottom: 10px;
-    }
-    .abstract-box p {
-      font-size: 0.96rem;
-      line-height: 1.65;
       color: var(--text-main);
     }
 
@@ -155,12 +164,13 @@ html_content = r"""<!DOCTYPE html>
       border-collapse: collapse;
       margin: 24px 0;
       font-family: 'Inter', sans-serif;
-      font-size: 0.88rem;
+      font-size: 0.82rem;
     }
     th, td {
-      padding: 10px 14px;
+      padding: 8px 10px;
       text-align: left;
       border-bottom: 1px solid var(--border);
+      word-break: normal;
     }
     th {
       background: var(--bg-panel);
@@ -168,6 +178,14 @@ html_content = r"""<!DOCTYPE html>
       color: var(--text-main);
     }
     tr:hover { background: rgba(0,0,0,0.02); }
+
+    .table-benchmark th, .table-benchmark td {
+      padding: 6px 7px;
+      font-size: 0.77rem;
+    }
+    .table-benchmark td:nth-child(n+3) {
+      white-space: nowrap;
+    }
 
     pre, code {
       font-family: 'JetBrains Mono', monospace;
@@ -214,10 +232,10 @@ html_content = r"""<!DOCTYPE html>
         In this paper, we propose <strong>Agentic Model Predictive Control (Agentic MPC)</strong>, an architecture that places an <strong>Intelligence Space</strong> supervisory layer above high-throughput real-time control solvers. The proposed architecture partitions supervisory intelligence into <strong>The Two Halves</strong>: (1) a neural reasoner (<em>The Knower</em>) grounded in four structured memory tiers (Playbook, Rulebook, Yearbook, and Whiteboard), and (2) a deterministic Executive Function Harness (<em>The Doer</em>) enforcing Ring 0 operating invariants, automated contract unit tests, and preemptive trip bounds. In our architecture, high-level cognitive directives are mapped into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across parallel trajectory rollouts via GPU/WebGPU compute shaders, supported by an online lagged parameter filter.
       </p>
       <p style="margin-top:12px;">
-        We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible simulation case study spanning 20 randomized scenarios (\(C_{A0} \in [+10\%, +30\%]\), \(T_0 \in [+5\text{ K}, +12\text{ K}]\), and \(UA \in [-10\%, -35\%]\)) with advance-warning advisory lead time (\(t_{\text{lead}} = 3.5\text{ s}\)). Numerical simulation establishes an <strong>empirical feedback floor of 6/20 trips across feedback controllers on this scenario set</strong>: when tuned equally (\(q_T = 10.0\)), Linear MPC trips in 6/20 scenarios (\(2.26 \pm 1.14\text{ K}\) non-trip RMSE, \(9.49 \pm 5.39\text{ K}\) overall RMSE), matching NMPC (6/20 trips, \(2.48 \pm 1.47\text{ K}\) non-trip, \(9.62 \pm 5.37\text{ K}\) overall) and MPPI with a lagged-UA filter (6/20 trips, \(2.61 \pm 1.34\text{ K}\) non-trip, \(9.82 \pm 5.39\text{ K}\) overall), all tripping on the identical six scenarios (Seeds 4, 5, 8, 16, 18, 20). When weakly penalized (\(q_T = 1.0\)), Linear MPC trips in 12/20 scenarios (\(16.26 \pm 5.52\text{ K}\) overall RMSE). Notably, all reactive trips and the single preview trip occur 4–31 s after the surge ends during post-surge recovery, rather than during surge onset.
+        We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible numerical simulation case study spanning 20 randomized scenarios (\(C_{A0} \in [+10\%, +30\%]\), \(T_0 \in [+5\text{ K}, +12\text{ K}]\), and \(UA \in [-10\%, -35\%]\)) with advance-warning advisory lead time (\(t_{\text{lead}} = 3.5\text{ s}\)). In all preview evaluations, controllers receive an exact disturbance forecast (both onset timing and surge magnitude); reported preview results thus represent a perfect-forecast upper bound, while forecast timing jitter and magnitude errors remain untested. Numerical simulation establishes an <strong>empirical feedback floor of 6/20 trips across feedback controllers on this scenario set</strong>: when tuned equally (\(q_T = 10.0\)), Linear MPC trips in 6/20 scenarios (\(2.26 \pm 1.14\text{ K}\) non-trip RMSE, \(9.49 \pm 5.39\text{ K}\) overall RMSE), matching NMPC (6/20 trips, \(2.48 \pm 1.47\text{ K}\) non-trip, \(9.62 \pm 5.37\text{ K}\) overall) and MPPI with a lagged-UA filter (6/20 trips, \(2.61 \pm 1.34\text{ K}\) non-trip, \(9.82 \pm 5.39\text{ K}\) overall), all tripping on the identical six scenarios (Scenarios 4, 5, 8, 16, 18, 20). When weakly penalized (\(q_T = 1.0\)), Linear MPC trips in 12/20 scenarios (\(16.26 \pm 5.52\text{ K}\) overall RMSE). Notably, all reactive trips and the single preview trip occur 4–31 s after the surge ends during post-surge recovery, rather than during surge onset.
       </p>
       <p style="margin-top:12px;">
-        When advance preview lookahead (\(t_{\text{lead}} = 3.5\text{ s}\)) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Seed 18 (an extreme realization requiring \(\approx 4.5\text{ s}\) of lead time). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage (\(0.94 \pm 0.41\text{ K}\) non-trip RMSE vs. \(1.75 \pm 1.00\text{ K}\) for standard preview MPPI, representing a \(0.81\text{ K}\) gain across 19 shared survivors, paired \(t\)-test \(p = 0.013\)) stems from coordinating an anticipatory pre-cooling ramp that avoids <strong>reaction quenching</strong>: naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, \(1.45 \pm 0.68\text{ K}\) non-trip RMSE). We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control.
+        When advance preview lookahead (\(t_{\text{lead}} = 3.5\text{ s}\)) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Scenario 18 (an extreme realization requiring \(\approx 4.5\text{ s}\) of lead time). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage (\(0.94 \pm 0.41\text{ K}\) non-trip RMSE vs. \(1.75 \pm 1.00\text{ K}\) for standard preview MPPI, representing a \(0.81\text{ K}\) gain across 19 shared survivors, paired \(t\)-test \(p = 0.013\), but \(p = 0.063\) after Holm-Bonferroni correction, rendering this gain suggestive rather than confirmed) stems from coordinating an anticipatory pre-cooling ramp that is consistent with avoiding <strong>reaction quenching</strong>: naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, \(1.45 \pm 0.68\text{ K}\) non-trip RMSE). We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control.
       </p>
     </div>
 
@@ -233,7 +251,8 @@ html_content = r"""<!DOCTYPE html>
     </ul>
 
     <h3>1.2 The Role of the Supervisory Layer: Lookahead vs. Reasoning</h3>
-    <p>A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon \(H_p\) (e.g., \(4.0\text{ s}\)). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. However, in actual plant operations, forecasts arrive as human shift handover notes, laboratory feed analysis reports, or upstream DCS alarms. Classical MPC cannot parse these qualitative inputs.</p>
+    <p>A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon \(H_p\) (e.g., \(4.0\text{ s}\)). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. In our benchmark simulations, preview controllers receive the exact disturbance profile (timing and magnitude), representing an idealized perfect-forecast upper bound.</p>
+    <p>However, in actual plant operations, forecasts arrive as human shift handover notes, laboratory feed analysis reports, or upstream DCS alarms. Classical MPC cannot parse these qualitative inputs.</p>
     <p><strong>Agentic MPC</strong> addresses this supervisory gap. Rather than replacing numerical solvers with an unconstrained large language model (LLM), Agentic MPC introduces an <strong>Intelligence Space</strong> supervisory tier positioned strictly above a deterministic execution harness and parallel MPPI rollouts. The neural reasoner is designed to interpret operator directives and contextual operational runbooks, propose quantitative cost manifolds, and verify them through deterministic contract tests before any parameter update reaches physical actuators.</p>
 
     <h2>2. The Agentic MPC Architecture</h2>
@@ -280,6 +299,7 @@ html_content = r"""<!DOCTYPE html>
         </tr>
       </tbody>
     </table>
+    <p><em>(Note: While these structured memory tiers define the conceptual supervisory architecture of Agentic MPC, they are not directly exercised in the numerical CSTR benchmark experiments reported below, which evaluate the deterministic control and anticipatory scheduling layer.)</em></p>
 
     <h2>3. Mathematical Formulation</h2>
 
@@ -291,54 +311,58 @@ html_content = r"""<!DOCTYPE html>
     <h3>3.2 Model Predictive Path Integral (MPPI) Formulation</h3>
     <p>MPPI evaluates \(K = 1,024\) stochastic control rollouts sampled from \(\mathcal{N}(0, \Sigma)\) with covariance \(\Sigma = 6.0^2 I\) and temperature \(\lambda = 10.0\). Discretized at rollout step \(\Delta t_{\text{ctrl}} = 0.2\text{ s}\):</p>
     \[x_{k+1} = f(x_k, v_k)\]
-    \[S(U^{(m)}) = \sum_{k=0}^{H_p-1} \left( q_{\text{temp}} (T_k - T_{\text{ref}})^2 + q_{\text{barrier}} \max(0, T_k - T_{\text{barrier}})^2 \right) + \frac{\lambda}{2} \sum_{k=0}^{H_p-1} \epsilon_k^T \Sigma^{-1} \epsilon_k\]
+    \[S(U^{(m)}) = \sum_{k=0}^{H_p-1} \left( q_{\text{temp}} (T_k - T_{\text{ref}})^2 + q_{\text{barrier}} \max(0, T_k - T_{\text{barrier}})^2 \right)\]
+    <p><em>(Note: In our numerical implementation, the standard theoretical control-cost term \(\frac{\lambda}{2} \sum_{k=0}^{H_p-1} \epsilon_k^T \Sigma^{-1} \epsilon_k\) is omitted, evaluating state tracking and barrier penalties directly over the candidate rollouts.)</em></p>
     <p>The optimal control update is computed via softmax importance weighting:</p>
     \[u_t^* = u_t + \sum_{m=1}^{K} w(U^{(m)}) \epsilon_t^{(m)}, \quad w(U^{(m)}) = \frac{\exp\left(-\frac{1}{\lambda} (S(U^{(m)}) - \min_j S(U^{(j)}))\right)}{\sum_{k=1}^{K} \exp\left(-\frac{1}{\lambda} (S(U^{(k)}) - \min_j S(U^{(j)}))\right)}\]
 
     <h3>3.3 Lagged-UA Tracking Filter</h3>
     <p>To evaluate parameter identification during fouling, a first-order lagged filter tracks the true parameter \(UA(t)\) after surge onset:</p>
     \[UA_{\text{est}} \leftarrow UA_{\text{est}} + 0.02 (UA_{\text{true}} - UA_{\text{est}})\]
-    <p>evaluated at each integration step \(\Delta t_{\text{sim}} = 0.02\text{ s}\) (\(\tau = 1.0\text{ s}\)). Uses the true parameter directly. With forecast lookahead, the forecast vector supplies \(UA\) directly, so the filter primarily impacts the no-forecast baseline (\(12.03\text{ K} \to 9.82\text{ K}\) overall RMSE).</p>
+    <p>evaluated at each integration step \(\Delta t_{\text{sim}} = 0.02\text{ s}\) (\(\tau = 1.0\text{ s}\)). Uses the true parameter directly. With forecast lookahead, the forecast vector supplies \(UA\) directly, so the filter primarily impacts the no-forecast baseline (\(12.13\text{ K} \to 9.82\text{ K}\) overall RMSE).</p>
 
     <h2>4. Benchmark Case Study: Exothermic CSTR</h2>
 
     <h3>4.1 Hold-280 K Lead-Time Sweep & Controllability Limits</h3>
-    <p>An empirical <strong>hold-280 K lead-time sweep</strong> over the benchmark kinetic surge evaluates required early advisory warning when stepping jacket coolant flatly to \(u = 280\text{ K}\):</p>
+    <p>An empirical <strong>hold-280 K lead-time sweep</strong> over the benchmark kinetic surge evaluates required early advisory warning when stepping jacket coolant flatly to \(u = 280\text{ K}\). When coolant is released open-loop back to \(300\text{ K}\) at surge conclusion (\(t = 25\text{ s}\)), reactant accumulated during deep pre-cooling causes delayed re-ignition at \(t = 57\text{--}83\text{ s}\) unless \(\ge 5.0\text{ s}\) lead is provided:</p>
 
     <table>
       <thead>
         <tr>
           <th>Pre-Cooling Lead Time \(t_{\text{lead}}\)</th>
-          <th>Peak Reactor Temp \(T_{\max}\) (K)</th>
-          <th>Emergency SIS Trip (\(\ge 385.0\text{ K}\))</th>
-          <th>Operational Controllability Outcome</th>
+          <th>Peak Temp \(T_{\max}\) (60 s)</th>
+          <th>Peak Temp \(T_{\max}\) (200 s)</th>
+          <th>SIS Trip Status (\(\ge 385.0\text{ K}\))</th>
+          <th>Measured Peak Time \(t_{\text{peak}}\) (Post-Surge Delay)</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><strong>0.0 s (Reaction at Onset)</strong></td><td><strong>444.9 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Unsurvivable runaway due to jacket lag (\(\tau_j = 2\text{ s}\)) & slew cap</td></tr>
-        <tr><td><strong>1.0 s Lead Time</strong></td><td><strong>443.3 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Insufficient thermal extraction ahead of surge</td></tr>
-        <tr><td><strong>2.0 s Lead Time</strong></td><td><strong>441.6 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Thermal runaway breaches limit</td></tr>
-        <tr><td><strong>2.5 s Lead Time</strong></td><td><strong>440.6 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Slew rate cap delays thermal extraction</td></tr>
-        <tr><td><strong>3.0 s Lead Time</strong></td><td><strong>439.6 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Delayed post-surge blowout</td></tr>
-        <tr><td><strong>3.25 s Lead Time</strong></td><td><strong>404.9 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>Marginal thermal breach</td></tr>
-        <tr><td><strong>3.5 s Lead Time</strong></td><td><strong>369.3 K</strong></td><td><span class="badge-safe">SAFE (Zero Trip)</span></td><td>Thermal buffer prevents runaway (15.7 K margin)</td></tr>
-        <tr><td><strong>4.0 s Lead Time</strong></td><td><strong>352.7 K</strong></td><td><span class="badge-safe">SAFE (Zero Trip)</span></td><td>Robust containment</td></tr>
-        <tr><td><strong>5.0 s Lead Time</strong></td><td><strong>350.0 K</strong></td><td><span class="badge-safe">SAFE (Zero Trip)</span></td><td>Fully absorbed thermal surge clamped at nominal setpoint</td></tr>
+        <tr><td><strong>0.0 s (At Onset)</strong></td><td><strong>446.8 K</strong></td><td><strong>446.8 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 37.4\text{ s}\) (12.4 s post-surge)</td></tr>
+        <tr><td><strong>1.0 s Lead Time</strong></td><td><strong>445.3 K</strong></td><td><strong>445.3 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 40.4\text{ s}\) (15.4 s post-surge)</td></tr>
+        <tr><td><strong>2.0 s Lead Time</strong></td><td><strong>443.7 K</strong></td><td><strong>443.7 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 45.2\text{ s}\) (20.2 s post-surge)</td></tr>
+        <tr><td><strong>2.5 s Lead Time</strong></td><td><strong>440.6 K</strong></td><td><strong>443.0 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 47.6\text{ s}\) (22.6 s post-surge)</td></tr>
+        <tr><td><strong>3.0 s Lead Time</strong></td><td><strong>439.6 K</strong></td><td><strong>441.9 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 52.8\text{ s}\) (27.8 s post-surge)</td></tr>
+        <tr><td><strong>3.25 s Lead Time</strong></td><td><strong>404.9 K</strong></td><td><strong>441.5 K</strong></td><td><span class="badge-trip">TRIP (Breached)</span></td><td>\(t = 55.0\text{ s}\) (30.0 s post-surge)</td></tr>
+        <tr><td><strong>3.5 s Lead Time</strong></td><td><strong>369.3 K</strong></td><td><strong>438.4 K</strong></td><td><span class="badge-trip">TRIP (at 200 s)</span></td><td>\(t = 57.4\text{ s}\) (60 s) / \(t = 68.4\text{ s}\) (200 s)</td></tr>
+        <tr><td><strong>4.0 s Lead Time</strong></td><td>352.7 K</td><td><strong>439.6 K</strong></td><td><span class="badge-trip">TRIP (at 200 s)</span></td><td>\(t = 68.4\text{ s}\) (43.4 s post-surge, delayed ignition)</td></tr>
+        <tr><td><strong>4.5 s Lead Time</strong></td><td>351.4 K</td><td><strong>438.4 K</strong></td><td><span class="badge-trip">TRIP (at 200 s)</span></td><td>\(t = 82.8\text{ s}\) (57.8 s post-surge, delayed ignition)</td></tr>
+        <tr><td><strong>5.0 s Lead Time</strong></td><td>350.0 K</td><td>350.0 K</td><td><span class="badge-safe">SAFE (Zero Trip)</span></td><td>Clamped at nominal setpoint (\(T < 350.5\text{ K}\))</td></tr>
       </tbody>
     </table>
-    <p><em>Caveat:</em> Hold-280 K is an elementary heuristic policy tripping 12/20 seeds at zero lead (higher than feedback controllers at 6/20). It is an empirical sweep, not an optimal-control bound.</p>
-    <p><em>Per-Scenario Lead Needs:</em> The six reactive trip scenarios require: Seeds 4, 5, 8, 16, 18, 20 need 3.0 s, 3.0 s, 3.0 s, 2.0 s, 4.5 s, and 3.0 s respectively; all other 14 scenarios need \(\le 1.0\text{ s}\).</p>
+    <p><em>Mechanisms & Feedback Recovery:</em> Flat pre-cooling to 280 K is an elementary heuristic policy. In open-loop release back to 300 K without feedback regulation, unreacted feed that accumulated during deep 280 K cooling re-ignites after surge termination, pushing peak temperatures above 438 K at \(t = 68\text{--}83\text{ s}\). Only \(\ge 5.0\text{ s}\) lead achieves complete thermal exhaustion in open loop. When closed-loop feedback regulation is restored after the surge ends, post-surge reactant re-ignition is actively suppressed. Under feedback handoff, pre-cooling lead times \(\ge 2.0\text{ s}\) completely prevent tripping (\(T_{\max} \le 356.0\text{ K}\) at \(t = 25.4\text{ s}\)).</p>
+    <p><em>Per-Scenario Lead Requirements (200 s Horizon):</em> Under open-loop release, Scenarios 4, 7, 9, 11, 13, 15 require 5.0–5.5 s of lead time to remain safe across the full 200 s window; other scenarios require 0.0–4.5 s. Under closed-loop feedback handoff, 12 scenarios require 0.0 s of lead time; Scenario 12 requires 0.5 s; Scenarios 4, 9, 11 require 1.0 s; Scenarios 13, 15 require 1.5 s; and Scenario 7 requires 2.0 s. The maximum lead required across all 20 scenarios under feedback handoff is 2.0 s.</p>
 
     <h2>5. Verification & Safety Architecture</h2>
     <p>Agentic MPC enforces defense-in-depth: Ring 0 invariant checking (\(q_T \ge 0.1\), \(q_{\text{barrier}} \ge 1000\), \(u \in [280, 360]\text{ K}\), slew \(\le 12\text{ K/s}\)), automated contract unit tests on the active fouled plant model (&lt;30 ms), a software preemptive breaker at 382 K, and an independent hardware SIS scram at 385 K (failsafe cooling valve full open, feed shut off).</p>
+    <p><em>(Note: The 382 K preemptive software breaker, automated contract unit test suite (< 30 ms), and Ring 0 invariant gating represent the proposed supervisory safety architecture; these software supervisor safeguards are not exercised in the numerical benchmark runs in Section 6, where safety trips are triggered exclusively by the plant SIS limit at 385 K.)</em></p>
     <p><em>Metric Definition:</em> Overall RMSE includes the post-trip SCRAM transient and depends heavily on the emergency shutdown model. Non-trip RMSE and trip counts serve as the primary metrics.</p>
 
     <h2>6. Empirical Results & Ablation Analysis</h2>
 
     <h3>6.1 Multi-Tier Benchmark Across 20 Randomized Scenarios</h3>
-    <p>Table 2 presents authentic simulation results across 20 randomized scenarios computed directly from discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers:</p>
+    <p>Table 2 presents reproducible numerical simulation results across 20 randomized scenarios computed directly from discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers:</p>
 
-    <table>
+    <table class="table-benchmark">
       <thead>
         <tr>
           <th>Configuration</th>
@@ -355,7 +379,7 @@ html_content = r"""<!DOCTYPE html>
         <tr>
           <td><strong>Baseline 1a</strong></td>
           <td>Linear MPC (\(q_T = 1.0\), No Forecast)</td>
-          <td>\(2.56 \pm 1.36\)</td>
+          <td>\(2.56 \pm 1.54\)</td>
           <td>\(16.26 \pm 5.52\)</td>
           <td>\(389.3 \pm 14.2\)</td>
           <td>\(3.29 \pm 0.95\)</td>
@@ -368,7 +392,7 @@ html_content = r"""<!DOCTYPE html>
           <td>\(2.26 \pm 1.14\)</td>
           <td>\(9.49 \pm 5.39\)</td>
           <td>\(372.1 \pm 13.5\)</td>
-          <td>\(4.85 \pm 1.12\)</td>
+          <td>\(5.50 \pm 1.12\)</td>
           <td><span class="badge-trip">6 / 20 (30%)</span></td>
           <td>13 / 20 (7.1 s)</td>
         </tr>
@@ -386,11 +410,11 @@ html_content = r"""<!DOCTYPE html>
           <td><strong>Ablation 1</strong></td>
           <td>MPPI (Static \(\theta^*\), No Forecast)</td>
           <td>\(3.00 \pm 1.80\)</td>
-          <td>\(12.03 \pm 5.57\)</td>
+          <td>\(12.13 \pm 5.57\)</td>
           <td>\(378.9 \pm 14.6\)</td>
           <td>\(2.44 \pm 0.38\)</td>
           <td><span class="badge-trip">8 / 20 (40%)</span></td>
-          <td>11 / 20 (8.6 s)</td>
+          <td>10 / 20 (6.1 s)</td>
         </tr>
         <tr>
           <td><strong>Ablation 2</strong></td>
@@ -426,8 +450,8 @@ html_content = r"""<!DOCTYPE html>
           <td><strong>Ablation 3b</strong></td>
           <td>Rule Supervisor + MPPI</td>
           <td>\(1.45 \pm 0.68\)</td>
-          <td>\(9.44 \pm 4.92\)</td>
-          <td>\(381.1 \pm 17.1\)</td>
+          <td>\(9.72 \pm 4.92\)</td>
+          <td>\(382.6 \pm 17.1\)</td>
           <td>\(3.77 \pm 0.37\)</td>
           <td><span class="badge-trip">8 / 20 (40%)</span></td>
           <td>12 / 20 (13.1 s)</td>
@@ -440,12 +464,12 @@ html_content = r"""<!DOCTYPE html>
           <td>\(\mathbf{355.5 \pm 6.2}\)</td>
           <td>\(\mathbf{3.36 \pm 0.19}\)</td>
           <td><span class="badge-safe">1 / 20 (5%)</span></td>
-          <td><strong>19 / 20 (2.9 s)</strong></td>
+          <td><strong>19 / 20 (2.4 s)</strong></td>
         </tr>
       </tbody>
     </table>
 
-    <p><em>Key Findings:</em> Linear MPC (\(q_T=10\)), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips, failing on the identical scenarios (Seeds 4, 5, 8, 16, 18, 20). All baseline trips and Seed 18 occur 4–31 s post-surge during recovery. The rule supervisor ties the full supervisor on surviving seeds (\(0.00\text{ K}\) difference) but trips on 7–8/20 seeds depending on MPPI stream (\(1.45\text{--}2.47\text{ K}\) non-trip RMSE across 5 streams), whereas preview controllers trip on only 1/20.</p>
+    <p><em>Key Findings:</em> Linear MPC (\(q_T=10\)), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips, failing on the identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. The rule supervisor ties the full supervisor on surviving scenarios (\(0.00\text{ K}\) difference) but trips on 7–8/20 scenarios depending on MPPI stream (\(1.45\text{--}2.47\text{ K}\) non-trip RMSE across 5 streams), whereas preview controllers trip on only 1/20.</p>
 
     <h3>6.2 Deconstructing the Supervisory Advantage</h3>
     <p>Ablation across the 19 common surviving scenarios isolates the quantitative mechanism behind the supervisory schedule:</p>
@@ -454,8 +478,8 @@ html_content = r"""<!DOCTYPE html>
         <tr><th>Configuration</th><th>Non-Trip RMSE (K)</th><th>Physical Mechanism</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>MPPI + Forecast Preview</strong></td><td>\(1.76 \pm 1.00\)</td><td>Unconstrained optimal preview tracking</td></tr>
-        <tr><td><strong>+ Ramp Cap Only</strong></td><td>\(1.12 \pm 0.48\)</td><td>Modulates pre-cooling to 282 K, preventing reaction quenching</td></tr>
+        <tr><td><strong>MPPI + Forecast Preview</strong></td><td>\(1.75 \pm 1.00\)</td><td>Unconstrained optimal preview tracking</td></tr>
+        <tr><td><strong>+ Ramp Cap Only</strong></td><td>\(1.12 \pm 0.48\)</td><td>Modulates pre-cooling to 282 K, consistent with avoiding reaction quenching</td></tr>
         <tr><td><strong>+ Elevated Barrier Weights Only</strong></td><td>\(1.33 \pm 0.72\)</td><td>Stiff penalty keeps state strictly within safe envelope</td></tr>
         <tr><td><strong>Both (Anticipatory Supervisory Schedule)</strong></td><td><strong>\(0.94 \pm 0.41\)</strong></td><td>Coordinated pre-cooling containment (gain: 0.81 K, p = 0.013)</td></tr>
       </tbody>
@@ -474,9 +498,10 @@ html_content = r"""<!DOCTYPE html>
     <h2>7. Industrial Deployment Limits & Conclusion</h2>
     <h3>7.1 Industrial Deployment Limits</h3>
     <p>While Agentic MPC demonstrates robust supervisory capabilities in simulation, certified industrial deployment requires strict separation of concerns. Under IEC 61511 / ISA-84, safety instrumented functions must remain physically independent, deterministic, and SIL-rated. The agentic layer operates solely in the basic process control system (BPCS) supervisory space and must never share hardware, sensors, or actuators with the emergency shutdown interlock.</p>
+    <p><strong>Perfect-Forecast Assumption:</strong> All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation.</p>
     
     <h3>7.2 Conclusion</h3>
-    <p>This simulation case study demonstrates that preview lookahead and an anticipatory pre-cooling ramp stabilize an exothermic CSTR under severe kinetic surges. A naive rule-based supervisor that commands flat maximum cooling frequently quenches the reactor, accumulates reactant, and triggers delayed blowout. Modulating a pre-cooling ramp to 282 K avoids quenching while maintaining thermal absorption margin.</p>
+    <p>This simulation case study demonstrates that preview lookahead and an anticipatory pre-cooling ramp stabilize an exothermic CSTR under severe kinetic surges. A naive rule-based supervisor that commands flat maximum cooling frequently quenches the reactor, accumulates reactant, and triggers delayed blowout. Modulating a pre-cooling ramp to 282 K is consistent with avoiding reaction quenching while maintaining thermal absorption margin.</p>
     <p>We present the Agentic MPC framework as a proposed supervisory architecture for qualitative plant operations. Rather than acting as an evaluated numerical optimizer in these experiments, the LLM layer provides the architectural design pattern for interpreting unstructured operator directives and enforcing formal safety contracts in future human-in-the-loop autonomous plant workflows.</p>
 
     <h2>References</h2>

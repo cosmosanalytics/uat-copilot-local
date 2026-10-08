@@ -10,15 +10,15 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 
 | Configuration | Controller Type | Non-Trip RMSE (K) | Overall RMSE (K) | Peak Reactor Temp $T_{\max}$ (K) | Actuator Slew Rate (K/s) | SIS Trip Rate (Wilson 95% CI) | Settled Count (Med Time, $\pm 1.0\text{ K}$) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline 1a** | Linear MPC ($q_T = 1.0$, No Forecast) | $2.56 \pm 1.36$ | $16.26 \pm 5.52$ | $389.3 \pm 14.2$ | $3.29 \pm 0.95$ | **12 / 20** $[38.7\%, 78.1\%]$ | 8 / 20 (9.8 s) |
-| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.1 \pm 13.5$ | $4.85 \pm 1.12$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (7.1 s) |
+| **Baseline 1a** | Linear MPC ($q_T = 1.0$, No Forecast) | $2.56 \pm 1.54$ | $16.26 \pm 5.52$ | $389.3 \pm 14.2$ | $3.29 \pm 0.95$ | **12 / 20** $[38.7\%, 78.1\%]$ | 8 / 20 (9.8 s) |
+| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.1 \pm 13.5$ | $5.50 \pm 1.12$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (7.1 s) |
 | **Baseline 2a** | NMPC (L-BFGS-B, No Forecast) | $2.48 \pm 1.47$ | $9.62 \pm 5.37$ | $372.9 \pm 13.7$ | $5.04 \pm 1.29$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (6.9 s) |
-| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.03 \pm 5.57$ | $378.9 \pm 14.6$ | $2.44 \pm 0.38$ | **8 / 20** $[21.9\%, 61.3\%]$ | 11 / 20 (8.6 s) |
+| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.13 \pm 5.57$ | $378.9 \pm 14.6$ | $2.44 \pm 0.38$ | **8 / 20** $[21.9\%, 61.3\%]$ | 10 / 20 (6.1 s) |
 | **Ablation 2** | MPPI + Lagged-UA Filter (No Forecast) | $2.61 \pm 1.34$ | $9.82 \pm 5.39$ | $373.4 \pm 13.9$ | $2.42 \pm 0.38$ | **6 / 20** $[14.6\%, 51.9\%]$ | 14 / 20 (11.6 s) |
 | **Baseline 2b** | NMPC (With Forecast Preview) | $1.47 \pm 0.85$ | $2.82 \pm 2.93$ | $356.7 \pm 7.6$ | $6.41 \pm 1.03$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.6 s) |
 | **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.11 \pm 2.99$ | $357.3 \pm 7.7$ | $2.72 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.7 s) |
-| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.44 \pm 4.92$ | $381.1 \pm 17.1$ | $3.77 \pm 0.37$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (13.1 s) |
-| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.36 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.9 s) |
+| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.72 \pm 4.92$ | $382.6 \pm 17.1$ | $3.77 \pm 0.37$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (13.1 s) |
+| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.36 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
 
 ---
 
@@ -42,43 +42,40 @@ Confidence intervals use Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.0
 
 ---
 
-## 4. Section 4.1: Hold-280 K Lead-Time Sweep
+## 4. Section 4.1: Hold-280 K Lead-Time Sweep (60 s vs. 200 s Horizons)
 
-Lead-time sweep under flat maximum cooling ($u = 280\text{ K}$) upon receiving early warning advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$):
+Lead-time sensitivity under flat maximum cooling ($u = 280\text{ K}$) during surge advisory on the nominal kinetic surge ($+20\% C_{A0}, +10\text{ K } T_0, -30\% UA$). When released open-loop back to $300\text{ K}$ at surge conclusion ($t = 25\text{ s}$), reactant accumulated during deep pre-cooling causes delayed re-ignition at $t = 57\text{--}83\text{ s}$ unless $\ge 5.0\text{ s}$ lead is provided:
 
-| Pre-Cooling Lead Time | Peak Reactor Temp $T_{\max}$ | SIS Trip Status ($\ge 385.0\text{ K}$) | Operational Controllability Outcome |
-| :--- | :--- | :--- | :--- |
-| **0.0 s** | **444.9 K** | **TRIP** | Insufficient cooling ahead of jacket lag & slew cap |
-| **1.0 s** | **443.3 K** | **TRIP** | Insufficient thermal extraction ahead of surge |
-| **2.0 s** | **441.6 K** | **TRIP** | Thermal runaway breaches limit |
-| **2.5 s** | **440.6 K** | **TRIP** | Slew rate cap delays thermal extraction |
-| **3.0 s** | **439.6 K** | **TRIP** | Runaway post-surge blowout |
-| **3.25 s** | **404.9 K** | **TRIP** | Marginal breach |
-| **3.5 s** | **369.3 K** | **SAFE** | Thermal buffer prevents runaway ($15.7\text{ K}$ margin) |
-| **4.0 s** | **352.7 K** | **SAFE** | Robust containment |
-| **5.0 s** | **350.0 K** | **SAFE** | Clamped at nominal setpoint |
+| Pre-Cooling Lead Time $t_{\text{lead}}$ | Peak Temp $T_{\max}$ (60 s) | Peak Temp $T_{\max}$ (200 s) | SIS Trip Status ($\ge 385.0\text{ K}$) | Measured Peak Time $t_{\text{peak}}$ (Post-Surge Delay) |
+| :--- | :--- | :--- | :--- | :--- |
+| **0.0 s (At Onset)** | **446.8 K** | **446.8 K** | **TRIP** | $t = 37.4\text{ s}$ ($12.4\text{ s}$ post-surge) |
+| **1.0 s** | **445.3 K** | **445.3 K** | **TRIP** | $t = 40.4\text{ s}$ ($15.4\text{ s}$ post-surge) |
+| **2.0 s** | **443.7 K** | **443.7 K** | **TRIP** | $t = 45.2\text{ s}$ ($20.2\text{ s}$ post-surge) |
+| **2.5 s** | **443.0 K** | **443.0 K** | **TRIP** | $t = 47.6\text{ s}$ ($22.6\text{ s}$ post-surge) |
+| **3.0 s** | **441.9 K** | **441.9 K** | **TRIP** | $t = 52.8\text{ s}$ ($27.8\text{ s}$ post-surge) |
+| **3.25 s** | **441.5 K** | **441.5 K** | **TRIP** | $t = 55.0\text{ s}$ ($30.0\text{ s}$ post-surge) |
+| **3.5 s** | **441.1 K** | **438.4 K** | **TRIP** | $t = 57.4\text{ s}$ (60 s) / $t = 68.4\text{ s}$ (200 s) |
+| **4.0 s** | $367.8\text{ K}$ | **439.6 K** | **TRIP (at 200 s)** | $t = 68.4\text{ s}$ ($43.4\text{ s}$ post-surge, delayed ignition) |
+| **4.5 s** | $351.4\text{ K}$ | **438.4 K** | **TRIP (at 200 s)** | $t = 82.8\text{ s}$ ($57.8\text{ s}$ post-surge, delayed ignition) |
+| **5.0 s** | $350.0\text{ K}$ | $350.0\text{ K}$ | **SAFE** | Clamped at nominal setpoint ($T < 350.5\text{ K}$) |
 
-*Caveats & Per-Scenario Needs:*
-1. The hold-280 K sweep is an empirical sweep over a single simple heuristic policy; at zero lead it trips 12/20 seeds (worse than the 6/20 of the closed-loop feedback controllers).
-2. The six scenarios that all reactive feedback controllers trip on require:
-   - Seed 4: 3.0 s
-   - Seed 5: 3.0 s
-   - Seed 8: 3.0 s
-   - Seed 16: 2.0 s
-   - Seed 18: 4.5 s
-   - Seed 20: 3.0 s
-   All other 14 scenarios need $\le 1.0\text{ s}$ of lead time.
+*Mechanisms & Feedback Recovery:*
+1. **Open-Loop Re-Ignition:** Open-loop release back to $300\text{ K}$ without feedback regulation causes unreacted feed that accumulated during deep $280\text{ K}$ cooling to re-ignite after surge termination, pushing peak temperatures above $437\text{ K}$ at $t = 68\text{--}83\text{ s}$. Only $\ge 5.0\text{ s}$ lead achieves complete thermal exhaustion in open loop.
+2. **Closed-Loop Feedback Handoff:** When closed-loop feedback regulation is restored after the surge ends, the post-surge reactant re-ignition is actively suppressed. Under feedback handoff, pre-cooling lead times $\ge 2.0\text{ s}$ completely prevent tripping ($T_{\max} \le 356.0\text{ K}$ at $t = 25.4\text{ s}$).
+3. **Per-Scenario Lead Requirements (200 s Horizon):**
+   - Under open-loop release: Scenarios 4, 7, 9, 11, 13, 15 require $5.0\text{--}5.5\text{ s}$ of lead time to remain safe across the full 200 s window; other scenarios require $0.0\text{--}4.5\text{ s}$.
+   - Under closed-loop feedback handoff: 12 scenarios require $0.0\text{ s}$ of lead time; Scenario 12 requires $0.5\text{ s}$; Scenarios 4, 9, 11 require $1.0\text{ s}$; Scenarios 13, 15 require $1.5\text{ s}$; and Scenario 7 requires $2.0\text{ s}$. The maximum lead required across all 20 scenarios under feedback handoff is $2.0\text{ s}$.
 
 ---
 
 ## 5. Section 6.2: Ablation Analysis (19 Common Survivors)
 
-Ablation evaluating anticipatory ramp modulation and elevated barrier weights across the 19 surviving seeds:
+Ablation evaluating anticipatory ramp modulation and elevated barrier weights across the 19 surviving scenarios:
 
 | Controller Configuration | Non-Trip RMSE (K) | Physical Mechanism |
 | :--- | :--- | :--- |
-| **MPPI + Forecast Preview** | $1.76 \pm 1.00$ | Unconstrained preview tracking |
-| **+ Ramp Cap Only** | $1.12 \pm 0.48$ | Modulates pre-cooling to 282 K, preventing reaction quenching |
+| **MPPI + Forecast Preview** | $1.75 \pm 1.00$ | Unconstrained preview tracking |
+| **+ Ramp Cap Only** | $1.12 \pm 0.48$ | Modulates pre-cooling to 282 K, consistent with avoiding reaction quenching |
 | **+ Elevated Barrier Weights Only** | $1.33 \pm 0.72$ | Stiff penalty keeps state strictly within safe envelope |
 | **Both (Anticipatory Supervisory Schedule)** | $\mathbf{0.94 \pm 0.41}$ | Coordinated pre-cooling containment (stable across 5 streams) |
 
@@ -89,5 +86,5 @@ Ablation evaluating anticipatory ramp modulation and elevated barrier weights ac
 - **Lagged-UA Filter:** The online parameter estimator is a lagged true-parameter tracking filter:
   $$UA_{\text{est}} \leftarrow UA_{\text{est}} + 0.02 (UA_{\text{true}} - UA_{\text{est}})$$
   evaluated per $0.02\text{ s}$ RK4 step after surge onset (effective time constant $\tau = 1.0\text{ s}$). It uses the true disturbed plant parameter rather than estimating it from noisy measurement residuals.
-- **Forecast Advantage:** In preview runs, the advisory forecast supplies $UA$ directly to the controller; the filter improves performance primarily in no-forecast MPPI runs ($12.03\text{ K} \to 9.82\text{ K}$ overall RMSE) by informing the solver of actual heat transfer degradation.
+- **Forecast Advantage:** In preview runs, the advisory forecast supplies $UA$ directly to the controller; the filter improves performance primarily in no-forecast MPPI runs ($12.13\text{ K} \to 9.82\text{ K}$ overall RMSE) by informing the solver of actual heat transfer degradation.
 - **Primary Metrics:** Overall RMSE incorporates the post-trip emergency SCRAM transient ($F=0, u=280\text{ K}$) and is heavily influenced by the post-trip shutdown curve. Non-trip RMSE and SIS trip counts are the primary scientific figures of merit.

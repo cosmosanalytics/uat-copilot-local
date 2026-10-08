@@ -11,9 +11,9 @@ Model Predictive Control (MPC) has served as the industrial benchmark for constr
 
 In this paper, we propose **Agentic Model Predictive Control (Agentic MPC)**, an architecture that places an **Intelligence Space** supervisory layer above high-throughput real-time control solvers. The proposed architecture partitions supervisory intelligence into **The Two Halves**: (1) a neural reasoner (*The Knower*) grounded in four structured memory tiers (Playbook, Rulebook, Yearbook, and Whiteboard), and (2) a deterministic Executive Function Harness (*The Doer*) enforcing Ring 0 operating invariants, automated contract unit tests, and preemptive trip bounds. In our architecture, high-level cognitive directives are mapped into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across parallel trajectory rollouts via GPU/WebGPU compute shaders, supported by an online lagged parameter filter.
 
-We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible simulation case study spanning 20 randomized scenarios ($C_{A0} \in [+10\%, +30\%]$, $T_0 \in [+5\text{ K}, +12\text{ K}]$, and $UA \in [-10\%, -35\%]$) with advance-warning advisory lead time ($t_{\text{lead}} = 3.5\text{ s}$). Numerical simulation establishes an **empirical feedback floor of 6/20 trips across feedback controllers on this scenario set**: when tuned equally ($q_T = 10.0$), Linear MPC trips in 6/20 scenarios ($2.26 \pm 1.14\text{ K}$ non-trip RMSE, $9.49 \pm 5.39\text{ K}$ overall RMSE), matching NMPC (6/20 trips, $2.48 \pm 1.47\text{ K}$ non-trip, $9.62 \pm 5.37\text{ K}$ overall) and MPPI with a lagged-UA filter (6/20 trips, $2.61 \pm 1.34\text{ K}$ non-trip, $9.82 \pm 5.39\text{ K}$ overall), all tripping on the identical six scenarios (Seeds 4, 5, 8, 16, 18, 20). When weakly penalized ($q_T = 1.0$), Linear MPC trips in 12/20 scenarios ($16.26 \pm 5.52\text{ K}$ overall RMSE). Notably, all reactive trips and the single preview trip occur 4–31 s after the surge ends during post-surge recovery, rather than during surge onset.
+We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible numerical simulation case study spanning 20 randomized scenarios ($C_{A0} \in [+10\%, +30\%]$, $T_0 \in [+5\text{ K}, +12\text{ K}]$, and $UA \in [-10\%, -35\%]$) with advance-warning advisory lead time ($t_{\text{lead}} = 3.5\text{ s}$). In all preview evaluations, controllers receive an exact disturbance forecast (both onset timing and surge magnitude); reported preview results thus represent a perfect-forecast upper bound, while forecast timing jitter and magnitude errors remain untested. Numerical simulation establishes an **empirical feedback floor of 6/20 trips across feedback controllers on this scenario set**: when tuned equally ($q_T = 10.0$), Linear MPC trips in 6/20 scenarios ($2.26 \pm 1.14\text{ K}$ non-trip RMSE, $9.49 \pm 5.39\text{ K}$ overall RMSE), matching NMPC (6/20 trips, $2.48 \pm 1.47\text{ K}$ non-trip, $9.62 \pm 5.37\text{ K}$ overall) and MPPI with a lagged-UA filter (6/20 trips, $2.61 \pm 1.34\text{ K}$ non-trip, $9.82 \pm 5.39\text{ K}$ overall), all tripping on the identical six scenarios (Scenarios 4, 5, 8, 16, 18, 20). When weakly penalized ($q_T = 1.0$), Linear MPC trips in 12/20 scenarios ($16.26 \pm 5.52\text{ K}$ overall RMSE). Notably, all reactive trips and the single preview trip occur 4–31 s after the surge ends during post-surge recovery, rather than during surge onset.
 
-When advance preview lookahead ($t_{\text{lead}} = 3.5\text{ s}$) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Seed 18 (an extreme realization requiring $\approx 4.5\text{ s}$ of lead time). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage ($0.94 \pm 0.41\text{ K}$ non-trip RMSE vs. $1.75 \pm 1.00\text{ K}$ for standard preview MPPI, representing a $0.81\text{ K}$ gain across 19 shared survivors, paired $t$-test $p = 0.013$) stems from coordinating an anticipatory pre-cooling ramp that avoids **reaction quenching**: naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, $1.45 \pm 0.68\text{ K}$ non-trip RMSE). We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control.
+When advance preview lookahead ($t_{\text{lead}} = 3.5\text{ s}$) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Scenario 18 (an extreme realization requiring $\approx 4.5\text{ s}$ of lead time). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage ($0.94 \pm 0.41\text{ K}$ non-trip RMSE vs. $1.75 \pm 1.00\text{ K}$ for standard preview MPPI, representing a $0.81\text{ K}$ gain across 19 shared survivors, paired $t$-test $p = 0.013$, but $p = 0.063$ after Holm-Bonferroni correction, rendering this gain suggestive rather than confirmed) stems from coordinating an anticipatory pre-cooling ramp that is consistent with avoiding **reaction quenching**: naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, $1.45 \pm 0.68\text{ K}$ non-trip RMSE). We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control.
 
 ---
 
@@ -40,7 +40,7 @@ To address non-linearities and model uncertainty, the control literature has dev
 * **Sampling-Based Non-Convex Control:** Model Predictive Path Integral (MPPI) control computes optimal control signals via Monte Carlo importance sampling over stochastic forward rollouts (Williams et al., 2017). Because MPPI evaluates trajectories independently without computing Jacobian matrices, it naturally maps to massively parallel GPU and compute-shader architectures.
 
 ### 1.2 The Role of the Supervisory Layer: Lookahead vs. Reasoning
-A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon $H_p$ (e.g., $4.0\text{ s}$). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. 
+A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon $H_p$ (e.g., $4.0\text{ s}$). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. In our benchmark simulations, preview controllers receive the exact disturbance profile (timing and magnitude), representing an idealized perfect-forecast upper bound.
 
 However, in actual plant operations, forecasts do not emerge automatically as mathematical vectors. They arrive as human shift handover notes ("upstream distillation unit upset expected to send high-concentration feed in ~3-4 seconds"), laboratory feed analysis reports, or upstream DCS alarms. Classical MPC cannot parse these qualitative inputs. 
 
@@ -100,6 +100,8 @@ To anchor the neural reasoner to verifiable operational ground truth, Agentic MP
 | 📙 **The Yearbook** | Relational (Graph DB) | Plant equipment topological connectivity and flow dependencies | Piping & Instrumentation: `V-101 ➔ J-101 ➔ CV-201 ➔ M-101 ➔ CH-3` |
 | 📓 **The Whiteboard** | Shared State (IPC) | Real-time working scratchpad with distributed mutex locking | Mutex locks (`MUTEX_PRECOOL`) preventing conflicting concurrent directives |
 
+*(Note: While these structured memory tiers define the conceptual supervisory architecture of Agentic MPC, they are not directly exercised in the numerical CSTR benchmark experiments reported below, which evaluate the deterministic control and anticipatory scheduling layer.)*
+
 ---
 
 ## 3. Mathematical Formulation
@@ -120,9 +122,11 @@ MPPI optimizes control inputs for nonlinear stochastic dynamic systems through s
 
 $$x_{k+1} = f(x_k, v_k)$$
 
-where perturbed control actions $v_k = u_k + \epsilon_k$ are drawn from a Gaussian distribution $\epsilon_k \sim \mathcal{N}(0, \Sigma)$ with covariance $\Sigma = \sigma^2 I$ ($\sigma = 6.0\text{ K}$). Over $K = 1,024$ parallel rollouts (or 4,096 in WebGPU), the trajectory cost functional is evaluated as:
+where perturbed control actions $v_k = u_k + \epsilon_k$ are drawn from a Gaussian distribution $\epsilon_k \sim \mathcal{N}(0, \Sigma)$ with covariance $\Sigma = \sigma^2 I$ ($\sigma = 6.0\text{ K}$). Over $K = 1,024$ parallel rollouts (or 4,096 in WebGPU), the trajectory cost functional is evaluated over state and barrier penalties:
 
-$$S(U^{(m)}) = \sum_{k=0}^{H_p-1} \left( q_{\text{temp}} (T_k - T_{\text{ref}})^2 + q_{\text{barrier}} \max(0, T_k - T_{\text{barrier}})^2 \right) + \frac{\lambda}{2} \sum_{k=0}^{H_p-1} \epsilon_k^T \Sigma^{-1} \epsilon_k$$
+$$S(U^{(m)}) = \sum_{k=0}^{H_p-1} \left( q_{\text{temp}} (T_k - T_{\text{ref}})^2 + q_{\text{barrier}} \max(0, T_k - T_{\text{barrier}})^2 \right)$$
+
+*(Note: In our numerical implementation, the standard theoretical control-cost term $\frac{\lambda}{2} \sum_{k=0}^{H_p-1} \epsilon_k^T \Sigma^{-1} \epsilon_k$ is omitted, evaluating state tracking and barrier penalties directly over the candidate rollouts.)*
 
 The optimal control trajectory update is computed via importance-weighted path aggregation:
 
@@ -135,7 +139,7 @@ To evaluate the impact of parameter identification during heat exchanger fouling
 
 $$UA_{\text{est}} \leftarrow UA_{\text{est}} + 0.02 (UA_{\text{true}} - UA_{\text{est}})$$
 
-evaluated at each simulation integration step $\Delta t_{\text{sim}} = 0.02\text{ s}$, which corresponds to a time constant $\tau = 1.0\text{ s}$. Crucially, this filter uses the true plant parameter directly rather than estimating it from noisy measurement residuals. With advance forecast lookahead, the forecast vector supplies $UA$ directly to the controller; thus, the filter only affects the no-forecast MPPI rows ($12.03\text{ K} \to 9.82\text{ K}$ overall RMSE), an advantage that derives from knowing the true parameter.
+evaluated at each simulation integration step $\Delta t_{\text{sim}} = 0.02\text{ s}$, which corresponds to a time constant $\tau = 1.0\text{ s}$. Crucially, this filter uses the true plant parameter directly rather than estimating it from noisy measurement residuals. With advance forecast lookahead, the forecast vector supplies $UA$ directly to the controller; thus, the filter only affects the no-forecast MPPI rows ($12.13\text{ K} \to 9.82\text{ K}$ overall RMSE), an advantage that derives from knowing the true parameter.
 
 ---
 
@@ -181,30 +185,27 @@ where the kinetic rate constant is $k(350\text{ K}) = 1.00\text{ min}^{-1} = 0.0
 | Plant Integration Step | $\Delta t_{\text{sim}}$ | $0.02$ | $\text{s}$ | RK4 plant integration step ($50\text{ Hz}$) |
 
 ### 4.3 Hold-280 K Lead-Time Sweep & Controllability Limits
-To evaluate physical lead-time sensitivity under actuator constraints ($T_c \ge 280\text{ K}, |\dot{T}_c| \le 12\text{ K/s}$), we performed an empirical **hold-280 K lead-time sweep** over the benchmark kinetic surge ($+20\% C_{A0}$, $+10\text{ K } T_0$, $-30\% UA$ ramped over $2.0\text{ s}$ and sustained for $13.0\text{ s}$, total duration $15.0\text{ s}$), stepping jacket coolant setpoint flatly to $u = 280\text{ K}$ at $t_{\text{lead}}$ seconds prior to surge onset:
+To evaluate physical lead-time sensitivity under actuator constraints ($T_c \ge 280\text{ K}, |\dot{T}_c| \le 12\text{ K/s}$), we performed an empirical **hold-280 K lead-time sweep** over the benchmark kinetic surge ($+20\% C_{A0}$, $+10\text{ K } T_0$, $-30\% UA$ ramped over $2.0\text{ s}$ and sustained for $13.0\text{ s}$, total duration $15.0\text{ s}$), stepping jacket coolant setpoint flatly to $u = 280\text{ K}$ at $t_{\text{lead}}$ seconds prior to surge onset. When coolant is released open-loop back to $300\text{ K}$ at surge conclusion ($t = 25\text{ s}$), reactant accumulated during deep pre-cooling causes delayed re-ignition at $t = 57\text{--}83\text{ s}$ unless $\ge 5.0\text{ s}$ lead is provided:
 
-| Pre-Cooling Lead Time $t_{\text{lead}}$ | Peak Reactor Temp $T_{\max}$ (K) | Emergency SIS Trip ($\ge 385.0\text{ K}$) | Operational Controllability Outcome |
-| :--- | :--- | :--- | :--- |
-| **$0.0\text{ s}$ (Reaction at Onset)** | **$444.9\text{ K}$** | **TRIP (Breached)** | Unsurvivable runaway due to jacket lag ($\tau_j = 2\text{ s}$) & slew cap |
-| **$1.0\text{ s}$ Lead Time** | **$443.3\text{ K}$** | **TRIP (Breached)** | Insufficient thermal extraction ahead of exponential surge |
-| **$2.0\text{ s}$ Lead Time** | **$441.6\text{ K}$** | **TRIP (Breached)** | Thermal runaway breaches limit |
-| **$2.5\text{ s}$ Lead Time** | **$440.6\text{ K}$** | **TRIP (Breached)** | Slew rate cap delays thermal extraction |
-| **$3.0\text{ s}$ Lead Time** | **$439.6\text{ K}$** | **TRIP (Breached)** | Delayed post-surge blowout |
-| **$3.25\text{ s}$ Lead Time** | **$404.9\text{ K}$** | **TRIP (Breached)** | Marginal thermal breach |
-| **$3.5\text{ s}$ Lead Time** | **$369.3\text{ K}$** | **SAFE (Zero Trip)** | Thermal buffer prevents runaway ($15.7\text{ K}$ margin) |
-| **$4.0\text{ s}$ Lead Time** | **$352.7\text{ K}$** | **SAFE (Zero Trip)** | Robust containment |
-| **$5.0\text{ s}$ Lead Time** | **$350.0\text{ K}$** | **SAFE (Zero Trip)** | Fully absorbed thermal surge clamped at nominal setpoint |
+| Pre-Cooling Lead Time $t_{\text{lead}}$ | Peak Temp $T_{\max}$ (60 s) | Peak Temp $T_{\max}$ (200 s) | SIS Trip Status ($\ge 385.0\text{ K}$) | Measured Peak Time $t_{\text{peak}}$ (Post-Surge Delay) |
+| :--- | :--- | :--- | :--- | :--- |
+| **$0.0\text{ s}$ (At Onset)** | **$446.8\text{ K}$** | **$446.8\text{ K}$** | **TRIP (Breached)** | $t = 37.4\text{ s}$ ($12.4\text{ s}$ post-surge) |
+| **$1.0\text{ s}$ Lead Time** | **$445.3\text{ K}$** | **$445.3\text{ K}$** | **TRIP (Breached)** | $t = 40.4\text{ s}$ ($15.4\text{ s}$ post-surge) |
+| **$2.0\text{ s}$ Lead Time** | **$443.7\text{ K}$** | **$443.7\text{ K}$** | **TRIP (Breached)** | $t = 45.2\text{ s}$ ($20.2\text{ s}$ post-surge) |
+| **$2.5\text{ s}$ Lead Time** | **$440.6\text{ K}$** | **$443.0\text{ K}$** | **TRIP (Breached)** | $t = 47.6\text{ s}$ ($22.6\text{ s}$ post-surge) |
+| **$3.0\text{ s}$ Lead Time** | **$439.6\text{ K}$** | **$441.9\text{ K}$** | **TRIP (Breached)** | $t = 52.8\text{ s}$ ($27.8\text{ s}$ post-surge) |
+| **$3.25\text{ s}$ Lead Time** | **$404.9\text{ K}$** | **$441.5\text{ K}$** | **TRIP (Breached)** | $t = 55.0\text{ s}$ ($30.0\text{ s}$ post-surge) |
+| **$3.5\text{ s}$ Lead Time** | **$369.3\text{ K}$** | **$438.4\text{ K}$** | **TRIP (at 200 s)** | $t = 57.4\text{ s}$ (60 s) / $t = 68.4\text{ s}$ (200 s) |
+| **$4.0\text{ s}$ Lead Time** | $352.7\text{ K}$ | **$439.6\text{ K}$** | **TRIP (at 200 s)** | $t = 68.4\text{ s}$ ($43.4\text{ s}$ post-surge, delayed ignition) |
+| **$4.5\text{ s}$ Lead Time** | $351.4\text{ K}$ | **$438.4\text{ K}$** | **TRIP (at 200 s)** | $t = 82.8\text{ s}$ ($57.8\text{ s}$ post-surge, delayed ignition) |
+| **$5.0\text{ s}$ Lead Time** | $350.0\text{ K}$ | $350.0\text{ K}$ | **SAFE (Zero Trip)** | Clamped at nominal setpoint ($T < 350.5\text{ K}$) |
 
-*Caveat on the Hold-280 K Sweep:* Flat pre-cooling to $280\text{ K}$ is an elementary heuristic policy. Under zero lead time, this policy trips on 12/20 scenarios—higher than the 6/20 trips observed for closed-loop feedback controllers. This sweep represents an empirical lead-time sensitivity study for this specific policy rather than an optimal-control controllability bound.
-
-*Per-Scenario Lead Time Needs:* Across the 20 randomized scenarios, the six corner cases where every reactive feedback controller trips require:
-* **Seed 4:** $3.0\text{ s}$
-* **Seed 5:** $3.0\text{ s}$
-* **Seed 8:** $3.0\text{ s}$
-* **Seed 16:** $2.0\text{ s}$
-* **Seed 18:** $4.5\text{ s}$
-* **Seed 20:** $3.0\text{ s}$  
-All other 14 scenarios require $\le 1.0\text{ s}$ of lead time to avoid tripping.
+*Mechanisms & Feedback Recovery:*
+1. **Open-Loop Re-Ignition:** Flat pre-cooling to $280\text{ K}$ is an elementary heuristic policy. In open-loop release back to $300\text{ K}$ without feedback regulation, unreacted feed that accumulated during deep $280\text{ K}$ cooling re-ignites after surge termination, pushing peak temperatures above $438\text{ K}$ at $t = 68\text{--}83\text{ s}$. Only $\ge 5.0\text{ s}$ lead achieves complete thermal exhaustion in open loop.
+2. **Closed-Loop Feedback Handoff:** When closed-loop feedback regulation is restored after the surge ends, post-surge reactant re-ignition is actively suppressed. Under feedback handoff, pre-cooling lead times $\ge 2.0\text{ s}$ completely prevent tripping ($T_{\max} \le 356.0\text{ K}$ at $t = 25.4\text{ s}$).
+3. **Per-Scenario Lead Requirements (200 s Horizon):**
+   - Under open-loop release: Scenarios 4, 7, 9, 11, 13, 15 require $5.0\text{--}5.5\text{ s}$ of lead time to remain safe across the full 200 s window; other scenarios require $0.0\text{--}4.5\text{ s}$.
+   - Under closed-loop feedback handoff: 12 scenarios require $0.0\text{ s}$ of lead time; Scenario 12 requires $0.5\text{ s}$; Scenarios 4, 9, 11 require $1.0\text{ s}$; Scenarios 13, 15 require $1.5\text{ s}$; and Scenario 7 requires $2.0\text{ s}$. The maximum lead required across all 20 scenarios under feedback handoff is $2.0\text{ s}$.
 
 ---
 
@@ -235,6 +236,8 @@ In industrial process safety, a software supervisory layer must not be conflated
 [ Independent Hardwired SIS Layer (IEC 61511 Trip @ 385 K: Failsafe Scram) ]
 ```
 
+*(Note: The 382 K preemptive software breaker, automated contract unit test suite (< 30 ms), and Ring 0 invariant gating represent the proposed supervisory safety architecture; these software supervisor safeguards are not exercised in the numerical benchmark runs in Section 6, where safety trips are triggered exclusively by the plant SIS limit at 385 K.)*
+
 1. **Ring 0 Invariant Gating:** Proposed cost parameters must satisfy strict mathematical invariants ($q_{\text{temp}} \ge 0.1$, $q_{\text{barrier}} \ge 1000.0$, $u_{\text{target}} \in [280.0, 360.0]\text{ K}$, $|\dot{u}| \le 12.0\text{ K/s}$, $T_{\text{barrier}} \le 380.0\text{ K}$). Any parameter proposal violating these invariants is rejected deterministically.
 2. **Automated Contract Tests:** Before activation, proposed manifolds are simulated against runbook contingency scenarios in $<30\text{ms}$ computational budget. Crucially, **contract unit tests simulate the degraded plant dynamics tracked by the online filter ($UA_{\text{est}}$)**, ensuring that proposals which destabilize under degraded heat transfer are caught before activation.
 3. **Preemptive Software Breaker & Hardware SIS Scram:** If reactor temperature exceeds $382.0\text{ K}$, the software harness overrides all agent-tuned manifolds, instantly applying full cooling ($u = 280\text{ K}$). If reactor temperature breaches $385.0\text{ K}$, the independent hardware SIS triggers an emergency shutdown: coolant fails open ($u = 280\text{ K}$), reactant feed is slammed shut ($F_{\text{in}} = 0, C_{A0} = 0$), and trip status is latched.
@@ -245,30 +248,30 @@ In industrial process safety, a software supervisory layer must not be conflated
 ## 6. Empirical Results & Ablation Analysis
 
 ### 6.1 Multi-Tier Benchmark Across 20 Randomized Scenarios
-To establish complete scientific reproducibility, we executed an authentic batch simulation across **20 randomized scenarios** (`benchmark_cstr_unified.py`, documented in `cstr_benchmark_summary.md`). Across the 20 scenarios, disturbance parameters vary independently:
+To establish complete scientific reproducibility, we executed a reproducible batch simulation across **20 randomized scenarios** (`benchmark_cstr_unified.py`, documented in `cstr_benchmark_summary.md`). Across the 20 scenarios, disturbance parameters vary independently:
 * Onset time: $t_{\text{start}} \in [8.0, 12.0]\text{ s}$
 * Feed concentration surge: $\Delta C_{A0} \in [+10\%, +30\%]$
 * Feed temperature surge: $\Delta T_0 \in [+5.0\text{ K}, +12.0\text{ K}]$
 * Heat transfer fouling: $\Delta UA \in [-10\%, -35\%]$
 * Gaussian sensor noise ($0.25\text{ K}$ standard deviation).
 
-All preview controllers receive a fixed $3.5\text{ s}$ advance advisory lookahead. Table 2 reports authentic simulation results computed directly from the discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers, with 95% confidence intervals calculated via Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.093$) and trip rates reported with exact Wilson score intervals:
+All preview controllers receive a fixed $3.5\text{ s}$ advance advisory lookahead. Table 2 reports reproducible numerical simulation results computed directly from the discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers, with 95% confidence intervals calculated via Student's $t$-distribution ($df = 19$, $t_{0.975} = 2.093$) and trip rates reported with exact Wilson score intervals:
 
 | Configuration | Controller Type | Non-Trip RMSE (K) | Overall RMSE (K) | Peak Reactor Temp $T_{\max}$ (K) | Actuator Slew Rate (K/s) | SIS Trip Rate (Wilson 95% CI) | Settled Count (Med Time, $\pm 1.0\text{ K}$) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline 1a** | Linear MPC ($q_T = 1.0$, No Forecast) | $2.56 \pm 1.36$ | $16.26 \pm 5.52$ | $389.3 \pm 14.2$ | $3.29 \pm 0.95$ | **12 / 20** $[38.7\%, 78.1\%]$ | 8 / 20 (9.8 s) |
-| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.1 \pm 13.5$ | $4.85 \pm 1.12$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (7.1 s) |
+| **Baseline 1a** | Linear MPC ($q_T = 1.0$, No Forecast) | $2.56 \pm 1.54$ | $16.26 \pm 5.52$ | $389.3 \pm 14.2$ | $3.29 \pm 0.95$ | **12 / 20** $[38.7\%, 78.1\%]$ | 8 / 20 (9.8 s) |
+| **Baseline 1b** | Linear MPC ($q_T = 10.0$, No Forecast) | $2.26 \pm 1.14$ | $9.49 \pm 5.39$ | $372.1 \pm 13.5$ | $5.50 \pm 1.12$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (7.1 s) |
 | **Baseline 2a** | NMPC (L-BFGS-B, No Forecast) | $2.48 \pm 1.47$ | $9.62 \pm 5.37$ | $372.9 \pm 13.7$ | $5.04 \pm 1.29$ | **6 / 20** $[14.6\%, 51.9\%]$ | 13 / 20 (6.9 s) |
-| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.03 \pm 5.57$ | $378.9 \pm 14.6$ | $2.44 \pm 0.38$ | **8 / 20** $[21.9\%, 61.3\%]$ | 11 / 20 (8.6 s) |
+| **Ablation 1** | MPPI (Static $\theta^*$, No Forecast) | $3.00 \pm 1.80$ | $12.13 \pm 5.57$ | $378.9 \pm 14.6$ | $2.44 \pm 0.38$ | **8 / 20** $[21.9\%, 61.3\%]$ | 10 / 20 (6.1 s) |
 | **Ablation 2** | MPPI + Lagged-UA Filter (No Forecast) | $2.61 \pm 1.34$ | $9.82 \pm 5.39$ | $373.4 \pm 13.9$ | $2.42 \pm 0.38$ | **6 / 20** $[14.6\%, 51.9\%]$ | 14 / 20 (11.6 s) |
 | **Baseline 2b** | NMPC (With Forecast Preview) | $1.47 \pm 0.85$ | $2.82 \pm 2.93$ | $356.7 \pm 7.6$ | $6.41 \pm 1.03$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.6 s) |
 | **Ablation 3a** | MPPI + Filter (With Forecast Preview) | $1.75 \pm 1.00$ | $3.11 \pm 2.99$ | $357.3 \pm 7.7$ | $2.72 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 18 / 20 (5.7 s) |
-| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.44 \pm 4.92$ | $381.1 \pm 17.1$ | $3.77 \pm 0.37$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (13.1 s) |
-| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.36 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.9 s) |
+| **Ablation 3b** | Rule Supervisor + MPPI | $1.45 \pm 0.68$ | $9.72 \pm 4.92$ | $382.6 \pm 17.1$ | $3.77 \pm 0.37$ | **8 / 20** $[21.9\%, 61.3\%]$ | 12 / 20 (13.1 s) |
+| **Full System** | Anticipatory Schedule (Full Architecture) | $0.94 \pm 0.41$ | $2.17 \pm 2.57$ | $355.5 \pm 6.2$ | $3.36 \pm 0.19$ | **1 / 20** $[0.9\%, 23.6\%]$ | 19 / 20 (2.4 s) |
 
 *Key Empirical Findings:*
-1. **The Empirical Feedback Floor:** When tuned with equal penalty weights ($q_T = 10.0$), Linear MPC trips in 6/20 scenarios ($2.26 \pm 1.14\text{ K}$ non-trip RMSE, $9.49\text{ K}$ overall), exactly matching NMPC (6/20 trips, $2.48\text{ K}$ non-trip, $9.62\text{ K}$ overall) and MPPI with the lagged-UA filter (6/20 trips, $2.61\text{ K}$ non-trip, $9.82\text{ K}$ overall). Crucially, all three controllers trip on the **identical six scenarios (Seeds 4, 5, 8, 16, 18, 20)**. This demonstrates an **empirical feedback floor** for these controllers on this scenario set under the plant's 2.0 s jacket lag and 12 K/s slew limit, rather than an analytical bound.
-2. **Post-Surge Runaway Timing:** All baseline trips and the single preview trip (Seed 18) occur **4–31 s after the surge ends** (during post-surge recovery), rather than at surge onset. Seed 18 is an extreme realization requiring $\approx 4.5\text{ s}$ of advance lead time, exceeding the standardized $3.5\text{ s}$ advisory.
+1. **The Empirical Feedback Floor:** When tuned with equal penalty weights ($q_T = 10.0$), Linear MPC trips in 6/20 scenarios ($2.26 \pm 1.14\text{ K}$ non-trip RMSE, $9.49\text{ K}$ overall), exactly matching NMPC (6/20 trips, $2.48\text{ K}$ non-trip, $9.62\text{ K}$ overall) and MPPI with the lagged-UA filter (6/20 trips, $2.61\text{ K}$ non-trip, $9.82\text{ K}$ overall). Crucially, all three controllers trip on the **identical six scenarios (Scenarios 4, 5, 8, 16, 18, 20)**. This demonstrates an **empirical feedback floor** for these controllers on this scenario set under the plant's 2.0 s jacket lag and 12 K/s slew limit, rather than an analytical bound.
+2. **Post-Surge Runaway Timing:** All baseline trips and the single preview trip (Scenario 18) occur **4–31 s after the surge ends** (during post-surge recovery), rather than at surge onset. Scenario 18 is an extreme realization requiring $\approx 4.5\text{ s}$ of advance lead time, exceeding the standardized $3.5\text{ s}$ advisory.
 3. **Rule Supervisor Dynamics (Ablation 3b):** The naive rule supervisor steps cooling to $280\text{ K}$ across the alert window. Where it survives (11 scenarios), it matches the full supervisor ($0.00\text{ K}$ difference), but trips on 7–8/20 scenarios depending on MPPI sampling stream (non-trip RMSE ranges from $1.45\text{--}2.47\text{ K}$ across 5 streams). By contrast, every preview controller trips on only 1/20 scenarios.
 
 ### 6.2 Deconstructing the Supervisory Advantage
@@ -276,8 +279,8 @@ To analyze the performance gain of the supervisory pre-cooling schedule over sta
 
 | Controller Configuration | Non-Trip RMSE (K) | Physical Mechanism |
 | :--- | :--- | :--- |
-| **MPPI + Forecast Preview** | $1.76 \pm 1.00$ | Unconstrained optimal preview tracking |
-| **+ Ramp Cap Only** | $1.12 \pm 0.48$ | Modulates pre-cooling to 282 K, preventing reaction quenching |
+| **MPPI + Forecast Preview** | $1.75 \pm 1.00$ | Unconstrained optimal preview tracking |
+| **+ Ramp Cap Only** | $1.12 \pm 0.48$ | Modulates pre-cooling to 282 K, consistent with avoiding reaction quenching |
 | **+ Elevated Barrier Weights Only** | $1.33 \pm 0.72$ | Stiff penalty keeps state strictly within safe envelope |
 | **Both (Anticipatory Supervisory Schedule)** | $\mathbf{0.94 \pm 0.41}$ | Coordinated pre-cooling containment (stable across 5 streams) |
 
@@ -299,10 +302,11 @@ All simulation tables were regenerated from a dedicated NumPy implementation (`b
 While Agentic MPC demonstrates robust supervisory capabilities in simulation, certified industrial deployment requires strict separation of concerns:
 * **Independence of the Safety Instrumented System (SIS):** Under IEC 61511 / ISA-84, safety instrumented functions must remain physically independent, deterministic, and SIL-rated. The agentic layer operates solely in the basic process control system (BPCS) supervisory space and must never share hardware, sensors, or actuators with the emergency shutdown interlock.
 * **Deterministic Execution Budgets:** Standard OS scheduling and WebGPU shader compilation can introduce timing jitter. Industrial edge deployment requires hosting the deterministic execution harness (Ring 0 gating and MPPI rollouts) on a hard real-time operating system (RTOS) or dedicated FPGA/GPU hardware sidecar with hard deadline enforcement.
+* **Perfect-Forecast Assumption:** All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation.
 * **Sensor Drift & Unmodeled Kinetics:** In plants subject to complex secondary reactions or catalyst deactivation, residual tracking filters must be bounded by conservative confidence bounds to prevent model misidentification.
 
 ### 7.2 Conclusion
-This simulation case study demonstrates that lookahead preview and an anticipatory pre-cooling ramp effectively stabilize an exothermic CSTR under severe kinetic surges. A naive rule-based supervisor that commands flat maximum cooling upon receiving an advisory alert frequently quenches the reactor, accumulates unreacted reactant, and triggers delayed thermal blowout. Coordinating a smooth anticipatory ramp to $282\text{ K}$ avoids quenching while creating the necessary thermal buffer to safely absorb the disturbance.
+This simulation case study demonstrates that lookahead preview and an anticipatory pre-cooling ramp effectively stabilize an exothermic CSTR under severe kinetic surges. A naive rule-based supervisor that commands flat maximum cooling upon receiving an advisory alert frequently quenches the reactor, accumulates unreacted reactant, and triggers delayed thermal blowout. Coordinating a smooth anticipatory ramp to $282\text{ K}$ is consistent with avoiding reaction quenching while creating the necessary thermal buffer to safely absorb the disturbance.
 
 We present the Agentic MPC framework—with its dual-space division between Intelligence Space reasoning and a deterministic Ring 0 execution harness—as a proposed supervisory architecture for qualitative plant operations. Rather than acting as an evaluated numerical optimizer in these experiments, the LLM layer provides the architectural design pattern for interpreting unstructured operator directives and enforcing formal safety contracts in future human-in-the-loop autonomous plant workflows.
 

@@ -239,14 +239,17 @@ def build_paper_docx():
         "High-level cognitive directives are translated at runtime into parameterized Model Predictive Path Integral (MPPI) cost manifolds executed across "
         "parallel trajectory rollouts via GPU/WebGPU compute shaders, supported by an online lagged parameter filter.\n\n"
         "We evaluate the physical dynamics on an exothermic Continuous Stirred-Tank Reactor (CSTR) undergoing non-linear kinetic surges across a fully reproducible "
-        "simulation case study spanning 20 randomized scenarios (C_A0 in [+10%, +30%], T_0 in [+5 K, +12 K], UA in [-10%, -35%]) "
-        "and advance-warning advisory lead time (t_lead = 3.5 s). Numerical simulation demonstrates an empirical feedback floor of 6/20 trips across feedback controllers on this scenario set: "
+        "numerical simulation case study spanning 20 randomized scenarios (C_A0 in [+10%, +30%], T_0 in [+5 K, +12 K], UA in [-10%, -35%]) "
+        "and advance-warning advisory lead time (t_lead = 3.5 s). In all preview evaluations, controllers receive an exact disturbance forecast (both onset timing and magnitude); "
+        "reported preview results thus represent a perfect-forecast upper bound, while forecast timing jitter and magnitude errors remain untested. "
+        "Numerical simulation demonstrates an empirical feedback floor of 6/20 trips across feedback controllers on this scenario set: "
         "when tuned equally (q_T = 10.0), Linear MPC trips in 6/20 scenarios (2.26 ± 1.14 K non-trip RMSE, 9.49 ± 5.39 K overall RMSE), matching NMPC (6/20 trips, 2.48 ± 1.47 K non-trip, 9.62 ± 5.37 K overall) "
-        "and MPPI with a lagged-UA filter (6/20 trips, 2.61 ± 1.34 K non-trip, 9.82 ± 5.39 K overall), all tripping on the identical six scenarios (Seeds 4, 5, 8, 16, 18, 20). "
+        "and MPPI with a lagged-UA filter (6/20 trips, 2.61 ± 1.34 K non-trip, 9.82 ± 5.39 K overall), all tripping on the identical six scenarios (Scenarios 4, 5, 8, 16, 18, 20). "
         "When weakly penalized (q_T = 1.0), Linear MPC trips in 12/20 scenarios (16.26 ± 5.52 K overall RMSE). Notably, all reactive trips and the single preview trip occur 4–31 s after the surge ends during post-surge recovery, rather than at surge onset.\n\n"
-        "When advance preview lookahead (t_lead = 3.5 s) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Seed 18 "
+        "When advance preview lookahead (t_lead = 3.5 s) is supplied, trips drop to 1/20 across all preview controllers, with failure occurring exclusively on Scenario 18 "
         "(an extreme corner realization requiring ≈ 4.5 s of lead time). Crucially, our ablation isolates that the supervisory schedule's quantitative advantage "
-        "(0.94 ± 0.41 K non-trip RMSE vs. 1.75 ± 1.00 K for standard preview MPPI, representing a 0.81 K gain across 19 shared survivors, paired t-test p = 0.013) stems from coordinating an anticipatory pre-cooling ramp that avoids reaction quenching: "
+        "(0.94 ± 0.41 K non-trip RMSE vs. 1.75 ± 1.00 K for standard preview MPPI, representing a 0.81 K gain across 19 shared survivors, paired t-test p = 0.013, but p = 0.063 after Holm-Bonferroni correction, "
+        "rendering this gain suggestive rather than confirmed) stems from coordinating an anticipatory pre-cooling ramp that is consistent with avoiding reaction quenching: "
         "naive rule-based step switching quenches the reactor, accumulates unreacted feed, and triggers delayed thermal blowout (8/20 trips, 1.45 ± 0.68 K non-trip RMSE). "
         "We present the LLM supervisory layer as the proposed architecture for qualitative interaction and formulate the physical control and safety contract harness, establishing a simulation case study for anticipatory process control."
     )
@@ -270,7 +273,7 @@ def build_paper_docx():
 
     add_heading_with_spacing(doc, "1.2 The Role of the Supervisory Layer: Lookahead vs. Reasoning", level=2)
     p = doc.add_paragraph()
-    p.add_run("A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon Hp (e.g., 4.0 s). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. However, in actual plant operations, forecasts arrive as human shift handover notes, laboratory feed analysis reports, or upstream DCS alarms. Agentic MPC introduces an Intelligence Space supervisory tier positioned strictly above a deterministic execution harness and parallel MPPI rollouts.")
+    p.add_run("A critical insight in receding-horizon control is that numerical solvers optimize over a fixed finite horizon Hp (e.g., 4.0 s). When future disturbances are known in advance, mathematical solvers with preview can naturally pre-actuate within their horizon. In our benchmark simulations, preview controllers receive the exact disturbance profile (timing and magnitude), representing an idealized perfect-forecast upper bound. However, in actual plant operations, forecasts arrive as human shift handover notes, laboratory feed analysis reports, or upstream DCS alarms. Agentic MPC introduces an Intelligence Space supervisory tier positioned strictly above a deterministic execution harness and parallel MPPI rollouts.")
 
     add_heading_with_spacing(doc, "2. The Agentic MPC Architecture", level=1)
     add_heading_with_spacing(doc, "2.1 The Two Halves: The Knower and The Doer", level=2)
@@ -281,6 +284,10 @@ def build_paper_docx():
     p.add_run("• The Doer (Executive Function Harness): ").bold = True
     p.add_run("A deterministic verification kernel enforcing Ring 0 invariants (actuator saturation and slew rate limits), running automated contract unit tests, and operating preemptively below plant emergency shutdown thresholds.")
 
+    add_heading_with_spacing(doc, "2.2 Structured Memory Subsystems & Note on Benchmark Scope", level=2)
+    p = doc.add_paragraph()
+    p.add_run("Agentic MPC structures domain memory into four subsystems: Playbook (runbooks), Rulebook (safety bounds), Yearbook (plant topology), and Whiteboard (IPC mutexes). (Note: While these structured memory tiers define the conceptual supervisory architecture of Agentic MPC, they are not directly exercised in the numerical CSTR benchmark experiments reported below, which evaluate the deterministic control and anticipatory scheduling layer.)")
+
     add_heading_with_spacing(doc, "3. Mathematical Formulation", level=1)
     add_heading_with_spacing(doc, "3.1 Classical Linear MPC Baseline (Jacobian QP)", level=2)
     p = doc.add_paragraph()
@@ -289,64 +296,65 @@ def build_paper_docx():
 
     add_heading_with_spacing(doc, "3.2 Model Predictive Path Integral (MPPI) Formulation", level=2)
     p = doc.add_paragraph()
-    p.add_run("MPPI evaluates K = 1,024 stochastic control rollouts sampled from N(0, Σ) with covariance Σ = 6.0^2 I and temperature λ = 10.0. The optimal control update is computed via softmax importance weighting:")
+    p.add_run("MPPI evaluates K = 1,024 stochastic control rollouts sampled from N(0, Σ) with covariance Σ = 6.0^2 I and temperature λ = 10.0. Discretized at rollout step Δt_ctrl = 0.2 s, trajectory evaluation uses state tracking and barrier penalties: S(U^{(m)}) = ∑ (q_T (T_k - T_ref)^2 + q_barrier max(0, T_k - T_barrier)^2). (Note: the standard theoretical control-cost regularization term (λ/2) ∑ ε_k^T Σ^-1 ε_k is omitted in our implementation, evaluating state tracking and barrier penalties directly over candidate rollouts). The optimal control update is computed via softmax importance weighting:")
     add_equation_box(doc, "u_t* = u_t + ∑_{m=1}^K w(U^{(m)}) ε_t^{(m)},    w(U^{(m)}) = exp(-S(U^{(m)})/λ) / ∑_j exp(-S(U^{(j)})/λ)", "2")
 
     add_heading_with_spacing(doc, "3.3 Lagged-UA Tracking Filter", level=2)
     p = doc.add_paragraph()
-    p.add_run("To evaluate parameter identification during fouling, a first-order lagged filter tracks the true parameter UA(t) after surge onset: UA_est += 0.02 * (UA_true - UA_est) per 0.02 s step (tau = 1.0 s). Uses the true parameter directly. With forecast lookahead, the forecast vector supplies UA directly, so the filter primarily impacts the no-forecast MPPI baseline (12.03 K -> 9.82 K overall RMSE).")
+    p.add_run("To evaluate parameter identification during fouling, a first-order lagged filter tracks the true parameter UA(t) after surge onset: UA_est += 0.02 * (UA_true - UA_est) per 0.02 s step (tau = 1.0 s). Uses the true parameter directly. With forecast lookahead, the forecast vector supplies UA directly, so the filter primarily impacts the no-forecast MPPI baseline (12.13 K -> 9.82 K overall RMSE).")
 
     add_heading_with_spacing(doc, "4. Benchmark Case Study: Exothermic CSTR", level=1)
     add_heading_with_spacing(doc, "4.1 Hold-280 K Lead-Time Sweep & Controllability Limits", level=2)
     p = doc.add_paragraph()
-    p.add_run("An empirical hold-280 K lead-time sweep over the benchmark kinetic surge evaluates required early advisory warning when stepping jacket coolant flatly to u = 280 K:")
+    p.add_run("An empirical hold-280 K lead-time sweep over the benchmark kinetic surge evaluates required early advisory warning when stepping jacket coolant flatly to u = 280 K. When coolant is released open-loop back to 300 K at surge conclusion (t = 25 s), reactant accumulated during deep pre-cooling causes delayed re-ignition at t = 57–83 s unless >= 5.0 s lead is provided:")
 
-    tbl_oracle = doc.add_table(rows=1, cols=4)
+    tbl_oracle = doc.add_table(rows=1, cols=5)
     tbl_oracle.alignment = WD_TABLE_ALIGNMENT.CENTER
-    oracle_headers = ["Lead Time t_lead", "Peak Temp T_max (K)", "SIS Trip (>= 385.0 K)", "Operational Controllability Outcome"]
+    oracle_headers = ["Lead Time", "Peak T (60s)", "Peak T (200s)", "Trip Status", "Measured Peak Time (Delay)"]
     oracle_data = [
-        ["0.0 s (Reaction at Onset)", "444.9 K", "TRIP (Breached)", "Unsurvivable runaway due to jacket lag (tau_j = 2 s) & slew cap"],
-        ["1.0 s Lead Time", "443.3 K", "TRIP (Breached)", "Insufficient thermal extraction ahead of exponential surge"],
-        ["2.0 s Lead Time", "441.6 K", "TRIP (Breached)", "Thermal runaway breaches limit"],
-        ["2.5 s Lead Time", "440.6 K", "TRIP (Breached)", "Slew rate cap delays thermal extraction"],
-        ["3.0 s Lead Time", "439.6 K", "TRIP (Breached)", "Delayed post-surge blowout"],
-        ["3.25 s Lead Time", "404.9 K", "TRIP (Breached)", "Marginal thermal breach"],
-        ["3.5 s Lead Time", "369.3 K", "SAFE (Zero Trip)", "Thermal buffer prevents runaway (15.7 K margin)"],
-        ["4.0 s Lead Time", "352.7 K", "SAFE (Zero Trip)", "Robust containment"],
-        ["5.0 s Lead Time", "350.0 K", "SAFE (Zero Trip)", "Fully absorbed thermal surge clamped at nominal setpoint"]
+        ["0.0 s (At Onset)", "446.8 K", "446.8 K", "TRIP", "t = 37.4 s (12.4 s post-surge)"],
+        ["1.0 s Lead Time", "445.3 K", "445.3 K", "TRIP", "t = 40.4 s (15.4 s post-surge)"],
+        ["2.0 s Lead Time", "443.7 K", "443.7 K", "TRIP", "t = 45.2 s (20.2 s post-surge)"],
+        ["2.5 s Lead Time", "440.6 K", "443.0 K", "TRIP", "t = 47.6 s (22.6 s post-surge)"],
+        ["3.0 s Lead Time", "439.6 K", "441.9 K", "TRIP", "t = 52.8 s (27.8 s post-surge)"],
+        ["3.25 s Lead Time", "404.9 K", "441.5 K", "TRIP", "t = 55.0 s (30.0 s post-surge)"],
+        ["3.5 s Lead Time", "369.3 K", "438.4 K", "TRIP (200s)", "t = 57.4 s (60s) / 68.4 s (200s)"],
+        ["4.0 s Lead Time", "352.7 K", "439.6 K", "TRIP (200s)", "t = 68.4 s (43.4 s post-surge)"],
+        ["4.5 s Lead Time", "351.4 K", "438.4 K", "TRIP (200s)", "t = 82.8 s (57.8 s post-surge)"],
+        ["5.0 s Lead Time", "350.0 K", "350.0 K", "SAFE", "Clamped at nominal setpoint"]
     ]
-    format_table(tbl_oracle, [1.5, 1.4, 1.4, 2.7], oracle_headers, oracle_data)
+    format_table(tbl_oracle, [1.4, 1.1, 1.1, 1.1, 2.3], oracle_headers, oracle_data)
     
     p = doc.add_paragraph()
-    p.add_run("Caveat: Hold-280 K is an elementary heuristic policy tripping 12/20 seeds at zero lead (higher than feedback controllers at 6/20). It is an empirical sweep, not an optimal-control bound. The six reactive trip scenarios require: Seeds 4, 5, 8, 16, 18, 20 need 3.0 s, 3.0 s, 3.0 s, 2.0 s, 4.5 s, and 3.0 s respectively; all other 14 scenarios need <= 1.0 s.")
+    p.add_run("Mechanisms & Feedback Recovery: In open-loop release back to 300 K without feedback regulation, unreacted feed that accumulated during deep 280 K cooling re-ignites after surge termination, pushing peak temperatures above 438 K at t = 68–83 s. Only >= 5.0 s lead achieves complete thermal exhaustion in open loop. When closed-loop feedback regulation is restored after the surge ends, post-surge reactant re-ignition is actively suppressed. Under feedback handoff, pre-cooling lead times >= 2.0 s completely prevent tripping (T_max <= 356.0 K). Under open-loop release across 200 s, Scenarios 4, 7, 9, 11, 13, 15 require 5.0–5.5 s of lead; under closed-loop feedback handoff, 12 scenarios require 0.0 s and the maximum lead required across all scenarios is 2.0 s.")
 
     add_heading_with_spacing(doc, "5. Verification & Safety Architecture", level=1)
     p = doc.add_paragraph()
-    p.add_run("Agentic MPC enforces defense-in-depth: Ring 0 invariant checking (q_T >= 0.1, q_barrier >= 1000, u in [280, 360] K, slew <= 12 K/s), automated contract unit tests on the active fouled plant model (<30 ms), a software preemptive breaker at 382 K, and an independent hardware SIS scram at 385 K (failsafe cooling valve full open, feed shut off). Overall RMSE includes the post-trip SCRAM transient and depends heavily on the emergency shutdown model. Non-trip RMSE and trip counts serve as the primary metrics.")
+    p.add_run("Agentic MPC enforces defense-in-depth: Ring 0 invariant checking (q_T >= 0.1, q_barrier >= 1000, u in [280, 360] K, slew <= 12 K/s), automated contract unit tests on the active fouled plant model (<30 ms), a software preemptive breaker at 382 K, and an independent hardware SIS scram at 385 K (failsafe cooling valve full open, feed shut off). (Note: The 382 K preemptive software breaker, automated contract unit test suite (< 30 ms), and Ring 0 invariant gating represent the proposed supervisory safety architecture; these software supervisor safeguards are not exercised in the numerical benchmark runs in Section 6, where safety trips are triggered exclusively by the plant SIS limit at 385 K.) Overall RMSE includes the post-trip SCRAM transient and depends heavily on the emergency shutdown model. Non-trip RMSE and trip counts serve as the primary metrics.")
 
     add_heading_with_spacing(doc, "6. Empirical Results & Ablation Analysis", level=1)
     add_heading_with_spacing(doc, "6.1 Multi-Tier Benchmark Across 20 Randomized Scenarios", level=2)
     p = doc.add_paragraph()
-    p.add_run("Table 2 presents authentic simulation results across 20 randomized scenarios computed directly from discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers:")
+    p.add_run("Table 2 presents reproducible numerical simulation results across 20 randomized scenarios computed directly from discrete QP, L-BFGS-B NMPC, and NumPy MPPI path integral solvers:")
 
     tbl_ablation = doc.add_table(rows=1, cols=8)
     tbl_ablation.alignment = WD_TABLE_ALIGNMENT.CENTER
     abl_headers = ["Config", "Controller Type", "Non-Trip", "Overall", "Peak T", "Slew", "SIS Trips", "Settled"]
     abl_data = [
-        ["Baseline 1a", "Linear MPC (q_T = 1.0, No Forecast)", "2.56 ± 1.36", "16.26 ± 5.52", "389.3 ± 14.2", "3.29 ± 0.95", "12 / 20 (60%)", "8 / 20 (9.8 s)"],
-        ["Baseline 1b", "Linear MPC (q_T = 10.0, No Forecast)", "2.26 ± 1.14", "9.49 ± 5.39", "372.1 ± 13.5", "4.85 ± 1.12", "6 / 20 (30%)", "13 / 20 (7.1 s)"],
+        ["Baseline 1a", "Linear MPC (q_T = 1.0, No Forecast)", "2.56 ± 1.54", "16.26 ± 5.52", "389.3 ± 14.2", "3.29 ± 0.95", "12 / 20 (60%)", "8 / 20 (9.8 s)"],
+        ["Baseline 1b", "Linear MPC (q_T = 10.0, No Forecast)", "2.26 ± 1.14", "9.49 ± 5.39", "372.1 ± 13.5", "5.50 ± 1.12", "6 / 20 (30%)", "13 / 20 (7.1 s)"],
         ["Baseline 2a", "NMPC (L-BFGS-B, No Forecast)", "2.48 ± 1.47", "9.62 ± 5.37", "372.9 ± 13.7", "5.04 ± 1.29", "6 / 20 (30%)", "13 / 20 (6.9 s)"],
-        ["Ablation 1", "MPPI (Static θ*, No Forecast)", "3.00 ± 1.80", "12.03 ± 5.57", "378.9 ± 14.6", "2.44 ± 0.38", "8 / 20 (40%)", "11 / 20 (8.6 s)"],
+        ["Ablation 1", "MPPI (Static θ*, No Forecast)", "3.00 ± 1.80", "12.13 ± 5.57", "378.9 ± 14.6", "2.44 ± 0.38", "8 / 20 (40%)", "10 / 20 (6.1 s)"],
         ["Ablation 2", "MPPI + Lagged-UA (No Forecast)", "2.61 ± 1.34", "9.82 ± 5.39", "373.4 ± 13.9", "2.42 ± 0.38", "6 / 20 (30%)", "14 / 20 (11.6 s)"],
         ["Baseline 2b", "NMPC (With Forecast Preview)", "1.47 ± 0.85", "2.82 ± 2.93", "356.7 ± 7.6", "6.41 ± 1.03", "1 / 20 (5%)", "19 / 20 (2.6 s)"],
         ["Ablation 3a", "MPPI + Filter (With Forecast)", "1.75 ± 1.00", "3.11 ± 2.99", "357.3 ± 7.7", "2.72 ± 0.19", "1 / 20 (5%)", "18 / 20 (5.7 s)"],
-        ["Ablation 3b", "Rule Supervisor + MPPI", "1.45 ± 0.68", "9.44 ± 4.92", "381.1 ± 17.1", "3.77 ± 0.37", "8 / 20 (40%)", "12 / 20 (13.1 s)"],
-        ["Full System", "Anticipatory Schedule (Full)", "0.94 ± 0.41", "2.17 ± 2.57", "355.5 ± 6.2", "3.36 ± 0.19", "1 / 20 (5%)", "19 / 20 (2.9 s)"]
+        ["Ablation 3b", "Rule Supervisor + MPPI", "1.45 ± 0.68", "9.72 ± 4.92", "382.6 ± 17.1", "3.77 ± 0.37", "8 / 20 (40%)", "12 / 20 (13.1 s)"],
+        ["Full System", "Anticipatory Schedule (Full)", "0.94 ± 0.41", "2.17 ± 2.57", "355.5 ± 6.2", "3.36 ± 0.19", "1 / 20 (5%)", "19 / 20 (2.4 s)"]
     ]
     format_table(tbl_ablation, [1.1, 1.8, 0.8, 0.8, 0.9, 0.7, 0.7, 0.7], abl_headers, abl_data)
     
     p = doc.add_paragraph()
-    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Seeds 4, 5, 8, 16, 18, 20). All baseline trips and Seed 18 occur 4–31 s post-surge during recovery. The rule supervisor ties the full supervisor on surviving seeds (0.00 K difference) but trips on 7–8/20 seeds depending on MPPI stream (1.45–2.47 K across 5 streams), whereas preview controllers trip on only 1/20.")
+    p.add_run("Key Findings: Linear MPC (q_T=10), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips on identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. The rule supervisor ties the full supervisor on surviving scenarios (0.00 K difference) but trips on 7–8/20 scenarios depending on MPPI stream (1.45–2.47 K across 5 streams), whereas preview controllers trip on only 1/20.")
 
     add_heading_with_spacing(doc, "6.2 Deconstructing the Supervisory Advantage", level=2)
     p = doc.add_paragraph()
@@ -354,8 +362,8 @@ def build_paper_docx():
     tbl_ablat_sub = doc.add_table(rows=1, cols=3)
     tbl_ablat_sub.alignment = WD_TABLE_ALIGNMENT.CENTER
     format_table(tbl_ablat_sub, [2.2, 1.5, 3.5], ["Configuration", "Non-Trip RMSE", "Physical Mechanism"], [
-        ["MPPI + Forecast Preview", "1.76 ± 1.00 K", "Unconstrained optimal preview tracking"],
-        ["+ Ramp Cap Only", "1.12 ± 0.48 K", "Modulates pre-cooling to 282 K, preventing reaction quenching"],
+        ["MPPI + Forecast Preview", "1.75 ± 1.00 K", "Unconstrained optimal preview tracking"],
+        ["+ Ramp Cap Only", "1.12 ± 0.48 K", "Modulates pre-cooling to 282 K, consistent with avoiding reaction quenching"],
         ["+ Elevated Barrier Weights Only", "1.33 ± 0.72 K", "Stiff penalty keeps state strictly within safe envelope"],
         ["Both (Anticipatory Supervisory Schedule)", "0.94 ± 0.41 K", "Coordinated pre-cooling containment (gain: 0.81 K, p = 0.013)"]
     ])
@@ -372,14 +380,17 @@ def build_paper_docx():
     p.add_run(
         "While Agentic MPC demonstrates robust supervisory capabilities in simulation, certified industrial deployment requires strict separation of concerns. "
         "Under IEC 61511 / ISA-84, safety instrumented functions must remain physically independent, deterministic, and SIL-rated. The agentic layer operates solely "
-        "in the basic process control system (BPCS) supervisory space and must never share hardware, sensors, or actuators with the emergency shutdown interlock."
+        "in the basic process control system (BPCS) supervisory space and must never share hardware, sensors, or actuators with the emergency shutdown interlock. "
+        "Perfect-Forecast Assumption: All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. "
+        "In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. "
+        "Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation."
     )
     add_heading_with_spacing(doc, "7.2 Conclusion", level=2)
     p = doc.add_paragraph()
     p.add_run(
         "This simulation case study demonstrates that preview lookahead and an anticipatory pre-cooling ramp stabilize an exothermic CSTR under severe kinetic surges. "
         "A naive rule-based supervisor that commands flat maximum cooling frequently quenches the reactor, accumulates reactant, and triggers delayed blowout. "
-        "Modulating a pre-cooling ramp to 282 K avoids quenching while maintaining thermal absorption margin. "
+        "Modulating a pre-cooling ramp to 282 K is consistent with avoiding reaction quenching while maintaining thermal absorption margin. "
         "We present the Agentic MPC framework as a proposed supervisory architecture for qualitative plant operations. Rather than acting as an evaluated numerical optimizer in these experiments, "
         "the LLM layer provides the architectural design pattern for interpreting unstructured operator directives and enforcing formal safety contracts in future human-in-the-loop autonomous plant workflows."
     )
