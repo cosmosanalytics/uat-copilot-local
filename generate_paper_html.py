@@ -79,14 +79,117 @@ html_content = r"""<!DOCTYPE html>
     }
 
     @media print {
+      @page {
+        size: letter;
+        margin: 0;
+      }
       header#top-nav { display: none !important; }
-      body { padding: 0 !important; background: #ffffff !important; }
+      body {
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-size: 10pt !important;
+        line-height: 1.5 !important;
+      }
       article#paper-container {
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
         box-shadow: none !important;
         max-width: 100% !important;
+      }
+      h1.title {
+        font-size: 18pt !important;
+        line-height: 1.2 !important;
+        margin-bottom: 8pt !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+      }
+      .meta-byline {
+        font-size: 8.5pt !important;
+        margin-bottom: 14pt !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+      }
+      .abstract-box {
+        padding: 12pt 14pt !important;
+        margin-bottom: 16pt !important;
+        font-size: 8.5pt !important;
+        line-height: 1.4 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        border-left: 3pt solid var(--accent) !important;
+        background: #f8fafc !important;
+      }
+      .abstract-box h3 {
+        font-size: 9pt !important;
+        margin-bottom: 4pt !important;
+      }
+      .abstract-box p {
+        margin-bottom: 6pt !important;
+      }
+      h2 {
+        font-size: 12.5pt !important;
+        margin: 18pt 0 8pt 0 !important;
+        padding-bottom: 3pt !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+      }
+      h3 {
+        font-size: 10.5pt !important;
+        margin: 12pt 0 4pt 0 !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+      }
+      p {
+        margin-bottom: 7pt !important;
+        orphans: 3;
+        widows: 3;
+      }
+      table {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin: 10pt 0 !important;
+        font-size: 7.8pt !important;
+      }
+      tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      th, td {
+        padding: 4pt 5pt !important;
+      }
+      .table-benchmark th, .table-benchmark td {
+        padding: 3.5pt 4.5pt !important;
+        font-size: 7.2pt !important;
+      }
+      pre {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        padding: 8pt !important;
+        margin: 10pt 0 !important;
+        font-size: 7.8pt !important;
+      }
+      .katex-display {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin: 8pt 0 !important;
+      }
+      .mermaid {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin: 10pt 0 !important;
+      }
+      ol, ul {
+        margin: 0 0 10pt 16pt !important;
+      }
+      li {
+        margin-bottom: 3pt !important;
+        break-inside: avoid !important;
+      }
+      .page-break-before {
+        break-before: page !important;
+        page-break-before: always !important;
       }
     }
 
@@ -321,7 +424,7 @@ html_content = r"""<!DOCTYPE html>
     \[UA_{\text{est}} \leftarrow UA_{\text{est}} + 0.02 (UA_{\text{true}} - UA_{\text{est}})\]
     <p>evaluated at each integration step \(\Delta t_{\text{sim}} = 0.02\text{ s}\) (\(\tau = 1.0\text{ s}\)). Uses the true parameter directly. With forecast lookahead, the forecast vector supplies \(UA\) directly, so the filter primarily impacts the no-forecast baseline (\(12.13\text{ K} \to 9.82\text{ K}\) overall RMSE).</p>
 
-    <h2>4. Benchmark Case Study: Exothermic CSTR</h2>
+    <h2 class="page-break-before">4. Benchmark Case Study: Exothermic CSTR</h2>
 
     <h3>4.1 Hold-280 K Lead-Time Sweep & Controllability Limits</h3>
     <p>An empirical <strong>hold-280 K lead-time sweep</strong> over the benchmark kinetic surge evaluates required early advisory warning when stepping jacket coolant flatly to \(u = 280\text{ K}\). When coolant is released open-loop back to \(300\text{ K}\) at surge conclusion (\(t = 25\text{ s}\)), reactant accumulated during deep pre-cooling causes delayed re-ignition at \(t = 57\text{--}83\text{ s}\) unless \(\ge 5.0\text{ s}\) lead is provided:</p>
@@ -354,9 +457,9 @@ html_content = r"""<!DOCTYPE html>
     <p><em>Per-Scenario Open-Loop Lead Requirements (200 s Horizon):</em> Scenario 18 requires <strong>6.0 s</strong> of lead time (the sole scenario requiring &gt; 5.0 s); Scenarios 8 and 20 require <strong>4.5 s</strong>; Scenarios 4 and 5 require <strong>4.0 s</strong>; Scenarios 7, 15, and 9 require <strong>2.5 s, 2.5 s, and 1.5 s</strong>; and Scenarios 11 and 13 require <strong>0.0 s</strong>.</p>
     <p><em>Rule Supervisor Scenario 18 Survival:</em> Notably, the naive rule supervisor (stepping cooling to 280 K throughout alert and surge, followed by MPPI feedback) safely survives Scenario 18 (\(T_{\min} = 348.8\text{ K}, T_{\max} < 385\text{ K}\)), whereas the Full anticipatory system and standard preview MPPI trip on Scenario 18 at 3.5 s lead. This highlights that extreme continuous cooling can survive severe kinetic excursions, but at the expense of quenching trips across moderate scenarios (e.g. Scenarios 2, 3, 9).</p>
 
-    <h2>5. Verification & Safety Architecture</h2>
+    <h2 class="page-break-before">5. Verification & Safety Architecture</h2>
     <p>Agentic MPC enforces defense-in-depth: Ring 0 invariant checking (\(q_T \ge 0.1\), \(q_{\text{barrier}} \ge 1000\), \(u \in [280, 360]\text{ K}\), slew \(\le 12\text{ K/s}\)), automated contract unit tests on the active fouled plant model (&lt;30 ms), a software preemptive breaker at 382 K, and an independent hardware SIS scram at 385 K (failsafe cooling valve full open, feed shut off).</p>
-    <p><em>(Note: The 382 K preemptive software breaker, automated contract unit test suite (< 30 ms), and Ring 0 invariant gating represent the proposed supervisory safety architecture; these software supervisor safeguards are not exercised in the numerical benchmark runs in Section 6, where safety trips are triggered exclusively by the plant SIS limit at 385 K.)</em></p>
+    <p><em>(Note: The 382 K preemptive software breaker, automated contract unit test suite (&lt; 30 ms), and Ring 0 invariant gating represent the proposed supervisory safety architecture; these software supervisor safeguards are not exercised in the numerical benchmark runs in Section 6, where safety trips are triggered exclusively by the plant SIS limit at 385 K.)</em></p>
     <p><em>Metric Definition:</em> Overall RMSE includes the post-trip SCRAM transient and depends heavily on the emergency shutdown model. Non-trip RMSE and trip counts serve as the primary metrics.</p>
 
     <h2>6. Empirical Results & Ablation Analysis</h2>
@@ -473,7 +576,7 @@ html_content = r"""<!DOCTYPE html>
 
     <p><em>Key Findings:</em> Linear MPC (\(q_T=10\)), NMPC, and MPPI+filter establish an empirical feedback floor of 6/20 trips, failing on the identical scenarios (Scenarios 4, 5, 8, 16, 18, 20). All baseline trips and Scenario 18 occur 4–31 s post-surge during recovery. Scenario 18 requires <strong>6.0 s of advance lead in open loop</strong> (the sole scenario requiring &gt; 5.0 s). Closed-loop runs are evaluated over a standardized \(60.0\text{ s}\) window; baseline trips occur as late as \(t = 56\text{ s}\), and six surviving baseline runs remain unsettled at the 60 s boundary. Trajectory inspection on rule supervisor trip cases (Scenarios 2, 3, 9) shows reactor quenching to \(T_{\min} = 339\text{--}344\text{ K}\) (vs. \(\approx 349\text{ K}\) for Full system), allowing reactant to accumulate to \(C_A = 0.555\text{--}0.576\text{ mol/L}\) at surge end and climbing to \(0.578\text{--}0.597\text{ mol/L}\) (with Scenario 9 reaching a peak of \(0.578\text{ mol/L}\)) before exploding into thermal blowout. Crucially, the rule supervisor survives Scenario 18 (\(T_{\min} = 348.8\text{ K}\)) while preview MPPI and Full system trip at 3.5 s lead.</p>
 
-    <h3>6.2 Deconstructing the Supervisory Advantage</h3>
+    <h3 class="page-break-before">6.2 Deconstructing the Supervisory Advantage</h3>
     <p>Ablation across the 19 common surviving scenarios isolates the quantitative mechanism behind the supervisory schedule:</p>
     <table>
       <thead>
@@ -504,7 +607,7 @@ html_content = r"""<!DOCTYPE html>
     <p><strong>Perfect-Forecast Assumption:</strong> All preview controllers evaluated in Section 6 receive an exact preview of disturbance onset, duration, and magnitude. In industrial plant deployments, upstream analyzers and operator advisories exhibit lead-time jitter, amplitude estimation errors, and false positives. Characterizing closed-loop robustness under imperfect, noisy, or delayed forecast advisories is an essential direction for future validation.</p>
     <p><strong>Evaluation Horizon Limitations:</strong> The closed-loop benchmark tests were evaluated over a 60 s time horizon. Because open-loop sweeps reveal delayed thermal re-ignition transients extending up to 83 s when unreacted feed accumulates (Section 4.1), and reactive baselines exhibited trips as late as 56 s with six surviving baseline runs unsettled at 60 s, extending the closed-loop evaluation window to 120–200 s is recommended to capture full asymptotic settling in industrial certification.</p>
     
-    <h3>7.2 Conclusion</h3>
+    <h3 class="page-break-before">7.2 Conclusion</h3>
     <p>This simulation case study demonstrates that preview lookahead and an anticipatory pre-cooling ramp stabilize an exothermic CSTR under severe kinetic surges. A naive rule-based supervisor that commands flat maximum cooling frequently quenches the reactor, accumulates reactant, and triggers delayed blowout. Modulating a pre-cooling ramp to 282 K is consistent with avoiding reaction quenching while maintaining thermal absorption margin.</p>
     <p>We present the Agentic MPC framework as a proposed supervisory architecture for qualitative plant operations. Rather than acting as an evaluated numerical optimizer in these experiments, the LLM layer provides the architectural design pattern for interpreting unstructured operator directives and enforcing formal safety contracts in future human-in-the-loop autonomous plant workflows.</p>
 

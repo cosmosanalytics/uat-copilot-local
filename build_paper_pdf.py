@@ -41,10 +41,10 @@ def generate_pdf():
         
         print_options = PrintOptions()
         print_options.background = True
-        print_options.margin_top = 0.5
-        print_options.margin_bottom = 0.5
-        print_options.margin_left = 0.5
-        print_options.margin_right = 0.5
+        print_options.margin_top = 0.8
+        print_options.margin_bottom = 0.8
+        print_options.margin_left = 0.8
+        print_options.margin_right = 0.8
         
         pdf_base64 = driver.print_page(print_options)
         pdf_bytes = base64.b64decode(pdf_base64)
