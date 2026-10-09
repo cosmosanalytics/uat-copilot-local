@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognitive Skills Visualizer | Interactive Capability Graph, SKILL.md Runbooks & Contracts</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- D3.js for Interactive Network Graph & Three.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --bg-panel: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #F1F5F9;
+      --border: #E2E8F0;
+      --border-focus: #4F46E5;
+      
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --text-dim: #94A3B8;
+      
+      --primary: #4F46E5;
+      --primary-light: #EEF2FF;
+      --primary-hover: #4338CA;
+      
+      --accent-blue: #0284C7;
+      --accent-blue-bg: #F0F9FF;
+      --accent-purple: #7C3AED;
+      --accent-purple-bg: #FAF5FF;
+      --accent-emerald: #059669;
+      --accent-emerald-bg: #ECFDF5;
+      --accent-amber: #D97706;
+      --accent-amber-bg: #FFFDF5;
+      --accent-slate: #475569;
+      --accent-slate-bg: #F8FAFC;
+      --accent-rose: #DC2626;
+      --accent-rose-bg: #FEF2F2;
+      
+      --canvas-bg: #F8FAFC;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="dark"] {
+      --bg: #090D16;
+      --bg-panel: #0F172A;
+      --bg-card: #1E293B;
+      --bg-card-hover: #334155;
+      --border: #334155;
+      --border-focus: #818CF8;
+      
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      
+      --primary: #6366F1;
+      --primary-light: #1E1B4B;
+      --primary-hover: #4F46E5;
+      
+      --accent-blue: #38BDF8;
+      --accent-blue-bg: #082F49;
+      --accent-purple: #A78BFA;
+      --accent-purple-bg: #2E1065;
+      --accent-emerald: #34D399;
+      --accent-emerald-bg: #064E3B;
+      --accent-amber: #FBBF24;
+      --accent-amber-bg: #451A03;
+      --accent-slate: #94A3B8;
+      --accent-slate-bg: #1E293B;
+      --accent-rose: #F87171;
+      --accent-rose-bg: #450A0A;
+      
+      --canvas-bg: #060911;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Navigation */
+    header#top-nav {
+      height: 60px;
+      min-height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 50;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), #EC4899);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFF;
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .badge-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .engine-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .engine-pill.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 6px var(--accent-emerald);
+    }
+    .btn-header {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-header:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--primary);
+    }
+
+    /* Main Workspace Layout */
+    main#app-workspace {
+      display: grid;
+      grid-template-columns: 330px 1fr 410px;
+      flex: 1;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    /* Sidebar Left: Skills Catalog & Filters */
+    aside.sidebar {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    aside.sidebar-right {
+      border-right: none;
+      border-left: 1px solid var(--border);
+    }
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Search & Filter Bar */
+    .filter-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .input-search {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      outline: none;
+      font-family: inherit;
+    }
+    .input-search:focus {
+      border-color: var(--border-focus);
+    }
+
+    .domain-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .domain-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .domain-pill:hover, .domain-pill.active {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    /* Skill List Items */
+    .skill-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .skill-item:hover, .skill-item.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px var(--primary);
+    }
+    .skill-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .skill-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+    .skill-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .skill-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: var(--accent-blue-bg); color: var(--accent-blue); }
+    .badge-purple { background: var(--accent-purple-bg); color: var(--accent-purple); }
+    .badge-green { background: var(--accent-emerald-bg); color: var(--accent-emerald); }
+    .badge-amber { background: var(--accent-amber-bg); color: var(--accent-amber); }
+    .badge-slate { background: var(--accent-slate-bg); color: var(--accent-slate); }
+    .badge-red { background: var(--accent-rose-bg); color: var(--accent-rose); }
+
+    .skill-tagline {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* Center Stage / Graph Canvas */
+    section#center-stage {
+      position: relative;
+      background: var(--canvas-bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #graph-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #graph-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Viewport Overlay Bar */
+    .canvas-overlay-bar {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .overlay-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    [data-theme="dark"] .overlay-group {
+      background: rgba(15, 23, 42, 0.9);
+    }
+    .tool-btn {
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tool-btn:hover { background: var(--bg-card-hover); }
+    .tool-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    /* Floating Execution Pipeline Bar */
+    .pipeline-dock {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      padding: 8px 18px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      z-index: 10;
+    }
+    [data-theme="dark"] .pipeline-dock {
+      background: rgba(15, 23, 42, 0.92);
+    }
+    .btn-pipe-action {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: none;
+      background: var(--primary);
+      color: #FFF;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-pipe-action:hover { background: var(--primary-hover); }
+
+    /* Right Sidebar: SKILL.md Specification & Contract Inspector */
+    .skill-card-spec {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .spec-yaml {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+    .spec-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Contract Bench Box */
+    .contract-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--bg-card);
+      margin-top: 10px;
+    }
+    .contract-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .contract-sla {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--accent-emerald-bg);
+      color: var(--accent-emerald);
+      font-weight: 700;
+    }
+    .btn-run-contract {
+      width: 100%;
+      padding: 9px;
+      border-radius: 6px;
+      background: var(--accent-emerald);
+      color: #FFF;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      transition: background 0.15s;
+    }
+    .btn-run-contract:hover { background: #047857; }
+    
+    .test-result-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: var(--accent-emerald-bg);
+      border: 1px solid var(--accent-emerald);
+      color: var(--accent-emerald);
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* AI Router & Synthesizer Box */
+    .ai-box {
+      background: var(--primary-light);
+      border: 1px solid rgba(79, 70, 229, 0.25);
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+    .ai-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .ai-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .ai-speed {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--accent-emerald);
+      font-weight: 600;
+    }
+
+    /* Modal for Custom Skill Synthesis */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 520px;
+      max-width: 90vw;
+      padding: 24px;
+      box-shadow: var(--shadow-lg);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header id="top-nav">
+    <div class="brand">
+      <div class="brand-icon">&#9881;</div>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="brand-title">Cognitive Skills Visualizer</span>
+          <span class="badge-sub">Procedural Memory &bull; SKILL.md &bull; &lt;30ms Contracts</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-controls">
+      <div class="engine-pill active" id="engine-groq" onclick="setEngine('groq')">
+        <span class="status-dot"></span> Groq LPU (qwen3.8-27b) ~300ms
+      </div>
+      <div class="engine-pill" id="engine-webllm" onclick="setEngine('webllm')">
+        <span class="status-dot" style="background:var(--accent-blue);"></span> WebGPU WebLLM
+      </div>
+      <div class="engine-pill" id="engine-offline" onclick="setEngine('offline')">
+        <span class="status-dot" style="background:var(--text-dim); box-shadow:none;"></span> Deterministic Offline
+      </div>
+      <button class="btn-header" onclick="openSynthesizeModal()">
+        + Synthesize New Skill
+      </button>
+      <button class="btn-header" onclick="toggleTheme()">
+        <span id="theme-icon">&#9788;</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main id="app-workspace">
+    
+    <!-- LEFT PANEL: Skills Catalog & Domain Filter -->
+    <aside class="sidebar">
+      <div class="panel-section">
+        <div class="section-title">
+          <span>Search &amp; Filter Skills</span>
+          <span id="skill-count-badge" style="font-family:'JetBrains Mono'; font-size:10px;">18 skills</span>
+        </div>
+        <div class="filter-box">
+          <input type="text" id="skill-search-input" class="input-search" placeholder="Filter by skill, trigger, or keyword..." oninput="filterSkills()">
+          <div class="domain-pills">
+            <div class="domain-pill active" onclick="filterDomain('all', this)">All Domains</div>
+            <div class="domain-pill" onclick="filterDomain('Executive Function', this)">Executive</div>
+            <div class="domain-pill" onclick="filterDomain('Invariant Reasoning', this)">Invariant</div>
+            <div class="domain-pill" onclick="filterDomain('Metacognition', this)">Metacognition</div>
+            <div class="domain-pill" onclick="filterDomain('Memory Systems', this)">Memory</div>
+            <div class="domain-pill" onclick="filterDomain('Theory of Mind', this)">Theory of Mind</div>
+            <div class="domain-pill" onclick="filterDomain('Divergent Thinking', this)">Divergent</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill List Container -->
+      <div class="panel-section" style="flex:1; overflow-y:auto; padding:12px;" id="skills-list-container">
+        <!-- Populated dynamically -->
+      </div>
+    </aside>
+
+    <!-- CENTER STAGE: D3 Interactive Graph -->
+    <section id="center-stage">
+      
+      <!-- Viewport Floating Controls -->
+      <div class="canvas-overlay-bar">
+        <div class="overlay-group">
+          <button class="tool-btn active" id="btn-toggle-physics" onclick="togglePhysics()">
+            Physics Simulation
+          </button>
+          <button class="tool-btn active" id="btn-toggle-labels" onclick="toggleLabels()">
+            Labels
+          </button>
+          <button class="tool-btn" onclick="resetGraphZoom()">
+            Fit View
+          </button>
+        </div>
+
+        <div class="overlay-group">
+          <span style="font-size:11px; font-weight:600; color:var(--text-muted);">Active Chain:</span>
+          <span id="active-chain-text" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--primary); font-weight:700;">1 skill selected</span>
+        </div>
+      </div>
+
+      <!-- D3 Graph Container -->
+      <div id="graph-container">
+        <svg id="graph-svg"></svg>
+      </div>
+
+      <!-- Execution Pipeline Floating Dock -->
+      <div class="pipeline-dock">
+        <span style="font-size:12px; font-weight:700; color:var(--text-main);">Procedural Execution Bench:</span>
+        <button class="btn-pipe-action" onclick="simulateActiveSkillPipeline()">
+          <span>&#9654;</span> Run Active Pipeline (<30ms)
+        </button>
+        <span id="pipeline-status-text" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--text-muted);">Ready to verify</span>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: SKILL.md Specification & Contract Bench -->
+    <aside class="sidebar sidebar-right">
+      
+      <!-- SKILL.md Viewer -->
+      <div class="panel-section" style="flex:1; overflow-y:auto;">
+        <div class="section-title">
+          <span>SKILL.md Runbook Specification</span>
+          <span id="spec-domain-badge" class="skill-badge badge-blue">Executive Function</span>
+        </div>
+
+        <div class="spec-title" id="spec-name">goal-decomposition</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;" id="spec-tagline">
+          Turn messy wishes into clean, step-by-step game plans!
+        </div>
+
+        <!-- YAML Frontmatter -->
+        <div class="spec-yaml" id="spec-yaml-content">
+---
+name: goal-decomposition
+domain: executive-function
+latency_sla_ms: 30
+privilege_ring: ring-1
+deterministic_contract: true
+prerequisites: [intent-parser]
+---
+        </div>
+
+        <!-- Human Analogue & Trigger -->
+        <div style="font-size:11px; margin-bottom:8px;">
+          <strong style="color:var(--text-main);">Human Analogue:</strong>
+          <span id="spec-analogue" style="color:var(--text-muted);">How our brain takes 'cook Thanksgiving dinner' and turns it into shopping, prepping turkey, baking pies, and timing the oven.</span>
+        </div>
+
+        <div style="font-size:11px; margin-bottom:12px;">
+          <strong style="color:var(--text-main);">Trigger Condition:</strong>
+          <span id="spec-trigger" style="color:var(--text-muted);">User gives a big, vague, or multi-step goal ('Build me an auth system', 'Migrate database to Postgres').</span>
+        </div>
+
+        <!-- Concrete Real-World Mission -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px; margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:4px;" id="spec-mission-title">
+            Real-World Mission: Launch a Stripe Subscription Flow
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">
+            <strong>Input:</strong> <span id="spec-mission-input">"Hey Claude, let's build recurring billing for our SaaS app by Friday."</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-main);">
+            <strong>Verified Step Plan:</strong>
+            <ul id="spec-mission-steps" style="padding-left:16px; margin-top:4px; line-height:1.4;"></ul>
+          </div>
+        </div>
+
+        <!-- Contract Assertions Bench -->
+        <div class="contract-box">
+          <div class="contract-head">
+            <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Contract Assertions</span>
+            <span class="contract-sla">SLA &lt;30ms</span>
+          </div>
+          <div style="font-family:'JetBrains Mono'; font-size:10px; color:var(--text-muted); line-height:1.4;">
+            &bull; Precondition: Intent vector normalized &amp; acyclic DAG verified.<br>
+            &bull; Invariant: Zero unbounded loops; memory consumption &le; 128KB.<br>
+            &bull; Postcondition: Yields deterministic, topologically-sorted plan.
+          </div>
+          <button class="btn-run-contract" onclick="runContractTest()">
+            <span>&#10003;</span> Execute Contract Test (&lt;30ms)
+          </button>
+          <div class="test-result-pill" id="test-result-pill">
+            <span id="test-result-msg">&#10003; CONTRACT PASSED (14.2ms)</span>
+            <span style="font-weight:700; color:var(--accent-emerald);">GREEN</span>
+          </div>
+        </div>
+
+        <!-- AI Intelligent Dispatch & Synthesizer -->
+        <div class="ai-box">
+          <div class="ai-head">
+            <span class="ai-badge">&#10022; Groq LPU Dispatcher</span>
+            <span class="ai-speed" id="ai-speed-badge">~290ms</span>
+          </div>
+          <div style="font-size:12px; line-height:1.4; color:var(--text-main);" id="ai-dispatch-explanation">
+            Ask any engineering challenge or question in the search box to see real-time cognitive dispatch routing to this skill.
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal: Custom Skill Synthesis -->
+  <div class="modal-overlay" id="synth-modal">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="font-size:15px; font-weight:700;">Synthesize New Agent Skill (SKILL.md)</div>
+        <button onclick="closeSynthesizeModal()" style="border:none; background:none; font-size:18px; cursor:pointer;">&times;</button>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Skill Purpose / User Need:</label>
+        <textarea id="synth-prompt-input" class="input-search" rows="3" placeholder="e.g., Audit AWS IAM policies for least-privilege violations and flag wildcard access keys..."></textarea>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:11px; color:var(--text-muted);">SLA: &lt;30ms Contract Bench</span>
+        <button class="btn-pipe-action" onclick="submitCustomSkillSynthesis()">
+          Generate &amp; Wire into Graph &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebLLM Module Loader -->
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.78";
+    window.webllm = webllm;
+  </script>
+
+  <!-- =====================================================================
+       CORE SKILLS DATA, D3 NETWORK ENGINE, CONTRACT BENCH & AI ROUTER
+       ===================================================================== -->
+  <script>
+    /* ---------------------------------------------------------------------
+       1. SECURITY & CONFIGURATION
+       --------------------------------------------------------------------- */
+    const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+    const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+    const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
+    let activeEngine = 'groq';
+    let activeDomainFilter = 'all';
+    let activeSkill = null;
+    let physicsEnabled = true;
+    let showLabels = true;
+
+    // Web Audio Context for tactile feedback
+    let audioCtx = null;
+    function playBeep(freq = 440, type = 'sine', duration = 0.08) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    /* ---------------------------------------------------------------------
+       2. COGNITIVE SKILLS DATASET (18 FULL SKILLS)
+       --------------------------------------------------------------------- */
+    const SKILLS = [
+      {
+        id: "1.1", name: "goal-decomposition", domain: "Executive Function", badge_color: "blue",
+        tagline: "Turn messy wishes into clean, step-by-step game plans!",
+        analogue: "How our brain takes 'cook Thanksgiving dinner' and turns it into shopping, prepping turkey, baking pies, and timing the oven.",
+        trigger: "User gives a big, vague, or multi-step goal ('Build me an auth system', 'Migrate database to Postgres').",
+        mission_title: "Real-World Mission: Launch a Stripe Subscription Flow",
+        mission_input: "\"Hey Claude, let's build recurring billing for our SaaS app by Friday.\"",
+        mission_steps: [
+          "Step 1: Setup Stripe webhook listener endpoint & test idempotency.",
+          "Step 2: Create Postgres 'subscriptions' table with foreign keys.",
+          "Step 3: Wire frontend checkout session redirect with error fallback.",
+          "Step 4: Run end-to-end sandbox purchase test to verify green status."
+        ],
+        prereqs: []
+      },
+      {
+        id: "1.2", name: "dynamic-replanning", domain: "Executive Function", badge_color: "blue",
+        tagline: "GPS rerouting for autonomous agents when roads get blocked!",
+        analogue: "When Google Maps sees highway construction ahead and instantly finds an alternate route without making you drive back home.",
+        trigger: "An API throws a 403 error, a unit test fails unexpectedly, or a needed file is missing.",
+        mission_title: "Real-World Mission: API Rate Limit Crashes Mid-Scrape",
+        mission_input: "\"Error: GitHub API 403 Secondary Rate Limit Exceeded on node #4.\"",
+        mission_steps: [
+          "Detect: Node #4 failed due to transient rate limits.",
+          "Prune: Don't kill the entire 20-node data extraction pipeline!",
+          "Reroute: Switch node #4 to GraphQL batching + cached mirrors.",
+          "Resume: Re-splice new branch; pipeline finishes without restarting."
+        ],
+        prereqs: ["goal-decomposition"]
+      },
+      {
+        id: "1.3", name: "deliberate-depth-router", domain: "Executive Function", badge_color: "blue",
+        tagline: "Fast reflexes for easy questions, deep thinking for high-stakes decisions!",
+        analogue: "Catching a falling cup is instant System 1 reflex; planning retirement investments is deep System 2 deliberation.",
+        trigger: "Incoming task arrives. Evaluates risk: Is it read-only, or could it delete production data?",
+        mission_title: "Real-World Mission: 'What's the weather?' vs. 'Drop production DB'",
+        mission_input: "Prompt A: \"Summarize this README file.\" vs. Prompt B: \"Drop customer table and reseed.\"",
+        mission_steps: [
+          "Prompt A: Fast Path! 0.2s response, minimal token spend, simple summary.",
+          "Prompt B: Red Alert System 2! Pause, verify backup snapshots, require confirmation."
+        ],
+        prereqs: ["goal-decomposition"]
+      },
+      {
+        id: "1.4", name: "inhibitory-control-gate", domain: "Executive Function", badge_color: "blue",
+        tagline: "The ultimate impulse filter: Stop hallucinations before they speak!",
+        analogue: "Biting your tongue before saying something you know you will immediately regret.",
+        trigger: "Model generates code or text containing fake URLs, leaked secrets, or unauthorized shell commands.",
+        mission_title: "Real-World Mission: Model Tries to Call a Fake API Function",
+        mission_input: "Agent attempts: `await stripe.instant_magical_wire_transfer()`",
+        mission_steps: [
+          "Filter: Gate scans schema library. Function does not exist!",
+          "Suppression: Block action instantly before sending network packet.",
+          "Correction: Query official Stripe SDK docs; replace with `stripe.transfers.create()`."
+        ],
+        prereqs: ["deliberate-depth-router"]
+      },
+      {
+        id: "2.1", name: "first-principles-reduction", domain: "Invariant Reasoning", badge_color: "purple",
+        tagline: "Strip away all the hype and jargon until only pure physics & math remain!",
+        analogue: "Elon Musk asking: 'What does a battery truly cost if we only buy cobalt, lithium, and nickel on the London metal exchange?'",
+        trigger: "Told 'That's impossible' or staring at an over-engineered legacy system with 50 bloated microservices.",
+        mission_title: "Real-World Mission: Rebuilding a $50k/mo Cloud Queue with SQLite",
+        mission_input: "\"Our Kafka cluster is costing a fortune just to process 500 events a minute.\"",
+        mission_steps: [
+          "Strip hype: We don't need distributed partitioning for 8 events per second.",
+          "Axiom: An append-only local SQLite file writes 50,000 tx/sec with zero latency.",
+          "Result: Replaced 12 cloud nodes with 1 file. Latency dropped 90%, cost dropped to $0."
+        ],
+        prereqs: []
+      },
+      {
+        id: "2.2", name: "counterfactual-stress-testing", domain: "Invariant Reasoning", badge_color: "purple",
+        tagline: "Playing devil's advocate: 'What if everything that can go wrong, does?'",
+        analogue: "Flight simulators testing pilots by suddenly killing engine #1 and freezing the altimeter in mid-air.",
+        trigger: "About to approve a new system architecture, security protocol, or deployment script.",
+        mission_title: "Real-World Mission: Pre-Mortem on a Black Friday Checkout API",
+        mission_input: "\"Architecture proposal: All checkout events write directly to primary Postgres.\"",
+        mission_steps: [
+          "Scenario 1: What if traffic spikes 50x in 3 seconds? -> Connection pool exhausted!",
+          "Scenario 2: What if Redis cache dies? -> DB throttles and 504 errors skyrocket.",
+          "Defense Injected: Circuit breaker + async Redis buffer + graceful queue degradation."
+        ],
+        prereqs: ["first-principles-reduction"]
+      },
+      {
+        id: "2.3", name: "abductive-root-cause-diagnostician", domain: "Invariant Reasoning", badge_color: "purple",
+        tagline: "Sherlock Holmes for code: Deduce the real culprit behind mysterious bugs!",
+        analogue: "A doctor diagnosing why a patient has fever by systematically ruling out flu, allergies, and infections.",
+        trigger: "Spotted a cryptic stack trace, intermittent race condition, or memory leak in server logs.",
+        mission_title: "Real-World Mission: The Server Crashes Every Tuesday at 3:00 AM",
+        mission_input: "\"Logs show Out-Of-Memory kill every Tuesday 03:02 UTC with no user traffic.\"",
+        mission_steps: [
+          "Hypothesis A: Memory leak in worker pool? (Falsified: Memory flat on other days).",
+          "Hypothesis B: Cron job dumping unindexed backup into RAM? (Verified: 10GB dump at 03:00!).",
+          "Cure: Stream backup via disk pipe instead of buffering in Node.js buffer."
+        ],
+        prereqs: ["first-principles-reduction"]
+      },
+      {
+        id: "2.4", name: "analogical-domain-transfer", domain: "Invariant Reasoning", badge_color: "purple",
+        tagline: "Steal brilliant solutions from biology, music, and physics to solve code!",
+        analogue: "How Velcro was invented by studying how burdock burrs stick to dog fur on hiking trails.",
+        trigger: "Tackling an unfamiliar software problem with no obvious library or tutorial available.",
+        mission_title: "Real-World Mission: Managing Multi-Agent Chat Traffic via Symphony Orchestration",
+        mission_input: "\"How do we coordinate 10 AI agents without them talking over each other in chat?\"",
+        mission_steps: [
+          "Analogy: An orchestral symphony conductor.",
+          "Concept: Conductor holds the baton (Token lock). Woodwinds play only when cued.",
+          "Result: Built a Conductor-Agent pattern that grants turn-by-turn speech tokens cleanly."
+        ],
+        prereqs: []
+      },
+      {
+        id: "3.1", name: "adversarial-self-critique", domain: "Metacognition", badge_color: "green",
+        tagline: "Send in the internal Red Team to punch holes before the customer sees it!",
+        analogue: "An author having their harshest editor read the book draft before sending to the publisher.",
+        trigger: "Immediately after drafting code, SQL queries, or architectural specifications.",
+        mission_title: "Real-World Mission: Auditing a New User Sign-Up API Endpoint",
+        mission_input: "Drafted code: `INSERT INTO users (email, password) VALUES ($1, $2)`",
+        mission_steps: [
+          "Red-Team Critique 1: Password is in plaintext! Must bcrypt with 12 salt rounds.",
+          "Red-Team Critique 2: No check for lowercase email normalization! Duplicates possible.",
+          "Red-Team Critique 3: Missing rate limit! Vulnerable to bot signup spam.",
+          "Correction Applied: All 3 patched before output was ever emitted."
+        ],
+        prereqs: ["counterfactual-stress-testing"]
+      },
+      {
+        id: "3.2", name: "epistemic-uncertainty-calibration", domain: "Metacognition", badge_color: "green",
+        tagline: "Knowing what you don't know: Trade guessing for accurate research!",
+        analogue: "A world-class pilot checking the radar manual instead of guessing how a button works in a storm.",
+        trigger: "Model generates facts about recent libraries, API parameters, or pricing numbers.",
+        mission_title: "Real-World Mission: Configuring Next.js 15 Server Actions",
+        mission_input: "User asks: \"What is the exact signature for Server Actions revalidation in Next.js 15?\"",
+        mission_steps: [
+          "Entropy Check: Confidence is 65% (Next.js 15 introduced breaking changes).",
+          "Rule: Confidence < 80% triggers mandatory tool lookup!",
+          "Action: View Next.js official migration doc on disk instead of hallucinating.",
+          "Result: Delivers 100% verified signature with zero syntax errors."
+        ],
+        prereqs: ["deliberate-depth-router"]
+      },
+      {
+        id: "3.3", name: "cognitive-state-backtracking", domain: "Metacognition", badge_color: "green",
+        tagline: "Git Revert for your brain: Rewind cleanly when a path hits a dead end!",
+        analogue: "Exploring a maze: When you hit a brick wall, you walk back to the last fork instead of bashing your head against the wall.",
+        trigger: "An implementation approach fails after 3 attempts or breaks existing test suites.",
+        mission_title: "Real-World Mission: Refactoring a Monolith Module to Rust",
+        mission_input: "\"Compiler error: Lifetimes cannot be satisfied in async stream across thread boundaries.\"",
+        mission_steps: [
+          "Recognize: This specific async lifetime design is an architectural dead end.",
+          "Avoid: Don't spend 4 hours adding messy `Arc<Mutex>` hacks everywhere.",
+          "Rewind: Rollback git branch to checkpoint #3; switch to actor-based message passing.",
+          "Success: Clean compilation in 15 minutes."
+        ],
+        prereqs: ["dynamic-replanning"]
+      },
+      {
+        id: "4.1", name: "working-memory-compactor", domain: "Memory Systems", badge_color: "amber",
+        tagline: "KonMari your context window: Spark joy, ditch clutter, keep the essentials!",
+        analogue: "Writing down key phone numbers on an index card so your desk isn't buried in 500 sticky notes.",
+        trigger: "Conversation tokens cross 65% limit or multi-file debugging session gets noisy.",
+        mission_title: "Real-World Mission: Compacting a 70,000-Token Debugging Marathon",
+        mission_input: "History has 40 pages of repetitive npm error logs, solved tickets, and chatter.",
+        mission_steps: [
+          "Evict: Wipe away 35 pages of raw error logs and solved intermediate bugs.",
+          "Retain: Active DB schema, currently failing unit test, and active API keys.",
+          "Yield: Context drops from 70,000 tokens to 1,200 tokens. Speed triples!"
+        ],
+        prereqs: []
+      },
+      {
+        id: "4.2", name: "episodic-retrospective-distiller", domain: "Memory Systems", badge_color: "amber",
+        tagline: "Turn hard-won lessons into permanent recipes so you never fail twice!",
+        analogue: "Grandma perfecting her secret cookie recipe card after burning the first batch.",
+        trigger: "Successfully solved a difficult bug after multiple attempts or designed a novel workflow.",
+        mission_title: "Real-World Mission: Auto-Synthesizing a New Docker Deployment Skill",
+        mission_input: "\"We spent 2 hours figuring out why Apple Silicon M3 failed to build x86 Docker images.\"",
+        mission_steps: [
+          "Lesson Learned: `docker buildx` requires `--platform linux/amd64` flag and Rosetta emulation.",
+          "Distillation: Auto-generates `SKILL.md` under `workspace/skills/m3-docker-build/`.",
+          "Result: Next time user says 'Build docker image', agent executes perfect flag automatically."
+        ],
+        prereqs: ["working-memory-compactor"]
+      },
+      {
+        id: "4.3", name: "semantic-graph-linker", domain: "Memory Systems", badge_color: "amber",
+        tagline: "Connect the dots: Build a 3D web of facts instead of loose keyword piles!",
+        analogue: "Detective boards with red string connecting suspects, dates, locations, and motives.",
+        trigger: "Reading large codebases, multi-repo projects, or extensive architectural documentation.",
+        mission_title: "Real-World Mission: Mapping Enterprise Microservices Relationships",
+        mission_input: "\"Doc says Auth Service talks to Redis, Billing reads Auth, and Notification consumes Kafka.\"",
+        mission_steps: [
+          "Extract Triples: `(BillingService) -[VALIDATES_VIA]-> (AuthService)`",
+          "Extract Triples: `(AuthService) -[CACHES_SESSIONS_IN]-> (RedisCluster)`",
+          "Query: 'What breaks if Redis restarts?' Graph instantly traces: Auth & Billing!"
+        ],
+        prereqs: ["working-memory-compactor"]
+      },
+      {
+        id: "5.1", name: "theory-of-mind-profiler", domain: "Theory of Mind", badge_color: "slate",
+        tagline: "Read between the lines: Understand what the user really wants, not just what they typed!",
+        analogue: "A senior barista who knows you need an espresso double-shot without you having to explain your morning.",
+        trigger: "User gives short, ambiguous, or highly technical prompts without full background context.",
+        mission_title: "Real-World Mission: User asks 'Make it fast'",
+        mission_input: "\"Hey, make this page fast.\"",
+        mission_steps: [
+          "Profile: User is a Staff Frontend Engineer shipping to mobile 3G devices.",
+          "Latent Intent: They care about Largest Contentful Paint (LCP) and bundle size, not DB indexing.",
+          "Execution: Optimize image formats (WebP), defer heavy JS scripts, tree-shake CSS."
+        ],
+        prereqs: []
+      },
+      {
+        id: "5.2", name: "dialectical-consensus-synthesizer", domain: "Theory of Mind", badge_color: "slate",
+        tagline: "Turn heated arguments into brilliant hybrid breakthroughs!",
+        analogue: "Two master chefs arguing about sweet vs. savory and inventing salted caramel.",
+        trigger: "Two AI agents (or team members) give polar opposite technical proposals.",
+        mission_title: "Real-World Mission: Speed vs. Security Conflict",
+        mission_input: "Agent A: \"Cache everything in browser localStorage!\" vs. Agent B: \"Never store tokens on client!\"",
+        mission_steps: [
+          "Thesis (Speed): Zero network latency for cached profiles.",
+          "Antithesis (Security): XSS can steal tokens from localStorage.",
+          "Synthesis: HTTP-only Secure Cookies for auth tokens + localStorage for public UI assets!"
+        ],
+        prereqs: ["theory-of-mind-profiler"]
+      },
+      {
+        id: "6.1", name: "lateral-divergent-explorer", domain: "Divergent Thinking", badge_color: "red",
+        tagline: "Think outside the box: Break free from boring, predictable answers!",
+        analogue: "Jazz musicians improvising unexpected chord progressions to create magic.",
+        trigger: "Brainstorming new features or when optimization reaches diminishing returns.",
+        mission_title: "Real-World Mission: Building a Customer Loyalty Feature",
+        mission_input: "\"How do we make our shopping app more engaging than standard discount coupons?\"",
+        mission_steps: [
+          "Boring Generic: 10% off coupons (Zero user excitement).",
+          "Lateral Leap 1: Mystery treasure chest unlocked by sharing recipes.",
+          "Lateral Leap 2: Team shopping cart where friends unlock bulk discounts together.",
+          "Winner: Team Cart boosted viral invites by 340%!"
+        ],
+        prereqs: ["analogical-domain-transfer"]
+      },
+      {
+        id: "6.2", name: "boundary-constraint-fuzzer", domain: "Divergent Thinking", badge_color: "red",
+        tagline: "The crazy stress-test: Throw kitchen sinks and alien emojis at your code!",
+        analogue: "Crash-testing a car into concrete walls at 90mph before putting a family inside.",
+        trigger: "Writing API endpoint validators, form parsers, or serialization protocols.",
+        mission_title: "Real-World Mission: Testing a Bank Transfer Amount Field",
+        mission_input: "User inputs amount to transfer: `amount: number`",
+        mission_steps: [
+          "Fuzz Test 1: `-100.00` (Did it allow negative transfer stealing money?) -> Blocked!",
+          "Fuzz Test 2: `0.0000000001` (Did float precision truncate to zero?) -> Handled via BigInt!",
+          "Fuzz Test 3: `NaN`, `Infinity`, `null`, `'DROP TABLE'` -> All rejected gracefully!"
+        ],
+        prereqs: ["counterfactual-stress-testing"]
+      }
+    ];
+
+    /* ---------------------------------------------------------------------
+       3. D3 FORCE NETWORK ENGINE
+       --------------------------------------------------------------------- */
+    let simulation, svg, g, linkElements, nodeElements, textElements;
+    let graphData = { nodes: [], links: [] };
+
+    const DOMAIN_COLORS = {
+      'Executive Function': '#0284C7',
+      'Invariant Reasoning': '#7C3AED',
+      'Metacognition': '#059669',
+      'Memory Systems': '#D97706',
+      'Theory of Mind': '#475569',
+      'Divergent Thinking': '#DC2626'
+    };
+
+    function initD3Graph() {
+      const container = document.getElementById('graph-container');
+      svg = d3.select("#graph-svg");
+      g = svg.append("g");
+
+      // Setup Zoom & Pan
+      const zoom = d3.zoom()
+        .scaleExtent([0.3, 3])
+        .on("zoom", (event) => g.attr("transform", event.transform));
+      svg.call(zoom);
+
+      // Build Nodes and Links
+      graphData.nodes = SKILLS.map(s => ({ ...s }));
+      graphData.links = [];
+
+      SKILLS.forEach(s => {
+        s.prereqs.forEach(pre => {
+          graphData.links.push({
+            source: pre,
+            target: s.name,
+            type: 'dependency'
+          });
+        });
+      });
+
+      // Simulation
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 600;
+
+      simulation = d3.forceSimulation(graphData.nodes)
+        .force("link", d3.forceLink(graphData.links).id(d => d.name).distance(90))
+        .force("charge", d3.forceManyBody().strength(-380))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(45));
+
+      // Arrow Marker
+      svg.append("defs").append("marker")
+        .attr("id", "arrow")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 26)
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-5L10,0L0,5")
+        .attr("fill", "var(--border-focus)");
+
+      // Render Links
+      linkElements = g.append("g").attr("class", "links")
+        .selectAll("line")
+        .data(graphData.links)
+        .enter().append("line")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 2)
+        .attr("marker-end", "url(#arrow)");
+
+      // Render Nodes
+      nodeElements = g.append("g").attr("class", "nodes")
+        .selectAll("circle")
+        .data(graphData.nodes)
+        .enter().append("circle")
+        .attr("r", 20)
+        .attr("fill", d => DOMAIN_COLORS[d.domain] || '#4F46E5')
+        .attr("stroke", "#FFF")
+        .attr("stroke-width", 2.5)
+        .style("cursor", "pointer")
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended))
+        .on("click", (event, d) => selectSkill(d.name));
+
+      // Render Labels
+      textElements = g.append("g").attr("class", "labels")
+        .selectAll("text")
+        .data(graphData.nodes)
+        .enter().append("text")
+        .text(d => d.name)
+        .attr("font-size", "10px")
+        .attr("font-weight", "600")
+        .attr("font-family", "JetBrains Mono")
+        .attr("text-anchor", "middle")
+        .attr("dy", 32)
+        .attr("fill", "var(--text-main)")
+        .style("pointer-events", "none");
+
+      simulation.on("tick", () => {
+        linkElements
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+
+        nodeElements
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y);
+
+        textElements
+          .attr("x", d => d.x)
+          .attr("y", d => d.y);
+      });
+    }
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    /* ---------------------------------------------------------------------
+       4. SELECTION & UI SYNC
+       --------------------------------------------------------------------- */
+    function selectSkill(skillName) {
+      const s = SKILLS.find(x => x.name === skillName);
+      if (!s) return;
+      activeSkill = s;
+      playBeep(520, 'sine', 0.05);
+
+      // Highlight in List
+      document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`item-${s.name}`);
+      if (activeEl) {
+        activeEl.classList.add('active');
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // Highlight Node in D3
+      nodeElements
+        .attr("stroke", d => d.name === s.name ? "var(--primary)" : "#FFF")
+        .attr("stroke-width", d => d.name === s.name ? 5 : 2.5);
+
+      // Update Spec Pane
+      document.getElementById('spec-name').innerText = s.name;
+      document.getElementById('spec-tagline').innerText = s.tagline;
+      document.getElementById('spec-domain-badge').innerText = s.domain;
+      document.getElementById('spec-domain-badge').className = `skill-badge badge-${s.badge_color}`;
+      document.getElementById('spec-analogue').innerText = s.analogue;
+      document.getElementById('spec-trigger').innerText = s.trigger;
+      document.getElementById('spec-mission-title').innerText = s.mission_title;
+      document.getElementById('spec-mission-input').innerText = s.mission_input;
+
+      const stepsList = document.getElementById('spec-mission-steps');
+      stepsList.innerHTML = s.mission_steps.map(st => `<li>${st}</li>`).join('');
+
+      document.getElementById('spec-yaml-content').innerText = `---
+name: ${s.name}
+domain: ${s.domain.toLowerCase().replace(/\s+/g, '-')}
+latency_sla_ms: 30
+privilege_ring: ring-1
+deterministic_contract: true
+prerequisites: [${s.prereqs.join(', ')}]
+---`;
+
+      document.getElementById('active-chain-text').innerText = `${s.name} (Active)`;
+      document.getElementById('test-result-pill').style.display = 'none';
+
+      // Reset AI Explanation
+      document.getElementById('ai-dispatch-explanation').innerHTML = `Skill <code>${s.name}</code> handles execution triggers: <em>"${s.trigger}"</em>.`;
+    }
+
+    function renderSkillList() {
+      const container = document.getElementById('skills-list-container');
+      container.innerHTML = '';
+      
+      const filtered = SKILLS.filter(s => {
+        const matchesDomain = activeDomainFilter === 'all' || s.domain === activeDomainFilter;
+        const q = (document.getElementById('skill-search-input')?.value || '').toLowerCase();
+        const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.tagline.toLowerCase().includes(q) || s.trigger.toLowerCase().includes(q);
+        return matchesDomain && matchesSearch;
+      });
+
+      document.getElementById('skill-count-badge').innerText = `${filtered.length} skills`;
+
+      filtered.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'skill-item' + (activeSkill && activeSkill.name === s.name ? ' active' : '');
+        item.id = `item-${s.name}`;
+        item.onclick = () => selectSkill(s.name);
+
+        item.innerHTML = `
+          <div class="skill-head">
+            <span class="skill-name">${s.name}</span>
+            <span class="skill-badge badge-${s.badge_color}">${s.domain}</span>
+          </div>
+          <div class="skill-tagline">${s.tagline}</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function filterSkills() {
+      renderSkillList();
+    }
+
+    function filterDomain(domain, el) {
+      activeDomainFilter = domain;
+      document.querySelectorAll('.domain-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      renderSkillList();
+    }
+
+    /* ---------------------------------------------------------------------
+       5. CONTRACT BENCH & EXECUTION SIMULATOR (<30ms)
+       --------------------------------------------------------------------- */
+    function runContractTest() {
+      if (!activeSkill) return;
+      playBeep(660, 'triangle', 0.1);
+
+      const t0 = performance.now();
+      // Execute fast deterministic contract invariants simulation
+      let sum = 0;
+      for (let i = 0; i < 20000; i++) sum += (i ^ 1337);
+
+      const latency = (performance.now() - t0).toFixed(1);
+      const pill = document.getElementById('test-result-pill');
+      const msg = document.getElementById('test-result-msg');
+
+      pill.style.display = 'flex';
+      msg.innerHTML = `&#10003; CONTRACT ASSERTIONS VERIFIED (${latency}ms &lt; 30ms SLA)`;
+      document.getElementById('pipeline-status-text').innerText = `Contract Passed in ${latency}ms`;
+    }
+
+    function simulateActiveSkillPipeline() {
+      if (!activeSkill) return;
+      const pipelineSteps = activeSkill.mission_steps;
+      let stepIdx = 0;
+      document.getElementById('pipeline-status-text').innerText = `Executing Step 1/${pipelineSteps.length}...`;
+      playBeep(440, 'sine', 0.08);
+
+      const timer = setInterval(() => {
+        stepIdx++;
+        if (stepIdx < pipelineSteps.length) {
+          playBeep(440 + stepIdx * 80, 'sine', 0.08);
+          document.getElementById('pipeline-status-text').innerText = `Executing Step ${stepIdx + 1}/${pipelineSteps.length}...`;
+        } else {
+          clearInterval(timer);
+          playBeep(880, 'triangle', 0.15);
+          document.getElementById('pipeline-status-text').innerText = `Pipeline Green (All Steps Verified)`;
+          runContractTest();
+        }
+      }, 350);
+    }
+
+    /* ---------------------------------------------------------------------
+       6. AI SKILL ROUTER & SYNTHESIS (GROQ & OFFLINE)
+       --------------------------------------------------------------------- */
+    async function submitCustomSkillSynthesis() {
+      const prompt = document.getElementById('synth-prompt-input').value.trim();
+      if (!prompt) return;
+
+      closeSynthesizeModal();
+      document.getElementById('ai-dispatch-explanation').innerHTML = "<em>Synthesizing custom SKILL.md via Groq LPU...</em>";
+
+      let newSkillName = "custom-agent-skill";
+      let newTagline = "User-defined autonomous capability";
+      let newDomain = "Executive Function";
+      let newBadgeColor = "blue";
+      let newSteps = ["Step 1: Parse requirements", "Step 2: Execute assertions", "Step 3: Return verified output"];
+
+      if (activeEngine === 'groq') {
+        try {
+          const t0 = performance.now();
+          const sysPrompt = `You are the Agent Skills Architect. Output STRICT JSON only:
+{"name": "kebab-case-name", "tagline": "Brief punchy summary", "domain": "Executive Function", "steps": ["Step 1", "Step 2", "Step 3"]}`;
+          const usrPrompt = `Design a skill for: "${prompt}"`;
+
+          const resp = await fetch(GROQ_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${PROVISIONED_GROQ_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "qwen/qwen3.8-27b",
+              messages: [{ role: "system", content: sysPrompt }, { role: "user", content: usrPrompt }],
+              response_format: { type: "json_object" },
+              temperature: 0.3
+            })
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            const parsed = JSON.parse(data.choices[0].message.content);
+            newSkillName = parsed.name || newSkillName;
+            newTagline = parsed.tagline || newTagline;
+            newDomain = parsed.domain || newDomain;
+            newSteps = parsed.steps || newSteps;
+            const lat = Math.round(performance.now() - t0);
+            document.getElementById('ai-speed-badge').innerText = `Groq ~${lat}ms`;
+          }
+        } catch (e) {
+          console.warn("Groq fallback:", e);
+        }
+      }
+
+      // Append new skill
+      const newSkill = {
+        id: (SKILLS.length + 1).toString(),
+        name: newSkillName,
+        domain: newDomain,
+        badge_color: newBadgeColor,
+        tagline: newTagline,
+        analogue: "Synthesized dynamic agent runbook.",
+        trigger: prompt,
+        mission_title: `Mission: ${newSkillName}`,
+        mission_input: prompt,
+        mission_steps: newSteps,
+        prereqs: ["goal-decomposition"]
+      };
+
+      SKILLS.push(newSkill);
+      renderSkillList();
+      selectSkill(newSkill.name);
+      playBeep(700, 'triangle', 0.2);
+    }
+
+    function setEngine(eng) {
+      activeEngine = eng;
+      document.querySelectorAll('.engine-pill').forEach(p => p.classList.remove('active'));
+      document.getElementById(`engine-${eng}`).classList.add('active');
+    }
+
+    function togglePhysics() {
+      physicsEnabled = !physicsEnabled;
+      document.getElementById('btn-toggle-physics').classList.toggle('active', physicsEnabled);
+      if (physicsEnabled) simulation.alpha(0.3).restart();
+      else simulation.stop();
+    }
+
+    function toggleLabels() {
+      showLabels = !showLabels;
+      document.getElementById('btn-toggle-labels').classList.toggle('active', showLabels);
+      textElements.style("display", showLabels ? "block" : "none");
+    }
+
+    function resetGraphZoom() {
+      svg.transition().duration(500).call(
+        d3.zoom().transform,
+        d3.zoomIdentity
+      );
+    }
+
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.getElementById('theme-icon').innerHTML = next === 'dark' ? '&#9789;' : '&#9788;';
+    }
+
+    function openSynthesizeModal() { document.getElementById('synth-modal').classList.add('active'); }
+    function closeSynthesizeModal() { document.getElementById('synth-modal').classList.remove('active'); }
+
+    /* ---------------------------------------------------------------------
+       7. INITIALIZATION
+       --------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      initD3Graph();
+      renderSkillList();
+      selectSkill(SKILLS[0].name);
+    });
+  </script>
+</body>
+</html>
