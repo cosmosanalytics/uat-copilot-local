@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliable Agent Teams at Scale</title>
+<style>
+:root{
+  --bg:#F8FAFC; --card:#FFFFFF; --ink:#0F172A; --muted:#475569; --line:#E2E8F0;
+  --teal:#0F766E; --teal-t:#CCFBF1; --sky:#0369A1; --sky-t:#E0F2FE; --amber:#B45309; --amber-t:#FEF3C7;
+  --rose:#BE123C; --rose-t:#FFE4E6; --ind:#4F46E5; --ind-t:#E0E7FF; --pink:#DB2777; --pink-t:#FCE7F3; --green:#15803D; --green-t:#DCFCE7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{background:#ECFDF5;border-bottom:1.5px solid #99F6E4;padding:18px 24px 14px}
+h1{margin:0;font-size:26px;letter-spacing:-.4px}
+.sub{margin:4px 0 0;color:#334155}.sub b{color:var(--teal)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+select,input[type=text],button{font:inherit}
+select,input[type=text]{border:1.5px solid #CBD5E1;border-radius:8px;padding:6px 9px;background:#fff;color:var(--ink)}
+button{border:0;border-radius:8px;padding:7px 13px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff}
+button.alt{background:#fff;color:var(--teal);border:1.5px solid var(--teal)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--amber-t);color:var(--amber)}
+.chip.ok{background:var(--green-t);color:var(--green)} .chip.bad{background:var(--rose-t);color:var(--rose)} .chip.info{background:var(--sky-t);color:var(--sky)}
+progress{width:150px;height:10px;accent-color:var(--teal)}
+main{max-width:1280px;margin:0 auto;padding:16px 20px 40px;display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+@media(max-width:940px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.06);min-width:0}
+.card h2{margin:0 0 8px;font-size:17px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.num{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;align-items:center;justify-content:center;font-size:13px}
+.note{color:var(--muted);font-size:13px}
+.metrics{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.m{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:13px}
+.m b{font-size:17px;display:block;line-height:1.15}
+.ctrl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0}
+.ctrl label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.ctrl input[type=range]{accent-color:var(--teal)}
+svg{width:100%;height:auto;display:block;background:#F8FAFC;border:1px solid var(--line);border-radius:12px}
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.stage{border:2px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;transition:all .25s}
+.stage b{display:block;font-size:13px}.stage span{font-size:12px;color:var(--muted)}
+.stage.on{border-color:var(--teal);background:var(--teal-t)}
+.stage.pass{border-color:var(--green);background:var(--green-t)}
+.stage.fail{border-color:var(--rose);background:var(--rose-t)}
+.btns{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.agentbox{border:1.5px solid var(--line);border-radius:10px;padding:6px 9px;font-size:13px;background:#fff;min-width:0}
+#log{height:340px;overflow:auto;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#F8FAFC;border:1px solid var(--line);border-radius:10px;padding:8px}
+.ln{padding:2px 0;border-bottom:1px dashed #E2E8F0;word-break:break-word}
+.tag{display:inline-block;font-weight:700;border-radius:6px;padding:0 6px;margin-right:6px;font-size:11.5px}
+.t-NET{background:var(--ind-t);color:var(--ind)} .t-SKILLS{background:var(--teal-t);color:var(--teal)}
+.t-FAITHFUL{background:var(--sky-t);color:var(--sky)} .t-BOARD{background:var(--amber-t);color:var(--amber)}
+.t-HARNESS{background:var(--rose-t);color:var(--rose)} .t-KNOWER{background:var(--pink-t);color:var(--pink)} .t-AWS{background:#E2E8F0;color:#334155}
+.ok{color:var(--green);font-weight:700}.no{color:var(--rose);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--teal);color:#fff;text-align:left;padding:5px 8px}
+td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.hot td{background:#FEF9C3}
+.src{font-size:12.5px;background:#F8FAFC;border:1px solid var(--line);border-radius:8px;padding:6px 9px;margin-top:6px;white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace}
+.span-2{grid-column:1/-1}
+details summary{cursor:pointer;color:var(--sky);font-weight:700;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
+.tabs button{background:#fff;color:#334155;border:1.5px solid var(--line);padding:4px 10px;font-size:12.5px}
+.tabs button.on{background:var(--ind-t);color:var(--ind);border-color:var(--ind)}
+#console{max-height:340px;overflow:auto;font-size:12.5px}
+#console code,.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+#console td,#console th{padding:3px 6px}
+#console th{background:#334155}
+.pre{white-space:pre-wrap;word-break:break-all;background:#F8FAFC;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.own{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+@media(max-width:700px){.own{grid-template-columns:1fr}}
+.own>div{border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12.5px;background:#fff}
+.own h3{margin:0 0 4px;font-size:13px}
+.own .a{border-color:var(--teal);background:#F0FDFA}.own .t{border-color:var(--amber);background:#FFFBEB}.own .g{border-color:var(--sky);background:#F0F9FF}
+.own ul{margin:0;padding-left:16px}.own li{margin:2px 0}
+.bar2{height:8px;border-radius:4px;background:var(--teal);display:inline-block;vertical-align:middle}
+</style>
+</head>
+<body>
+<header>
+  <h1>Reliable Agent Teams at Scale</h1>
+  <p class="sub">A <b>kernel inside every agent</b>. A <b>small-world network</b> between them. Built on <b>AWS</b>.</p>
+  <div class="bar">
+    <span id="gpuChip" class="chip">Checking WebGPU...</span>
+    <select id="model">
+      <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B (fast, ~350 MB)</option>
+      <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2-360M (fast)</option>
+      <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B (better answers, ~800 MB)</option>
+      <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (tiny)</option>
+    </select>
+    <button id="loadBtn">Load WebLLM (WebGPU)</button>
+    <progress id="prog" value="0" max="1" style="display:none"></progress>
+    <span id="knowerChip" class="chip info">Knower: scripted stub (no model loaded)</span>
+  </div>
+  <p class="note" style="margin:8px 0 0"><span class="chip">Proposed reference design. Not yet built or tested on AWS.</span> <span class="chip info">AWS services here are simulated in your browser. No AWS calls are made.</span></p>
+  <p class="note" style="margin:6px 0 0" id="status">Load a model to let a real local LLM act as the Knower. Without one, a scripted stub answers.</p>
+</header>
+
+<main>
+  <!-- 1 NETWORK -->
+  <section class="card">
+    <h2><span class="num">1</span>A small-world network between agents</h2>
+    <p class="note" style="margin:0 0 6px">Four teams of six agents. Amber dots are liaisons. The red arc is a long-range shortcut. Each hop is a real (simulated) DynamoDB write with a hop-limit condition.</p>
+    <svg id="net" viewBox="0 0 700 340" role="img" aria-label="Small-world agent network"></svg>
+    <div class="ctrl">
+      <label>Shortcuts <input id="sc" type="range" min="0" max="3" value="1"><b id="scv">1</b></label>
+      <label>Hop limit (TTL) <input id="ttl" type="range" min="2" max="10" value="6"><b id="ttlv">6</b></label>
+      <button id="sendBtn">Send task across teams</button>
+    </div>
+    <div class="metrics">
+      <div class="m"><b id="mAvg">-</b>average hops</div>
+      <div class="m"><b id="mDia">-</b>longest path</div>
+      <div class="m"><b id="mLinks">-</b>links (full mesh: 276)</div>
+      <div class="m"><b id="mPath">-</b>this task's path</div>
+    </div>
+    <h2 style="margin-top:12px;font-size:15px">Who owns what <span class="note" style="font-weight:400">(click any agent dot)</span></h2>
+    <div class="own" id="own"></div>
+  </section>
+
+  <!-- 2 KERNEL -->
+  <section class="card">
+    <h2><span class="num">2</span>A kernel inside every agent</h2>
+    <p class="note" style="margin:0 0 4px">The model proposes. The kernel decides. Every answer runs through a Step Functions runbook with four gates.</p>
+    <div class="pipe">
+      <div class="stage" id="s-SKILLS"><b>1. Skills Engine</b><span>Contract and format</span></div>
+      <div class="stage" id="s-FAITHFUL"><b>2. Faithful</b><span>Receipt, quote, coverage</span></div>
+      <div class="stage" id="s-BOARD"><b>3. Whiteboard</b><span>One owner, no duplicates</span></div>
+      <div class="stage" id="s-HARNESS"><b>4. Harness</b><span>Policy, limits, log</span></div>
+    </div>
+    <div class="ctrl">
+      <select id="q">
+        <option>How long do customers have to request a refund?</option>
+        <option>When is tracking sent?</option>
+        <option>Do you ship to Mars?</option>
+      </select>
+      <input id="qfree" type="text" placeholder="or ask your own, e.g. Do you ship to Canada?" style="flex:1;min-width:150px">
+    </div>
+    <div class="btns">
+      <button id="bAsk">Ask with receipts</button>
+      <button id="bBad" class="alt">Inject a hallucination</button>
+      <button id="bTests" class="alt">Run contract tests (no LLM)</button>
+      <button id="bV4" class="alt">Publish policy v4</button>
+    </div>
+    <div class="btns">
+      <button id="bRace" class="alt">Two agents, one task</button>
+      <button id="bLease" class="alt">Agent crashes with lock</button>
+      <button id="bLoop" class="alt">Runaway loop</button>
+      <button id="bPol" class="alt">Unauthorized transfer</button>
+    </div>
+    <div class="metrics">
+      <div class="m"><b id="cPermit">0</b>actions permitted</div>
+      <div class="m"><b id="cBlock">0</b>actions blocked</div>
+    </div>
+    <div class="board">
+      <div class="agentbox"><b>Verified receipt</b><br><span id="receipt" class="note">No claim verified yet.</span></div>
+      <div class="agentbox"><b>Source document</b> <span id="docver" class="chip info">v3</span><details><summary>Show text</summary><div class="src" id="srcdoc"></div></details></div>
+    </div>
+  </section>
+
+  <!-- CONSOLE -->
+  <section class="card">
+    <h2>Simulated AWS console <span class="chip info">in-browser, not real AWS</span></h2>
+    <div class="tabs" id="tabs"></div>
+    <div id="console"></div>
+  </section>
+
+  <!-- TRACE -->
+  <section class="card">
+    <h2>Kernel trace <button class="alt" id="clearBtn" style="margin-left:auto;padding:3px 9px;font-size:12px">Clear</button></h2>
+    <div id="log"></div>
+  </section>
+
+  <!-- AWS -->
+  <section class="card span-2">
+    <h2><span class="num">3</span>Built on AWS</h2>
+    <table id="aws">
+      <tr><th>Part</th><th>On AWS</th><th>Simulated in this page by</th><th>Coverage</th></tr>
+      <tr id="r-net"><td>Agent network</td><td>AgentCore Runtime hosts agents; Gateway exposes tools; Memory keeps handoffs</td><td>Hop counter and handoff items in simulated DynamoDB; EventBridge events</td><td><span class="chip ok">Platform</span></td></tr>
+      <tr id="r-SKILLS"><td>Skills Engine</td><td>Step Functions, Lambda schema checks, DynamoDB duplicate protection, CodeBuild tests</td><td>An ASL-style state machine runner and Lambda functions; contract tests with no LLM</td><td><span class="chip">Partly covered</span></td></tr>
+      <tr id="r-FAITHFUL"><td>Faithful by Design</td><td>S3 versioned originals, OpenSearch vectors, Neptune graph, Lambda quote verifier, KMS signing</td><td>Versioned object store, a TF-IDF vector index, an edge list, Web Crypto HMAC signatures</td><td><span class="chip bad">Mostly custom</span></td></tr>
+      <tr id="r-BOARD"><td>Shared Whiteboard</td><td>DynamoDB board with conditional writes (locks), EventBridge wake-ups</td><td>Conditional PutItem with lease expiry (a simple model of DynamoDB semantics)</td><td><span class="chip bad">Custom</span></td></tr>
+      <tr id="r-HARNESS"><td>Executive Harness</td><td>AgentCore Policy (Cedar) and Identity, loop and cost counters, CloudWatch alarms</td><td>A small policy evaluator (default deny, forbid wins), DynamoDB counters, CloudWatch-style alarms</td><td><span class="chip ok">Strong fit</span></td></tr>
+    </table>
+    <p class="note" style="margin:8px 0 0">The simulation models the behaviors this demo needs (atomic conditional writes, versioning, state-machine catch paths). It is not a faithful copy of the real services. AgentCore Policy and Evaluations were previews in December 2025, so confirm their status with AWS.</p>
+  </section>
+</main>
+
+<script>
+/* ============================== helpers ============================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let permit=0, block=0;
+function count(ok){ok?permit++:block++;$('cPermit').textContent=permit;$('cBlock').textContent=block;}
+function log(tag,msg){
+  const d=document.createElement('div');d.className='ln';
+  d.innerHTML=`<span class="tag t-${tag}">${tag}</span>${msg}`;
+  $('log').appendChild(d);$('log').scrollTop=1e9;
+}
+function stage(k,state){const e=$('s-'+k);e.className='stage'+(state?' '+state:'');}
+function resetStages(){['SKILLS','FAITHFUL','BOARD','HARNESS'].forEach(k=>stage(k,''));}
+function hot(keys){['net','SKILLS','FAITHFUL','BOARD','HARNESS'].forEach(k=>$('r-'+k).classList.remove('hot'));keys.forEach(k=>$('r-'+k).classList.add('hot'));}
+$('clearBtn').onclick=()=>{$('log').innerHTML='';};
+async function sha(s,n=12){
+  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,n);}
+  let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0').slice(0,n);
+}
+const rid=()=>Math.random().toString(36).slice(2,10);
+
+/* ============================== SIMULATED AWS ============================== */
+const apiLog=[];let consoleDirty=false;
+function awsErr(name,msg){const e=new Error(msg);e.name=name;e.status=400;return e;}
+async function api(svc,op,params,fn){
+  const t0=performance.now();
+  await sleep(12+Math.random()*30);            // simulated network latency
+  let res,err=null;
+  try{res=await fn();}catch(e){err=e;}
+  const ms=Math.round(performance.now()-t0);
+  apiLog.push({svc,op,p:params,status:err?(err.status||400):200,err:err&&err.name,ms});
+  if(apiLog.length>200)apiLog.shift();
+  if(err&&err.name==='ConditionalCheckFailedException')CW.put('ConditionalCheckFailed',1);
+  markConsole();
+  if(err)throw err;
+  return res;
+}
+/* DynamoDB: single-threaded JS makes each mutation atomic, like a conditional write */
+const DDB={
+  keys:{Board:'taskId',Memory:'handoffId',Counters:'key'},
+  tables:{Board:new Map(),Memory:new Map(),Counters:new Map()},
+  get(t,k){return api('DynamoDB','GetItem',{TableName:t,Key:k},()=>{const it=this.tables[t].get(k);return it?{...it}:undefined;});},
+  put(t,item,cond){const k=item[this.keys[t]];
+    return api('DynamoDB','PutItem',{TableName:t,Key:k,Cond:cond&&cond.expr},()=>{
+      const cur=this.tables[t].get(k);
+      if(cond&&!cond.fn(cur))throw awsErr('ConditionalCheckFailedException','The conditional request failed');
+      this.tables[t].set(k,{...item});return true;});},
+  update(t,k,mut,cond,desc){
+    return api('DynamoDB','UpdateItem',{TableName:t,Key:k,Update:desc,Cond:cond&&cond.expr},()=>{
+      const cur=this.tables[t].get(k);
+      if(cond&&!cond.fn(cur))throw awsErr('ConditionalCheckFailedException','The conditional request failed');
+      const nw=cur?{...cur}:{[this.keys[t]]:k};mut(nw);this.tables[t].set(k,nw);return {...nw};});},
+  del(t,k){return api('DynamoDB','DeleteItem',{TableName:t,Key:k},()=>{this.tables[t].delete(k);return true;});}
+};
+/* S3 with versioning */
+const S3={b:{},
+  put(bucket,key,body){return api('S3','PutObject',{Bucket:bucket,Key:key,Bytes:body.length},async()=>{
+      const list=(this.b[bucket+'/'+key]=this.b[bucket+'/'+key]||[]);
+      const v={versionId:rid()+rid(),n:list.length+3,body,etag:await sha(body,16)};list.push(v);return v;});},
+  get(bucket,key,versionId){return api('S3','GetObject',{Bucket:bucket,Key:key,VersionId:versionId||'latest'},()=>{
+      const list=this.b[bucket+'/'+key]||[];const v=versionId?list.find(x=>x.versionId===versionId):list[list.length-1];
+      if(!v)throw awsErr('NoSuchKey','Not found');return v;});},
+  latest(bucket,key){const l=this.b[bucket+'/'+key]||[];return l[l.length-1];}
+};
+/* KMS: HMAC signing with a non-exportable key */
+const KMS={key:null,
+  async init(){try{this.key=await crypto.subtle.generateKey({name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}catch(e){this.key=null;}},
+  sign(msg){return api('KMS','GenerateMac',{KeyId:'alias/receipt-signing'},async()=>{
+      if(!this.key)return 'fnv-'+await sha(msg,16);
+      const s=await crypto.subtle.sign('HMAC',this.key,new TextEncoder().encode(msg));return [...new Uint8Array(s)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,24);});}
+};
+/* OpenSearch (vectors) + Neptune (graph) */
+const STOP=new Set('a an the is are was were do does did you your we our to of in on at for and or when how what who which long have has be it its by with from that this there can will'.split(' '));
+const tok=t=>(t.toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w=>!STOP.has(w)).map(w=>w.length>3&&w.endsWith('s')?w.slice(0,-1):w);
+const OS={docs:[],idf:{},
+  index(sections){this.docs=sections.map(s=>({id:s.id,t:s.t,toks:tok(s.t)}));const N=this.docs.length,df={};
+    this.docs.forEach(d=>new Set(d.toks).forEach(w=>df[w]=(df[w]||0)+1));
+    this.idf={};Object.keys(df).forEach(w=>this.idf[w]=Math.log(1+N/df[w]));
+    this.docs.forEach(d=>{d.v={};d.toks.forEach(w=>d.v[w]=(d.v[w]||0)+this.idf[w]);d.n=Math.sqrt(Object.values(d.v).reduce((a,x)=>a+x*x,0))||1;});},
+  knn(q,k=2){return api('OpenSearch','knn_search',{index:'policy-sections',k},()=>{
+      const qt=tok(q),qv={};qt.forEach(w=>{if(this.idf[w])qv[w]=(qv[w]||0)+this.idf[w];});
+      const qn=Math.sqrt(Object.values(qv).reduce((a,x)=>a+x*x,0))||1;
+      const hits=this.docs.map(d=>{let dot=0;for(const w in qv)if(d.v[w])dot+=qv[w]*d.v[w];
+        return{id:d.id,t:d.t,score:dot/(qn*d.n),overlap:[...new Set(qt)].filter(w=>d.toks.includes(w)).length};});
+      return hits.sort((a,b)=>b.score-a.score).slice(0,k);});}
+};
+const NEP=[['§4.3','QUALIFIES','§4.2'],['§7.4','APPLIES_TO','orders'],['policy','HAS_SECTION','§4.2'],['policy','HAS_SECTION','§4.3'],['policy','HAS_SECTION','§5.1'],['policy','HAS_SECTION','§6.1'],['policy','HAS_SECTION','§7.4']];
+const Neptune={inbound(node,rel){return api('Neptune','openCypher',{q:`MATCH (a)-[:${rel}]->(${node}) RETURN a`},()=>NEP.filter(e=>e[2]===node&&e[1]===rel).map(e=>e[0]));}};
+/* CloudWatch metrics + alarms */
+const CW={m:{},alarms:[{name:'RepeatedToolCall>=1',metric:'RepeatedToolCall',th:1,state:'OK'},{name:'TTLExpired>=1',metric:'TTLExpired',th:1,state:'OK'},{name:'PolicyDeny>=3',metric:'PolicyDeny',th:3,state:'OK'}],
+  put(name,v){this.m[name]=(this.m[name]||0)+v;this.alarms.forEach(a=>{if(a.metric===name&&this.m[name]>=a.th)a.state='ALARM';});markConsole();}};
+/* EventBridge */
+const EB={rules:[{name:'task-posted',type:'TaskPosted',target:'wakeScouts'},{name:'breaker',type:'BreakerTripped',target:'pageHuman'},{name:'ttl',type:'TTLExpired',target:'pageHuman'}],
+  async put(type,detail){
+    await api('EventBridge','PutEvents',{DetailType:type,Detail:detail},()=>true);
+    for(const r of this.rules.filter(r=>r.type===type)){await api('Lambda','Invoke',{FunctionName:r.target,Via:'rule '+r.name},()=>true);
+      if(r.target==='wakeScouts')log('BOARD',`EventBridge rule <b>${r.name}</b> wakes idle Scouts for ${esc(detail.taskId||'')}.`);
+      if(r.target==='pageHuman')log('HARNESS',`EventBridge rule <b>${r.name}</b> pages a human (SNS). Detail: <code>${esc(JSON.stringify(detail))}</code>`);}}};
+/* AgentCore Policy: a small Cedar-style evaluator (default deny, forbid wins) */
+const CEDAR=[
+ {id:'P1',kind:'permit',text:'permit(principal in Role::"Payments", action == Action::"transfer_funds", resource)\n  when { context.amount <= 50000 };',m:(p,a,c)=>p.role==='Payments'&&a==='transfer_funds'&&c.amount<=50000},
+ {id:'P2',kind:'permit',text:'permit(principal in Role::"Liaison", action == Action::"use_shortcut", resource);',m:(p,a)=>p.role==='Liaison'&&a==='use_shortcut'},
+ {id:'P3',kind:'permit',text:'permit(principal, action == Action::"post_answer", resource)\n  when { !context.makesClaim || context.hasReceipt };',m:(p,a,c)=>a==='post_answer'&&(!c.makesClaim||c.hasReceipt)},
+ {id:'F1',kind:'forbid',text:'forbid(principal, action == Action::"transfer_funds", resource)\n  when { context.amount > 50000 };  // dual-key approval required',m:(p,a,c)=>a==='transfer_funds'&&c.amount>50000}];
+function cedarEval(p,a,c){
+  const f=CEDAR.find(r=>r.kind==='forbid'&&r.m(p,a,c));if(f)return{ok:false,by:f.id,why:'explicit forbid'};
+  const pm=CEDAR.find(r=>r.kind==='permit'&&r.m(p,a,c));if(pm)return{ok:true,by:pm.id};
+  return{ok:false,by:'default',why:'no matching permit (default deny)'};}
+function gateway(tool,principal,ctx){return api('AgentCore Gateway','InvokeTool',{tool,role:principal.role,...ctx},()=>{const d=cedarEval(principal,tool,ctx);CW.put(d.ok?'PolicyPermit':'PolicyDeny',1);return d;});}
+
+/* ============================== documents (S3 + index) ============================== */
+function bodyOf(days){return[['§4.2',`Refunds are allowed within ${days} days of delivery.`],['§4.3',`After ${days} days, only store credit is offered.`],['§5.1','We ship to the US, Canada and the EU.'],['§6.1','Tracking is emailed when the order ships.'],['§7.4','Orders above $50,000 require dual-key approval.']].map(s=>s.join(' ')).join('\n');}
+function parseSections(body){let pos=0;return body.split('\n').map(line=>{const id=line.split(' ')[0],t=line.slice(id.length+1);const s={id,t,a:pos+id.length+1,b:pos+line.length};pos+=line.length+1;return s;});}
+let docV=null;
+async function publishDoc(days){
+  docV=await S3.put('policy-docs','supply-policy.txt',bodyOf(days));
+  OS.index(parseSections(docV.body));
+  $('srcdoc').textContent=docV.body;$('docver').textContent='v'+docV.n;
+}
+
+/* ============================== Lambda functions (the kernel) ============================== */
+const receipts=[];let lastExec=null,lastHits=null,lastCov=null;
+const KErr=(n,m)=>awsErr(n,m);
+const LAMBDA={
+  async validateContract(ctx){const o=ctx.out;
+    if(!o||typeof o.answer!=='string'||typeof o.quote!=='string'||typeof o.section!=='string')throw KErr('SchemaViolation','Output is not {answer, quote, section}.');
+    ctx.makesClaim=!(o.answer==='NOT_FOUND'&&o.quote==='');return 'schema ok';},
+  async verifyQuote(ctx){
+    if(!ctx.makesClaim){return 'abstained, no claim to verify';}
+    const ver=await S3.get('policy-docs','supply-policy.txt');const body=ver.body,q=ctx.out.quote;
+    const idx=q.length>=10?body.indexOf(q):-1;
+    if(idx<0)throw KErr('QuoteNotFound',`Quote "${q}" is not a verbatim match in the source (v${ver.n}).`);
+    const sec=parseSections(body).find(s=>idx>=s.a&&idx<s.b);
+    if(!sec||idx+q.length>sec.b)throw KErr('SectionMismatch','Quote does not sit inside one section.');
+    if(sec.id!==ctx.out.section)throw KErr('SectionMismatch',`Quote is in ${sec.id}, not ${ctx.out.section}.`);
+    ctx.ver=ver;ctx.sec=sec;ctx.span=[idx,idx+q.length];return `verbatim match in ${sec.id}`;},
+  async checkCoverage(ctx){
+    if(!ctx.makesClaim)return 'n/a';
+    const q=await Neptune.inbound(ctx.sec.id,'QUALIFIES');ctx.qualifiers=q;
+    const txt=q.map(id=>parseSections(ctx.ver.body).find(s=>s.id===id)).filter(Boolean);
+    ctx.coverageNote=txt.map(s=>`${s.id}: ${s.t}`);lastCov={section:ctx.sec.id,qualifiers:txt};return q.length?`${q.join(', ')} qualifies ${ctx.sec.id}`:'no qualifying sections';},
+  async signReceipt(ctx){
+    if(!ctx.makesClaim)return 'n/a';
+    const payload=`supply-policy|v${ctx.ver.n}|${ctx.sec.id}|${ctx.span[0]}-${ctx.span[1]}|${await sha(ctx.out.quote,16)}`;
+    const sig=await KMS.sign(payload);
+    ctx.receipt={id:'R-'+(receipts.length+1),doc:'supply-policy',v:ctx.ver.n,s3:ctx.ver.versionId.slice(0,8),sec:ctx.sec.id,a:ctx.span[0],b:ctx.span[1],quote:ctx.out.quote,sig:sig.slice(0,16),cov:ctx.coverageNote||[]};
+    if(!ctx.test)receipts.push(ctx.receipt);return 'signed '+ctx.receipt.id;},
+  async postBoard(ctx){
+    if(ctx.test)return 'test mode: skipped';
+    const key='ans#'+await sha(ctx.question+'|'+ctx.out.answer+'|'+(ctx.ver?ctx.ver.n:0));
+    try{await DDB.put('Board',{taskId:key,type:'answer',answer:ctx.out.answer,receipt:ctx.receipt?ctx.receipt.id:null,t:Date.now()},{expr:'attribute_not_exists(taskId)',fn:i=>!i});ctx.dup=false;return 'posted '+key;}
+    catch(e){if(e.name==='ConditionalCheckFailedException'){ctx.dup=true;return 'duplicate suppressed (idempotent)';}throw e;}},
+  async policyGate(ctx){
+    const d=await gateway('post_answer',{role:'Scout'},{makesClaim:ctx.makesClaim,hasReceipt:!!ctx.receipt});ctx.decision=d;
+    if(!d.ok)throw KErr('PolicyDenied',d.why);return `policy ${d.by} permit`;}
+};
+/* Skills Engine runbook as an ASL-style state machine */
+const GATE={ValidateContract:'SKILLS',VerifyQuote:'FAITHFUL',CheckCoverage:'FAITHFUL',SignReceipt:'FAITHFUL',PostToBoard:'BOARD',PolicyGate:'HARNESS'};
+const ASL={Comment:'Runbook answer_with_receipt',StartAt:'ValidateContract',States:{
+ ValidateContract:{Type:'Task',Resource:'lambda:validateContract',Next:'VerifyQuote',Catch:[{ErrorEquals:['States.ALL'],Next:'Rejected'}]},
+ VerifyQuote:{Type:'Task',Resource:'lambda:verifyQuote',Next:'CheckCoverage',Catch:[{ErrorEquals:['States.ALL'],Next:'Rejected'}]},
+ CheckCoverage:{Type:'Task',Resource:'lambda:checkCoverage',Next:'SignReceipt'},
+ SignReceipt:{Type:'Task',Resource:'lambda:signReceipt',Next:'PostToBoard'},
+ PostToBoard:{Type:'Task',Resource:'lambda:postBoard',Next:'PolicyGate'},
+ PolicyGate:{Type:'Task',Resource:'lambda:policyGate',End:true,Catch:[{ErrorEquals:['States.ALL'],Next:'Rejected'}]},
+ Rejected:{Type:'Fail',Error:'KernelRejected'}}};
+const FN={ValidateContract:'validateContract',VerifyQuote:'verifyQuote',CheckCoverage:'checkCoverage',SignReceipt:'signReceipt',PostToBoard:'postBoard',PolicyGate:'policyGate'};
+async function runMachine(ctx,ui){
+  const exec={id:'exec-'+rid(),events:[],status:'RUNNING',ctx};lastExec=exec;
+  let name=ASL.StartAt;
+  while(true){
+    const st=ASL.States[name];
+    if(st.Type==='Fail'){exec.status='FAILED';exec.error=ctx.err;exec.events.push({state:name,res:'Fail: '+ctx.err.name,ok:false,ms:0});markConsole();return false;}
+    const gate=GATE[name];if(ui&&gate)stage(gate,'on');
+    const t0=performance.now();
+    try{
+      const res=await api('Lambda','Invoke',{FunctionName:FN[name],State:name},()=>LAMBDA[FN[name]](ctx));
+      exec.events.push({state:name,res,ok:true,ms:Math.round(performance.now()-t0)});
+      if(ui){const nxt=st.End?null:GATE[st.Next];if(nxt!==gate)stage(gate,'pass');}
+      if(ui)log(gate,`${name}: ${esc(res)}`);
+      if(st.End){exec.status='SUCCEEDED';markConsole();return true;}
+      name=st.Next;
+    }catch(e){
+      exec.events.push({state:name,res:e.name+': '+e.message,ok:false,ms:Math.round(performance.now()-t0)});
+      if(ui&&gate){stage(gate,'fail');log(gate,`<span class="no">BLOCKED</span> ${esc(name)}: ${esc(e.name)}. ${esc(e.message)}`);}
+      const c=st.Catch&&st.Catch[0];if(!c){exec.status='FAILED';ctx.err=e;markConsole();return false;}
+      ctx.err=e;name=c.Next;
+    }
+  }
+}
+
+/* ============================== Knower (LLM or scripted stub) ============================== */
+let engine=null;
+const SYS='You answer ONLY from the provided sections. Reply with ONLY a JSON object: {"answer":"short answer","quote":"one sentence copied exactly from the sections","section":"the section id such as §4.2"}. If the sections do not contain the answer, reply {"answer":"NOT_FOUND","quote":"","section":""}.';
+const SCRIPT={'How long do customers have to request a refund?':'§4.2','When is tracking sent?':'§6.1','Do you ship to Mars?':null};
+function stubAnswer(question,hits){
+  if(question in SCRIPT&&SCRIPT[question]===null)return{answer:'NOT_FOUND',quote:'',section:''};
+  const h=question in SCRIPT?hits.find(x=>x.id===SCRIPT[question]):hits[0];
+  if(!h||(!(question in SCRIPT)&&h.overlap<2))return{answer:'NOT_FOUND',quote:'',section:''};
+  return{answer:h.t.replace(/\.$/,'')+'.',quote:h.t,section:h.id};}
+async function knower(question){
+  const hits=await OS.knn(question,2);lastHits={q:question,hits};markConsole();
+  log('FAITHFUL',`OpenSearch kNN top sections: ${hits.map(h=>h.id+' ('+h.score.toFixed(2)+')').join(', ')}`);
+  if(!engine)return{raw:JSON.stringify(stubAnswer(question,hits)),mode:'scripted stub'};
+  const ctxt=hits.map(h=>h.id+' '+h.t).join('\n');
+  const r=await engine.chat.completions.create({messages:[{role:'system',content:SYS},{role:'user',content:'SECTIONS:\n'+ctxt+'\n\nQUESTION: '+question}],temperature:0,max_tokens:160});
+  return{raw:r.choices[0].message.content,mode:'WebLLM'};
+}
+function parseJSON(raw){const m=raw.match(/\{[\s\S]*\}/);if(!m)return null;try{return JSON.parse(m[0]);}catch(e){return null;}}
+async function kernelRun(out,question){
+  resetStages();hot(['SKILLS','FAITHFUL','BOARD','HARNESS']);$('receipt').textContent='Running runbook...';
+  const ctx={out,question,test:false};
+  const ok=await runMachine(ctx,true);count(ok);
+  if(ok){
+    if(ctx.receipt){const r=ctx.receipt;
+      $('receipt').innerHTML=`${r.id}: ${r.doc} v${r.v} ${r.sec}, chars ${r.a}-${r.b}<br>KMS MAC ${r.sig}... <span class="ok">Verified</span>`+(r.cov.length?`<br><span class="chip">Coverage: ${esc(r.cov.join(' | '))}</span>`:'');
+      log('FAITHFUL',`Receipt <b>${r.id}</b>: ${r.doc} v${r.v} (S3 ${r.s3}) ${r.sec} chars ${r.a}-${r.b}.${r.cov.length?' Qualifying text attached: '+esc(r.cov.join(' | ')):''}`);}
+    else $('receipt').innerHTML='Model abstained. No claim, so no receipt needed. <span class="ok">Safe</span>';
+    if(ctx.dup)log('SKILLS','This exact answer was already on the board. Idempotency key stopped a duplicate.');
+  }else $('receipt').innerHTML=`<span class="no">Claim rejected</span>: ${esc(ctx.err.name)}`;
+  return ok;
+}
+function setBusy(b){['bAsk','bBad','bTests','bV4','bRace','bLease','bLoop','bPol','sendBtn'].forEach(i=>$(i).disabled=b);}
+async function guarded(fn){setBusy(true);try{await fn();}catch(e){log('KNOWER',`<span class="no">Error</span> ${esc(e.message||e)}`);}finally{setBusy(false);}}
+
+$('bAsk').onclick=()=>guarded(async()=>{
+  const free=$('qfree').value.trim(),q=free||$('q').value;
+  log('KNOWER',`Question: <b>${esc(q)}</b>`);
+  const k=await knower(q);log('KNOWER',`${k.mode} proposes: <code>${esc(k.raw)}</code>`);
+  await kernelRun(parseJSON(k.raw),q);
+});
+$('bBad').onclick=()=>guarded(async()=>{
+  const bad={answer:'Within 60 days of delivery.',quote:'Refunds are allowed within 60 days of delivery.',section:'§4.2'};
+  log('KNOWER',`Injected hallucination: <code>${esc(JSON.stringify(bad))}</code> (the source says ${docV.body.match(/within (\d+) days/)[1]} days)`);
+  await kernelRun(bad,'refund window (injected)');
+});
+$('bTests').onclick=()=>guarded(async()=>{
+  log('SKILLS','Running contract tests against the runbook with <b>zero LLM calls</b>.');
+  const cur=docV.body.match(/within (\d+) days/)[1];
+  const good={answer:`Within ${cur} days.`,quote:`Refunds are allowed within ${cur} days of delivery.`,section:'§4.2'};
+  const T=[['valid answer passes',good,true],['invented quote is rejected',{...good,quote:'Refunds are allowed within 99 days of delivery.'},false,'QuoteNotFound'],['missing field is rejected',{answer:'x',quote:good.quote},false,'SchemaViolation'],['wrong section is rejected',{...good,section:'§6.1'},false,'SectionMismatch'],['abstention passes',{answer:'NOT_FOUND',quote:'',section:''},true]];
+  const rows=[];
+  for(const [n,out,exp,errn] of T){const t0=performance.now();const ctx={out,question:'test',test:true};const ok=await runMachine(ctx,false);
+    const pass=ok===exp&&(ok||ctx.err.name===errn);rows.push({n,pass,ms:Math.round(performance.now()-t0),got:ok?'SUCCEEDED':ctx.err.name});
+    log('SKILLS',`${pass?'<span class="ok">PASS</span>':'<span class="no">FAIL</span>'} ${esc(n)} (${ok?'SUCCEEDED':esc(ctx.err.name)})`);}
+  window.__tests=rows;TAB='Step Functions';renderTabs();markConsole();
+  log('SKILLS',`${rows.filter(r=>r.pass).length}/${rows.length} contract tests passed. Times include simulated network latency.`);
+});
+$('bV4').onclick=()=>guarded(async()=>{
+  log('FAITHFUL',`Publishing policy <b>v4</b> to S3: refund window changes from 30 to 14 days.`);
+  await publishDoc(14);receipts.forEach(()=>0);
+  log('FAITHFUL',`Re-indexed in OpenSearch. Old receipts still point to their pinned S3 version. Receipts whose quote is gone from the latest version show <b>stale</b> in the Receipts tab.`);
+  TAB='Receipts';renderTabs();markConsole();
+});
+
+/* ============================== whiteboard ============================== */
+$('bRace').onclick=()=>guarded(async()=>{
+  resetStages();hot(['BOARD','HARNESS']);stage('BOARD','on');
+  await DDB.del('Board','T-race');
+  log('BOARD','Task T-race appears. Scout-A and Scout-B both try to claim it at the same instant.');
+  let writes=[];
+  const unsafe=async n=>{const cur=await DDB.get('Board','T-race');await sleep(70);if(!cur){await DDB.put('Board',{taskId:'T-race',owner:n});writes.push(n);}};
+  await Promise.all([unsafe('Scout-A'),unsafe('Scout-B')]);
+  log('BOARD',`Read-then-write with no condition: ${writes.length} agents both did the work (${writes.join(' and ')}). Last write wins, the other result is lost. <span class="no">Duplicate work</span>`);
+  await DDB.del('Board','T-race');
+  const cas=async n=>{try{await DDB.put('Board',{taskId:'T-race',owner:n,leaseExpires:Date.now()+30000},{expr:'attribute_not_exists(taskId)',fn:i=>!i});return n;}catch(e){return null;}};
+  const res=await Promise.all([cas('Scout-A'),cas('Scout-B')]);const win=res.find(Boolean);
+  log('BOARD',`With <code>attribute_not_exists(taskId)</code>: <span class="ok">${win} wins</span>. The other gets ConditionalCheckFailedException and takes another task.`);
+  stage('BOARD','pass');stage('HARNESS','pass');count(true);
+});
+$('bLease').onclick=()=>guarded(async()=>{
+  resetStages();hot(['BOARD']);stage('BOARD','on');
+  await DDB.del('Board','T-lease');
+  const claim=async(n,ms)=>DDB.put('Board',{taskId:'T-lease',owner:n,leaseExpires:Date.now()+ms},{expr:'attribute_not_exists(taskId) OR leaseExpires < :now',fn:i=>!i||i.leaseExpires<Date.now()});
+  await claim('Scout-A',1500);log('BOARD','Scout-A claims T-lease with a 1.5 s lease, then <span class="no">crashes</span> without releasing it.');
+  try{await claim('Scout-B',1500);}catch(e){log('BOARD',`Scout-B tries right away: ${esc(e.name)}. The lock is still held.`);count(false);}
+  log('BOARD','Waiting for the lease to expire...');await sleep(1700);
+  await claim('Scout-B',1500);log('BOARD','Lease expired. Scout-B takes over: <span class="ok">no deadlock</span>, no human needed.');
+  stage('BOARD','pass');count(true);
+});
+
+/* ============================== harness ============================== */
+$('bLoop').onclick=()=>guarded(async()=>{
+  resetStages();hot(['HARNESS']);stage('HARNESS','on');
+  log('HARNESS','An agent keeps calling the same tool with the same arguments. The watchdog hashes each call and counts it in DynamoDB.');
+  const call='search_vendor_sla({"vendor":"Acme"})',h='call#'+await sha(call);
+  await DDB.del('Counters',h);await DDB.del('Counters','cost');
+  for(let i=1;i<=6;i++){
+    const it=await DDB.update('Counters',h,x=>{x.count=(x.count||0)+1;},null,'ADD count 1');
+    const c=await DDB.update('Counters','cost',x=>{x.usd=+((x.usd||0)+0.002).toFixed(3);},null,'ADD usd 0.002');
+    log('HARNESS',`call ${i}: <code>${esc(call)}</code> hash ${h.slice(5)} repeat #${it.count}, cost $${c.usd.toFixed(3)}`);
+    if(it.count>=3){CW.put('RepeatedToolCall',1);await EB.put('BreakerTripped',{hash:h.slice(5),repeats:it.count});
+      stage('HARNESS','fail');log('HARNESS','<span class="no">BREAKER TRIPPED</span>. Loop stopped. CloudWatch alarm is now in ALARM state.');count(false);return;}
+  }
+});
+$('bPol').onclick=()=>guarded(async()=>{
+  resetStages();hot(['HARNESS']);stage('HARNESS','on');
+  log('HARNESS','Policies loaded (Cedar-style). Default is deny; an explicit forbid always wins.');
+  const tries=[['Scout',42000],['Payer',90000],['Payer',42000]];let last=true;
+  for(const [who,amt] of tries){
+    const role=who==='Payer'?'Payments':'Research';
+    const d=await gateway('transfer_funds',{role},{amount:amt});
+    log('HARNESS',`${who} (role ${role}) calls transfer_funds($${amt.toLocaleString()}): ${d.ok?`<span class="ok">PERMIT</span> by ${d.by}`:`<span class="no">DENY</span> by ${d.by}: ${esc(d.why)}`}`);
+    count(d.ok);last=d.ok;
+  }
+  stage('HARNESS',last?'pass':'fail');TAB='Policies';renderTabs();markConsole();
+});
+
+/* ============================== small-world network ============================== */
+const ANG={Le:0,up_r:60,up_l:120,Lw:180,dn_l:240,dn_r:300};
+const TEAMS=[['Research team','#0F766E','#CCFBF1'],['Code team','#4F46E5','#E0E7FF'],['Review team','#DB2777','#FCE7F3'],['Data team','#B45309','#FEF3C7']];
+const CX=[95,265,435,605],CY=215,R=46;
+const nodes=[],pos={};
+TEAMS.forEach((t,ti)=>{for(const k in ANG){const a=ANG[k]*Math.PI/180;const id=ti+':'+k;pos[id]=[CX[ti]+R*Math.cos(a),CY-R*Math.sin(a)];nodes.push(id);}});
+const intra=[['Le','up_r'],['up_r','up_l'],['up_l','Lw'],['Lw','dn_l'],['dn_l','dn_r'],['dn_r','Le'],['up_r','dn_l'],['up_l','dn_r'],['Le','Lw']];
+const SHORT=[[0,3],[0,2],[1,3]];
+function buildGraph(k){const edges=[];
+  TEAMS.forEach((_,t)=>intra.forEach(([a,b])=>edges.push({a:t+':'+a,b:t+':'+b,type:'intra'})));
+  for(let t=0;t<3;t++)edges.push({a:t+':Le',b:(t+1)+':Lw',type:'chain'});
+  SHORT.slice(0,k).forEach(([i,j])=>edges.push({a:i+':up_r',b:j+':up_l',type:'short',i,j}));return edges;}
+function adj(edges){const m={};nodes.forEach(n=>m[n]=[]);edges.forEach(e=>{m[e.a].push([e.b,e]);m[e.b].push([e.a,e]);});return m;}
+function bfs(m,s,t){const prev={[s]:null},q=[s];
+  while(q.length){const u=q.shift();if(u===t)break;for(const [v,e] of m[u])if(!(v in prev)){prev[v]=[u,e];q.push(v);}}
+  if(!(t in prev))return null;const path=[t],es=[];let c=t;while(prev[c]){es.unshift(prev[c][1]);c=prev[c][0];path.unshift(c);}return{path,edges:es};}
+function stats(m){let sum=0,cnt=0,dia=0;
+  for(let i=0;i<nodes.length;i++){const d={[nodes[i]]:0},q=[nodes[i]];
+    while(q.length){const u=q.shift();for(const [v] of m[u])if(!(v in d)){d[v]=d[u]+1;q.push(v);}}
+    for(let j=i+1;j<nodes.length;j++){sum+=d[nodes[j]];cnt++;dia=Math.max(dia,d[nodes[j]]);}}
+  return{avg:sum/cnt,dia};}
+const SRC='0:dn_l',DST='3:dn_r';let graph,gm,taskSeq=0,selNode=SRC;
+function drawNet(highlight=[],dotAt=null,failAt=null){
+  const hl=new Set(highlight.map(e=>e.a+'|'+e.b));
+  let s='<defs><filter id="sh"><feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity=".25"/></filter></defs>';
+  TEAMS.forEach((t,i)=>{s+=`<circle cx="${CX[i]}" cy="${CY}" r="68" fill="${t[2]}"/><text x="${CX[i]}" y="${CY+92}" text-anchor="middle" font-size="13" font-weight="700" fill="#0F172A">${t[0]}</text>
+  <rect x="${CX[i]-40}" y="${CY+99}" width="80" height="17" rx="5" fill="#fff" stroke="${t[1]}"/><text x="${CX[i]}" y="${CY+111}" text-anchor="middle" font-size="10" font-weight="700" fill="${t[1]}">whiteboard</text>`;});
+  graph.forEach(e=>{const [x1,y1]=pos[e.a],[x2,y2]=pos[e.b];const on=hl.has(e.a+'|'+e.b);
+    if(e.type==='short'){const mx=(x1+x2)/2,cy=CY-130-30*(e.j-e.i);const ay=.25*y1+.5*cy+.25*y2;
+      s+=`<path d="M${x1},${y1} Q${mx},${cy} ${x2},${y2}" fill="none" stroke="${on?'#E11D48':'#FB7185'}" stroke-width="${on?4:2}" stroke-dasharray="${on?'0':'6 5'}"/>
+      <rect x="${mx-52}" y="${ay-10}" width="104" height="19" rx="9" fill="#FFE4E6" stroke="#E11D48"/><text x="${mx}" y="${ay+4}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#BE123C">Shortcut</text>`;}
+    else s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${on?'#E11D48':(e.type==='chain'?'#0F172A':'#94A3B8')}" stroke-width="${on?4:(e.type==='chain'?2.4:1.3)}"/>`;});
+  nodes.forEach(n=>{const [x,y]=pos[n],k=n.split(':')[1],t=+n[0];const lia=(k==='Le'||k==='Lw');
+    if(n===selNode)s+=`<circle cx="${x}" cy="${y}" r="14" fill="none" stroke="#0F172A" stroke-width="2.5" stroke-dasharray="3 2"/>`;
+    s+=`<circle data-n="${n}" cx="${x}" cy="${y}" r="13" fill="transparent" style="cursor:pointer"/><circle style="pointer-events:none" cx="${x}" cy="${y}" r="${lia?8:6}" fill="${lia?'#F59E0B':TEAMS[t][1]}" stroke="${lia?'#0F172A':'#fff'}" stroke-width="${lia?2:1}" ${n===SRC||n===DST?'filter="url(#sh)"':''}/>`;
+    if(n===SRC||n===DST)s+=`<text x="${x}" y="${y+22}" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">${n===SRC?'start':'goal'}</text>`;});
+  if(dotAt){const [x,y]=pos[dotAt];s+=`<circle cx="${x}" cy="${y}" r="9" fill="#E11D48" stroke="#fff" stroke-width="2.5"/>`;}
+  if(failAt){const [x,y]=pos[failAt];s+=`<g stroke="#BE123C" stroke-width="4"><line x1="${x-8}" y1="${y-8}" x2="${x+8}" y2="${y+8}"/><line x1="${x-8}" y1="${y+8}" x2="${x+8}" y2="${y-8}"/></g>`;}
+  $('net').innerHTML=s;}
+function refreshNet(){const k=+$('sc').value;$('scv').textContent=k;$('ttlv').textContent=$('ttl').value;
+  graph=buildGraph(k);gm=adj(graph);const st=stats(gm);
+  $('mAvg').textContent=st.avg.toFixed(2);$('mDia').textContent=st.dia;$('mLinks').textContent=graph.length;
+  const p=bfs(gm,SRC,DST);$('mPath').textContent=p?(p.edges.length+' hops'):'none';drawNet();}
+$('sc').oninput=refreshNet;$('ttl').oninput=refreshNet;
+$('sendBtn').onclick=()=>guarded(async()=>{
+  hot(['net','HARNESS']);
+  const ttl=+$('ttl').value,p=bfs(gm,SRC,DST),taskId='T-'+(++taskSeq);
+  await DDB.put('Board',{taskId,type:'task',hops:0,ttl,from:'Research',to:'Data'},{expr:'attribute_not_exists(taskId)',fn:i=>!i});
+  await EB.put('TaskPosted',{taskId});
+  log('NET',`Task <b>${taskId}</b> posted. Shortest path ${p.edges.length} hops, hop limit ${ttl}. Each hop must pass <code>hops &lt; ttl</code> in DynamoDB.`);
+  const lastR=receipts[receipts.length-1];
+  for(let i=0;i<p.edges.length;i++){
+    const e=p.edges[i];
+    if(e.type==='short'){const d=await gateway('use_shortcut',{role:'Liaison'},{});
+      log('HARNESS',`Shortcut ${TEAMS[e.i][0]} to ${TEAMS[e.j][0]}: ${d.ok?`<span class="ok">PERMIT</span> by ${d.by} (liaison role)`:'<span class="no">DENY</span>'}`);count(d.ok);}
+    try{await DDB.update('Board',taskId,x=>{x.hops++;},{expr:'hops < :ttl',fn:it=>it.hops<ttl},'SET hops = hops + 1');}
+    catch(err){drawNet(p.edges.slice(0,i),p.path[i],p.path[i]);CW.put('TTLExpired',1);
+      log('HARNESS',`<span class="no">BLOCKED</span> hop ${i+1}: ConditionalCheckFailedException. The hop limit (${ttl}) is used up, the task needs ${p.edges.length}.`);
+      await EB.put('TTLExpired',{taskId,hops:i,ttl});count(false);return;}
+    await DDB.put('Memory',{handoffId:taskId+'#'+(i+1),from:p.path[i],to:p.path[i+1],summary:`Summary of ${taskId} for the next agent`,receipt:lastR?lastR.id:'none'});
+    drawNet(p.edges.slice(0,i+1),p.path[i+1]);await sleep(250);
+  }
+  log('NET',`<span class="ok">Delivered</span> in ${p.edges.length} hops (${p.edges.filter(e=>e.type==='short').length} by shortcut). Each handoff stored a short summary and a receipt id in the Memory table, not the full context.`);
+  count(true);
+});
+
+/* ============================== console ============================== */
+const TABS=['DynamoDB','S3','Step Functions','Search & Graph','Receipts','Policies','CloudWatch','API calls'];
+let TAB='DynamoDB',DTAB='Board';
+function renderTabs(){$('tabs').innerHTML=TABS.map(t=>`<button class="${t===TAB?'on':''}" data-t="${t}">${t}</button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.t;renderTabs();renderConsole();});}
+const ROLE={Le:'Liaison',Lw:'Liaison',up_r:'Planner',up_l:'Scout',dn_l:'Scout',dn_r:'Writer'};
+const TSHORT=['Research','Code','Review','Data'];
+function renderOwn(){
+  const n=selNode,[ti,k]=n.split(':'),t=+ti,role=ROLE[k],nm=TSHORT[t]+' '+role+' '+(k.replace('_',' '));
+  const mem=[...DDB.tables.Memory.values()].filter(x=>x.from===n||x.to===n).length;
+  const brd=[...DDB.tables.Board.values()].filter(x=>x.from===TSHORT[t]||x.to===TSHORT[t]).length;
+  const sess='sess-'+n.replace(':','-');
+  $('own').innerHTML=`
+  <div class="a"><h3>This agent: ${esc(nm)}</h3><ul>
+   <li><b>Runtime session</b> <span class="mono">${sess}</span> (own isolated session)</li>
+   <li><b>Identity</b> role <b>${role}</b>${role==='Liaison'?': may use shortcuts (policy P2)':': no shortcut right'}</li>
+   <li><b>Memory</b> live: ${mem} handoff${mem===1?'':'s'} sent or received</li>
+   <li><b>Skills gate</b> own contract check on every output</li>
+   <li><b>Harness gate</b> own loop and cost limits (this demo counts by call hash, not per agent)</li></ul></div>
+  <div class="t"><h3>Shared by ${TSHORT[t]} team</h3><ul>
+   <li><b>Whiteboard</b> one board, one lock per task. Live: ${brd} board item${brd===1?'':'s'} touching this team</li>
+   <li><b>Liaisons</b> 2 per team carry summaries and receipts to other teams</li></ul></div>
+  <div class="g"><h3>Shared by everyone</h3><ul>
+   <li><b>Gateway</b> tools, behind policy</li>
+   <li><b>Policy store</b> live: ${CEDAR.length} rules</li>
+   <li><b>Originals</b> S3 v${docV?docV.n:'-'}, plus vector and graph copies</li>
+   <li><b>KMS key</b> signs receipts. Live: ${receipts.length} issued</li>
+   <li><b>Audit trail</b> live: ${apiLog.length} API calls logged</li></ul></div>`;
+}
+$('net').addEventListener('click',e=>{const n=e.target.getAttribute&&e.target.getAttribute('data-n');if(n){selNode=n;drawNet();renderOwn();}});
+function markConsole(){if(consoleDirty)return;consoleDirty=true;requestAnimationFrame(()=>{consoleDirty=false;renderConsole();});}
+const J=o=>esc(JSON.stringify(o));
+function renderConsole(){
+  let h='';
+  if(TAB==='DynamoDB'){
+    h+=`<div class="tabs">${['Board','Memory','Counters'].map(t=>`<button class="${t===DTAB?'on':''}" data-d="${t}">${t} (${DDB.tables[t].size})</button>`).join('')}</div>`;
+    const rows=[...DDB.tables[DTAB].values()].slice(-12);
+    h+=rows.length?`<table>${rows.map(r=>`<tr><td class="mono">${J(r)}</td></tr>`).join('')}</table>`:'<p class="note">No items yet. Send a task or run a scenario.</p>';
+  }else if(TAB==='S3'){
+    h+='<table><tr><th>Key</th><th>Ver</th><th>VersionId</th><th>ETag</th><th>Bytes</th></tr>';
+    (S3.b['policy-docs/supply-policy.txt']||[]).slice().reverse().forEach((v,i)=>h+=`<tr><td class="mono">s3://policy-docs/supply-policy.txt</td><td>v${v.n}${i===0?' (latest)':''}</td><td class="mono">${v.versionId.slice(0,10)}</td><td class="mono">${v.etag}</td><td>${v.body.length}</td></tr>`);h+='</table>';
+  }else if(TAB==='Step Functions'){
+    if(window.__tests)h+=`<b>Contract tests (0 LLM calls)</b><table><tr><th>Test</th><th>Result</th><th>ms*</th></tr>${window.__tests.map(r=>`<tr><td>${esc(r.n)}</td><td>${r.pass?'<span class="ok">PASS</span>':'<span class="no">FAIL</span>'} <span class="note">${esc(r.got)}</span></td><td>${r.ms}</td></tr>`).join('')}</table><p class="note">*includes simulated latency</p>`;
+    if(lastExec)h+=`<b>Last execution</b> <span class="mono">${lastExec.id}</span> <span class="chip ${lastExec.status==='SUCCEEDED'?'ok':'bad'}">${lastExec.status}</span><table><tr><th>State</th><th>Result</th><th>ms*</th></tr>${lastExec.events.map(e=>`<tr><td>${e.state}</td><td>${e.ok?'':'<span class="no">'}${esc(e.res)}${e.ok?'':'</span>'}</td><td>${e.ms}</td></tr>`).join('')}</table>`;
+    h+=`<details><summary>Show state machine definition (ASL-style)</summary><div class="pre">${esc(JSON.stringify(ASL,null,1))}</div></details>`;
+  }else if(TAB==='Search & Graph'){
+    if(lastHits){h+=`<b>OpenSearch kNN</b> for "${esc(lastHits.q)}"<table><tr><th>Section</th><th>Score</th><th></th></tr>${lastHits.hits.map(x=>`<tr><td>${x.id} ${esc(x.t)}</td><td>${x.score.toFixed(2)}</td><td><span class="bar2" style="width:${Math.round(x.score*80)}px"></span></td></tr>`).join('')}</table>`;}
+    else h+='<p class="note">Ask a question to see retrieval results.</p>';
+    h+=`<b>Neptune edges</b><div class="pre">${NEP.map(e=>`(${e[0]})-[:${e[1]}]->(${e[2]})`).join('\n')}</div>`;
+    if(lastCov)h+=`<p class="note">Last coverage check: ${lastCov.section} is qualified by ${lastCov.qualifiers.length?lastCov.qualifiers.map(q=>q.id+' "'+esc(q.t)+'"').join(', '):'nothing'}.</p>`;
+  }else if(TAB==='Receipts'){
+    const latest=S3.latest('policy-docs','supply-policy.txt');
+    h+=receipts.length?`<table><tr><th>Id</th><th>Source</th><th>Span</th><th>MAC</th><th>Status</th></tr>${receipts.map(r=>{const cur=latest&&latest.body.includes(r.quote);return `<tr><td>${r.id}</td><td>${r.doc} v${r.v} ${r.sec}</td><td>${r.a}-${r.b}</td><td class="mono">${r.sig}</td><td>${cur?'<span class="ok">current</span>':'<span class="no">stale: source changed in v'+latest.n+'</span>'}</td></tr>`;}).join('')}</table>`:'<p class="note">No receipts yet. Ask a question.</p>';
+  }else if(TAB==='Policies'){
+    h+=CEDAR.map(r=>`<div class="pre" style="margin-bottom:6px"><b>${r.id}</b>\n${esc(r.text)}</div>`).join('');
+  }else if(TAB==='CloudWatch'){
+    const ks=Object.keys(CW.m);
+    h+=ks.length?`<table><tr><th>Metric</th><th>Sum</th></tr>${ks.map(k=>`<tr><td>${k}</td><td>${CW.m[k]}</td></tr>`).join('')}</table>`:'<p class="note">No metrics yet.</p>';
+    h+=`<b>Alarms</b><table>${CW.alarms.map(a=>`<tr><td>${a.name}</td><td><span class="chip ${a.state==='OK'?'ok':'bad'}">${a.state}</span></td></tr>`).join('')}</table>`;
+  }else{
+    h+=`<table><tr><th>Service</th><th>Operation</th><th>Params</th><th>Status</th><th>ms</th></tr>${apiLog.slice(-40).reverse().map(c=>`<tr><td>${esc(c.svc)}</td><td>${esc(c.op)}</td><td class="mono">${J(c.p).slice(0,90)}</td><td>${c.status===200?'<span class="ok">200</span>':'<span class="no">'+c.status+' '+esc(c.err)+'</span>'}</td><td>${c.ms}</td></tr>`).join('')}</table>`;
+  }
+  $('console').innerHTML=h;
+  try{renderOwn();}catch(e){}
+  document.querySelectorAll('#console [data-d]').forEach(b=>b.onclick=()=>{DTAB=b.dataset.d;renderConsole();});
+}
+
+/* ============================== WebLLM / WebGPU ============================== */
+(function(){
+  if(!('gpu' in navigator)){$('gpuChip').textContent='WebGPU not available';$('gpuChip').className='chip bad';$('loadBtn').disabled=true;
+    $('status').textContent='This browser has no WebGPU, so the scripted stub is used. Try recent Chrome or Edge on a device with a GPU to load a real model.';return;}
+  navigator.gpu.requestAdapter().then(a=>{if(a){$('gpuChip').textContent='WebGPU ready';$('gpuChip').className='chip ok';}else{$('gpuChip').textContent='No WebGPU adapter';$('gpuChip').className='chip bad';$('loadBtn').disabled=true;}})
+    .catch(()=>{$('gpuChip').textContent='WebGPU error';$('gpuChip').className='chip bad';});
+})();
+$('loadBtn').onclick=async()=>{
+  const id=$('model').value;$('loadBtn').disabled=true;$('prog').style.display='inline-block';$('prog').value=0;
+  try{
+    $('status').textContent='Importing WebLLM...';
+    const webllm=await import('https://esm.run/@mlc-ai/web-llm');
+    engine=await webllm.CreateMLCEngine(id,{initProgressCallback:r=>{$('prog').value=r.progress||0;$('status').textContent=r.text||'Loading...';}});
+    $('knowerChip').textContent='Knower: WebLLM '+id.split('-MLC')[0];$('knowerChip').className='chip ok';
+    $('status').textContent='Model loaded. The model now writes the answers; the kernel still verifies every quote.';$('prog').style.display='none';
+    log('KNOWER',`Loaded ${esc(id)} on WebGPU. Small models sometimes break the JSON contract or misquote. That is what the kernel catches.`);
+  }catch(e){engine=null;$('status').textContent='Could not load the model: '+(e.message||e)+'. Using the scripted stub.';$('prog').style.display='none';$('loadBtn').disabled=false;}
+};
+
+/* ============================== boot ============================== */
+(async()=>{
+  await KMS.init();
+  await publishDoc(30);
+  renderTabs();refreshNet();renderConsole();
+  log('NET','Ready. Simulated AWS layer is up (DynamoDB, S3, Step Functions, Lambda, EventBridge, CloudWatch, KMS, OpenSearch, Neptune, AgentCore Policy). Send a task, or run a kernel scenario.');
+})();
+</script>
+</body>
+</html>
