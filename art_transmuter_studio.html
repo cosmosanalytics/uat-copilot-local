@@ -1049,7 +1049,7 @@
     /* ---------------------------------------------------------------------
        1. GROQ & WEBGPU CONFIGURATION
        --------------------------------------------------------------------- */
-    const _XK = [15, 25, 17, 53, 38, 11, 24, 23, 67, 18, 51, 19, 49, 21, 55, 3, 29, 61, 54, 48, 52, 63, 10, 29, 42, 60, 3, 29, 54, 7, 22, 60, 55, 37, 13, 24, 34, 18, 51, 49, 16, 50, 48, 18, 38, 9, 39, 48, 63, 61, 7, 24, 37, 50, 62, 59];
+    const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
     const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
     const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -1060,6 +1060,18 @@
     let isPlayingAudio = false;
     let audioInterval = null;
 
+    /* Sample texts for each of the 8 Source mediums */
+    const MEDIUM_SAMPLES = {
+      music: "Adagio sostenuto in C# minor. A continuous triplet arpeggio in the piano accompaniment sustains a hypnotic, nocturnal mist. A melancholic dotted rhythm melody sings above solemn, pedal-point bass octaves, whispering mournful longing.",
+      visual_art: "Vibrant cobalt blue and ultramarine swirling sky with glowing aureoles of cadmium yellow around eleven stars and an incandescent crescent moon. Below lies an idealized quiet village with a sharp, flame-like dark cypress tree thrusting vertically into cosmic turbulence.",
+      poetry: "April is the cruellest month, breeding / Lilacs out of the dead land, mixing / Memory and desire, stirring / Dull roots with spring rain. / Winter kept us warm, covering / Earth in forgetful snow, feeding a little life with dried tubers.",
+      dance: "Earth-covered stage. Dancers in raw silk shifts trembling with violent, primitive spasms, grounded stompings, gasping thoracic contractions, and sudden explosive lunges toward the sacred soil as the chosen maiden dances herself to exhaustion.",
+      architecture: "Brutalist bush-hammered raw basalt monolith. Deep cantilevered post-tensioned concrete beams creating dramatic shadow recesses, punctured only by vertical crevice apertures that slice diagonal blades of natural sunlight across the void.",
+      cinema: "Nocturnal rain-slicked city streets in 2.39:1 anamorphic widescreen. Low-key chiaroscuro lighting cuts across wet asphalt, where cyan neon motel reflections bleed into deep charcoal shadows, accompanied by a slow 35mm tracking dolly shot.",
+      sculpture: "Heavy block of Carrara marble chiseled with deep negative-space voids and sharp diagonal cleavage lines. The rough unpolished crystalline stone creates raw torsional tension against a smooth, polished undulating bronze base.",
+      gastronomy: "Five-course degustation: Cold-smoked mountain pine broth infused with charred lichen, followed by seared dry-aged venison dusted with volcanic black salt and fermented lingonberry reduction that contracts the palate before finishing with wild honeycomb."
+    };
+
     /* ---------------------------------------------------------------------
        2. CURATED MASTERPIECE PRESETS
        --------------------------------------------------------------------- */
@@ -1068,7 +1080,7 @@
         source_medium: 'music',
         target_medium: 'visual_art',
         title: 'Beethoven · Moonlight Sonata (Op. 27 No. 2)',
-        text: 'Adagio sostenuto in C# minor. A continuous triplet arpeggio in the piano accompaniment sustains a hypnotic, nocturnal mist. A melancholic dotted rhythm melody sings above solemn, pedal-point bass octaves, whispering mournful longing and stillness before rising into a brief, turbulent swell.',
+        text: 'Adagio sostenuto in C# minor. A continuous triplet arpeggio in the piano accompaniment sustains a hypnotic, nocturnal mist. A melancholic dotted rhythm melody sings above solemn, pedal-point bass octaves, whispering mournful longing.',
         depth: 75
       },
       starry_night: {
@@ -1101,9 +1113,6 @@
       }
     };
 
-    /* ---------------------------------------------------------------------
-       3. DETERMINISTIC SYNESTHESIA KNOWLEDGE BASE
-       --------------------------------------------------------------------- */
     const THEORETICAL_QUOTES = {
       'music->visual_art': '"Color is the keyboard, the eyes are the hammers, the soul is the piano with many strings." — Wassily Kandinsky',
       'visual_art->music': '"A painting must be felt through musical harmonies of color and spatial rhythm." — Paul Klee',
@@ -1111,18 +1120,32 @@
       'dance->gastronomy': '"The kinesthetics of muscular release and tension map directly onto textures of crispness and velvet mouthfeel." — Auguste Escoffier',
       'music->cinema': '"Film rhythm is the counterpoint between visual cutting and sonic timbre." — Andrei Tarkovsky',
       'architecture->music': '"A cathedral is a harmonic chord constructed of stone and light." — Le Corbusier',
-      'poetry->sculpture': '"Every block of stone has a statue inside it and it is the task of the sculptor to discover it, like a stanza freed from meter." — Michelangelo',
-      'default': '"All art constantly aspires towards the condition of music." — Walter Pater'
+      'poetry->sculpture': '"Every block of stone has a statue inside it, like a stanza freed from meter." — Michelangelo',
+      'poetry->visual_art': '"Ut pictura poesis — As is painting, so is poetry; every word is a stroke of tint." — Horace',
+      'dance->visual_art': '"Dance translates into painting as the physical trajectory of kinetic velocity." — Jackson Pollock',
+      'architecture->visual_art': '"Architectural elevations become abstract geometric planes of tectonic tension." — Kazimir Malevich',
+      'cinema->visual_art': '"Cinema is painting animated across time by the light of the projector." — Jean-Luc Godard',
+      'default': '"All art constantly aspires towards the condition of synesthetic unity." — Walter Pater'
     };
 
     /* ---------------------------------------------------------------------
-       4. SELECTION & UI HANDLERS
+       3. SELECTION & UI HANDLERS (AUTO-TRANSMUTE ON CLICK)
        --------------------------------------------------------------------- */
     function selectSourceMedium(medium, el) {
       activeSourceMedium = medium;
       document.querySelectorAll('#source-medium-grid .art-card').forEach(c => c.classList.remove('selected'));
       el.classList.add('selected');
+      
+      const inputEl = document.getElementById('source-text-input');
+      // If the current text matches another sample or is blank, populate with fresh sample
+      const currentVal = inputEl.value.trim();
+      const isSample = Object.values(MEDIUM_SAMPLES).some(s => s.trim() === currentVal);
+      if (isSample || !currentVal) {
+        inputEl.value = MEDIUM_SAMPLES[medium] || "";
+      }
+      
       updateMediumLabels();
+      triggerTransmutation();
     }
 
     function selectTargetMedium(medium, el) {
@@ -1130,6 +1153,7 @@
       document.querySelectorAll('#target-medium-grid .art-card').forEach(c => c.classList.remove('selected'));
       el.classList.add('selected');
       updateMediumLabels();
+      triggerTransmutation();
     }
 
     function updateMediumLabels() {
@@ -1172,11 +1196,9 @@
       activeSourceMedium = p.source_medium;
       activeTargetMedium = p.target_medium;
 
-      // Update source cards
       document.querySelectorAll('#source-medium-grid .art-card').forEach(c => {
         c.classList.toggle('selected', c.getAttribute('onclick')?.includes(p.source_medium));
       });
-      // Update target cards
       document.querySelectorAll('#target-medium-grid .art-card').forEach(c => {
         c.classList.toggle('selected', c.getAttribute('onclick')?.includes(p.target_medium));
       });
@@ -1196,7 +1218,7 @@
     }
 
     /* ---------------------------------------------------------------------
-       5. CORE TRANSMUTATION DISPATCHER (GROQ LPU / WEBGPU / MATRIX)
+       4. CORE TRANSMUTATION DISPATCHER (GROQ LPU / WEBGPU / MATRIX)
        --------------------------------------------------------------------- */
     async function triggerTransmutation() {
       const sourceText = document.getElementById('source-text-input').value.trim();
@@ -1207,17 +1229,17 @@
       speedBadge.textContent = '⚡ Transmuting...';
       const t0 = performance.now();
 
-      try {
-        if (engine === 'groq_fast') {
+      let success = false;
+      if (engine === 'groq_fast') {
+        try {
           await runGroqTransmutation(sourceText);
-        } else if (engine === 'webllm_gpu') {
-          await runWebGpuTransmutation(sourceText);
-        } else {
-          runDeterministicTransmutation(sourceText);
+          success = true;
+        } catch (err) {
+          console.warn('Groq LPU failed, using dynamic local matrix:', err);
         }
-      } catch (err) {
-        console.warn('Primary LLM engine fallback:', err);
-        speedBadge.textContent = '⚠️ Local Fallback Engine';
+      }
+
+      if (!success) {
         runDeterministicTransmutation(sourceText);
       }
 
@@ -1227,20 +1249,20 @@
     }
 
     /* ---------------------------------------------------------------------
-       6. GROQ LPU INFERENCE (Qwen-2.5-32B High-Speed Generation)
+       5. GROQ LPU INFERENCE (Qwen-3.8-27b High-Speed Cloud Generation)
        --------------------------------------------------------------------- */
     async function runGroqTransmutation(text) {
       const customKey = document.getElementById('custom-groq-key').value.trim();
       const apiKey = customKey || PROVISIONED_GROQ_KEY;
       const depth = document.getElementById('transmute-depth').value;
 
-      const systemPrompt = `You are the World's Leading Inter-Art Synesthesia Scholar and Generative Artist.
+      const systemPrompt = `You are the World's Leading Inter-Art Synesthesia Scholar and Generative Transmuter.
 You translate any artwork from Source Art Form (${activeSourceMedium}) into Target Art Form (${activeTargetMedium}).
 
 You must respond STRICTLY with a valid JSON object matching this schema:
 {
-  "artwork_title": " evocative title in the target medium",
-  "philosophical_bridge": "2-3 sentences explaining the synesthetic transmutation and why these mediums connect",
+  "artwork_title": "Creative, poetic title for the target artwork",
+  "philosophical_bridge": "2-3 sentences explaining the structural isomorphism between these two mediums",
   "isomorphisms": [
     {"source_feature": "...", "target_manifestation": "..."},
     {"source_feature": "...", "target_manifestation": "..."},
@@ -1248,19 +1270,55 @@ You must respond STRICTLY with a valid JSON object matching this schema:
     {"source_feature": "...", "target_manifestation": "..."}
   ],
   "palette": ["#hex1", "#hex2", "#hex3", "#hex4", "#hex5"],
-  "manifesto": "Detailed poetic and technical description of the translated work in target medium",
-  "parameters": {
+  "manifesto": "Detailed, evocative critique and performance manifesto for the generated target work",
+  "poetry_text": ["Line 1...", "Line 2...", "Line 3...", "Line 4...", "", "Line 5...", "Line 6..."],
+  "visual_parameters": {
+    "style": "waves | kinetic_curves | geometric_grid | typographic | cinematic_light | chiseled_voids | fluid_organic",
+    "accent_shape": "sun | monolith | spiral | beam | void",
+    "density": 18
+  },
+  "audio_parameters": {
+    "notes": [220.0, 261.6, 293.6, 329.6, 392.0, 440.0],
     "tempo_bpm": 60,
-    "notes": [60, 63, 67, 70],
-    "scale_type": "minor_pentatonic",
-    "visual_style": "minimalist_chiaroscuro",
-    "verse_meter": "iambic_pentameter",
-    "laban_efforts": {"weight": "strong", "space": "direct", "time": "sustained", "flow": "bound"},
-    "architecture_elements": {"order": "monolithic", "light_aperture": "narrow_crevice", "material": "bush-hammered basalt"}
+    "scale_name": "Dorian Mode",
+    "waveform": "triangle"
+  },
+  "dance_parameters": {
+    "weight": "STRONG",
+    "space": "DIRECT",
+    "time": "SUSTAINED",
+    "flow": "BOUND",
+    "trajectories": [
+      {"x": 100, "y": 230, "label": "D1: Contraction"},
+      {"x": 270, "y": 100, "label": "Apex: Sudden Surge"},
+      {"x": 440, "y": 210, "label": "D3: Ground Release"}
+    ]
+  },
+  "architecture_parameters": {
+    "style": "Brutalist Monolith",
+    "order": "Cantilevered Post-Tensioned Mass",
+    "light_aperture": "Narrow vertical crevice"
+  },
+  "cinema_parameters": {
+    "shots": [
+      {"caption": "Shot 1: Extreme Wide 24mm · Atmospheric establish", "lighting": "low_key"},
+      {"caption": "Shot 2: Medium 50mm · Slow tracking pan", "lighting": "contrast"},
+      {"caption": "Shot 3: Tight 85mm · Anamorphic lens flare", "lighting": "rim_light"}
+    ]
+  },
+  "sculpture_parameters": {
+    "material": "Carrara Basalt",
+    "tension": "High Torsional Shear",
+    "void_ratio": "38% Negative Space"
+  },
+  "gastronomy_parameters": {
+    "dish_name": "Degustation of Cold Ash & Wild Lingonberry",
+    "flavor_notes": ["Primary Note: Smoked Pine", "Acidic Counterpoint: Fermented Currant", "Mouthfeel: Velvet Marrow", "Finish: Mountain Honey"],
+    "radar": {"sweet": 30, "umami": 90, "acid": 75, "bitter": 60, "salt": 50, "smoke": 95}
   }
 }`;
 
-      const userPrompt = `Translate this artwork from ${activeSourceMedium} to ${activeTargetMedium}:
+      const userPrompt = `Translate this artwork from ${activeSourceMedium} into ${activeTargetMedium}:
 "${text}"
 Transmutation Depth Fidelity: ${depth}%`;
 
@@ -1271,12 +1329,12 @@ Transmutation Depth Fidelity: ${depth}%`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "qwen-2.5-32b",
+          model: "qwen/qwen3.8-27b",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
-          temperature: 0.4,
+          temperature: 0.35,
           response_format: { type: "json_object" }
         })
       });
@@ -1287,88 +1345,216 @@ Transmutation Depth Fidelity: ${depth}%`;
     }
 
     /* ---------------------------------------------------------------------
-       7. WEBGPU / WEBLLM INFERENCE
-       --------------------------------------------------------------------- */
-    async function runWebGpuTransmutation(text) {
-      // Local shader execution or fast fallback
-      runDeterministicTransmutation(text);
-    }
-
-    /* ---------------------------------------------------------------------
-       8. DETERMINISTIC SYNESTHESIA ENGINE (Zero Latency Instant Generator)
+       6. COMPREHENSIVE DETERMINISTIC ENGINE (ALL 64 COMBINATIONS)
        --------------------------------------------------------------------- */
     function runDeterministicTransmutation(text) {
       const src = activeSourceMedium;
       const tgt = activeTargetMedium;
+      const lower = (text || "").toLowerCase();
 
-      // Base Palette Palette Generator
-      let palette = ["#0f172a", "#312e81", "#4338ca", "#6366f1", "#e0e7ff"];
-      if (text.toLowerCase().includes('yellow') || text.toLowerCase().includes('sun') || text.toLowerCase().includes('fire')) {
-        palette = ["#451a03", "#78350f", "#d97706", "#f59e0b", "#fef3c7"];
-      } else if (text.toLowerCase().includes('green') || text.toLowerCase().includes('spring') || text.toLowerCase().includes('earth')) {
-        palette = ["#022c22", "#064e3b", "#059669", "#10b981", "#d1fae5"];
-      } else if (text.toLowerCase().includes('spasm') || text.toLowerCase().includes('violent') || text.toLowerCase().includes('cruel')) {
-        palette = ["#4c0519", "#881337", "#be123c", "#f43f5e", "#ffe4e6"];
+      // Compute deterministic hash from inputs
+      let hash = 0;
+      const seedStr = `${src}->${tgt}:${text}`;
+      for (let i = 0; i < seedStr.length; i++) {
+        hash = ((hash << 5) - hash + seedStr.charCodeAt(i)) | 0;
+      }
+      const absHash = Math.abs(hash);
+
+      // 1. Dynamic Palette Generator
+      let palette = ["#0f172a", "#1e293b", "#312e81", "#4338ca", "#e0e7ff"];
+      if (src === 'dance' || lower.includes('spasm') || lower.includes('stomp') || lower.includes('fire') || lower.includes('blood')) {
+        palette = ["#2b0a12", "#500724", "#9f1239", "#f43f5e", "#fecdd3"];
+      } else if (src === 'visual_art' || lower.includes('yellow') || lower.includes('star') || lower.includes('sun') || lower.includes('gold')) {
+        palette = ["#0b132b", "#1c2541", "#3a506b", "#f59e0b", "#fef08a"];
+      } else if (src === 'poetry' || lower.includes('roots') || lower.includes('winter') || lower.includes('dead') || lower.includes('memory')) {
+        palette = ["#18181b", "#27272a", "#52525b", "#a1a1aa", "#f4f4f5"];
+      } else if (src === 'architecture' || lower.includes('basalt') || lower.includes('concrete') || lower.includes('stone') || lower.includes('monolith')) {
+        palette = ["#0f172a", "#1e293b", "#334155", "#64748b", "#cbd5e1"];
+      } else if (src === 'cinema' || lower.includes('neon') || lower.includes('noir') || lower.includes('rain') || lower.includes('asphalt')) {
+        palette = ["#030712", "#0f172a", "#0e7490", "#06b6d4", "#a5f3fc"];
+      } else if (src === 'sculpture' || lower.includes('marble') || lower.includes('bronze') || lower.includes('chisel')) {
+        palette = ["#1c1917", "#44403c", "#78716c", "#d6d3d1", "#fafaf9"];
+      } else if (src === 'gastronomy' || lower.includes('pine') || lower.includes('lichen') || lower.includes('honey')) {
+        palette = ["#142517", "#224727", "#44783f", "#d97706", "#fef3c7"];
       }
 
-      let title = `Transmutation of ${formatMediumName(src)} into ${formatMediumName(tgt)}`;
-      let bridge = `Through structural isomorphism, the temporal and textural invariants of ${formatMediumName(src)} are mapped to the spatial and sensory language of ${formatMediumName(tgt)}.`;
-      let manifesto = `The structural dynamics of the source piece unfold through genuine medium-specific techniques. Each pulse, dissonance, and tonal inflection finds an exact counterpart.`;
-      
-      let isos = [
-        { source_feature: "Rhythmic Frequency", target_manifestation: "Repetitive Structural Metric & Grid Density" },
-        { source_feature: "Harmonic Dissonance / Tension", target_manifestation: "High-Contrast Edge Variance & Spatial Conflict" },
-        { source_feature: "Dynamic Intensity (Crescendo)", target_manifestation: "Scale Volumetrics & Focal Density Shift" },
-        { source_feature: "Timbral Warmth", target_manifestation: "Saturated Texture & Tactile Resonance" }
+      // 2. Dynamic Title & Manifesto
+      const srcName = formatMediumName(src);
+      const tgtName = formatMediumName(tgt);
+      const titlePrefixes = {
+        visual_art: ["Impresionist Canvas of", "Geometric Nocturne in", "Chromatic Horizon of", "Kinetic Glaze on"],
+        music: ["Polyphonic Symphony for", "Modal Sonatina in", "Contrapuntal Fugue of", "Ambient Resonance on"],
+        poetry: ["Canticle of", "Elegiac Stanzas for", "Free Verse Meditation on", "Ode to the"],
+        dance: ["Kinetic Rite of", "Choreographic Pulse of", "Somatic Arc in", "Laban Improvisation on"],
+        architecture: ["Monolithic Pavilion of", "Cantilevered Vault for", "Tectonic Sanctuary of", "Spire of"],
+        cinema: ["Nocturnal 2.39:1 Mise-en-Scène of", "Low-Key Anamorphic Study of", "Slow Cinema Tracking of", "Film Noir Etude on"],
+        sculpture: ["Chiseled Torsion of", "Negative Space Carrara Form of", "Cast Patina Geometry for", "Monolith of"],
+        gastronomy: ["Five-Course Degustation of", "Sensory Plating Study for", "Smoked Umami Reduction of", "Nordic Infusion on"]
+      };
+      const prefixList = titlePrefixes[tgt] || ["Transmutation of"];
+      const prefix = prefixList[absHash % prefixList.length];
+      const title = `${prefix} ${srcName}`;
+
+      const bridge = `Translating ${srcName} into ${tgtName} reveals the invariant structural armature: temporal rhythm transforms into spatial interval, and sensory tension manifests through the medium-specific laws of ${tgtName}.`;
+
+      // 3. Dynamic Isomorphism Matrix
+      const isomorphismLibrary = {
+        'music->visual_art': [
+          { source_feature: "Harmonic Tonality & Key Center", target_manifestation: "Dominant Palette Color Field" },
+          { source_feature: "Rhythmic Arpeggio Cadence", target_manifestation: "Layered Horizontal Impasto Brushstrokes" },
+          { source_feature: "Bass Octave Pedal Point", target_manifestation: "Weighted Monolithic Mass at Ground Plane" },
+          { source_feature: "Melodic Yearning Highs", target_manifestation: "Scattered Luminous Silver Accents" }
+        ],
+        'poetry->visual_art': [
+          { source_feature: "Stanza Architecture & Meter", target_manifestation: "Structured Horizontal Canvas Grid & Spacing" },
+          { source_feature: "Enjambed Line Breaks", target_manifestation: "Discontinuous Asymmetric Color Fractures" },
+          { source_feature: "Melancholic Metaphorical Subtext", target_manifestation: "Desaturated Low-Key Undertones" },
+          { source_feature: "Sudden Poetic Epiphany", target_manifestation: "Single High-Contrast Focal Highlight" }
+        ],
+        'dance->visual_art': [
+          { source_feature: "Laban Strong Weight Effort", target_manifestation: "Heavy, Viscous Pigment Impasto Splatters" },
+          { source_feature: "Kinetic Somatic Trajectory", target_manifestation: "Dynamic Sweeping Bezier Motion Ribbons" },
+          { source_feature: "Thoracic Contraction", target_manifestation: "Compressed Geometric Focal Node" },
+          { source_feature: "Ground Floor Release", target_manifestation: "Diffused Gravitational Wash at Canvas Base" }
+        ],
+        'architecture->visual_art': [
+          { source_feature: "Cantilevered Structural Beams", target_manifestation: "Bold Orthogonal Geometry & Cantilevered Lines" },
+          { source_feature: "Rough Bush-Hammered Basalt", target_manifestation: "Tactile Cross-Hatched Texture Glaze" },
+          { source_feature: "Vertical Crevice Light Aperture", target_manifestation: "Diagonal Slicing Blade of High-Key Tint" },
+          { source_feature: "Compression-to-Tension Ratio", target_manifestation: "Balanced Positive vs Negative Color Planes" }
+        ],
+        'cinema->visual_art': [
+          { source_feature: "2.39:1 Anamorphic Widescreen", target_manifestation: "Extreme Horizontal Letterboxed Focal Plane" },
+          { source_feature: "Low-Key Chiaroscuro Lighting", target_manifestation: "Deep Charcoal Shadows with Sharp Rim Light" },
+          { source_feature: "Slow Tracking Dolly Shot", target_manifestation: "Continuous Lateral Color Progression" },
+          { source_feature: "Cyan Neon Reflection on Asphalt", target_manifestation: "Vibrant Cyan Glazes over Inky Charcoal" }
+        ],
+        'sculpture->visual_art': [
+          { source_feature: "Chiseled Carrara Marble Facets", target_manifestation: "Faceted Polygonal Color Shards" },
+          { source_feature: "Negative-Space Void Carve", target_manifestation: "Central Unpainted Negative Space Window" },
+          { source_feature: "Torsional Shear Stress", target_manifestation: "Diagonal Dynamic Tension Vector Lines" },
+          { source_feature: "Polished vs Rough Stone Finish", target_manifestation: "Matte Ground with Glossy Varnish Strokes" }
+        ],
+        'gastronomy->visual_art': [
+          { source_feature: "Cold-Smoked Pine Aromatic Base", target_manifestation: "Earthy Moss and Charcoal Background Wash" },
+          { source_feature: "Acidic Currant Reduction", target_manifestation: "Vivid Crimson Droplet Accents" },
+          { source_feature: "Velvet Marrow Mouthfeel", target_manifestation: "Smooth Blended Glaze Gradients" },
+          { source_feature: "Thermal Contrast (Hot/Cold)", target_manifestation: "Warm Amber juxtaposed with Frigid Cyan" }
+        ]
+      };
+
+      const isos = isomorphismLibrary[`${src}->${tgt}`] || [
+        { source_feature: `${srcName} Primary Rhythm`, target_manifestation: `${tgtName} Metric Structuring` },
+        { source_feature: `${srcName} Tonal Tension`, target_manifestation: `${tgtName} Contrast Gradient` },
+        { source_feature: `${srcName} Emotional Crescendo`, target_manifestation: `${tgtName} Focal Center of Gravity` },
+        { source_feature: `${srcName} Structural Cadence`, target_manifestation: `${tgtName} Resolving Texture` }
       ];
 
-      // Customized mappings for specific combinations
-      if (src === 'music' && tgt === 'visual_art') {
-        title = "Nocturne in Prussian Blue & Silver Impasto";
-        isos = [
-          { source_feature: "Minor Key Center (C# minor)", target_manifestation: "Deep indigo & prussian blue color field" },
-          { source_feature: "Continuous Triplet Arpeggios", target_manifestation: "Horizontal undulating brushwork across middle horizon" },
-          { source_feature: "Pedal Point Bass Octaves", target_manifestation: "Substantial dark monolithic mass at the base" },
-          { source_feature: "Dotted Melodic Sighs", target_manifestation: "Delicate, luminous impasto highlights" }
-        ];
-        manifesto = "The continuous triplet piano arpeggio manifests as an undulating wash of deep indigo and cobalt oil glazes. Low pedal bass notes ground the composition as weighted charcoal monoliths, while the yearning melodic phrase emerges as scattered droplets of lunar silver leaf catching ambient illumination.";
-      } else if (src === 'visual_art' && tgt === 'music') {
-        title = "Symphony No. 4: Swirling Aureoles in D Dorian";
-        isos = [
-          { source_feature: "Ultramarine Sky Vortex", target_manifestation: "Ascending brass and string glissandi in polyrhythmic counterpoint" },
-          { source_feature: "Cadmium Yellow Stars", target_manifestation: "Celesta and high flute staccato bell chords" },
-          { source_feature: "Vertical Cypress Silhouette", target_manifestation: "Grave contrabass and bassoon ostinato motif" },
-          { source_feature: "Quiet Sleeping Village", target_manifestation: "Sustained woodwind chorale in gentle 6/8 meter" }
-        ];
-        manifesto = "The cosmic swirling sky is scored for divided violins in sweeping microtonal waves, colliding with sudden brass fanfares. The eleven glowing stars ring out as crystalline glockenspiel and celesta harmonics, while the solemn vertical cypress rises through the dense sonic fabric as a dark contrabassoon ostinato.";
-      } else if (src === 'poetry' && tgt === 'architecture') {
-        title = "Monolith of April: Basalt & Memory Pavilion";
-        isos = [
-          { source_feature: "Enjambed Verses ('breeding / Lilacs')", target_manifestation: "Cantilevered concrete slabs that bypass conventional load corners" },
-          { source_feature: "Dull Roots / Dead Land", target_manifestation: "Rough-hewn subterranean foundation embedded in natural bedrock" },
-          { source_feature: "Winter Warmth / Forgetful Snow", target_manifestation: "Poured white alabaster light wells offering thermal stillness" },
-          { source_feature: "Desolate Modernist Cadence", target_manifestation: "Unadorned Brutalist geometry devoid of ornamentation" }
-        ];
-        manifesto = "The fragmented verse structure translates into a sequence of compressed, soaring monolithic concrete volumes. The reader’s rhythm is physically embodied in the visitor’s stride through narrow, cavernous corridors that open suddenly to stark, skylit apertures framing barren earth.";
-      } else if (src === 'dance' && tgt === 'gastronomy') {
-        title = "The Sacrificial Degustation: Ash, Truffle & Searing Clay";
-        isos = [
-          { source_feature: "Violent Earth Stamping", target_manifestation: "Smoked marrow crust on volcanic basalt salt-brick" },
-          { source_feature: "Gasping Thoracic Contractions", target_manifestation: "Tart fermented lingonberry reduction that tightens the palate" },
-          { source_feature: "Soil-Covered Naked Feet", target_manifestation: "Earthy roasted sunchoke puree with black winter truffle dirt" },
-          { source_feature: "Final Exhaustion Collapse", target_manifestation: "Velvety, chilled bitter cocoa and distilled mountain pine infusion" }
-        ];
-        manifesto = "The primal earthiness of the choreography is mirrored in deeply umami, soil-inspired flavor profiles. Searing temperature contrasts and astringent reductions evoke muscular exhaustion, followed by the grounding tranquility of wild mushroom broth and roasted root vegetables.";
-      } else if (src === 'music' && tgt === 'cinema') {
-        title = "Blue in Green: Midnight Rain in 2.39:1 Anamorphic";
-        isos = [
-          { source_feature: "Muted Harmon Trumpet", target_manifestation: "Tight 85mm close-up with shallow depth-of-field catching lens flares" },
-          { source_feature: "Bill Evans Modal Chords", target_manifestation: "Desaturated teal and charcoal color grading with amber neon reflections" },
-          { source_feature: "Brushed Snare Rhythm", target_manifestation: "Continuous slow vertical pan across wet asphalt in heavy rainfall" },
-          { source_feature: "Unresolved 10-Bar Cycles", target_manifestation: "Elliptical jump-cuts maintaining constant unresolved narrative yearning" }
-        ];
-        manifesto = "Miles Davis’s melancholic muted horn translates into an unhurried, melancholic slow cinema sequence. A solitary figure stands under a flickering diner sign in a rain-swept nocturnal metropolis, framed in extreme widescreen ratio with low-key chiaroscuro lighting.";
-      }
+      // 4. Dynamic Manifesto
+      const manifesto = `Transmuted from ${srcName} into ${tgtName}, the artwork undergoes a complete sensory metamorphosis. Every qualitative nuance from the source—its cadence, atmospheric density, and emotional weight—is directly embodied through the structural parameters of ${tgtName}.`;
+
+      // 5. Dynamic Poetry Generator
+      const poemLibrary = {
+        music: [
+          "Through cobalt mist the quiet strings awaken,",
+          "A three-fold pulse that whispers through the floor;",
+          "The solemn bass, in granite stillness taken,",
+          "Anchors the bell that rings forevermore.",
+          "",
+          "Above the dark, a silver sigh is shaken,",
+          "And longing walks upon a silent shore."
+        ],
+        visual_art: [
+          "A vortex turns within the ultramarine,",
+          "Where eleven stars ignite their golden pyre;",
+          "The flame-dark cypress cuts the quiet scene,",
+          "A living spire of sorrow and desire.",
+          "",
+          "Sleep holds the valley in a silver sheen,",
+          "While heavens roar with planetary fire."
+        ],
+        dance: [
+          "The flesh contracts against the sacred clay,",
+          "A violent pulse that tears the silent air;",
+          "The feet stamp down what reason cast away,",
+          "A sudden leap of terror and of prayer.",
+          "",
+          "Until the final breath forsakes the day,",
+          "And stillness claims the dancer lying bare."
+        ],
+        architecture: [
+          "Raw basalt towers where the shadows brood,",
+          "Great cantilevered beams of stone and steel;",
+          "A single shaft of sunlight slices rude",
+          "Across the cavern where the silent kneel.",
+          "",
+          "Here space is weight, and stone is magnitude,",
+          "And geometric truth is made to feel."
+        ],
+        cinema: [
+          "Rain slicks the asphalt under blinking neon,",
+          "A lonely lens tracks past the streaming glass;",
+          "In deep chiaroscuro, moments flee on,",
+          "As phantom headlights in the darkness pass.",
+          "",
+          "The city hums its solitary paean,",
+          "A midnight shadow on a frozen mass."
+        ]
+      };
+      const poetry_text = poemLibrary[src] || [
+        `The soul of ${srcName} takes shape within the line,`,
+        "A measured pulse of memory and light;",
+        "Where forms converse and medium divine",
+        "Dissolves the boundary between sound and sight.",
+        "",
+        "What once was gesture now begins to shine,",
+        "A timeless cadence in the quiet night."
+      ];
+
+      // 6. Dynamic Visual Art Parameters (Style varies by Source!)
+      let visualStyle = 'waves';
+      let accentShape = 'monolith';
+      if (src === 'dance') { visualStyle = 'kinetic_curves'; accentShape = 'splatter'; }
+      else if (src === 'architecture') { visualStyle = 'geometric_grid'; accentShape = 'beam'; }
+      else if (src === 'poetry') { visualStyle = 'typographic'; accentShape = 'void'; }
+      else if (src === 'cinema') { visualStyle = 'cinematic_light'; accentShape = 'beam'; }
+      else if (src === 'sculpture') { visualStyle = 'chiseled_voids'; accentShape = 'void'; }
+      else if (src === 'gastronomy') { visualStyle = 'fluid_organic'; accentShape = 'sun'; }
+      else if (src === 'visual_art') { visualStyle = 'cubist_facets'; accentShape = 'spiral'; }
+
+      // 7. Dynamic Audio Parameters
+      const audioScales = {
+        visual_art: { notes: [261.6, 293.6, 329.6, 392.0, 440.0, 523.2], tempo: 84, scale: "Celestial Pentatonic", wave: "sine" },
+        poetry: { notes: [196.0, 220.0, 246.9, 293.6, 329.6, 392.0], tempo: 52, scale: "Eolian Minor", wave: "triangle" },
+        dance: { notes: [146.8, 164.8, 207.6, 220.0, 277.1, 311.1], tempo: 104, scale: "Dissonant Chromatic Staccato", wave: "sawtooth" },
+        architecture: { notes: [110.0, 164.8, 220.0, 329.6, 440.0], tempo: 42, scale: "Open Fifth Monolith", wave: "triangle" },
+        cinema: { notes: [220.0, 246.9, 261.6, 293.6, 329.6, 349.2], tempo: 64, scale: "Modal Dorian Noir", wave: "triangle" },
+        music: { notes: [220.0, 261.6, 293.6, 329.6, 392.0, 440.0], tempo: 60, scale: "C# Minor Arpeggiation", wave: "triangle" }
+      };
+      const audioParams = audioScales[src] || { notes: [220, 261, 329, 392, 440], tempo: 60, scale: "Natural Minor", wave: "triangle" };
+
+      // 8. Dynamic Dance Parameters
+      const danceParams = {
+        weight: (src === 'architecture' || src === 'sculpture' || src === 'dance') ? "STRONG" : "LIGHT",
+        space: (src === 'architecture' || src === 'cinema') ? "DIRECT" : "FLEXIBLE",
+        time: (src === 'dance' || src === 'cinema') ? "SUDDEN" : "SUSTAINED",
+        flow: (src === 'music' || src === 'poetry') ? "FREE" : "BOUND",
+        trajectories: [
+          { x: 70 + (absHash % 40), y: 220, label: `D1: ${srcName} Entry` },
+          { x: 260, y: 90 + ((absHash >> 3) % 40), label: `Apex: Kinetic Climax` },
+          { x: 450 - (absHash % 30), y: 210, label: `D3: Sustained Ground` }
+        ]
+      };
+
+      // 9. Dynamic Cinema Shots
+      const cinemaShots = [
+        { caption: `SHOT 1: Wide 24mm · ${srcName} Spatial Establishment`, lighting: "Low Key" },
+        { caption: `SHOT 2: Medium 50mm · Slow Tracking Dolly along Tension Axis`, lighting: "High Contrast" },
+        { caption: `SHOT 3: Close-up 85mm · Anamorphic Flare on Resolved Focus`, lighting: "Rim Light" }
+      ];
+
+      // 10. Dynamic Gastronomy Dish
+      const dishName = `Degustation of ${srcName}: Smoked Essences & Sensory Reductions`;
 
       activeArtworkData = {
         artwork_title: title,
@@ -1376,20 +1562,52 @@ Transmutation Depth Fidelity: ${depth}%`;
         isomorphisms: isos,
         palette: palette,
         manifesto: manifesto,
-        parameters: {
-          tempo_bpm: 56,
-          notes: [58, 61, 65, 68, 70],
-          scale_type: "modal_dorian",
-          visual_style: "abstract_chiaroscuro",
-          verse_meter: "free_verse_cadence",
-          laban_efforts: { weight: "strong", space: "flexible", time: "sudden", flow: "bound" },
-          architecture_elements: { order: "brutalist", light_aperture: "crevice_slit", material: "cast_basalt" }
+        poetry_text: poetry_text,
+        visual_parameters: {
+          style: visualStyle,
+          accent_shape: accentShape,
+          density: 16
+        },
+        audio_parameters: {
+          notes: audioParams.notes,
+          tempo_bpm: audioParams.tempo,
+          scale_name: audioParams.scale,
+          waveform: audioParams.wave
+        },
+        dance_parameters: danceParams,
+        architecture_parameters: {
+          style: `${srcName} Monolithic Order`,
+          light_aperture: "Precision 240mm Skylight Slit"
+        },
+        cinema_parameters: {
+          shots: cinemaShots
+        },
+        sculpture_parameters: {
+          material: `${srcName} Chiseled Medium`,
+          void_ratio: "35% Negative Space"
+        },
+        gastronomy_parameters: {
+          dish_name: dishName,
+          flavor_notes: [
+            `• Primary Core: Infusion inspired by ${srcName}`,
+            "• Acidic Note: Fermented Currant Emulsion",
+            "• Mouthfeel: Velvet Texture with Crisp Tuile",
+            "• Thermal Arc: Searing Glaze transitioning to Chilled Broth"
+          ],
+          radar: {
+            sweet: 25 + (absHash % 50),
+            umami: 70 + (absHash % 25),
+            acid: 60 + ((absHash >> 2) % 30),
+            bitter: 40 + ((absHash >> 4) % 40),
+            salt: 50,
+            smoke: 80
+          }
         }
       };
     }
 
     /* ---------------------------------------------------------------------
-       9. LIVE VIEWPORT RENDERER (Canvas / Audio / Poetry / Laban / Cinema)
+       7. LIVE VIEWPORT RENDERERS (Canvas / Audio / Poetry / Laban / Cinema)
        --------------------------------------------------------------------- */
     function renderArtworkToViewport() {
       if (!activeArtworkData) return;
@@ -1428,7 +1646,7 @@ Transmutation Depth Fidelity: ${depth}%`;
       // Update JSON preview
       document.getElementById('json-parameters-display').textContent = JSON.stringify(activeArtworkData, null, 2);
 
-      // Render based on Target Medium
+      // Render Target Medium Viewport
       const container = document.getElementById('render-container');
       container.innerHTML = '';
 
@@ -1461,7 +1679,7 @@ Transmutation Depth Fidelity: ${depth}%`;
       }
     }
 
-    /* Target: Visual Painting (Generative Canvas) */
+    /* Target: Visual Painting (Canvas adapts to Source Medium Style!) */
     function renderVisualArtCanvas(container) {
       const canvas = document.createElement('canvas');
       canvas.id = 'generative-canvas';
@@ -1474,8 +1692,9 @@ Transmutation Depth Fidelity: ${depth}%`;
 
       const ctx = canvas.getContext('2d');
       const palette = activeArtworkData.palette || ["#0f172a", "#312e81", "#4338ca", "#6366f1", "#e0e7ff"];
+      const vParams = activeArtworkData.visual_parameters || { style: 'waves' };
 
-      // Background gradient
+      // Background Gradient
       const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       bgGrad.addColorStop(0, palette[0]);
       bgGrad.addColorStop(0.6, palette[1]);
@@ -1483,54 +1702,158 @@ Transmutation Depth Fidelity: ${depth}%`;
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Generative Layered Impasto Waves & Geometry
-      for (let layer = 0; layer < 18; layer++) {
-        ctx.beginPath();
-        const color = palette[Math.min(palette.length - 1, 1 + (layer % (palette.length - 1)))];
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2 + (layer % 6);
-        ctx.globalAlpha = 0.45 + (layer * 0.025);
-
-        let y = 80 + layer * 14;
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= canvas.width; x += 15) {
-          const wave = Math.sin(x * 0.015 + layer) * 22 + Math.cos(x * 0.03 - layer) * 12;
-          ctx.lineTo(x, y + wave);
+      // Branch painting rendering by SOURCE MEDIUM STYLE
+      if (vParams.style === 'kinetic_curves') {
+        // From Dance: Kinetic Ribbons & Explosive Gestures
+        for (let i = 0; i < 24; i++) {
+          ctx.beginPath();
+          ctx.strokeStyle = palette[1 + (i % (palette.length - 1))];
+          ctx.lineWidth = 3 + (i % 8);
+          ctx.globalAlpha = 0.65;
+          ctx.moveTo(30 + i * 20, canvas.height - 20);
+          ctx.bezierCurveTo(
+            canvas.width * 0.2 + (i * 15), canvas.height * 0.1,
+            canvas.width * 0.8 - (i * 12), canvas.height * 0.9,
+            canvas.width - 40 - (i * 15), 40 + i * 10
+          );
+          ctx.stroke();
         }
-        ctx.stroke();
-      }
+        // Splash gesture dots
+        ctx.globalAlpha = 0.8;
+        for (let j = 0; j < 80; j++) {
+          ctx.fillStyle = palette[2 + (j % 3)];
+          ctx.beginPath();
+          ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 5 + 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (vParams.style === 'geometric_grid') {
+        // From Architecture: Orthogonal perspective & structural blocks
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        // Cantilevered Tectonic Slabs
+        for (let b = 0; b < 6; b++) {
+          ctx.fillStyle = palette[1 + (b % (palette.length - 1))];
+          ctx.globalAlpha = 0.55;
+          const bx = 60 + b * 45;
+          const by = 80 + b * 35;
+          const bw = 240 - b * 20;
+          const bh = 50;
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = palette[palette.length - 1];
+          ctx.strokeRect(bx, by, bw, bh);
+        }
+        // Diagonal Sunbeam Aperture
+        ctx.fillStyle = 'rgba(254, 240, 138, 0.25)';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width * 0.7, 0);
+        ctx.lineTo(canvas.width * 0.85, 0);
+        ctx.lineTo(canvas.width * 0.4, canvas.height);
+        ctx.lineTo(canvas.width * 0.25, canvas.height);
+        ctx.fill();
+      } else if (vParams.style === 'typographic') {
+        // From Poetry: Metric Lines & Concrete Verse Strips
+        for (let l = 0; l < 14; l++) {
+          const ly = 50 + l * 22;
+          ctx.fillStyle = palette[1 + (l % (palette.length - 1))];
+          ctx.globalAlpha = 0.75;
+          // Varying line lengths imitating poetic meter
+          const lw = 180 + Math.sin(l * 1.5) * 120;
+          ctx.fillRect(80, ly, lw, 6);
+          // Accented syllables as dots
+          ctx.fillStyle = palette[palette.length - 1];
+          ctx.fillRect(80 + lw + 12, ly, 8, 6);
+        }
+        // Margin rule
+        ctx.strokeStyle = palette[palette.length - 2];
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(60, 30); ctx.lineTo(60, canvas.height - 30); ctx.stroke();
+      } else if (vParams.style === 'cinematic_light') {
+        // From Cinema: 2.39:1 Letterbox & Anamorphic Light Beam
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, 36);
+        ctx.fillRect(0, canvas.height - 36, canvas.width, 36);
+        // Anamorphic horizontal flare streaks
+        ctx.globalAlpha = 0.85;
+        const beamGrad = ctx.createLinearGradient(0, canvas.height / 2, canvas.width, canvas.height / 2);
+        beamGrad.addColorStop(0, 'transparent');
+        beamGrad.addColorStop(0.5, palette[palette.length - 1]);
+        beamGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = beamGrad;
+        ctx.fillRect(0, canvas.height / 2 - 4, canvas.width, 8);
+        // Volumetric spotlight cone
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width * 0.15, 36);
+        ctx.lineTo(canvas.width * 0.75, canvas.height - 36);
+        ctx.lineTo(canvas.width * 0.45, canvas.height - 36);
+        ctx.fill();
+      } else if (vParams.style === 'chiseled_voids') {
+        // From Sculpture: Faceted Chiseled Angles
+        ctx.globalAlpha = 0.8;
+        for (let s = 0; s < 12; s++) {
+          ctx.fillStyle = palette[1 + (s % (palette.length - 1))];
+          ctx.beginPath();
+          const cx = canvas.width * 0.5 + Math.cos(s) * 110;
+          const cy = canvas.height * 0.5 + Math.sin(s) * 80;
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + 80, cy - 40);
+          ctx.lineTo(cx + 60, cy + 60);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#000';
+          ctx.stroke();
+        }
+      } else if (vParams.style === 'fluid_organic') {
+        // From Gastronomy: Fluid Emulsion Swirls
+        for (let r = 8; r >= 1; r--) {
+          ctx.fillStyle = palette[r % palette.length];
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.arc(canvas.width * 0.5, canvas.height * 0.5, r * 28, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Default / Music: Undulating Harmonic Waveforms
+        for (let layer = 0; layer < 16; layer++) {
+          ctx.beginPath();
+          ctx.strokeStyle = palette[1 + (layer % (palette.length - 1))];
+          ctx.lineWidth = 2 + (layer % 5);
+          ctx.globalAlpha = 0.4 + (layer * 0.03);
 
-      // Weight Monolith / Focal Accent
-      ctx.globalAlpha = 0.85;
-      const accentGrad = ctx.createRadialGradient(canvas.width * 0.65, canvas.height * 0.35, 10, canvas.width * 0.65, canvas.height * 0.35, 120);
-      accentGrad.addColorStop(0, palette[palette.length - 1]);
-      accentGrad.addColorStop(0.5, palette[palette.length - 2]);
-      accentGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = accentGrad;
-      ctx.beginPath();
-      ctx.arc(canvas.width * 0.65, canvas.height * 0.35, 110, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Atmospheric Texture Spatter
-      ctx.globalAlpha = 0.2;
-      for (let i = 0; i < 200; i++) {
-        ctx.fillStyle = palette[i % palette.length];
-        const rx = Math.random() * canvas.width;
-        const ry = Math.random() * canvas.height;
-        ctx.fillRect(rx, ry, Math.random() * 3, Math.random() * 3);
+          let y = 70 + layer * 16;
+          ctx.moveTo(0, y);
+          for (let x = 0; x <= canvas.width; x += 15) {
+            const wave = Math.sin(x * 0.02 + layer) * 26 + Math.cos(x * 0.04 - layer) * 14;
+            ctx.lineTo(x, y + wave);
+          }
+          ctx.stroke();
+        }
+        // Focal Celestial Mass
+        ctx.globalAlpha = 0.85;
+        const accentGrad = ctx.createRadialGradient(canvas.width * 0.7, canvas.height * 0.35, 10, canvas.width * 0.7, canvas.height * 0.35, 90);
+        accentGrad.addColorStop(0, palette[palette.length - 1]);
+        accentGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = accentGrad;
+        ctx.beginPath();
+        ctx.arc(canvas.width * 0.7, canvas.height * 0.35, 80, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.globalAlpha = 1.0;
     }
 
-    /* Target: Music Synthesizer (Web Audio API) */
+    /* Target: Music Synthesizer (Plays Dynamic Notes Based on Source!) */
     function renderMusicSynthesizer(container) {
+      const aParams = activeArtworkData.audio_parameters || { notes: [220, 261, 329, 392], tempo_bpm: 60, scale_name: "Modal Harmonic", waveform: "triangle" };
       const div = document.createElement('div');
       div.className = 'audio-player-ui';
       div.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:14px;">🎹 Web Audio Generative Synthesizer</div>
-            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono';">Key: Modal Progression · 56 BPM · Pentatonic Arpeggiator</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono';">Scale: ${aParams.scale_name} · ${aParams.tempo_bpm} BPM · Waveform: ${aParams.waveform}</div>
           </div>
           <button class="play-btn" id="audio-play-toggle" onclick="toggleAudioPlayback()">
             <span id="play-btn-icon">▶</span> <span id="play-btn-text">Play Audio</span>
@@ -1538,9 +1861,9 @@ Transmutation Depth Fidelity: ${depth}%`;
         </div>
         <canvas id="audio-oscilloscope" class="audio-waveform-canvas" width="580" height="120"></canvas>
         <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'JetBrains Mono';color:var(--text-muted);">
-          <span>Frequencies: 174 Hz ➔ 528 Hz</span>
-          <span>Oscillator: Polyphonic Sine + Warm Triangle</span>
-          <span>Spatial Reverb: 1.8s Hall</span>
+          <span>Frequencies: ${aParams.notes[0].toFixed(0)} Hz ➔ ${aParams.notes[aParams.notes.length - 1].toFixed(0)} Hz</span>
+          <span>Notes Count: ${aParams.notes.length} Active Tones</span>
+          <span>Oscillator: Polyphonic ${aParams.waveform}</span>
         </div>
       `;
       container.appendChild(div);
@@ -1548,11 +1871,8 @@ Transmutation Depth Fidelity: ${depth}%`;
     }
 
     function toggleAudioPlayback() {
-      if (isPlayingAudio) {
-        stopAudioPlayback();
-      } else {
-        startAudioPlayback();
-      }
+      if (isPlayingAudio) stopAudioPlayback();
+      else startAudioPlayback();
     }
 
     function startAudioPlayback() {
@@ -1571,31 +1891,32 @@ Transmutation Depth Fidelity: ${depth}%`;
         document.getElementById('play-btn-text').textContent = 'Stop Audio';
       }
 
-      // Chord / note progression
-      const notes = [220.0, 261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+      const aParams = activeArtworkData.audio_parameters || { notes: [220, 261, 329, 392], tempo_bpm: 60, waveform: "triangle" };
+      const notes = aParams.notes;
+      const intervalMs = Math.round((60 / (aParams.tempo_bpm || 60)) * 500);
       let step = 0;
 
       audioInterval = setInterval(() => {
         if (!isPlayingAudio) return;
-        playSynthNote(notes[step % notes.length], 0.4);
-        if (step % 3 === 0) {
-          playSynthNote(notes[(step + 2) % notes.length] * 0.5, 0.7); // Bass drone
+        playSynthNote(notes[step % notes.length], 0.35, aParams.waveform || 'triangle');
+        if (step % 4 === 0) {
+          playSynthNote(notes[0] * 0.5, 0.8, 'sine'); // Deep bass drone
         }
         step++;
         animateOscilloscope(step);
-      }, 340);
+      }, intervalMs);
     }
 
-    function playSynthNote(freq, dur) {
+    function playSynthNote(freq, dur, waveType = 'triangle') {
       if (!audioCtx) return;
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'triangle';
+        osc.type = waveType;
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
 
         gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.04);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
 
         osc.connect(gain);
@@ -1656,30 +1977,25 @@ Transmutation Depth Fidelity: ${depth}%`;
       ctx.stroke();
     }
 
-    /* Target: Poetry (Typography & Meter) */
+    /* Target: Poetry (Typography & Generated Verse Stanzas) */
     function renderPoetryTypography(container) {
+      const lines = activeArtworkData.poetry_text || [
+        "In silence, all the forms begin to rise,",
+        "A quiet cadence answering the call;",
+        "Light casts its pattern on unclouded skies,",
+        "While shadows on the marble pillars fall."
+      ];
+      
       const div = document.createElement('div');
       div.className = 'poetry-container';
       div.innerHTML = `
         <div class="poetry-title">${activeArtworkData.artwork_title}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;font-style:italic;">Transmuted into Free Verse with Heroic Cadence</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;font-style:italic;">Transmuted from ${formatMediumName(activeSourceMedium)}</div>
         <div class="poetry-stanza">
-          I.<br>
-          Through cobalt mist the quiet waters breathe,<br>
-          An unbroken murmur of ascending silver,<br>
-          Beneath the stone of ancient hours.<br>
-          What weight remains is anchored in the roots,<br>
-          Dumb in the dark, unyielding.
-        </div>
-        <div class="poetry-stanza">
-          II.<br>
-          Listen: a single stroke begins to tremble,<br>
-          A bell without a tower, struck in dream,<br>
-          Until the surface yields its frozen gold<br>
-          And light forgets the hunger of the flame.
+          ${lines.map(line => line === "" ? "<br>" : line).join("<br>")}
         </div>
         <div class="poetry-metric-tag">
-          Scansion: Iambic pentameter variations with feminine enjambment · Rhyme: Terza Rima uncoupled
+          Cadence: Transmuted Isomorphic Verse · Scansion: Heroic Cadence
         </div>
       `;
       container.appendChild(div);
@@ -1687,6 +2003,15 @@ Transmutation Depth Fidelity: ${depth}%`;
 
     /* Target: Laban Choreography Stage */
     function renderLabanDanceStage(container) {
+      const dParams = activeArtworkData.dance_parameters || {
+        weight: "STRONG", space: "DIRECT", time: "SUSTAINED", flow: "BOUND",
+        trajectories: [
+          { x: 80, y: 220, label: "D1: Entry" },
+          { x: 260, y: 100, label: "Apex: Contraction" },
+          { x: 460, y: 200, label: "D3: Ground Release" }
+        ]
+      };
+
       const div = document.createElement('div');
       div.style.display = 'flex';
       div.style.flexDirection = 'column';
@@ -1694,43 +2019,35 @@ Transmutation Depth Fidelity: ${depth}%`;
       div.innerHTML = `
         <canvas id="dance-canvas" class="dance-stage-canvas" width="540" height="300"></canvas>
         <div class="dance-metrics-row">
-          <span>Weight: <strong>STRONG</strong></span>
-          <span>Space: <strong>DIRECT</strong></span>
-          <span>Time: <strong>SUSTAINED</strong></span>
-          <span>Flow: <strong>BOUND</strong></span>
+          <span>Weight: <strong>${dParams.weight}</strong></span>
+          <span>Space: <strong>${dParams.space}</strong></span>
+          <span>Time: <strong>${dParams.time}</strong></span>
+          <span>Flow: <strong>${dParams.flow}</strong></span>
         </div>
       `;
       container.appendChild(div);
 
       const canvas = document.getElementById('dance-canvas');
       const ctx = canvas.getContext('2d');
-      // Stage floor
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Kinetic stage boundary
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 1;
       ctx.strokeRect(40, 30, canvas.width - 80, canvas.height - 60);
 
-      // Choreographic trajectory vectors
+      // Trajectory curve
       ctx.strokeStyle = '#ec4899';
       ctx.lineWidth = 2.5;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      ctx.moveTo(80, 220);
-      ctx.bezierCurveTo(160, 60, 380, 80, 460, 200);
+      const trajs = dParams.trajectories;
+      ctx.moveTo(trajs[0].x, trajs[0].y);
+      ctx.bezierCurveTo(trajs[1].x - 60, trajs[1].y, trajs[1].x + 60, trajs[1].y, trajs[2].x, trajs[2].y);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dancer Positions
-      const positions = [
-        { x: 80, y: 220, label: 'D1: Contraction' },
-        { x: 260, y: 110, label: 'Apex: Sudden Lunge' },
-        { x: 460, y: 200, label: 'D3: Ground Release' }
-      ];
-
-      positions.forEach(p => {
+      trajs.forEach(p => {
         ctx.fillStyle = '#7c3aed';
         ctx.beginPath();
         ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
@@ -1744,6 +2061,7 @@ Transmutation Depth Fidelity: ${depth}%`;
 
     /* Target: Architectural Blueprint */
     function renderArchitecturalBlueprint(container) {
+      const arch = activeArtworkData.architecture_parameters || { style: "Brutalist Monolith", light_aperture: "Crevice Slit" };
       const canvas = document.createElement('canvas');
       canvas.className = 'blueprint-canvas';
       canvas.width = 580;
@@ -1764,67 +2082,69 @@ Transmutation Depth Fidelity: ${depth}%`;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      // Monolithic Cross Section
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
-      ctx.strokeRect(100, 70, 380, 190);
+      ctx.strokeRect(90, 70, 400, 190);
 
-      // Cantilever beam & skylight slit
       ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.fillRect(100, 70, 380, 30); // roof slab
-      ctx.fillRect(140, 100, 40, 160); // column A
-      ctx.fillRect(400, 100, 40, 160); // column B
+      ctx.fillRect(90, 70, 400, 30);
+      ctx.fillRect(130, 100, 40, 160);
+      ctx.fillRect(410, 100, 40, 160);
 
       // Skylight light ray
       ctx.fillStyle = 'rgba(253, 224, 71, 0.15)';
       ctx.beginPath();
       ctx.moveTo(270, 70);
-      ctx.lineTo(240, 260);
-      ctx.lineTo(320, 260);
+      ctx.lineTo(230, 260);
+      ctx.lineTo(330, 260);
       ctx.lineTo(290, 70);
       ctx.fill();
 
-      // Blueprint Callouts
       ctx.fillStyle = '#93c5fd';
       ctx.font = '10px JetBrains Mono';
-      ctx.fillText('ELEVATION AA // COMPRESSION AXIS // 1:100', 105, 50);
-      ctx.fillText('LIGHT APERTURE: 240mm CREVICE SLIT', 210, 280);
+      ctx.fillText(`ORDER: ${arch.style} // 1:100`, 95, 50);
+      ctx.fillText(`APERTURE: ${arch.light_aperture}`, 200, 280);
     }
 
     /* Target: Cinema Storyboard */
     function renderCinemaStoryboard(container) {
+      const cParams = activeArtworkData.cinema_parameters || {
+        shots: [
+          { caption: "SHOT 1: Wide 24mm · Low Key chiaroscuro", lighting: "low_key" },
+          { caption: "SHOT 2: Medium 50mm · Slow tracking dolly", lighting: "contrast" },
+          { caption: "SHOT 3: Close-up 85mm · Anamorphic flare", lighting: "rim_light" }
+        ]
+      };
+
       const div = document.createElement('div');
       div.className = 'cinema-storyboard';
       div.innerHTML = `
         <div class="cinema-frame">
           <canvas id="cf1" class="frame-canvas" width="180" height="110"></canvas>
-          <div class="frame-caption">SHOT 1: Wide 24mm · Low Key chiaroscuro, wet asphalt reflections.</div>
+          <div class="frame-caption">${cParams.shots[0].caption}</div>
         </div>
         <div class="cinema-frame">
           <canvas id="cf2" class="frame-canvas" width="180" height="110"></canvas>
-          <div class="frame-caption">SHOT 2: Medium 50mm · Slow tracking dolly across window pane.</div>
+          <div class="frame-caption">${cParams.shots[1].caption}</div>
         </div>
         <div class="cinema-frame">
           <canvas id="cf3" class="frame-canvas" width="180" height="110"></canvas>
-          <div class="frame-caption">SHOT 3: Close-up 85mm · Anamorphic flare, shallow depth fade.</div>
+          <div class="frame-caption">${cParams.shots[2].caption}</div>
         </div>
       `;
       container.appendChild(div);
 
-      // Draw frames
       ['cf1', 'cf2', 'cf3'].forEach((id, idx) => {
         const c = document.getElementById(id);
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#090d16';
         ctx.fillRect(0, 0, c.width, c.height);
 
-        // Aspect bars (2.39:1 letterbox)
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, c.width, 14);
         ctx.fillRect(0, c.height - 14, c.width, 14);
 
-        // Lighting simulation
-        const grad = ctx.createRadialGradient(c.width * (0.3 + idx * 0.2), c.height * 0.5, 5, c.width * 0.5, c.height * 0.5, 60);
+        const grad = ctx.createRadialGradient(c.width * (0.25 + idx * 0.25), c.height * 0.5, 4, c.width * 0.5, c.height * 0.5, 65);
         grad.addColorStop(0, '#38bdf8');
         grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad;
@@ -1834,6 +2154,7 @@ Transmutation Depth Fidelity: ${depth}%`;
 
     /* Target: Sculpture Chisel */
     function renderSculptureChisel(container) {
+      const sc = activeArtworkData.sculpture_parameters || { material: "Carrara Marble", tension: "Torsional Shear" };
       const canvas = document.createElement('canvas');
       canvas.width = 540;
       canvas.height = 320;
@@ -1842,14 +2163,13 @@ Transmutation Depth Fidelity: ${depth}%`;
       container.appendChild(canvas);
 
       const ctx = canvas.getContext('2d');
-      // Chiseled Carrara Marble / Patina Bronze
       ctx.fillStyle = '#263045';
       ctx.beginPath();
-      ctx.moveTo(180, 260);
-      ctx.lineTo(150, 140);
-      ctx.lineTo(240, 70);
-      ctx.lineTo(340, 90);
-      ctx.lineTo(390, 200);
+      ctx.moveTo(170, 260);
+      ctx.lineTo(140, 130);
+      ctx.lineTo(240, 60);
+      ctx.lineTo(350, 80);
+      ctx.lineTo(390, 190);
       ctx.lineTo(320, 270);
       ctx.closePath();
       ctx.fill();
@@ -1857,28 +2177,31 @@ Transmutation Depth Fidelity: ${depth}%`;
       // Negative Space Carve
       ctx.fillStyle = '#181e2b';
       ctx.beginPath();
-      ctx.arc(260, 170, 45, 0, Math.PI * 2);
+      ctx.arc(260, 160, 48, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px JetBrains Mono';
-      ctx.fillText('MATERIAL: Carrara Marble with Chiseled Negative Void', 40, 30);
-      ctx.fillText('MASS BALANCE: Torsional Moment = 0.42 kN·m', 40, 50);
+      ctx.fillText(`MATERIAL: ${sc.material} with Carved Void`, 40, 30);
+      ctx.fillText(`TENSION: ${sc.tension}`, 40, 50);
     }
 
     /* Target: Gastronomy Plating */
     function renderGastronomyPlating(container) {
+      const g = activeArtworkData.gastronomy_parameters || {
+        dish_name: "Degustation Plating",
+        flavor_notes: ["• Smoked Pine", "• Acidic Currant", "• Velvet Marrow", "• Thermal Contrast"],
+        radar: { sweet: 30, umami: 90, acid: 70, bitter: 50, salt: 50, smoke: 85 }
+      };
+
       const div = document.createElement('div');
       div.className = 'gastronomy-card';
       div.innerHTML = `
-        <div style="font-weight:700;font-size:14px;">🍽️ Degustation Plating &amp; Sensory Flavor Radar</div>
+        <div style="font-weight:700;font-size:14px;">🍽️ ${g.dish_name}</div>
         <div style="display:flex;gap:18px;align-items:center;">
           <canvas id="plate-canvas" width="220" height="220" style="border-radius:50%;background:#090d16;box-shadow:var(--shadow-md);"></canvas>
           <div style="flex:1;font-size:11.5px;line-height:1.6;font-family:'JetBrains Mono';">
-            <div>• <strong>Primary Note:</strong> Smoked Pine &amp; Black Salt</div>
-            <div>• <strong>Acidic Counterpoint:</strong> Fermented Currant Emulsion</div>
-            <div>• <strong>Mouthfeel:</strong> Velvet Marrow &amp; Ash Tuile</div>
-            <div>• <strong>Thermal Arc:</strong> Searing Glaze ➔ Chilled Broth</div>
+            ${g.flavor_notes.map(n => `<div>${n}</div>`).join('')}
           </div>
         </div>
       `;
@@ -1886,19 +2209,16 @@ Transmutation Depth Fidelity: ${depth}%`;
 
       const plate = document.getElementById('plate-canvas');
       const ctx = plate.getContext('2d');
-      // Plate rim
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 6;
       ctx.strokeRect(4, 4, plate.width - 8, plate.height - 8);
 
-      // Plating sauce swoosh
       ctx.strokeStyle = '#f43f5e';
       ctx.lineWidth = 14;
       ctx.beginPath();
       ctx.arc(110, 110, 70, 0.4, 3.2);
       ctx.stroke();
 
-      // Plating quenelle / element
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
       ctx.arc(110, 85, 18, 0, Math.PI * 2);
@@ -1909,6 +2229,7 @@ Transmutation Depth Fidelity: ${depth}%`;
         ctx.fillRect(85 + i * 10, 120 + Math.sin(i) * 10, 4, 4);
       }
     }
+
 
     /* ---------------------------------------------------------------------
        10. UTILITIES & MODAL HELPERS
