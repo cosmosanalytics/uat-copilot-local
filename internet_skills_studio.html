@@ -1593,7 +1593,7 @@
           <div style="color:var(--text-dim); font-style:italic;">Injecting instructions into context and streaming output...</div>
         </div>
         <div class="preview-frame-container" id="${cardId}-preview-container">
-          <iframe class="preview-frame" id="${cardId}-iframe" sandbox="allow-scripts allow-modals"></iframe>
+          <iframe class="preview-frame" id="${cardId}-iframe" sandbox="allow-scripts allow-same-origin allow-modals"></iframe>
         </div>
       `;
       outputFeed.prepend(card);
@@ -1690,17 +1690,18 @@ CRITICAL RUNTIME CONSTRAINTS:
     }
 
     function extractAndMountPreview(cardId, text, skillName) {
-      // Look for html, p5js, svg code blocks or direct doctype/html
-      const htmlBlockMatch = text.match(/```html\s*([\s\S]*?)```/i);
-      const jsBlockMatch = text.match(/```(?:javascript|js)?\s*([\s\S]*?)```/i);
-
+      // Look for html, p5js, svg code blocks (closed or open)
       let runnableHtml = null;
 
-      if (htmlBlockMatch) {
+      const htmlBlockMatch = text.match(/```html\s*([\s\S]*?)(?:```|$)/i);
+      const jsBlockMatch = text.match(/```(?:javascript|js)?\s*([\s\S]*?)(?:```|$)/i);
+
+      if (htmlBlockMatch && htmlBlockMatch[1].includes('<html') || htmlBlockMatch && htmlBlockMatch[1].includes('<!DOCTYPE')) {
         runnableHtml = htmlBlockMatch[1].trim();
       } else if (text.trim().startsWith('<!DOCTYPE html>') || text.includes('<html')) {
-        // Raw HTML returned without markdown fence
         runnableHtml = text.replace(/```html?/gi, '').replace(/```/g, '').trim();
+      } else if (htmlBlockMatch && htmlBlockMatch[1].trim()) {
+        runnableHtml = htmlBlockMatch[1].trim();
       } else if (jsBlockMatch && (skillName === 'algorithmic-art' || jsBlockMatch[1].includes('setup()') || jsBlockMatch[1].includes('createCanvas') || jsBlockMatch[1].includes('p5.'))) {
         // Wrap p5.js script inside runnable HTML template
         runnableHtml = `<!DOCTYPE html>
@@ -1714,13 +1715,12 @@ CRITICAL RUNTIME CONSTRAINTS:
 </head>
 <body>
   <script>
-    ${jsBlockMatch[1]}
+    ${jsBlockMatch[1].trim()}
   <\/script>
 </body>
 </html>`;
       } else if (text.includes('function setup()') && text.includes('createCanvas')) {
-        // Fallback p5.js detection in unformatted text
-        const codeSnippet = text.slice(text.indexOf('function setup()'));
+        const codeSnippet = text.slice(text.indexOf('function setup()')).replace(/```/g, '');
         runnableHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -1732,19 +1732,24 @@ CRITICAL RUNTIME CONSTRAINTS:
 </head>
 <body>
   <script>
-    ${codeSnippet.replace(/```/g, '')}
+    ${codeSnippet}
   <\/script>
 </body>
 </html>`;
       }
 
       if (runnableHtml) {
+        // Clean out stray backticks if any
+        runnableHtml = runnableHtml.replace(/```html?/gi, '').replace(/```$/g, '');
+
         const tabs = document.getElementById(`${cardId}-tabs`);
         if (tabs) tabs.style.display = 'flex';
         const iframe = document.getElementById(`${cardId}-iframe`);
-        if (iframe) iframe.srcdoc = runnableHtml;
+        if (iframe) {
+          iframe.srcdoc = runnableHtml;
+        }
         
-        // Auto-switch visual skills to preview tab so user sees the live canvas immediately
+        // Auto-switch visual skills to preview tab
         if (skillName === 'algorithmic-art' || skillName === 'canvas-design' || skillName === 'frontend-design') {
           switchOutputCardView(cardId, 'preview');
         }
