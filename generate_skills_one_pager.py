@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Generator for open_source_skills_one_pager.pdf & .html
-Strict 1-Page PDF summarizing all 19 open source agent skills in the ecosystem:
-- 4 Intuitive Functional Squads (Creative UI, Architecture & Engineering, Documents & Files, Governance)
-- Simple, visual, playful, publication-grade aesthetics
-- Zero overflow (verified by PyMuPDF)
+Generator for open_source_skills_one_pager.pdf & .html (V2 - Corrected Edition):
+Incorporates all sharp feedback:
+1. Document skills (docx, pdf, pptx, xlsx) explicitly marked as PROPRIETARY (Anthropic, All rights reserved) and Python/Office runtime.
+2. Corrected blurbs:
+   - web-artifacts-builder: React + Vite + Tailwind + shadcn/ui with init & bundle scripts.
+   - theme-factory: 10 actual presets (Arctic Frost, Botanical Garden, Desert Rose, Midnight Galaxy, etc.).
+   - canvas-design: Poster-style visual art outputting .png/.pdf from design philosophies.
+   - slack-gif-creator: Animated GIFs optimized for Slack with frame & size constraints.
+3. Verified Apache 2.0 open-source status for the other 15 skills (including claude-api, webapp-testing, discernment-nudge, academy-guide).
+4. Fixed layout spacing: eliminated large squad gaps, tight cohesive rhythm, strictly 1 single page verified by PyMuPDF.
 """
 
 import os
@@ -19,14 +24,14 @@ html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>The Open-Source AI Agent Skills Cheat Sheet</title>
+<title>Anthropic Agent Skills Catalog Cheat Sheet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   @page {
     size: letter portrait;
-    margin: 0.22in 0.26in 0.22in 0.26in;
+    margin: 0.20in 0.24in 0.20in 0.24in;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
@@ -38,32 +43,32 @@ html_content = """<!DOCTYPE html>
     font-family: 'Plus Jakarta Sans', sans-serif;
     color: #0F172A;
     background: #FFFFFF;
-    line-height: 1.24;
-    font-size: 8.0pt;
+    line-height: 1.25;
+    font-size: 7.9pt;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 10.5in;
-    max-height: 10.5in;
+    height: 10.55in;
+    max-height: 10.55in;
     overflow: hidden;
   }
 
   /* HEADER BANNER */
   .header-card {
     background: linear-gradient(135deg, #0F172A 0%, #312E81 50%, #4338CA 100%);
-    border-radius: 8px;
-    padding: 10px 16px;
+    border-radius: 7px;
+    padding: 8px 14px;
     color: #FFFFFF;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
   }
   .header-left h1 {
     font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 15.5pt;
+    font-size: 15.0pt;
     font-weight: 800;
     letter-spacing: -0.3px;
     line-height: 1.1;
@@ -72,7 +77,7 @@ html_content = """<!DOCTYPE html>
     -webkit-text-fill-color: transparent;
   }
   .header-left p {
-    font-size: 8.0pt;
+    font-size: 7.9pt;
     color: #E2E8F0;
     margin-top: 2px;
     font-weight: 500;
@@ -81,11 +86,11 @@ html_content = """<!DOCTYPE html>
     background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 3px 9px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7.2pt;
+    font-size: 7.0pt;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     text-transform: uppercase;
     text-align: right;
   }
@@ -95,57 +100,57 @@ html_content = """<!DOCTYPE html>
     background: #F8FAFC;
     border: 1px solid #E2E8F0;
     border-radius: 6px;
-    padding: 5px 10px;
+    padding: 4px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 7.6pt;
+    font-size: 7.5pt;
     color: #475569;
+    margin-top: 4px;
   }
   .concept-pill {
     font-weight: 800;
     color: #4F46E5;
     background: #EEF2FF;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 1px 5px;
+    border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7.2pt;
+    font-size: 7.0pt;
   }
 
-  /* 4 SQUADS GRID */
+  /* 4 SQUADS CONTAINER */
   .squads-container {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
     flex: 1;
-    justify-content: space-between;
     margin: 5px 0;
   }
 
   .squad-block {
-    border-radius: 7px;
+    border-radius: 6px;
     border: 1px solid #E2E8F0;
     overflow: hidden;
     background: #FFFFFF;
   }
 
   .squad-header {
-    padding: 4px 10px;
+    padding: 3.5px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: 800;
-    font-size: 8.2pt;
+    font-size: 8.0pt;
     letter-spacing: -0.1px;
   }
   .squad-header.purple { background: #FAF5FF; color: #6B21A8; border-bottom: 1px solid #F3E8FF; }
   .squad-header.blue   { background: #F0F9FF; color: #0369A1; border-bottom: 1px solid #E0F2FE; }
-  .squad-header.emerald{ background: #ECFDF5; color: #047857; border-bottom: 1px solid #D1FAE5; }
   .squad-header.amber  { background: #FFFBEB; color: #B45309; border-bottom: 1px solid #FEF3C7; }
+  .squad-header.emerald{ background: #ECFDF5; color: #047857; border-bottom: 1px solid #D1FAE5; }
 
   .squad-tag {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 6.8pt;
+    font-size: 6.6pt;
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 3px;
@@ -153,18 +158,21 @@ html_content = """<!DOCTYPE html>
   }
   .squad-header.purple .squad-tag { background: #E9D5FF; color: #581C87; }
   .squad-header.blue   .squad-tag { background: #BAE6FD; color: #075985; }
-  .squad-header.emerald .squad-tag { background: #A7F3D0; color: #065F46; }
   .squad-header.amber  .squad-tag { background: #FDE68A; color: #92400E; }
+  .squad-header.emerald .squad-tag { background: #A7F3D0; color: #065F46; }
 
-  /* SKILL ITEMS TABLE / GRID */
+  /* SKILL CELLS GRID */
   .skills-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
-    padding: 5px 8px;
+    gap: 4px;
+    padding: 5px 7px;
   }
   .skills-grid.four-col {
     grid-template-columns: repeat(4, 1fr);
+  }
+  .skills-grid.five-col {
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .skill-cell {
@@ -176,38 +184,42 @@ html_content = """<!DOCTYPE html>
     flex-direction: column;
     justify-content: space-between;
   }
-  .skill-cell:hover {
-    background: #F1F5F9;
+  .skill-cell.proprietary {
+    background: #FFFDF5;
+    border: 1px solid #FEF3C7;
   }
 
   .skill-name-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
   .skill-code {
     font-family: 'JetBrains Mono', monospace;
     font-weight: 800;
-    font-size: 7.6pt;
+    font-size: 7.5pt;
     color: #1E293B;
   }
-  .skill-size-badge {
-    font-size: 6.5pt;
-    color: #64748B;
+  .skill-badge {
+    font-size: 6.2pt;
     font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
   }
+  .skill-badge.oss { background: #E0E7FF; color: #4338CA; }
+  .skill-badge.prop { background: #FEE2E2; color: #991B1B; }
 
   .skill-desc {
-    font-size: 6.9pt;
+    font-size: 6.8pt;
     color: #475569;
     line-height: 1.22;
   }
   .skill-killer-feature {
-    margin-top: 3px;
-    font-size: 6.6pt;
+    margin-top: 2px;
+    font-size: 6.5pt;
     font-weight: 700;
-    color: #4338CA;
     display: flex;
     align-items: center;
     gap: 3px;
@@ -217,12 +229,13 @@ html_content = """<!DOCTYPE html>
   .bottom-runbook {
     background: #0F172A;
     color: #F8FAFC;
-    border-radius: 7px;
-    padding: 7px 12px;
+    border-radius: 6px;
+    padding: 6px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 7.2pt;
+    font-size: 7.0pt;
+    margin-top: 2px;
   }
   .runbook-step {
     display: flex;
@@ -239,11 +252,11 @@ html_content = """<!DOCTYPE html>
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 6.8pt;
+    font-size: 6.6pt;
   }
   .step-text {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7.0pt;
+    font-size: 6.9pt;
   }
 
   /* FOOTER */
@@ -251,7 +264,7 @@ html_content = """<!DOCTYPE html>
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 6.8pt;
+    font-size: 6.6pt;
     color: #94A3B8;
     padding: 2px 2px 0 2px;
   }
@@ -263,32 +276,32 @@ html_content = """<!DOCTYPE html>
   <!-- HEADER -->
   <div class="header-card">
     <div class="header-left">
-      <h1>The Open-Source AI Agent Skills Cheat Sheet</h1>
-      <p>19 Battle-Tested Capabilities Grounded in the Open <code>SKILL.md</code> Specification (Anthropic Standard)</p>
+      <h1>Anthropic Agent Skills Catalog Cheat Sheet</h1>
+      <p>Official Breakdown: 15 Apache 2.0 Open-Source Capabilities + 4 Proprietary Document Skills</p>
     </div>
     <div class="header-badge">
-      <div>Open Standard</div>
-      <div style="color: #A5B4FC; font-size:6.2pt; font-weight:600;">Browser &amp; CLI Ready</div>
+      <div>SKILL.md Spec</div>
+      <div style="color: #A5B4FC; font-size:6.0pt; font-weight:600;">19 Capabilities</div>
     </div>
   </div>
 
   <!-- CONCEPT INTRO STRIP -->
   <div class="concept-strip">
     <div>
-      <strong>How Agent Skills Work:</strong> A skill is a plain folder with a <span class="concept-pill">SKILL.md</span> containing YAML triggers &amp; runtime runbooks.
+      <strong>Anatomy:</strong> A skill is a folder containing a <span class="concept-pill">SKILL.md</span> runbook with YAML frontmatter + markdown execution procedures.
     </div>
     <div>
-      ⚡ <strong>Progressive Disclosure:</strong> LLMs read only <code>description:</code> metadata until explicitly triggered &rarr; <em>zero token waste</em>.
+      ⚡ <strong>Progressive Disclosure:</strong> LLM only reads <code>description:</code> metadata until task triggers it &rarr; <em>zero context pollution</em>.
     </div>
   </div>
 
   <!-- SQUADS CONTAINER -->
   <div class="squads-container">
 
-    <!-- SQUAD 1: CREATIVE UI & DESIGN SYSTEMS -->
+    <!-- SQUAD 1: CREATIVE UI & FRONTEND ARTIFACTS (Apache 2.0) -->
     <div class="squad-block">
       <div class="squad-header purple">
-        <span>🎨 Squad 1: Creative UI, Graphics &amp; Frontend Artifacts</span>
+        <span>🎨 Squad 1: Creative UI, Graphics &amp; Frontend Artifacts (Apache 2.0 &bull; Open-Source)</span>
         <span class="squad-tag">6 Skills</span>
       </div>
       <div class="skills-grid">
@@ -296,63 +309,63 @@ html_content = """<!DOCTYPE html>
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">frontend-design</span>
-            <span class="skill-size-badge">9.4 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Distinctive art direction, intentional typography, color harmony, and avoiding generic sterile AI defaults.</p>
-          <div class="skill-killer-feature">✦ Anti-generic styling rules</div>
+          <p class="skill-desc">Distinctive visual art direction, intentional typography, color harmony, and avoiding generic sterile defaults.</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ Anti-generic styling rules</div>
         </div>
         <!-- 1.2 web-artifacts-builder -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">web-artifacts-builder</span>
-            <span class="skill-size-badge">3.1 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Elaborate, multi-component single-file web apps with inline state, reactive events, and zero build steps.</p>
-          <div class="skill-killer-feature">✦ Self-contained HTML apps</div>
+          <p class="skill-desc">Complex multi-component web apps using React, Tailwind CSS, Vite &amp; shadcn/ui with init and bundle scripts.</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ React + Tailwind + shadcn</div>
         </div>
         <!-- 1.3 theme-factory -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">theme-factory</span>
-            <span class="skill-size-badge">3.1 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Systemic design engine styling artifacts with 10 themes (Cyberpunk, Bauhaus, Nordic, Retro Terminal).</p>
-          <div class="skill-killer-feature">✦ Complete CSS token sets</div>
+          <p class="skill-desc">10 pre-set themes (Arctic Frost, Botanical Garden, Desert Rose, Midnight Galaxy, Golden Hour, Sunset Blvd).</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ 10 verified color/font presets</div>
         </div>
         <!-- 1.4 algorithmic-art -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">algorithmic-art</span>
-            <span class="skill-size-badge">19.3 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Generative p5.js art, Perlin noise flow fields, chromatic aberration, particle trails, and seeded chaos.</p>
-          <div class="skill-killer-feature">✦ Interactive p5.js canvases</div>
+          <p class="skill-desc">Generative p5.js art: Perlin noise flow fields, chromatic aberration, particle trails, and interactive parameter exploration.</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ Autonomous p5.js canvases</div>
         </div>
         <!-- 1.5 canvas-design -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">canvas-design</span>
-            <span class="skill-size-badge">11.7 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Pure HTML5 Canvas 2D / WebGL rendering, vector drawing algorithms, generative graphics, and visual layouts.</p>
-          <div class="skill-killer-feature">✦ Direct GPU canvas rendering</div>
+          <p class="skill-desc">Poster-style visual art and static designs exported as .png and .pdf documents from written design philosophies.</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ Poster art (.png / .pdf)</div>
         </div>
         <!-- 1.6 slack-gif-creator -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">slack-gif-creator</span>
-            <span class="skill-size-badge">7.8 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Frame-by-frame canvas animation rendering, celebratory animated SVGs, and micro-animations.</p>
-          <div class="skill-killer-feature">✦ Programmatic keyframe GIFs</div>
+          <p class="skill-desc">Knowledge and utilities for creating animated GIFs optimized for Slack with frame, color &amp; file size constraints.</p>
+          <div class="skill-killer-feature" style="color:#6B21A8;">✦ Slack-optimized animated GIFs</div>
         </div>
       </div>
     </div>
 
-    <!-- SQUAD 2: AGENT ARCHITECTURE & ENGINEERING -->
+    <!-- SQUAD 2: AGENT ARCHITECTURE & ENGINEERING (Apache 2.0) -->
     <div class="squad-block">
       <div class="squad-header blue">
-        <span>⚡ Squad 2: Agent Architecture, MCP &amp; Testing</span>
+        <span>⚡ Squad 2: Agent Architecture, MCP &amp; Testing (Apache 2.0 &bull; Open-Source)</span>
         <span class="squad-tag">4 Skills</span>
       </div>
       <div class="skills-grid four-col">
@@ -360,16 +373,16 @@ html_content = """<!DOCTYPE html>
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">skill-creator</span>
-            <span class="skill-size-badge">32.9 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Meta-skill to author, calibrate, and lint new <code>SKILL.md</code> files with positive triggers and negative distractors.</p>
+          <p class="skill-desc">Meta-skill to author, calibrate, and lint new <code>SKILL.md</code> files with positive triggers &amp; negative distractors.</p>
           <div class="skill-killer-feature" style="color:#0369A1;">✦ Self-replicating skill engine</div>
         </div>
         <!-- 2.2 mcp-builder -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">mcp-builder</span>
-            <span class="skill-size-badge">9.1 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
           <p class="skill-desc">Full Model Context Protocol server scaffold in TypeScript &amp; Python with tools, prompts, resources &amp; stdio/SSE.</p>
           <div class="skill-killer-feature" style="color:#0369A1;">✦ Turn-key tool integrations</div>
@@ -378,120 +391,120 @@ html_content = """<!DOCTYPE html>
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">claude-api</span>
-            <span class="skill-size-badge">105 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Comprehensive reference for Anthropic API SDKs, streaming patterns, structured JSON schemas &amp; prompt caching.</p>
+          <p class="skill-desc">Exhaustive reference for Anthropic API SDKs, streaming patterns, structured JSON schemas &amp; prompt caching.</p>
           <div class="skill-killer-feature" style="color:#0369A1;">✦ Production API contracts</div>
         </div>
         <!-- 2.4 webapp-testing -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">webapp-testing</span>
-            <span class="skill-size-badge">3.9 KB</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Toolkit for browser UI validation, state invariant assertions, regression test suites, and mock user flows.</p>
-          <div class="skill-killer-feature" style="color:#0369A1;">✦ Automated invariant tests</div>
+          <p class="skill-desc">Interactive local web app testing with Playwright: UI debugging, browser screenshots, and console log capture.</p>
+          <div class="skill-killer-feature" style="color:#0369A1;">✦ Playwright UI verification</div>
         </div>
       </div>
     </div>
 
-    <!-- SQUAD 3: DOCUMENT AUTOMATION & FILE GENERATION -->
+    <!-- SQUAD 3: GOVERNANCE, EPISTEMIC SAFETY & COMMS (Apache 2.0) -->
     <div class="squad-block">
-      <div class="squad-header emerald">
-        <span>📄 Squad 3: Document Engineering &amp; Binary File Synthesis</span>
+      <div class="squad-header amber">
+        <span>🛡️ Squad 3: Governance, Epistemic Safety &amp; Comms (Apache 2.0 &bull; Open-Source)</span>
         <span class="squad-tag">5 Skills</span>
       </div>
-      <div class="skills-grid" style="grid-template-columns: repeat(5, 1fr);">
-        <!-- 3.1 docx -->
+      <div class="skills-grid five-col">
+        <!-- 3.1 discernment-nudge -->
         <div class="skill-cell">
           <div class="skill-name-row">
-            <span class="skill-code">docx</span>
-            <span class="skill-size-badge">6.7 KB</span>
+            <span class="skill-code">discernment-nudge</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Generate Word docs via XML / python-docx with TOC, cover pages, headers &amp; callouts.</p>
-          <div class="skill-killer-feature" style="color:#047857;">✦ Formal reports</div>
+          <p class="skill-desc">Epistemic checkpoint: prompts user to examine implicit assumptions &amp; failure modes on actionable plans.</p>
+          <div class="skill-killer-feature" style="color:#B45309;">✦ Pre-mortem safety gate</div>
         </div>
-        <!-- 3.2 pdf -->
+        <!-- 3.2 brand-guidelines -->
         <div class="skill-cell">
           <div class="skill-name-row">
-            <span class="skill-code">pdf</span>
-            <span class="skill-size-badge">7.8 KB</span>
+            <span class="skill-code">brand-guidelines</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Merge, split, OCR, table extract, watermark &amp; form-fill with pypdf / pdfplumber.</p>
-          <div class="skill-killer-feature" style="color:#047857;">✦ Zero-overflow PDFs</div>
+          <p class="skill-desc">Official Anthropic brand colors, typography scales, accessibility contrasts &amp; brand voice consistency.</p>
+          <div class="skill-killer-feature" style="color:#B45309;">✦ WCAG contrast compliance</div>
         </div>
-        <!-- 3.3 pptx -->
+        <!-- 3.3 internal-comms -->
         <div class="skill-cell">
           <div class="skill-name-row">
-            <span class="skill-code">pptx</span>
-            <span class="skill-size-badge">20.6 KB</span>
+            <span class="skill-code">internal-comms</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Executive pitch deck generation via python-pptx with 16:9 layout &amp; data cards.</p>
-          <div class="skill-killer-feature" style="color:#047857;">✦ Investor decks</div>
+          <p class="skill-desc">High-signal internal memos: status updates, post-mortems, team syncs, and 30-60-90 day planning drafts.</p>
+          <div class="skill-killer-feature" style="color:#B45309;">✦ High-signal memos</div>
         </div>
-        <!-- 3.4 xlsx -->
+        <!-- 3.4 academy-guide -->
         <div class="skill-cell">
           <div class="skill-name-row">
-            <span class="skill-code">xlsx</span>
-            <span class="skill-size-badge">8.3 KB</span>
+            <span class="skill-code">academy-guide</span>
+            <span class="skill-badge oss">Apache 2.0</span>
           </div>
-          <p class="skill-desc">Financial modeling, pivot tables, multi-sheet budgets &amp; Excel formulas via openpyxl.</p>
-          <div class="skill-killer-feature" style="color:#047857;">✦ Automated spreadsheets</div>
+          <p class="skill-desc">Matches user queries against Claude Academy course catalog for tutorials, videos &amp; onboarding guides.</p>
+          <div class="skill-killer-feature" style="color:#B45309;">✦ Curated learning paths</div>
         </div>
         <!-- 3.5 doc-coauthoring -->
         <div class="skill-cell">
           <div class="skill-name-row">
             <span class="skill-code">doc-coauthoring</span>
-            <span class="skill-size-badge">15.4 KB</span>
+            <span class="skill-badge oss">Open Standard</span>
           </div>
-          <p class="skill-desc">Collaborative RFC &amp; PRD drafting with structured review stages &amp; edit tracking.</p>
-          <div class="skill-killer-feature" style="color:#047857;">✦ Living technical specs</div>
+          <p class="skill-desc">Structured collaborative workflow for drafting technical specs, RFCs, and PRDs with incremental review phases.</p>
+          <div class="skill-killer-feature" style="color:#B45309;">✦ Living technical RFCs</div>
         </div>
       </div>
     </div>
 
-    <!-- SQUAD 4: GOVERNANCE, CULTURE & BRAND -->
+    <!-- SQUAD 4: PROPRIETARY DOCUMENT AUTOMATION -->
     <div class="squad-block">
-      <div class="squad-header amber">
-        <span>🛡️ Squad 4: Governance, Epistemic Safety &amp; Comms</span>
+      <div class="squad-header emerald">
+        <span>🔒 Squad 4: Proprietary Document &amp; File Tooling (Anthropic Proprietary &bull; Python Runtime)</span>
         <span class="squad-tag">4 Skills</span>
       </div>
       <div class="skills-grid four-col">
-        <!-- 4.1 discernment-nudge -->
-        <div class="skill-cell">
+        <!-- 4.1 docx -->
+        <div class="skill-cell proprietary">
           <div class="skill-name-row">
-            <span class="skill-code">discernment-nudge</span>
-            <span class="skill-size-badge">10.2 KB</span>
+            <span class="skill-code">docx</span>
+            <span class="skill-badge prop">Proprietary</span>
           </div>
-          <p class="skill-desc">Epistemic checkpoint: prompts user to examine implicit assumptions &amp; failure modes on critical choices.</p>
-          <div class="skill-killer-feature" style="color:#B45309;">✦ Pre-mortem safety gate</div>
+          <p class="skill-desc">Create/edit Word (.docx/.dotx) via python-docx &amp; XML archives. Generates formal reports with TOCs &amp; letterheads.</p>
+          <div class="skill-killer-feature" style="color:#991B1B;">⚠️ Python/Office &bull; All rights reserved</div>
         </div>
-        <!-- 4.2 brand-guidelines -->
-        <div class="skill-cell">
+        <!-- 4.2 pdf -->
+        <div class="skill-cell proprietary">
           <div class="skill-name-row">
-            <span class="skill-code">brand-guidelines</span>
-            <span class="skill-size-badge">2.2 KB</span>
+            <span class="skill-code">pdf</span>
+            <span class="skill-badge prop">Proprietary</span>
           </div>
-          <p class="skill-desc">Official brand color tokens, typography scales, accessibility contrasts &amp; brand voice consistency.</p>
-          <div class="skill-killer-feature" style="color:#B45309;">✦ WCAG contrast compliance</div>
+          <p class="skill-desc">Merge, split, OCR, table extract, watermark &amp; form-fill using pypdf, pdfplumber &amp; CLI pdftk tools.</p>
+          <div class="skill-killer-feature" style="color:#991B1B;">⚠️ Python CLI &bull; All rights reserved</div>
         </div>
-        <!-- 4.3 internal-comms -->
-        <div class="skill-cell">
+        <!-- 4.3 pptx -->
+        <div class="skill-cell proprietary">
           <div class="skill-name-row">
-            <span class="skill-code">internal-comms</span>
-            <span class="skill-size-badge">1.5 KB</span>
+            <span class="skill-code">pptx</span>
+            <span class="skill-badge prop">Proprietary</span>
           </div>
-          <p class="skill-desc">Executive summaries, post-mortems, team updates, and all-hands memos crafted for signal-over-noise.</p>
-          <div class="skill-killer-feature" style="color:#B45309;">✦ High-signal memos</div>
+          <p class="skill-desc">Pitch deck and slide generation via python-pptx with 16:9 widescreen layout, visual cards &amp; layout trees.</p>
+          <div class="skill-killer-feature" style="color:#991B1B;">⚠️ Python/Office &bull; All rights reserved</div>
         </div>
-        <!-- 4.4 academy-guide -->
-        <div class="skill-cell">
+        <!-- 4.4 xlsx -->
+        <div class="skill-cell proprietary">
           <div class="skill-name-row">
-            <span class="skill-code">academy-guide</span>
-            <span class="skill-size-badge">7.5 KB</span>
+            <span class="skill-code">xlsx</span>
+            <span class="skill-badge prop">Proprietary</span>
           </div>
-          <p class="skill-desc">Recommends matching educational courses, tutorials, and onboarding resources from Claude Academy.</p>
-          <div class="skill-killer-feature" style="color:#B45309;">✦ Curated learning paths</div>
+          <p class="skill-desc">Spreadsheet data engineering: financial models, formulas, pivot tables &amp; charts via openpyxl &amp; pandas.</p>
+          <div class="skill-killer-feature" style="color:#991B1B;">⚠️ Python/Office &bull; All rights reserved</div>
         </div>
       </div>
     </div>
@@ -500,7 +513,7 @@ html_content = """<!DOCTYPE html>
 
   <!-- BOTTOM CHEAT-SHEET RUNBOOK STRIP -->
   <div class="bottom-runbook">
-    <div style="font-weight:800; font-family:'Bricolage Grotesque'; font-size:8.5pt; color:#A5B4FC;">
+    <div style="font-weight:800; font-family:'Bricolage Grotesque'; font-size:8.2pt; color:#A5B4FC;">
       🚀 3-Step Lifecycle:
     </div>
     <div class="runbook-step">
@@ -513,13 +526,13 @@ html_content = """<!DOCTYPE html>
     </div>
     <div class="runbook-step">
       <span class="step-num">3</span>
-      <span class="step-text"><strong>Execute:</strong> Synthesize verified code / artifacts via WebLLM or LPU</span>
+      <span class="step-text"><strong>Execute:</strong> Synthesize verified code or artifacts via WebLLM / LPU</span>
     </div>
   </div>
 
   <!-- FOOTER -->
   <div class="footer">
-    <div><strong>Source:</strong> github.com/anthropics/skills &bull; Open-standard agent skills catalog</div>
+    <div><strong>Upstream Source:</strong> github.com/anthropics/skills &bull; 15 Apache 2.0 Open-Source + 4 Anthropic Proprietary Skills</div>
     <div><strong>Interactive Studio:</strong> cosmosanalytics.github.io/uat-copilot-local/internet_skills_studio.html</div>
   </div>
 
@@ -532,7 +545,7 @@ with open(HTML_PATH, "w", encoding="utf-8") as f:
 
 print(f"Wrote HTML to {HTML_PATH}")
 
-# Compile PDF using headless Chrome
+# Compile PDF via Headless Chrome
 chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 cmd = [
     chrome_path,
