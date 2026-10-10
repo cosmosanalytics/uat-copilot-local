@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 post_aws_basics_to_linkedin.py
-Publishes a brief summary of the AWS Basics Operations Studio with GitHub links to LinkedIn.
+Publishes a simple, intuitive, and fun summary of the AWS Basics app to LinkedIn (single live app link only).
 """
 import sys
 import requests
@@ -20,27 +20,25 @@ headers = {
     "X-Restli-Protocol-Version": "2.0.0"
 }
 
-POST_CONTENT = """How do you ground autonomous AI agents in physical cloud infrastructure?
+POST_CONTENT = """What happens when you hand an autonomous AI agent real cloud keys? 🔑🤖
 
-By establishing deterministic Level 0 AWS operation skills where the model proposes, but the kernel decides.
+Without rules: accidental chaos.
+With an operating system kernel: pure clockwork!
 
-I built the AWS Basics Operations Studio — a browser-native interactive testbed (100% standalone HTML, Light Mode, powered by WebGPU and Groq LPU) demonstrating all 7 foundational AWS agent operations:
+I built an interactive browser app showing how an agent team safely runs on AWS (zero install, runs right in your browser with WebGPU & Groq LPU in crisp light mode):
 
-1. Bedrock: Foundation model inference & structured schema proposals.
-2. AgentCore: Ring 0 Cedar guardrails enforcing strict syscall boundaries.
-3. S3 Receipt Vault: Immutable WORM storage with SHA-256 grounding receipts.
-4. DynamoDB Mutex: Distributed CAS leasing preventing multi-agent race conditions.
-5. Lambda: Ephemeral tool execution in memory-capped sandboxes.
-6. Step Functions: Deterministic HFSM state machines with automated rollback.
-7. EventBridge & API Gateway: Inter-cluster communication and telemetry ingress.
+🧠 Bedrock is the Dreamer — plans the ideas.
+🚪 AgentCore is the Bouncer — checks IDs and blocks unauthorized moves.
+🚦 DynamoDB is the Traffic Cop — stops two agents from crashing into the same job.
+🔏 S3 is the Notary Public — stamps tamper-proof receipts on every fact.
+🧼 Lambda is the Cleanroom — runs quick math in complete isolation.
+📋 Step Functions is the Choreographer — keeps every step in exact order.
+📻 EventBridge is the Walkie-Talkie — announces updates to the team.
 
-👉 Try the live app in your browser:
+Try the live interactive playground right in your browser:
 https://cosmosanalytics.github.io/uat-copilot-local/aws_basics_studio_app.html
 
-📦 GitHub Source:
-https://github.com/cosmosanalytics/uat-copilot-local/blob/main/aws_basics_studio_app.html
-
-#AIEngineering #AWS #AIAgents #WebGPU #SystemsArchitecture #CloudComputing #OpenSource"""
+#AIAgents #AWS #AIArchitecture #CloudComputing #SystemsDesign #WebGPU"""
 
 payload = {
     "author": MEMBER_URN,
@@ -54,14 +52,14 @@ payload = {
     "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
 }
 
-print("Publishing AWS Basics Studio summary to LinkedIn...")
+print("Publishing fun & intuitive AWS Basics Studio summary to LinkedIn...")
 res = requests.post(url, headers=headers, json=payload)
 print("Status code:", res.status_code)
 print("Response body:", res.text)
 
 if res.status_code == 201:
     post_id = res.json().get('id')
-    print(f"\nSUCCESS! Post successfully published to LinkedIn. Post URN: {post_id}")
+    print(f"\nSUCCESS! Fun & intuitive post successfully published to LinkedIn. Post URN: {post_id}")
 else:
     print("\nFAILED to publish to LinkedIn.")
     sys.exit(1)
