@@ -29,7 +29,7 @@ Following Anthropic's open-source agent skills runbook, this app implements seed
 • 💡 Freeform Input: Prompt chips and custom brief input in clean Light Mode.
 
 👉 GitHub Link:
-https://github.com/cosmosanalytics/uat-copilot-local/blob/main/algorithmic_art_app.html
+https://github.com/cosmosanalytics/uat-copilot/algorithmic_art_app.html
 
 #AIAgents #GenerativeArt #p5js #WebGPU #Groq #OpenSource #CreativeCoding"""
     },
@@ -45,7 +45,7 @@ Following Anthropic's open-source agent skills runbook, this app provides curate
 • 🏷️ Design Token Export: One-click export for CSS Custom Properties (:root), Tailwind CSS, and W3C JSON tokens.
 
 👉 GitHub Link:
-https://github.com/cosmosanalytics/uat-copilot-local/blob/main/theme_factory_app.html
+https://github.com/cosmosanalytics/uat-copilot/theme_factory_app.html
 
 #AIAgents #DesignSystems #WebDevelopment #TailwindCSS #WebGPU #Groq #OpenSource"""
     }
