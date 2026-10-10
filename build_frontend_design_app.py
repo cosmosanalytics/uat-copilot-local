@@ -3,9 +3,10 @@ build_frontend_design_app.py
 Builds frontend_design_app.html: A dedicated, standalone HTML-only web application
 for the single safest skill: 'frontend-design' (Apache 2.0 • text-only: drops straight in).
 Supports:
+- Default Crisp Light Mode with instant Dark Mode toggle
 - Local WebGPU inference via WebLLM (@mlc-ai/web-llm)
 - Cloud fast inference via Groq LPU (500+ tok/s)
-- Instant interactive sandbox with 4 rich distinctive showcase archetypes
+- Instant interactive sandbox with 3 rich distinctive showcase archetypes
 - Live design critique & anti-generic linting
 """
 
@@ -729,7 +730,7 @@ PRESET_ARCHETYPES = [
 PRESETS_JSON = json.dumps(PRESET_ARCHETYPES, indent=2).replace("</script>", r"<\/script>")
 
 APP_HTML = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -739,6 +740,32 @@ APP_HTML = f"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {{
+    --bg-base: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-card: #F1F5F9;
+    --bg-card-hover: #E2E8F0;
+    --border-color: #CBD5E1;
+    --border-subtle: #E2E8F0;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
+    
+    --green-safe: #059669;
+    --green-bg: rgba(5, 150, 105, 0.08);
+    --green-border: rgba(5, 150, 105, 0.3);
+
+    --accent-blue: #2563EB;
+    --accent-cyan: #0891B2;
+    --accent-amber: #D97706;
+
+    --header-bg: rgba(255, 255, 255, 0.96);
+    --stage-bg: #E2E8F0;
+    --input-bg: #FFFFFF;
+    --code-bg: #0F172A;
+    --code-text: #F8FAFC;
+  }}
+
+  [data-theme="dark"] {{
     --bg-base: #0B0E14;
     --bg-surface: #111722;
     --bg-card: #162030;
@@ -756,6 +783,12 @@ APP_HTML = f"""<!DOCTYPE html>
     --accent-blue: #3B82F6;
     --accent-cyan: #06B6D4;
     --accent-amber: #F59E0B;
+
+    --header-bg: rgba(17, 23, 34, 0.95);
+    --stage-bg: #070A0F;
+    --input-bg: #0B0E14;
+    --code-bg: #0B0E14;
+    --code-text: #E2E8F0;
   }}
 
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -766,11 +799,12 @@ APP_HTML = f"""<!DOCTYPE html>
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }}
 
   /* Top Navigation */
   header.app-header {{
-    background: rgba(17, 23, 34, 0.95);
+    background: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
     padding: 0.85rem 1.75rem;
@@ -780,6 +814,7 @@ APP_HTML = f"""<!DOCTYPE html>
     position: sticky;
     top: 0;
     z-index: 50;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   }}
   .brand-group {{
     display: flex;
@@ -789,13 +824,14 @@ APP_HTML = f"""<!DOCTYPE html>
   .brand-badge {{
     width: 38px;
     height: 38px;
-    background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+    background: linear-gradient(135deg, #059669 0%, #0891B2 100%);
     border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.25rem;
-    box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(5, 150, 105, 0.25);
   }}
   .brand-text h1 {{
     font-size: 1.15rem;
@@ -803,6 +839,7 @@ APP_HTML = f"""<!DOCTYPE html>
     display: flex;
     align-items: center;
     gap: 0.65rem;
+    color: var(--text-primary);
   }}
   .badge-skill-fit {{
     background: var(--green-bg);
@@ -831,7 +868,7 @@ APP_HTML = f"""<!DOCTYPE html>
   /* Inference Engine Segmented Switch */
   .engine-switch {{
     display: flex;
-    background: #0B0E14;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 3px;
@@ -852,15 +889,35 @@ APP_HTML = f"""<!DOCTYPE html>
     align-items: center;
     gap: 6px;
   }}
-  .engine-btn:hover {{ color: #fff; }}
+  .engine-btn:hover {{ color: var(--text-primary); }}
   .engine-btn.active {{
-    background: var(--bg-card);
-    color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }}
   .engine-btn.active.instant {{ border-bottom: 2px solid var(--accent-amber); }}
   .engine-btn.active.webgpu {{ border-bottom: 2px solid var(--green-safe); }}
   .engine-btn.active.groq {{ border-bottom: 2px solid var(--accent-cyan); }}
+
+  /* Theme Toggle Button */
+  .theme-toggle-btn {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }}
+  .theme-toggle-btn:hover {{
+    background: var(--bg-card-hover);
+  }}
 
   /* Main Stage Layout */
   .main-stage {{
@@ -885,6 +942,7 @@ APP_HTML = f"""<!DOCTYPE html>
     align-items: center;
     gap: 1.5rem;
     flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }}
   .runtime-desc {{
     display: flex;
@@ -901,13 +959,17 @@ APP_HTML = f"""<!DOCTYPE html>
     flex-wrap: wrap;
   }}
   .select-box, .text-input {{
-    background: #0B0E14;
+    background: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 0.8rem;
     font-family: 'JetBrains Mono', monospace;
+  }}
+  .select-box:focus, .text-input:focus {{
+    outline: none;
+    border-color: var(--green-safe);
   }}
   .btn-accent {{
     background: var(--accent-blue);
@@ -923,7 +985,7 @@ APP_HTML = f"""<!DOCTYPE html>
     align-items: center;
     gap: 6px;
   }}
-  .btn-accent:hover {{ background: #2563EB; }}
+  .btn-accent:hover {{ opacity: 0.95; }}
 
   /* Workspace 2-Column Split */
   .workspace {{
@@ -948,6 +1010,7 @@ APP_HTML = f"""<!DOCTYPE html>
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }}
   .card-box-header {{
     font-size: 0.85rem;
@@ -980,12 +1043,12 @@ APP_HTML = f"""<!DOCTYPE html>
   }}
   .preset-card.active {{
     border-color: var(--green-safe);
-    background: rgba(16, 185, 129, 0.07);
+    background: var(--green-bg);
   }}
   .preset-card-title {{
     font-size: 0.84rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
   }}
   .preset-card-industry {{
     font-size: 0.72rem;
@@ -995,7 +1058,7 @@ APP_HTML = f"""<!DOCTYPE html>
   .brief-input {{
     width: 100%;
     min-height: 100px;
-    background: #0B0E14;
+    background: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.75rem;
@@ -1013,7 +1076,7 @@ APP_HTML = f"""<!DOCTYPE html>
 
   .btn-synthesize {{
     width: 100%;
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
     color: #fff;
     border: none;
     padding: 0.85rem;
@@ -1025,7 +1088,7 @@ APP_HTML = f"""<!DOCTYPE html>
     justify-content: center;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
     transition: transform 0.1s, opacity 0.15s;
   }}
   .btn-synthesize:hover {{ opacity: 0.95; transform: translateY(-1px); }}
@@ -1037,6 +1100,7 @@ APP_HTML = f"""<!DOCTYPE html>
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }}
   .runbook-header {{
     padding: 0.85rem 1.25rem;
@@ -1045,7 +1109,7 @@ APP_HTML = f"""<!DOCTYPE html>
     align-items: center;
     cursor: pointer;
     user-select: none;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-card);
   }}
   .runbook-body {{
     padding: 1rem 1.25rem;
@@ -1054,8 +1118,8 @@ APP_HTML = f"""<!DOCTYPE html>
     overflow-y: auto;
     font-size: 0.74rem;
     line-height: 1.5;
-    color: var(--text-secondary);
-    background: #0B0E14;
+    color: var(--code-text);
+    background: var(--code-bg);
     font-family: 'JetBrains Mono', monospace;
   }}
 
@@ -1067,6 +1131,7 @@ APP_HTML = f"""<!DOCTYPE html>
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }}
   .tab-bar {{
     background: var(--bg-card);
@@ -1094,13 +1159,14 @@ APP_HTML = f"""<!DOCTYPE html>
     gap: 6px;
   }}
   .tab-item.active {{
-    background: #0B0E14;
-    color: #fff;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   }}
   .device-group {{
     display: flex;
     gap: 3px;
-    background: #0B0E14;
+    background: var(--bg-surface);
     padding: 3px;
     border-radius: 6px;
     border: 1px solid var(--border-color);
@@ -1116,7 +1182,7 @@ APP_HTML = f"""<!DOCTYPE html>
   }}
   .device-btn.active {{
     background: var(--bg-card);
-    color: #fff;
+    color: var(--text-primary);
   }}
 
   /* Stage Content Areas */
@@ -1125,7 +1191,7 @@ APP_HTML = f"""<!DOCTYPE html>
     display: flex;
     justify-content: center;
     align-items: stretch;
-    background: #070A0F;
+    background: var(--stage-bg);
     position: relative;
     overflow: hidden;
   }}
@@ -1137,13 +1203,13 @@ APP_HTML = f"""<!DOCTYPE html>
     transition: max-width 0.25s ease;
   }}
   .stage-frame.desktop {{ max-width: 100%; }}
-  .stage-frame.tablet {{ max-width: 768px; margin: 1rem auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
-  .stage-frame.mobile {{ max-width: 375px; margin: 1rem auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
+  .stage-frame.tablet {{ max-width: 768px; margin: 1rem auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }}
+  .stage-frame.mobile {{ max-width: 375px; margin: 1rem auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }}
 
   .stage-plan {{
     display: none;
     flex: 1;
-    background: #0B0E14;
+    background: var(--bg-surface);
     padding: 1.5rem;
     overflow-y: auto;
   }}
@@ -1174,25 +1240,25 @@ APP_HTML = f"""<!DOCTYPE html>
     flex-wrap: wrap;
   }}
   .color-swatch-pill {{
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 0.75rem;
     font-family: 'JetBrains Mono', monospace;
-    color: #fff;
+    color: var(--text-primary);
   }}
 
   .stage-code {{
     display: none;
     flex: 1;
-    background: #0B0E14;
+    background: var(--code-bg);
     padding: 1.25rem;
     overflow-y: auto;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.78rem;
     line-height: 1.5;
-    color: #E2E8F0;
+    color: var(--code-text);
   }}
 
   /* Bottom Actions */
@@ -1211,7 +1277,7 @@ APP_HTML = f"""<!DOCTYPE html>
     gap: 0.5rem;
   }}
   .btn-sm {{
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 5px 10px;
@@ -1222,8 +1288,9 @@ APP_HTML = f"""<!DOCTYPE html>
     display: flex;
     align-items: center;
     gap: 5px;
+    transition: background 0.15s;
   }}
-  .btn-sm:hover {{ background: rgba(255, 255, 255, 0.1); }}
+  .btn-sm:hover {{ background: var(--bg-card-hover); }}
 
   /* Progress Bar */
   .progress-wrap {{
@@ -1234,7 +1301,7 @@ APP_HTML = f"""<!DOCTYPE html>
   .progress-bg {{
     width: 100%;
     height: 6px;
-    background: #0B0E14;
+    background: var(--bg-card);
     border-radius: 3px;
     overflow: hidden;
   }}
@@ -1256,16 +1323,16 @@ APP_HTML = f"""<!DOCTYPE html>
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--green-safe);
-    color: #fff;
+    color: var(--text-primary);
     padding: 10px 16px;
     border-radius: 8px;
     font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     opacity: 0;
     pointer-events: none;
     transform: translateY(10px);
@@ -1291,15 +1358,21 @@ APP_HTML = f"""<!DOCTYPE html>
     </div>
   </div>
 
-  <div class="engine-switch">
-    <button class="engine-btn active instant" id="tabInstant" onclick="switchEngine('instant')">
-      ⚡ Instant Showcase
-    </button>
-    <button class="engine-btn webgpu" id="tabWebGPU" onclick="switchEngine('webgpu')">
-      🎮 Local WebGPU (WebLLM)
-    </button>
-    <button class="engine-btn groq" id="tabGroq" onclick="switchEngine('groq')">
-      ⚡ Groq LPU (Cloud)
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <div class="engine-switch">
+      <button class="engine-btn active instant" id="tabInstant" onclick="switchEngine('instant')">
+        ⚡ Instant Showcase
+      </button>
+      <button class="engine-btn webgpu" id="tabWebGPU" onclick="switchEngine('webgpu')">
+        🎮 Local WebGPU (WebLLM)
+      </button>
+      <button class="engine-btn groq" id="tabGroq" onclick="switchEngine('groq')">
+        ⚡ Groq LPU (Cloud)
+      </button>
+    </div>
+
+    <button class="theme-toggle-btn" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle light and dark theme">
+      🌙 Dark Mode
     </button>
   </div>
 </header>
@@ -1340,7 +1413,7 @@ APP_HTML = f"""<!DOCTYPE html>
       <!-- Anthropic Injected Runbook Inspector -->
       <div class="runbook-box">
         <div class="runbook-header" onclick="toggleRunbook()">
-          <span style="font-weight: 700; font-size: 0.8rem; color: #fff;">
+          <span style="font-weight: 700; font-size: 0.8rem; color: var(--text-primary);">
             📜 Injected SKILL.md (Anthropic Specification)
           </span>
           <span style="font-size: 0.75rem; color: var(--text-muted);" id="runbookArrow">▼ Expand</span>
@@ -1435,10 +1508,31 @@ let currentPlan = PRESETS[0].plan;
 let webllmEngine = null;
 
 window.addEventListener('DOMContentLoaded', () => {{
+  initTheme();
   renderRuntimeBanner();
   renderPresetsList();
   selectPreset(0);
 }});
+
+function initTheme() {{
+  const saved = localStorage.getItem('app_theme') || 'light';
+  setTheme(saved);
+}}
+
+function toggleTheme() {{
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current === 'light' ? 'dark' : 'light';
+  setTheme(next);
+}}
+
+function setTheme(theme) {{
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('app_theme', theme);
+  const btn = document.getElementById('btnThemeToggle');
+  if (btn) {{
+    btn.innerHTML = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+  }}
+}}
 
 function switchEngine(eng) {{
   currentEngine = eng;
@@ -1456,7 +1550,7 @@ function renderRuntimeBanner() {{
       <div class="runtime-desc">
         <div class="runtime-icon" style="color: var(--accent-amber);">⚡</div>
         <div>
-          <strong style="font-size: 0.85rem; color: #fff;">Instant Verified Showcase Mode</strong>
+          <strong style="font-size: 0.85rem; color: var(--text-primary);">Instant Verified Showcase Mode</strong>
           <div style="font-size: 0.75rem; color: var(--text-secondary);">
             Pre-computed single-file components generated strictly according to Anthropic's frontend-design runbook.
           </div>
@@ -1472,7 +1566,7 @@ function renderRuntimeBanner() {{
       <div class="runtime-desc">
         <div class="runtime-icon" style="color: var(--green-safe);">🎮</div>
         <div>
-          <strong style="font-size: 0.85rem; color: #fff;">Local WebGPU Inference (@mlc-ai/web-llm)</strong>
+          <strong style="font-size: 0.85rem; color: var(--text-primary);">Local WebGPU Inference (@mlc-ai/web-llm)</strong>
           <div style="font-size: 0.75rem; color: var(--text-secondary);">
             ${{hasGpu ? '🟢 WebGPU detected on your hardware!' : '⚠️ WebGPU not detected. Check chrome://flags or switch to Groq / Instant.'}}
           </div>
@@ -1498,7 +1592,7 @@ function renderRuntimeBanner() {{
       <div class="runtime-desc">
         <div class="runtime-icon" style="color: var(--accent-cyan);">⚡</div>
         <div>
-          <strong style="font-size: 0.85rem; color: #fff;">Groq LPU Cloud Fast Inference (500+ tok/s)</strong>
+          <strong style="font-size: 0.85rem; color: var(--text-primary);">Groq LPU Cloud Fast Inference (500+ tok/s)</strong>
           <div style="font-size: 0.75rem; color: var(--text-secondary);">
             Ultra-fast cloud inference. Enter Groq API key (persisted safely in localStorage only).
           </div>
@@ -1743,4 +1837,4 @@ function showToast(msg, icon = '✅') {{
 with open("frontend_design_app.html", "w", encoding="utf-8") as f:
     f.write(APP_HTML)
 
-print("Generated frontend_design_app.html successfully! Size:", os.path.getsize("frontend_design_app.html"), "bytes")
+print("Generated frontend_design_app.html successfully in Light Mode! Size:", os.path.getsize("frontend_design_app.html"), "bytes")
