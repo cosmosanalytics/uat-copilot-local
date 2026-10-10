@@ -37,9 +37,6 @@ I built the AWS Basics Operations Studio — a browser-native interactive testbe
 👉 Try the live app in your browser:
 https://cosmosanalytics.github.io/uat-copilot-local/aws_basics_studio_app.html
 
-📦 GitHub Source:
-https://github.com/cosmosanalytics/uat-copilot-local/blob/main/aws_basics_studio_app.html
-
 #AIEngineering #AWS #AIAgents #WebGPU #SystemsArchitecture #CloudComputing #OpenSource"""
 
 payload = {
