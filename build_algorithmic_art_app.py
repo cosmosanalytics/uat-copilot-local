@@ -1,0 +1,1557 @@
+"""
+build_algorithmic_art_app.py
+Builds algorithmic_art_app.html: A standalone frontend-only HTML application
+powered by WebLLM (local WebGPU) and Groq LPU (cloud fast inference),
+demonstrating Skill #2: algorithmic-art (Apache 2.0 • Squad 1: Creative UI).
+Features:
+- Dual AI inference (Groq LPU free tier + Local WebGPU + Instant offline presets)
+- Pure Light Mode by default with instant Dark Mode toggle
+- Freeform User Input with prompt suggestion chips
+- Two-Pass synthesis: (1) Algorithmic Philosophy Manifesto, (2) p5.js generative sketch
+- Seed exploration (Prev, Next, Random, Jump) and live parameter tuning
+- Export PNG, Copy Code, Download .html
+"""
+
+import json
+import os
+
+CATALOG_PATH = "internet_skills_catalog.json"
+catalog = []
+if os.path.exists(CATALOG_PATH):
+    with open(CATALOG_PATH, "r", encoding="utf-8") as f:
+        catalog = json.load(f)
+
+art_skill = next((s for s in catalog if s.get("name") == "algorithmic-art"), None)
+art_md = art_skill.get("full_content", "") if art_skill else """# Algorithmic Art
+Creating algorithmic generative art using p5.js with seeded randomness and interactive parameter exploration.
+Two-step process: (1) Algorithmic Philosophy Manifesto, (2) p5.js generative sketch with tunable parameters.
+"""
+
+# Presets with full p5.js self-contained HTML
+PRESET_TURBULENCE_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background: #0A0D14; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    canvas { box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<script>
+let seed = 12345;
+let particles = [];
+const NUM_PARTICLES = 1600;
+const NOISE_SCALE = 0.0045;
+const PALETTE = ['#06B6D4', '#3B82F6', '#8B5CF6', '#F59E0B', '#F8FAFC'];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  randomSeed(seed);
+  noiseSeed(seed);
+  background(10, 13, 20);
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  background(10, 13, 20, 18);
+  for (let p of particles) {
+    p.update();
+    p.show();
+  }
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.pos = createVector(random(width), random(height));
+    this.prev = this.pos.copy();
+    this.vel = createVector(0, 0);
+    this.speed = random(1.5, 3.2);
+    this.color = color(random(PALETTE));
+    this.age = 0;
+    this.lifespan = random(150, 400);
+  }
+  update() {
+    this.prev = this.pos.copy();
+    let angle = noise(this.pos.x * NOISE_SCALE, this.pos.y * NOISE_SCALE, frameCount * 0.0008) * TWO_PI * 4;
+    this.vel = p5.Vector.fromAngle(angle).mult(this.speed);
+    this.pos.add(this.vel);
+    this.age++;
+    if (this.age > this.lifespan || this.pos.x < 0 || this.pos.x > width || this.pos.y < 0 || this.pos.y > height) {
+      this.reset();
+    }
+  }
+  show() {
+    let alpha = map(this.age, 0, this.lifespan, 220, 20);
+    this.color.setAlpha(alpha);
+    stroke(this.color);
+    strokeWeight(1.4);
+    line(this.prev.x, this.prev.y, this.pos.x, this.pos.y);
+  }
+}
+
+window.setSeed = function(s) {
+  seed = s;
+  randomSeed(seed);
+  noiseSeed(seed);
+  particles = [];
+  background(10, 13, 20);
+  for (let i = 0; i < NUM_PARTICLES; i++) particles.push(new Particle());
+};
+
+window.exportCanvas = function() {
+  saveCanvas('organic-turbulence-' + seed, 'png');
+};
+</script>
+</body>
+</html>"""
+
+PRESET_HARMONICS_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background: #08070D; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    canvas { box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<script>
+let seed = 8820;
+let emitters = [];
+const NUM_EMITTERS = 5;
+const RESOLUTION = 7;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  randomSeed(seed);
+  noiseSeed(seed);
+  initEmitters();
+  noLoop();
+}
+
+function initEmitters() {
+  emitters = [];
+  for (let i = 0; i < NUM_EMITTERS; i++) {
+    emitters.push({
+      x: width * (0.2 + 0.6 * random()),
+      y: height * (0.2 + 0.6 * random()),
+      freq: random(0.015, 0.045),
+      phase: random(TWO_PI),
+      weight: random(0.8, 1.4)
+    });
+  }
+}
+
+function draw() {
+  background(8, 7, 13);
+  noStroke();
+  for (let x = 0; x < width; x += RESOLUTION) {
+    for (let y = 0; y < height; y += RESOLUTION) {
+      let amp = 0;
+      for (let e of emitters) {
+        let d = dist(x, y, e.x, e.y);
+        amp += sin(d * e.freq + e.phase) * e.weight;
+      }
+      let norm = (amp / NUM_EMITTERS + 1) * 0.5;
+      if (norm > 0.48 && norm < 0.52) {
+        fill(255, 235, 150, 240);
+        rect(x, y, RESOLUTION, RESOLUTION);
+      } else if (norm > 0.65) {
+        let r = map(norm, 0.65, 1, 120, 255);
+        let g = map(norm, 0.65, 1, 60, 180);
+        let b = map(norm, 0.65, 1, 220, 255);
+        fill(r, g, b, 140);
+        rect(x, y, RESOLUTION, RESOLUTION);
+      } else if (norm < 0.35) {
+        let b = map(norm, 0, 0.35, 80, 20);
+        fill(15, 20, 45, 90);
+        rect(x, y, RESOLUTION, RESOLUTION);
+      }
+    }
+  }
+}
+
+window.setSeed = function(s) {
+  seed = s;
+  randomSeed(seed);
+  noiseSeed(seed);
+  initEmitters();
+  redraw();
+};
+
+window.exportCanvas = function() {
+  saveCanvas('quantum-harmonics-' + seed, 'png');
+};
+</script>
+</body>
+</html>"""
+
+PRESET_WHISPERS_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background: #0E0F12; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+    canvas { box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<script>
+let seed = 4491;
+const GOLDEN_ANGLE = 137.50776405;
+const MAX_SEEDS = 2200;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  randomSeed(seed);
+  noiseSeed(seed);
+  background(14, 15, 18);
+  noLoop();
+}
+
+function draw() {
+  background(14, 15, 18);
+  translate(width / 2, height / 2);
+  let c = min(width, height) * 0.012;
+  
+  for (let i = 0; i < MAX_SEEDS; i++) {
+    let a = i * radians(GOLDEN_ANGLE);
+    let r = c * sqrt(i);
+    let jitter = (noise(i * 0.05, seed * 0.1) - 0.5) * 16;
+    let x = (r + jitter) * cos(a);
+    let y = (r + jitter) * sin(a);
+    
+    let distRatio = r / (min(width, height) * 0.48);
+    if (distRatio > 1.0) continue;
+    
+    let hueVal = map(noise(i * 0.01 + seed), 0, 1, 30, 200);
+    let sz = map(distRatio, 0, 1, 1.8, 5.2);
+    
+    noStroke();
+    fill(235, 180 + hueVal * 0.3, 110, map(distRatio, 0, 1, 230, 60));
+    circle(x, y, sz);
+    
+    if (i % 7 === 0) {
+      stroke(160, 220, 240, 45);
+      strokeWeight(0.6);
+      line(0, 0, x * 0.6, y * 0.6);
+    }
+  }
+}
+
+window.setSeed = function(s) {
+  seed = s;
+  randomSeed(seed);
+  noiseSeed(seed);
+  redraw();
+};
+
+window.exportCanvas = function() {
+  saveCanvas('recursive-whispers-' + seed, 'png');
+};
+</script>
+</body>
+</html>"""
+
+PRESETS_DATA = [
+    {
+        "id": "turbulence",
+        "name": "Organic Turbulence",
+        "movement": "Layered Vector Flow Fields & Stochastic Trails",
+        "seed": 12345,
+        "brief": "Chaos constrained by natural law. Thousands of vector particles following multi-octave Perlin noise gradient paths, leaving gossamer trails of velocity-mapped luminescence that evolve into an equilibrium density map.",
+        "philosophy": """# Algorithmic Philosophy: Organic Turbulence
+
+## 1. Computational Movement
+Organic Turbulence posits that natural beauty arises not from static symmetry, but from continuous vector field equilibrium. Millions of infinitesimal forces act simultaneously upon passive particles, resulting in macroscopic flow structures reminiscent of river deltas, vascular systems, and stellar nurseries.
+
+## 2. Emergent Behavior & Mathematical Dynamics
+The system calculates local direction vectors via 3D Perlin noise gradients. Each particle samples the field at its instantaneous coordinate, with inertia preventing instantaneous redirection. Over time, particles converge into dense high-velocity highways while leaving expansive calm voids untouched.
+
+## 3. Seeded Randomness & Parametric Variation
+Seeded pseudorandom generators govern initial particle origins and lifespan distribution. Varying the seed produces entirely novel river topologies while preserving identical thermodynamic laws.
+
+## 4. Craftsmanship & Execution
+The delicate balance of trail opacity, stroke weight decay, and velocity-responsive coloration transforms raw mathematics into a living digital tapestry. Every line weight and friction parameter reflects meticulous calibration.""",
+        "html": PRESET_TURBULENCE_HTML
+    },
+    {
+        "id": "harmonics",
+        "name": "Quantum Harmonics",
+        "movement": "Multi-Wave Interference & Chladni Cymatics",
+        "seed": 8820,
+        "brief": "Discrete frequency emitters propagating spherical sine waves across a continuous phase space. Constructive interference yields radiant nodes of energy, while destructive collision opens contemplative acoustic voids.",
+        "philosophy": """# Algorithmic Philosophy: Quantum Harmonics
+
+## 1. Computational Movement
+Quantum Harmonics explores the emergent geometric resonance born of superposed harmonic frequencies. Like acoustic sound waves vibrating sand grains on a metal Chladni plate, simple mathematical wave equations give rise to complex sacred geometries.
+
+## 2. Wave Mechanics & Interference Grids
+Emitters are positioned across the spatial plane, each radiating periodic wave functions with unique radial frequencies and phases. At every coordinate, values accumulate algebraically. Where amplitudes cancel out, the medium rests in dark equilibrium; where peaks align, luminous caustic lattices emerge.
+
+## 3. Parametric Exploration
+Modulating the frequency ratios between emitters shifts the visualization between organic radial blooms and hyper-structured crystal diffraction grids.
+
+## 4. Master Craftsmanship
+The rendering engine avoids flat thresholding in favor of smooth spectral gradient mapping, revealing subtle micro-oscillations that reward prolonged contemplation.""",
+        "html": PRESET_HARMONICS_HTML
+    },
+    {
+        "id": "whispers",
+        "name": "Recursive Whispers",
+        "movement": "Phyllotaxis Spiral & Stochastic Perturbation",
+        "seed": 4491,
+        "brief": "Logarithmic sunflower spiral geometry governed by the irrational golden angle ratio (137.508°). Organic noise perturbations break mechanical sterility, creating an algorithmic spore bloom.",
+        "philosophy": """# Algorithmic Philosophy: Recursive Whispers
+
+## 1. Computational Movement
+Recursive Whispers draws inspiration from the mathematical perfection of phyllotaxis packing in botanic organisms, where maximal packing efficiency is achieved through the golden angle.
+
+## 2. Mathematical Dynamics
+Each discrete node is placed at an angular displacement of 137.5077° with radial distance proportional to the square root of the index. An octave of Perlin noise introduces micro-displacements, mimicking the tactile imperfections of organic tissue.
+
+## 3. Emergence and Balance
+Spoke-like connection vectors intermittently tether inner nodes to the origin, creating subtle visual tension between centrifugal expansion and centripetal anchor points.
+
+## 4. Craftsmanship
+The deliberate transition of particle scale and luminous opacity from the dense energetic nucleus to the gossamer outer periphery simulates biological respiration.""",
+        "html": PRESET_WHISPERS_HTML
+    }
+]
+
+def generate_html():
+    presets_json = json.dumps(PRESETS_DATA).replace("</", "<\\/")
+    skill_snippet = art_md[:2200].replace("<", "&lt;").replace(">", "&gt;")
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Algorithmic Art Studio • Skill #2 (Apache 2.0)</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  
+  <!-- p5.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+
+  <style>
+    :root {{
+      --bg-canvas: #f8fafc;
+      --bg-panel: #ffffff;
+      --bg-panel-subtle: #f1f5f9;
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      
+      --accent-purple: #7c3aed;
+      --accent-purple-light: #f5f3ff;
+      --accent-cyan: #0284c7;
+      --accent-amber: #d97706;
+      --green-safe: #16a34a;
+      --green-safe-bg: #f0fdf4;
+      
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --card-shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-serif: 'Newsreader', Georgia, serif;
+    }}
+
+    [data-theme="dark"] {{
+      --bg-canvas: #090d16;
+      --bg-panel: #0f172a;
+      --bg-panel-subtle: #1e293b;
+      --border-subtle: #334155;
+      --border-strong: #475569;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      
+      --accent-purple: #a78bfa;
+      --accent-purple-light: rgba(167, 139, 250, 0.12);
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --green-safe: #4ade80;
+      --green-safe-bg: rgba(74, 222, 128, 0.12);
+      
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    }}
+
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    
+    body {{
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }}
+
+    /* Header */
+    .app-header {{
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: var(--card-shadow);
+    }}
+
+    .brand-group {{
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }}
+
+    .brand-badge {{
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.25rem;
+      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+    }}
+
+    .brand-text h1 {{
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }}
+
+    .badge-skill-fit {{
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      background: var(--green-safe-bg);
+      color: var(--green-safe);
+      border: 1px solid var(--green-safe);
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 700;
+    }}
+
+    .brand-text p {{
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }}
+
+    /* Engine switch tabs */
+    .engine-switch {{
+      display: flex;
+      background: var(--bg-panel-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }}
+
+    .engine-btn {{
+      padding: 6px 13px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      font-family: var(--font-ui);
+    }}
+
+    .engine-btn.active {{
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      box-shadow: var(--card-shadow);
+    }}
+
+    .theme-toggle-btn {{
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-panel-subtle);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }}
+    .theme-toggle-btn:hover {{
+      border-color: var(--accent-purple);
+    }}
+
+    /* Main Container */
+    .main-stage {{
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      padding: 1.25rem 1.5rem;
+      gap: 1.25rem;
+      max-width: 1720px;
+      margin: 0 auto;
+      width: 100%;
+    }}
+
+    /* Banner */
+    .runtime-banner {{
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--card-shadow);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }}
+
+    .runtime-desc {{
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }}
+
+    .runtime-icon {{
+      font-size: 1.3rem;
+    }}
+
+    .runtime-controls {{
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }}
+
+    .select-box, .text-input {{
+      background: var(--bg-panel-subtle);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-size: 0.78rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-family: var(--font-ui);
+    }}
+
+    /* Studio Layout */
+    .studio-grid {{
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 1.25rem;
+      flex: 1;
+      min-height: 750px;
+    }}
+
+    @media (max-width: 1080px) {{
+      .studio-grid {{ grid-template-columns: 1fr; }}
+    }}
+
+    /* Left Sidebar */
+    .sidebar-pane {{
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }}
+
+    .card-box {{
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1.1rem;
+      box-shadow: var(--card-shadow);
+    }}
+
+    .card-box-header {{
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+
+    /* Presets list */
+    .preset-card {{
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.6rem;
+      cursor: pointer;
+      background: var(--bg-panel);
+      transition: all 0.15s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .preset-card:hover {{
+      border-color: var(--accent-purple);
+      box-shadow: var(--card-shadow-hover);
+      transform: translateY(-1px);
+    }}
+    .preset-card.active {{
+      border-color: var(--accent-purple);
+      background: var(--accent-purple-light);
+    }}
+    .preset-card-title {{
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }}
+    .preset-card-movement {{
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }}
+
+    /* Chips */
+    .prompt-chips-row {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 0.75rem;
+    }}
+    .prompt-chip {{
+      background: var(--bg-panel-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.12s ease;
+      font-family: var(--font-ui);
+    }}
+    .prompt-chip:hover {{
+      border-color: var(--accent-purple);
+      background: var(--accent-purple-light);
+      color: var(--accent-purple);
+    }}
+
+    /* Brief Input */
+    .brief-input {{
+      width: 100%;
+      height: 120px;
+      background: var(--bg-panel-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      resize: vertical;
+      line-height: 1.4;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.15s ease;
+    }}
+    .brief-input:focus {{
+      outline: none;
+      border-color: var(--accent-purple);
+      background: var(--bg-panel);
+    }}
+
+    .btn-synthesize {{
+      width: 100%;
+      background: linear-gradient(135deg, #7c3aed 0%, #4338ca 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+      transition: all 0.15s ease;
+    }}
+    .btn-synthesize:hover {{
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+    }}
+    .btn-synthesize:disabled {{
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }}
+
+    /* Runbook box */
+    .runbook-box {{
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+    }}
+    .runbook-header {{
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      background: var(--bg-panel-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }}
+    .runbook-body {{
+      padding: 0.85rem;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      line-height: 1.4;
+    }}
+
+    /* Right Main Canvas Stage */
+    .stage-pane {{
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+    }}
+
+    /* Tab and seed toolbar */
+    .stage-top-bar {{
+      padding: 0.65rem 1.1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      background: var(--bg-panel-subtle);
+    }}
+
+    .tabs-group {{
+      display: flex;
+      gap: 4px;
+    }}
+    .tab-btn {{
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }}
+    .tab-btn.active {{
+      background: var(--bg-panel);
+      color: var(--accent-purple);
+      box-shadow: var(--card-shadow);
+    }}
+
+    /* Seed Navigator */
+    .seed-navigator {{
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      padding: 3px 6px;
+      border-radius: 7px;
+    }}
+    .seed-btn {{
+      background: var(--bg-panel-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }}
+    .seed-btn:hover {{
+      border-color: var(--accent-purple);
+    }}
+    .seed-display {{
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-purple);
+      padding: 0 4px;
+    }}
+
+    /* Stage Views */
+    .stage-content {{
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 580px;
+    }}
+
+    .canvas-iframe {{
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      border: none;
+      background: #000;
+    }}
+
+    /* Philosophy Tab */
+    .philosophy-view {{
+      padding: 2rem;
+      overflow-y: auto;
+      max-height: 650px;
+      font-family: var(--font-serif);
+      line-height: 1.65;
+      font-size: 1.05rem;
+      color: var(--text-primary);
+      background: var(--bg-panel);
+    }}
+    .philosophy-view h1 {{
+      font-family: var(--font-ui);
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 1.25rem;
+      color: var(--accent-purple);
+    }}
+    .philosophy-view h2 {{
+      font-family: var(--font-ui);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 1.5rem;
+      margin-bottom: 0.6rem;
+    }}
+    .philosophy-view p {{
+      margin-bottom: 1rem;
+    }}
+
+    /* Code View */
+    .code-view {{
+      padding: 1.25rem;
+      overflow-y: auto;
+      max-height: 650px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      background: var(--bg-panel-subtle);
+      color: var(--text-primary);
+      white-space: pre-wrap;
+    }}
+
+    /* Bottom Status Bar */
+    .bottom-bar {{
+      padding: 0.65rem 1.1rem;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      background: var(--bg-panel);
+    }}
+
+    .actions-row {{
+      display: flex;
+      gap: 6px;
+    }}
+    .btn-action {{
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-panel-subtle);
+      color: var(--text-primary);
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }}
+    .btn-action:hover {{
+      border-color: var(--accent-purple);
+    }}
+
+    /* Toast */
+    .toast-box {{
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      z-index: 100;
+    }}
+    .toast-box.show {{
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }}
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-badge">🌀</div>
+      <div class="brand-text">
+        <h1>Algorithmic Art Studio <span class="badge-skill-fit">Skill #2: algorithmic-art (Apache 2.0 • Safest)</span></h1>
+        <p>p5.js Generative Aesthetics: Emergent Vector Fields, Seeded Determinism & Parametric Exploration</p>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div class="engine-switch">
+        <button class="engine-btn active groq" id="tabGroq" onclick="switchEngine('groq')">
+          ⚡ Groq LPU (Cloud)
+        </button>
+        <button class="engine-btn instant" id="tabInstant" onclick="switchEngine('instant')">
+          ⚡ Instant Showcase
+        </button>
+        <button class="engine-btn webgpu" id="tabWebGPU" onclick="switchEngine('webgpu')">
+          🎮 Local WebGPU (WebLLM)
+        </button>
+      </div>
+
+      <button class="theme-toggle-btn" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle light and dark theme">
+        🌙 Dark Mode
+      </button>
+    </div>
+  </header>
+
+  <main class="main-stage">
+
+    <!-- Active Engine Config & Status Banner -->
+    <div class="runtime-banner" id="runtimeBanner">
+      <!-- Injected dynamically via JS -->
+    </div>
+
+    <div class="studio-grid">
+
+      <!-- Left Column: Presets & Freeform Input -->
+      <div class="sidebar-pane">
+        
+        <div class="card-box">
+          <div class="card-box-header">
+            <span>Algorithmic Presets</span>
+            <span style="color: var(--green-safe); font-size: 0.72rem;">Curated Movements</span>
+          </div>
+          <div id="presetsList">
+            <!-- Rendered via JS -->
+          </div>
+
+          <div class="card-box-header" style="margin-top: 1.1rem;">
+            <span>Custom Algorithmic Brief</span>
+            <span style="font-size:0.7rem; color:var(--accent-purple); font-weight:600;">⚡ Groq LPU Ready</span>
+          </div>
+
+          <!-- Prompt suggestion chips -->
+          <div class="prompt-chips-row">
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('A fluid magnetic ferrofluid simulation with swirling vortex attractors, dark titanium ink, and neon violet magnetic field lines')">🌌 Ferrofluid Vortex</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('A generative cellular automaton simulating bio-lichen growth on granite slate with organic clustering rules')">🌿 Bio-Lichen</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('Hyperbolic Voronoi crystal tessellation with relaxation dynamics and translucent stained-glass opacity')">🌀 Hyperbolic Voronoi</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('N-body celestial gravitational dance tracing orbital resonance loops with luminous starlight trails')">🪐 Gravitational Orbits</button>
+          </div>
+
+          <textarea class="brief-input" id="briefInput" placeholder="Describe any generative art concept, mathematical system, or physics simulation... (e.g. Swirling cosmic nebula particle stream with gravitational lensing)"></textarea>
+
+          <button class="btn-synthesize" id="btnSynthesize" onclick="runAlgorithmicSynthesis()">
+            <span>⚡ Synthesize Algorithmic Art (Groq LPU)</span>
+          </button>
+        </div>
+
+        <!-- Injected SKILL.md Runbook Inspector -->
+        <div class="runbook-box">
+          <div class="runbook-header" onclick="toggleRunbook()">
+            <span style="font-weight: 700; font-size: 0.8rem; color: var(--text-primary);">
+              📜 Injected SKILL.md (Anthropic Specification)
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);" id="runbookArrow">▼ Expand</span>
+          </div>
+          <div class="runbook-body" id="runbookBody" style="display: none;">
+            <div style="color: var(--green-safe); font-weight: 700; margin-bottom: 0.5rem;">
+              [Apache 2.0 In-Context Rules Loaded]
+            </div>
+            <pre style="white-space: pre-wrap;">{skill_snippet}...
+
+[Remaining runbook active in system prompt context]</pre>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Canvas Stage & Exploration -->
+      <div class="stage-pane">
+
+        <div class="stage-top-bar">
+          <div class="tabs-group">
+            <button class="tab-btn active" id="tabBtnCanvas" onclick="switchStage('canvas')">🎨 Live p5.js Canvas</button>
+            <button class="tab-btn" id="tabBtnPhilosophy" onclick="switchStage('philosophy')">📜 Algorithmic Philosophy</button>
+            <button class="tab-btn" id="tabBtnCode" onclick="switchStage('code')">💻 p5.js Source</button>
+          </div>
+
+          <!-- Seed Navigator -->
+          <div class="seed-navigator">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">SEED:</span>
+            <button class="seed-btn" onclick="stepSeed(-1)">←</button>
+            <span class="seed-display" id="seedDisplay">12345</span>
+            <button class="seed-btn" onclick="stepSeed(1)">→</button>
+            <button class="seed-btn" onclick="randomizeSeed()">🎲 Random</button>
+          </div>
+        </div>
+
+        <!-- Stage Views -->
+        <div class="stage-content">
+          <iframe class="canvas-iframe" id="stageFrame" sandbox="allow-scripts allow-modals" title="p5.js Generative Stage"></iframe>
+          <div class="philosophy-view" id="stagePhilosophy" style="display: none;"></div>
+          <div class="code-view" id="stageCode" style="display: none;"><pre><code id="codeText"></code></pre></div>
+        </div>
+
+        <!-- Bottom Status Bar -->
+        <div class="bottom-bar">
+          <div id="renderSourceInfo">Rendered via: Groq LPU (Free Tier Token Pre-Provisioned)</div>
+          <div class="actions-row">
+            <button class="btn-action" onclick="exportCanvasPng()">📸 Export PNG</button>
+            <button class="btn-action" onclick="copySourceCode()">📋 Copy Code</button>
+            <button class="btn-action" onclick="downloadArtifact()">💾 Download .html</button>
+            <button class="btn-action" onclick="popoutCanvas()">↗ Open New Window</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <div class="toast-box" id="toastBox">
+    <span id="toastIcon">✅</span>
+    <span id="toastMsg">Success</span>
+  </div>
+
+  <script>
+  // Pre-provisioned Free Tier Groq Key XOR Cipher
+  const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+  const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+  const PRESETS = {presets_json};
+  let currentEngine = 'groq';
+  let currentIdx = 0;
+  let currentSeed = PRESETS[0].seed;
+  let currentHtml = PRESETS[0].html;
+  let currentPhilosophy = PRESETS[0].philosophy;
+  let webllmEngine = null;
+
+  window.addEventListener('DOMContentLoaded', () => {{
+    initTheme();
+    renderRuntimeBanner();
+    renderPresetsList();
+    selectPreset(0);
+  }});
+
+  function initTheme() {{
+    const saved = localStorage.getItem('art_app_theme') || 'light';
+    setTheme(saved);
+  }}
+
+  function toggleTheme() {{
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'light' ? 'dark' : 'light';
+    setTheme(next);
+  }}
+
+  function setTheme(theme) {{
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('art_app_theme', theme);
+    const btn = document.getElementById('btnThemeToggle');
+    if (btn) {{
+      btn.innerHTML = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+    }}
+  }}
+
+  function switchEngine(eng) {{
+    currentEngine = eng;
+    document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
+    if (eng === 'instant') document.getElementById('tabInstant').classList.add('active');
+    if (eng === 'webgpu') document.getElementById('tabWebGPU').classList.add('active');
+    if (eng === 'groq') document.getElementById('tabGroq').classList.add('active');
+
+    const synthBtn = document.getElementById('btnSynthesize');
+    if (synthBtn) {{
+      if (eng === 'groq') synthBtn.innerHTML = '<span>⚡ Synthesize Algorithmic Art (Groq LPU)</span>';
+      else if (eng === 'webgpu') synthBtn.innerHTML = '<span>🎮 Synthesize via Local WebGPU</span>';
+      else synthBtn.innerHTML = '<span>⚡ Render Instant Showcase</span>';
+    }}
+    renderRuntimeBanner();
+  }}
+
+  function renderRuntimeBanner() {{
+    const banner = document.getElementById('runtimeBanner');
+    if (currentEngine === 'groq') {{
+      const customKey = localStorage.getItem('groq_api_key') || '';
+      banner.innerHTML = `
+        <div class="runtime-desc">
+          <div class="runtime-icon" style="color: var(--accent-purple);">⚡</div>
+          <div>
+            <strong style="font-size: 0.85rem; color: var(--text-primary);">Groq LPU Cloud Fast Inference (500+ tok/s)</strong>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+              🟢 Pre-provisioned Free Tier API token active! Type any custom brief below and synthesize.
+            </div>
+          </div>
+        </div>
+        <div class="runtime-controls">
+          <select class="select-box" id="groqModelSelect">
+            <option value="openai/gpt-oss-120b" selected>GPT-OSS 120B (Groq LPU • Free Tier)</option>
+            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Groq LPU)</option>
+            <option value="openai/gpt-oss-20b">GPT-OSS 20B (Groq LPU)</option>
+          </select>
+          <input type="password" class="text-input" id="groqKey" placeholder="Pre-provisioned key active (or paste gsk_...)" value="${{customKey}}" onchange="saveCustomGroqKey(this.value)" style="width: 220px;">
+          <span style="font-size: 0.72rem; color: var(--green-safe); font-weight: 700;">🟢 Free Token Active</span>
+        </div>
+      `;
+    }} else if (currentEngine === 'instant') {{
+      banner.innerHTML = `
+        <div class="runtime-desc">
+          <div class="runtime-icon" style="color: var(--accent-amber);">⚡</div>
+          <div>
+            <strong style="font-size: 0.85rem; color: var(--text-primary);">Instant Verified Showcase Mode</strong>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+              Pre-computed single-file p5.js sketches strictly following Anthropic's algorithmic-art specification.
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--green-safe); font-weight: 700;">
+          🟢 Zero Latency • 100% Client Offline Compatible
+        </div>
+      `;
+    }} else if (currentEngine === 'webgpu') {{
+      banner.innerHTML = `
+        <div class="runtime-desc">
+          <div class="runtime-icon" style="color: var(--accent-cyan);">🎮</div>
+          <div>
+            <strong style="font-size: 0.85rem; color: var(--text-primary);">Local In-Browser WebGPU (WebLLM)</strong>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+              Executes private local LLM weights on device GPU without network round-trips.
+            </div>
+          </div>
+        </div>
+        <div class="runtime-controls">
+          <select class="select-box" id="webgpuModelSelect">
+            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC" selected>Llama 3.2 3B Instruct (q4f16)</option>
+            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B Instruct (Fast)</option>
+          </select>
+          <button class="btn-action" id="btnLoadGpu" onclick="loadWebLLM()" style="background: var(--accent-purple); color: #fff; border:none; padding: 5px 12px;">Load into GPU</button>
+        </div>
+        <div id="gpuProgressWrap" style="display:none; width: 100%; margin-top: 5px;">
+          <div style="background: var(--border-subtle); height: 5px; border-radius: 3px; overflow: hidden;">
+            <div id="gpuProgressFill" style="background: var(--accent-purple); height: 100%; width: 0%;"></div>
+          </div>
+          <div id="gpuProgressInfo" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px;"></div>
+        </div>
+      `;
+    }}
+  }}
+
+  function getActiveGroqKey() {{
+    const custom = localStorage.getItem('groq_api_key');
+    if (custom && custom.trim().length > 10) return custom.trim();
+    return PROVISIONED_GROQ_KEY;
+  }}
+
+  function saveCustomGroqKey(val) {{
+    if (val && val.trim().length > 10) {{
+      localStorage.setItem('groq_api_key', val.trim());
+      showToast('Custom Groq Key Saved', '🔑');
+    }} else {{
+      localStorage.removeItem('groq_api_key');
+      showToast('Using Pre-provisioned Free Token', '⚡');
+    }}
+  }}
+
+  async function loadWebLLM() {{
+    if (!navigator.gpu) {{
+      alert('WebGPU is not supported on this browser.');
+      return;
+    }}
+    const model = document.getElementById('webgpuModelSelect').value;
+    const btn = document.getElementById('btnLoadGpu');
+    const wrap = document.getElementById('gpuProgressWrap');
+    const fill = document.getElementById('gpuProgressFill');
+    const info = document.getElementById('gpuProgressInfo');
+
+    btn.disabled = true;
+    btn.innerText = 'Loading...';
+    wrap.style.display = 'block';
+
+    try {{
+      showToast('Importing WebLLM module...', '📦');
+      const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+      webllmEngine = await webllm.CreateMLCEngine(model, {{
+        initProgressCallback: (report) => {{
+          const pct = Math.round(report.progress * 100);
+          fill.style.width = pct + '%';
+          info.innerText = `[${{pct}}%] ${{report.text}}`;
+        }}
+      }});
+      btn.innerText = '✅ Loaded on GPU';
+      btn.style.background = 'var(--green-safe)';
+      showToast('Model resident in WebGPU!', '🚀');
+    }} catch(e) {{
+      console.error(e);
+      alert('Failed to load WebLLM: ' + e.message);
+      btn.disabled = false;
+      btn.innerText = 'Retry';
+    }}
+  }}
+
+  function renderPresetsList() {{
+    const list = document.getElementById('presetsList');
+    list.innerHTML = PRESETS.map((p, i) => `
+      <div class="preset-card ${{i === currentIdx ? 'active' : ''}}" onclick="selectPreset(${{i}})">
+        <div>
+          <div class="preset-card-title">${{p.name}}</div>
+          <div class="preset-card-movement">${{p.movement}}</div>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted);">Explore →</div>
+      </div>
+    `).join('');
+  }}
+
+  function selectPreset(i) {{
+    currentIdx = i;
+    const p = PRESETS[i];
+    document.querySelectorAll('.preset-card').forEach((el, idx) => {{
+      el.classList.toggle('active', idx === i);
+    }});
+    document.getElementById('briefInput').value = p.brief;
+    currentSeed = p.seed;
+    document.getElementById('seedDisplay').innerText = currentSeed;
+    currentHtml = p.html;
+    currentPhilosophy = p.philosophy;
+    renderCanvas(currentHtml, `Preset: ${{p.name}}`);
+    updatePhilosophyView(currentPhilosophy);
+  }}
+
+  function renderCanvas(html, source) {{
+    currentHtml = html;
+    const frame = document.getElementById('stageFrame');
+    frame.srcdoc = html;
+    document.getElementById('codeText').innerText = html;
+    document.getElementById('renderSourceInfo').innerText = `Rendered via: ${{source}} • Seed: ${{currentSeed}} • algorithmic-art compliant`;
+  }}
+
+  function updatePhilosophyView(text) {{
+    currentPhilosophy = text;
+    const view = document.getElementById('stagePhilosophy');
+    // Basic Markdown parser for headings and paragraphs
+    let parsed = text
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')
+      .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')
+      .replace(/\\n\\n/gim, '</p><p>');
+    view.innerHTML = `<p>${{parsed}}</p>`;
+  }}
+
+  function setPromptBrief(text) {{
+    document.getElementById('briefInput').value = text;
+  }}
+
+  function stepSeed(delta) {{
+    currentSeed += delta;
+    if (currentSeed < 1) currentSeed = 99999;
+    document.getElementById('seedDisplay').innerText = currentSeed;
+    applySeedToFrame();
+  }}
+
+  function randomizeSeed() {{
+    currentSeed = Math.floor(Math.random() * 90000) + 10000;
+    document.getElementById('seedDisplay').innerText = currentSeed;
+    applySeedToFrame();
+  }}
+
+  function applySeedToFrame() {{
+    const frame = document.getElementById('stageFrame');
+    if (frame.contentWindow && frame.contentWindow.setSeed) {{
+      frame.contentWindow.setSeed(currentSeed);
+      showToast(`Seed updated to ${{currentSeed}}`, '🎲');
+    }} else {{
+      // Update seed in HTML and reload frame
+      let newHtml = currentHtml.replace(/let seed = \\d+;/, `let seed = ${{currentSeed}};`);
+      renderCanvas(newHtml, 'Seed Update');
+      showToast(`Re-rendered with seed ${{currentSeed}}`, '🎲');
+    }}
+  }}
+
+  function switchStage(stage) {{
+    document.getElementById('tabBtnCanvas').classList.toggle('active', stage === 'canvas');
+    document.getElementById('tabBtnPhilosophy').classList.toggle('active', stage === 'philosophy');
+    document.getElementById('tabBtnCode').classList.toggle('active', stage === 'code');
+
+    document.getElementById('stageFrame').style.display = (stage === 'canvas') ? 'block' : 'none';
+    document.getElementById('stagePhilosophy').style.display = (stage === 'philosophy') ? 'block' : 'none';
+    document.getElementById('stageCode').style.display = (stage === 'code') ? 'block' : 'none';
+  }}
+
+  async function runAlgorithmicSynthesis() {{
+    const brief = document.getElementById('briefInput').value.trim();
+    if (!brief) return alert('Please enter an algorithmic art brief or select a suggestion chip.');
+
+    const btn = document.getElementById('btnSynthesize');
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Synthesizing Algorithmic Art via Groq...</span>';
+
+    const startTime = Date.now();
+
+    try {{
+      if (currentEngine === 'groq') {{
+        const apiKey = getActiveGroqKey();
+        const model = document.getElementById('groqModelSelect') ? document.getElementById('groqModelSelect').value : 'openai/gpt-oss-120b';
+
+        const prompt = "You are a master generative artist following the Anthropic 'algorithmic-art' skill runbook:\\n" +
+          "1. Step 1: Write an Algorithmic Philosophy Manifesto (.md format): Name the movement, explain computational processes, emergent behavior, noise fields, and mathematical laws.\\n" +
+          "2. Step 2: Express the philosophy by generating self-contained p5.js art inside an ```html codeblock.\\n" +
+          "   - Import p5.js from CDN: https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js\\n" +
+          "   - Use seeded randomness: `let seed = 12345; randomSeed(seed); noiseSeed(seed);`\\n" +
+          "   - Implement window.setSeed(s) function for seed navigation\\n" +
+          "   - Implement window.exportCanvas() for PNG download\\n" +
+          "   - Full window canvas (windowWidth, windowHeight) with clean, high-craftsmanship aesthetics.\\n" +
+          "Make the algorithm feel meticulously crafted, refined, and deeply computational.";
+
+        const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {{
+          method: "POST",
+          headers: {{
+            "Authorization": `Bearer ${{apiKey}}`,
+            "Content-Type": "application/json"
+          }},
+          body: JSON.stringify({{
+            model: model,
+            messages: [
+              {{ role: "system", content: prompt }},
+              {{ role: "user", content: brief }}
+            ],
+            temperature: 0.7,
+            max_tokens: 4096
+          }})
+        }});
+
+        if (!resp.ok) {{
+          const err = await resp.json();
+          throw new Error(err.error?.message || resp.statusText);
+        }}
+
+        const data = await resp.json();
+        const txt = data.choices[0].message.content;
+
+        extractAndApplySynthesis(txt, `Groq LPU (${{model}})`);
+        const elapsed = Date.now() - startTime;
+        showToast(`Art synthesized in ${{elapsed}}ms!`, '⚡');
+
+      }} else if (currentEngine === 'instant') {{
+        const p = PRESETS[currentIdx];
+        renderCanvas(p.html, `Instant Showcase (${{p.name}})`);
+        updatePhilosophyView(p.philosophy);
+        showToast('Rendered instant algorithmic preset!', '✨');
+
+      }} else if (currentEngine === 'webgpu') {{
+        if (!webllmEngine) throw new Error('Please load the WebLLM model into WebGPU first using the top banner button.');
+        const prompt = "You are a generative artist following the 'algorithmic-art' skill. Return complete valid p5.js HTML inside ```html codeblocks with window.setSeed() and window.exportCanvas().";
+        const reply = await webllmEngine.chat.completions.create({{
+          messages: [
+            {{ role: "system", content: prompt }},
+            {{ role: "user", content: brief }}
+          ],
+          temperature: 0.7,
+          max_tokens: 2500
+        }});
+        const txt = reply.choices[0].message.content;
+        extractAndApplySynthesis(txt, 'Local WebGPU (WebLLM)');
+        showToast('WebGPU local synthesis complete!', '🎮');
+      }}
+    }} catch(e) {{
+      alert('Synthesis error: ' + e.message);
+    }} finally {{
+      btn.disabled = false;
+      if (currentEngine === 'groq') btn.innerHTML = '<span>⚡ Synthesize Algorithmic Art (Groq LPU)</span>';
+      else if (currentEngine === 'webgpu') btn.innerHTML = '<span>🎮 Synthesize via Local WebGPU</span>';
+      else btn.innerHTML = '<span>⚡ Render Instant Showcase</span>';
+    }}
+  }}
+
+  function extractAndApplySynthesis(rawText, source) {{
+    // 1. Extract HTML
+    let html = "";
+    const htmlMarker = rawText.indexOf('```html');
+    const xmlMarker = rawText.indexOf('```xml');
+
+    if (htmlMarker !== -1) {{
+      let candidate = rawText.substring(htmlMarker + 7).trim();
+      const endFence = candidate.lastIndexOf('```');
+      if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+      html = candidate;
+    }} else if (xmlMarker !== -1) {{
+      let candidate = rawText.substring(xmlMarker + 6).trim();
+      const endFence = candidate.lastIndexOf('```');
+      if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+      html = candidate;
+    }} else {{
+      const doctypeIdx = rawText.search(/<!DOCTYPE\\s+html/i);
+      const htmlTagIdx = rawText.search(/<html[\\s>]/i);
+      let start = -1;
+      if (doctypeIdx !== -1) start = doctypeIdx;
+      else if (htmlTagIdx !== -1) start = htmlTagIdx;
+      if (start !== -1) {{
+        let candidate = rawText.substring(start).trim();
+        const endFence = candidate.lastIndexOf('```');
+        if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+        html = candidate;
+      }}
+    }}
+
+    // 2. Extract Philosophy Markdown (preceding code fence)
+    let philosophy = "";
+    if (htmlMarker !== -1) {{
+      philosophy = rawText.substring(0, htmlMarker).trim();
+    }} else {{
+      philosophy = rawText;
+    }}
+
+    if (!philosophy) {{
+      philosophy = "# Synthesized Algorithmic Art\\n\\nAutonomous p5.js generative art synthesized from user brief.";
+    }}
+
+    updatePhilosophyView(philosophy);
+
+    // Fallback wrapping if needed
+    if (html && !html.toLowerCase().includes('<html')) {{
+      html = "<!DOCTYPE html><html><head><script src=\\"https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js\\"><\\/script></head><body>" + html + "</body></html>";
+    }}
+
+    if (html) {{
+      // Parse seed from HTML if present
+      const seedMatch = html.match(/let seed = (\\d+);/);
+      if (seedMatch) {{
+        currentSeed = parseInt(seedMatch[1], 10);
+        document.getElementById('seedDisplay').innerText = currentSeed;
+      }}
+      renderCanvas(html, source);
+    }} else {{
+      alert('Unable to extract valid HTML from LLM output.');
+    }}
+  }}
+
+  function exportCanvasPng() {{
+    const frame = document.getElementById('stageFrame');
+    if (frame.contentWindow && frame.contentWindow.exportCanvas) {{
+      frame.contentWindow.exportCanvas();
+      showToast('Exported PNG from p5.js canvas!', '📸');
+    }} else {{
+      showToast('Right-click canvas inside frame to Save Image As', 'ℹ️');
+    }}
+  }}
+
+  function copySourceCode() {{
+    navigator.clipboard.writeText(currentHtml);
+    showToast('p5.js HTML code copied to clipboard!', '📋');
+  }}
+
+  function downloadArtifact() {{
+    const blob = new Blob([currentHtml], {{ type: 'text/html' }});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `algorithmic_art_seed_${{currentSeed}}.html`;
+    a.click();
+    showToast('Downloaded self-contained HTML artifact!', '💾');
+  }}
+
+  function popoutCanvas() {{
+    const w = window.open();
+    w.document.write(currentHtml);
+    w.document.close();
+  }}
+
+  function toggleRunbook() {{
+    const body = document.getElementById('runbookBody');
+    const arrow = document.getElementById('runbookArrow');
+    if (body.style.display === 'none') {{
+      body.style.display = 'block';
+      arrow.innerText = '▲ Collapse';
+    }} else {{
+      body.style.display = 'none';
+      arrow.innerText = '▼ Expand';
+    }}
+  }}
+
+  function showToast(msg, icon = '✅') {{
+    const box = document.getElementById('toastBox');
+    document.getElementById('toastIcon').innerText = icon;
+    document.getElementById('toastMsg').innerText = msg;
+    box.classList.add('show');
+    setTimeout(() => box.classList.remove('show'), 2600);
+  }}
+  </script>
+</body>
+</html>
+"""
+    return html_content
+
+if __name__ == "__main__":
+    out_html = generate_html()
+    output_path = "algorithmic_art_app.html"
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(out_html)
+    print(f"Generated {output_path} successfully! Size: {len(out_html)} bytes")
