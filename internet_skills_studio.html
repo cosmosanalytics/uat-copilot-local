@@ -1687,15 +1687,18 @@ CRITICAL RUNTIME CONSTRAINTS:
     }
 
     function extractAndMountPreview(cardId, text, skillName) {
-      // Look for html, p5js, svg code blocks
+      // Look for html, p5js, svg code blocks or direct doctype/html
       const htmlBlockMatch = text.match(/```html\s*([\s\S]*?)```/i);
-      const jsBlockMatch = text.match(/```(?:javascript|js)\s*([\s\S]*?)```/i);
+      const jsBlockMatch = text.match(/```(?:javascript|js)?\s*([\s\S]*?)```/i);
 
       let runnableHtml = null;
 
       if (htmlBlockMatch) {
         runnableHtml = htmlBlockMatch[1].trim();
-      } else if (jsBlockMatch && (skillName === 'algorithmic-art' || jsBlockMatch[1].includes('setup()') || jsBlockMatch[1].includes('createCanvas'))) {
+      } else if (text.trim().startsWith('<!DOCTYPE html>') || text.includes('<html')) {
+        // Raw HTML returned without markdown fence
+        runnableHtml = text.replace(/```html?/gi, '').replace(/```/g, '').trim();
+      } else if (jsBlockMatch && (skillName === 'algorithmic-art' || jsBlockMatch[1].includes('setup()') || jsBlockMatch[1].includes('createCanvas') || jsBlockMatch[1].includes('p5.'))) {
         // Wrap p5.js script inside runnable HTML template
         runnableHtml = `<!DOCTYPE html>
 <html>
@@ -1703,7 +1706,7 @@ CRITICAL RUNTIME CONSTRAINTS:
   <meta charset="utf-8">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>
   <style>
-    body { margin:0; padding:0; overflow:hidden; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; }
+    body { margin:0; padding:0; overflow:hidden; background:#111; display:flex; justify-content:center; align-items:center; height:100vh; }
   </style>
 </head>
 <body>
@@ -1712,13 +1715,36 @@ CRITICAL RUNTIME CONSTRAINTS:
   <\/script>
 </body>
 </html>`;
+      } else if (text.includes('function setup()') && text.includes('createCanvas')) {
+        // Fallback p5.js detection in unformatted text
+        const codeSnippet = text.slice(text.indexOf('function setup()'));
+        runnableHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>
+  <style>
+    body { margin:0; padding:0; overflow:hidden; background:#111; display:flex; justify-content:center; align-items:center; height:100vh; }
+  </style>
+</head>
+<body>
+  <script>
+    ${codeSnippet.replace(/```/g, '')}
+  <\/script>
+</body>
+</html>`;
       }
 
       if (runnableHtml) {
         const tabs = document.getElementById(`${cardId}-tabs`);
-        tabs.style.display = 'flex';
+        if (tabs) tabs.style.display = 'flex';
         const iframe = document.getElementById(`${cardId}-iframe`);
-        iframe.srcdoc = runnableHtml;
+        if (iframe) iframe.srcdoc = runnableHtml;
+        
+        // Auto-switch visual skills to preview tab so user sees the live canvas immediately
+        if (skillName === 'algorithmic-art' || skillName === 'canvas-design' || skillName === 'frontend-design') {
+          switchOutputCardView(cardId, 'preview');
+        }
       }
     }
 
@@ -1726,18 +1752,23 @@ CRITICAL RUNTIME CONSTRAINTS:
       const bodyEl = document.getElementById(`${cardId}-body`);
       const previewEl = document.getElementById(`${cardId}-preview-container`);
       const tabs = document.getElementById(`${cardId}-tabs`);
+      if (!tabs) return;
       const btns = tabs.querySelectorAll('.view-tab-btn');
 
       if (mode === 'preview') {
-        bodyEl.style.display = 'none';
-        previewEl.style.display = 'block';
-        btns[0].classList.remove('active');
-        btns[1].classList.add('active');
+        if (bodyEl) bodyEl.style.display = 'none';
+        if (previewEl) previewEl.style.display = 'block';
+        if (btns.length >= 2) {
+          btns[0].classList.remove('active');
+          btns[1].classList.add('active');
+        }
       } else {
-        bodyEl.style.display = 'block';
-        previewEl.style.display = 'none';
-        btns[0].classList.add('active');
-        btns[1].classList.remove('active');
+        if (bodyEl) bodyEl.style.display = 'block';
+        if (previewEl) previewEl.style.display = 'none';
+        if (btns.length >= 2) {
+          btns[0].classList.add('active');
+          btns[1].classList.remove('active');
+        }
       }
     }
 
