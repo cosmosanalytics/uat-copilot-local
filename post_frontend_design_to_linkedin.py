@@ -24,11 +24,8 @@ Starting from the Open-Source Skills Map, this app isolates the #1 safest browse
 • 📐 Anti-Generic UI Synthesis: Mounts Anthropic's frontend-design runbook to avoid generic AI SaaS templates, enforcing deliberate palettes, intentional typography, and single bold focal points.
 • 👁️ Real-Time Sandbox: Renders live responsive prototypes (Desktop / Tablet / Mobile) with instant code inspection and export.
 
-🔗 Live Web App:
+👉 Try the live web app:
 https://cosmosanalytics.github.io/uat-copilot-local/frontend_design_app.html
-
-💻 GitHub Repo:
-https://github.com/cosmosanalytics/uat-copilot-local
 
 #AIAgents #WebGPU #WebLLM #Groq #OpenSource #Frontend #WebDevelopment #UIDesign"""
 
@@ -48,7 +45,7 @@ payload = {
     }
 }
 
-print("Publishing Frontend Design Agent summary to LinkedIn...")
+print("Publishing updated post (live web app link only, no repo link) to LinkedIn...")
 res = requests.post(URL, headers=HEADERS, json=payload)
 print(f"Status code: {res.status_code}")
 print(f"Response: {res.text}")
