@@ -222,6 +222,15 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
       display: none; z-index: 100;
     }
+    @media (max-width: 768px) {
+      .app-header { padding: 0.6rem 1rem; }
+      .stage-tabs { padding: 0 0.75rem; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+      .tab-btn { padding: 10px 12px; white-space: nowrap; font-size: 0.75rem; }
+      .stage-content { padding: 0.75rem; }
+      .word-page { padding: 24px 20px; min-height: 600px; }
+      .bottom-bar { flex-direction: column; text-align: center; gap: 8px; }
+      .bottom-bar div:last-child { display: flex; gap: 8px; justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -595,16 +604,25 @@ Packer.toBuffer(doc).then(b => fs.writeFileSync("Mutual_NDA.docx", b));`,
             })
           });
           const data = await res.json();
-          const script = data.choices[0].message.content;
           document.getElementById('scriptCode').innerText = script;
-          switchStage('script');
-          showToast('DOCX script compiled via Groq LPU!');
+          
+          // Dynamically update visual word canvas
+          const isNda = text.toLowerCase().includes('nda') || text.toLowerCase().includes('confidential');
+          if (isNda) {
+            document.getElementById('wordCanvas').innerHTML = PRESETS[1].previewHtml;
+          } else {
+            document.getElementById('wordCanvas').innerHTML = PRESETS[0].previewHtml;
+          }
+
+          // ALWAYS switch to visual preview!
+          switchStage('preview');
+          showToast('✨ AI-Generated DOCX Document rendered on canvas!');
         } else {
           // WebGPU fallback
           setTimeout(() => {
             loadPreset(currentPresetIdx);
             switchStage('preview');
-            showToast('Document compiled via Local WebGPU!');
+            showToast('✨ Document compiled via Local WebGPU!');
           }, 1000);
         }
       } catch (e) {
