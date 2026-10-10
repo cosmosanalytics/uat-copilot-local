@@ -28,8 +28,8 @@ Following Anthropic's open-source agent skills runbook, this app implements seed
 • ⚡ Dual In-Browser Inference: Runs on Groq LPU (500+ tok/s) with pre-provisioned free token or local WebGPU (WebLLM).
 • 💡 Freeform Input: Prompt chips and custom brief input in clean Light Mode.
 
-👉 GitHub Link:
-https://github.com/cosmosanalytics/uat-copilot/algorithmic_art_app.html
+👉 Live GitHub Pages App:
+https://cosmosanalytics.github.io/uat-copilot-local/algorithmic_art_app.html
 
 #AIAgents #GenerativeArt #p5js #WebGPU #Groq #OpenSource #CreativeCoding"""
     },
@@ -44,8 +44,8 @@ Following Anthropic's open-source agent skills runbook, this app provides curate
 • ⚡ On-The-Fly Theme Synthesis: Groq LPU (500+ tok/s) & WebGPU generate cohesive color palettes, Google Font pairings, and semantic tokens from freeform briefs.
 • 🏷️ Design Token Export: One-click export for CSS Custom Properties (:root), Tailwind CSS, and W3C JSON tokens.
 
-👉 GitHub Link:
-https://github.com/cosmosanalytics/uat-copilot/theme_factory_app.html
+👉 Live GitHub Pages App:
+https://cosmosanalytics.github.io/uat-copilot-local/theme_factory_app.html
 
 #AIAgents #DesignSystems #WebDevelopment #TailwindCSS #WebGPU #Groq #OpenSource"""
     }
