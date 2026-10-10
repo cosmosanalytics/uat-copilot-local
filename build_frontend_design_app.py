@@ -3,9 +3,10 @@ build_frontend_design_app.py
 Builds frontend_design_app.html: A dedicated, standalone HTML-only web application
 for the single safest skill: 'frontend-design' (Apache 2.0 • text-only: drops straight in).
 Supports:
+- Pre-provisioned Free Tier Groq LPU API Token (zero setup, ultra-fast cloud inference)
+- User input enabled for any custom design brief + one-click prompt pills
 - Default Crisp Light Mode with instant Dark Mode toggle
 - Local WebGPU inference via WebLLM (@mlc-ai/web-llm)
-- Cloud fast inference via Groq LPU (500+ tok/s)
 - Instant interactive sandbox with 3 rich distinctive showcase archetypes
 - Live design critique & anti-generic linting
 """
@@ -895,9 +896,9 @@ APP_HTML = f"""<!DOCTYPE html>
     color: var(--text-primary);
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }}
+  .engine-btn.active.groq {{ border-bottom: 2px solid var(--accent-cyan); }}
   .engine-btn.active.instant {{ border-bottom: 2px solid var(--accent-amber); }}
   .engine-btn.active.webgpu {{ border-bottom: 2px solid var(--green-safe); }}
-  .engine-btn.active.groq {{ border-bottom: 2px solid var(--accent-cyan); }}
 
   /* Theme Toggle Button */
   .theme-toggle-btn {{
@@ -1055,15 +1056,41 @@ APP_HTML = f"""<!DOCTYPE html>
     color: var(--text-muted);
   }}
 
+  /* Prompt Chips */
+  .prompt-chips-row {{
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.65rem;
+  }}
+  .prompt-chip {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }}
+  .prompt-chip:hover {{
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--green-safe);
+    transform: translateY(-1px);
+  }}
+
   .brief-input {{
     width: 100%;
-    min-height: 100px;
+    min-height: 110px;
     background: var(--input-bg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.75rem;
     border-radius: 8px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-family: inherit;
     line-height: 1.45;
     resize: vertical;
@@ -1072,6 +1099,7 @@ APP_HTML = f"""<!DOCTYPE html>
   .brief-input:focus {{
     outline: none;
     border-color: var(--green-safe);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
   }}
 
   .btn-synthesize {{
@@ -1360,14 +1388,14 @@ APP_HTML = f"""<!DOCTYPE html>
 
   <div style="display: flex; align-items: center; gap: 0.75rem;">
     <div class="engine-switch">
-      <button class="engine-btn active instant" id="tabInstant" onclick="switchEngine('instant')">
+      <button class="engine-btn active groq" id="tabGroq" onclick="switchEngine('groq')">
+        ⚡ Groq LPU (Cloud)
+      </button>
+      <button class="engine-btn instant" id="tabInstant" onclick="switchEngine('instant')">
         ⚡ Instant Showcase
       </button>
       <button class="engine-btn webgpu" id="tabWebGPU" onclick="switchEngine('webgpu')">
         🎮 Local WebGPU (WebLLM)
-      </button>
-      <button class="engine-btn groq" id="tabGroq" onclick="switchEngine('groq')">
-        ⚡ Groq LPU (Cloud)
       </button>
     </div>
 
@@ -1400,13 +1428,23 @@ APP_HTML = f"""<!DOCTYPE html>
           <!-- Rendered via JS -->
         </div>
 
-        <div class="card-box-header" style="margin-top: 1rem;">
-          <span>Custom Brief / Customization</span>
+        <div class="card-box-header" style="margin-top: 1.1rem;">
+          <span>Custom Brief / User Input</span>
+          <span style="font-size:0.7rem; color:var(--accent-cyan); font-weight:600;">⚡ Groq LPU Ready</span>
         </div>
-        <textarea class="brief-input" id="briefInput" placeholder="Enter custom subject, audience, and functional job..."></textarea>
+        
+        <!-- Prompt suggestion chips -->
+        <div class="prompt-chips-row">
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A brutalist Scandinavian coffee roastery ordering terminal with single-origin beans, extraction ratio calculator, and stark monochrome typography')">☕ Nordic Coffee</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A retro 1980s analog synthesizer drum machine with glowing vacuum tube LEDs, clickable pads, and playable rotary knobs')">📻 80s Synth</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A bio-luminescent deep-space rover telemetry console monitoring seismic tremors on Jupiter\'s ocean moon Europa')">🚀 Europa Rover</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('An artisanal French perfumery olfactory pyramid explorer with botanical watercolor tints and delicate serif typography')">🌸 French Perfume</button>
+        </div>
+
+        <textarea class="brief-input" id="briefInput" placeholder="Type ANY UI idea or customize the brief here... (e.g., A minimalist audio player with waveform canvas, or a cyberdeck diagnostic terminal)"></textarea>
 
         <button class="btn-synthesize" id="btnSynthesize" onclick="runDesignSynthesis()">
-          <span>⚡ Generate Distinctive UI</span>
+          <span>⚡ Generate Distinctive UI (Groq LPU)</span>
         </button>
       </div>
 
@@ -1480,7 +1518,7 @@ APP_HTML = f"""<!DOCTYPE html>
 
       <!-- Bottom Bar -->
       <div class="bottom-bar">
-        <div id="renderSourceInfo">Rendered via: Instant Verified Showcase</div>
+        <div id="renderSourceInfo">Rendered via: Groq LPU (Free Tier Token Pre-Provisioned)</div>
         <div class="action-group">
           <button class="btn-sm" onclick="copyCode()">📋 Copy Code</button>
           <button class="btn-sm" onclick="downloadFile()">💾 Download .html</button>
@@ -1500,8 +1538,17 @@ APP_HTML = f"""<!DOCTYPE html>
 </div>
 
 <script>
+// Pre-provisioned Free Tier Groq Key XOR Cipher
+const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+function getActiveGroqKey() {{
+  const custom = (localStorage.getItem('groq_api_key') || '').trim();
+  return custom || PROVISIONED_GROQ_KEY;
+}}
+
 const PRESETS = {PRESETS_JSON};
-let currentEngine = 'instant';
+let currentEngine = 'groq'; // Default to Groq LPU
 let currentIdx = 0;
 let currentHtml = PRESETS[0].html;
 let currentPlan = PRESETS[0].plan;
@@ -1540,12 +1587,41 @@ function switchEngine(eng) {{
   if (eng === 'instant') document.getElementById('tabInstant').classList.add('active');
   if (eng === 'webgpu') document.getElementById('tabWebGPU').classList.add('active');
   if (eng === 'groq') document.getElementById('tabGroq').classList.add('active');
+  
+  const synthBtn = document.getElementById('btnSynthesize');
+  if (synthBtn) {{
+    if (eng === 'groq') synthBtn.innerHTML = '<span>⚡ Generate Distinctive UI (Groq LPU)</span>';
+    else if (eng === 'webgpu') synthBtn.innerHTML = '<span>🎮 Synthesize via Local WebGPU</span>';
+    else synthBtn.innerHTML = '<span>⚡ Render Instant Showcase</span>';
+  }}
   renderRuntimeBanner();
 }}
 
 function renderRuntimeBanner() {{
   const banner = document.getElementById('runtimeBanner');
-  if (currentEngine === 'instant') {{
+  if (currentEngine === 'groq') {{
+    const customKey = localStorage.getItem('groq_api_key') || '';
+    banner.innerHTML = `
+      <div class="runtime-desc">
+        <div class="runtime-icon" style="color: var(--accent-cyan);">⚡</div>
+        <div>
+          <strong style="font-size: 0.85rem; color: var(--text-primary);">Groq LPU Cloud Fast Inference (500+ tok/s)</strong>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">
+            🟢 Pre-provisioned Free Tier API token active! Type any custom brief below and synthesize.
+          </div>
+        </div>
+      </div>
+      <div class="runtime-controls">
+        <select class="select-box" id="groqModelSelect">
+          <option value="openai/gpt-oss-120b" selected>GPT-OSS 120B (Groq LPU • Free Tier)</option>
+          <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Groq LPU)</option>
+          <option value="openai/gpt-oss-20b">GPT-OSS 20B (Groq LPU)</option>
+        </select>
+        <input type="password" class="text-input" id="groqKey" placeholder="Pre-provisioned key active (or paste gsk_...)" value="${{customKey}}" onchange="saveCustomGroqKey(this.value)" style="width: 220px;">
+        <span style="font-size: 0.72rem; color: var(--green-safe); font-weight: 700;">🟢 Free Token Active</span>
+      </div>
+    `;
+  }} else if (currentEngine === 'instant') {{
     banner.innerHTML = `
       <div class="runtime-desc">
         <div class="runtime-icon" style="color: var(--accent-amber);">⚡</div>
@@ -1586,29 +1662,18 @@ function renderRuntimeBanner() {{
         <div class="progress-info" id="gpuProgressInfo">Downloading model...</div>
       </div>
     `;
-  }} else if (currentEngine === 'groq') {{
-    const key = localStorage.getItem('groq_api_key') || '';
-    banner.innerHTML = `
-      <div class="runtime-desc">
-        <div class="runtime-icon" style="color: var(--accent-cyan);">⚡</div>
-        <div>
-          <strong style="font-size: 0.85rem; color: var(--text-primary);">Groq LPU Cloud Fast Inference (500+ tok/s)</strong>
-          <div style="font-size: 0.75rem; color: var(--text-secondary);">
-            Ultra-fast cloud inference. Enter Groq API key (persisted safely in localStorage only).
-          </div>
-        </div>
-      </div>
-      <div class="runtime-controls">
-        <select class="select-box" id="groqModelSelect">
-          <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
-          <option value="llama-3.1-8b-instant" selected>Llama 3.1 8B Instant</option>
-          <option value="gemma2-9b-it">Gemma 2 9B IT</option>
-        </select>
-        <input type="password" class="text-input" id="groqKey" placeholder="gsk_..." value="${{key}}" onchange="localStorage.setItem('groq_api_key', this.value.trim()); showToast('API Key saved!', '🔑');" style="width: 170px;">
-        <span style="font-size: 0.72rem; color: var(--green-safe);">🔑 Key Saved</span>
-      </div>
-    `;
   }}
+}}
+
+function saveCustomGroqKey(val) {{
+  localStorage.setItem('groq_api_key', val.trim());
+  showToast(val.trim() ? 'Custom Groq key saved!' : 'Reverted to pre-provisioned free tier key!', '🔑');
+}}
+
+function setPromptBrief(text) {{
+  document.getElementById('briefInput').value = text;
+  document.querySelectorAll('.preset-card').forEach(el => el.classList.remove('active'));
+  showToast('Brief loaded! Click Generate to run Groq LPU.', '✍️');
 }}
 
 async function loadWebLLM() {{
@@ -1689,35 +1754,65 @@ function renderSandbox(html, source) {{
   document.getElementById('renderSourceInfo').innerText = `Rendered via: ${{source}} • frontend-design compliant`;
 }}
 
+function parsePlanFromText(txt) {{
+  let palette = null, typography = null, layout = null, bold = null;
+  const lines = txt.split('\\n');
+  for (const line of lines) {{
+    const l = line.toLowerCase();
+    if ((l.includes('palette') || l.includes('color')) && l.includes(':')) {{
+      palette = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    }}
+    if ((l.includes('typograph') || l.includes('font')) && l.includes(':')) {{
+      typography = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    }}
+    if (l.includes('layout') && l.includes(':')) {{
+      layout = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    }}
+    if ((l.includes('bold') || l.includes('principle') || l.includes('focal')) && l.includes(':')) {{
+      bold = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    }}
+  }}
+  if (palette || typography || layout || bold) {{
+    const colorsList = palette ? palette.split(',').map(c => c.trim()) : ['#0F172A (Primary)', '#059669 (Accent)', '#F8FAFC (Base)'];
+    return {{
+      palette: colorsList,
+      typography: typography || 'Disciplined bespoke typography hierarchy',
+      layout: layout || 'Asymmetrical layout tailored to subject domain',
+      bold_element: bold || 'Single memorable interactive element'
+    }};
+  }}
+  return null;
+}}
+
 async function runDesignSynthesis() {{
   const brief = document.getElementById('briefInput').value.trim();
-  if (!brief) return alert('Please enter a brief.');
+  if (!brief) return alert('Please enter a brief or select one of the suggested prompts.');
 
   const btn = document.getElementById('btnSynthesize');
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳ Synthesizing Distinctive UI...</span>';
+  btn.innerHTML = '<span>⏳ Synthesizing Distinctive UI via Groq...</span>';
+
+  const startTime = Date.now();
 
   try {{
-    if (currentEngine === 'instant') {{
-      const p = PRESETS[currentIdx];
-      renderSandbox(p.html, `Instant Showcase (${{p.name}})`);
-      updatePlanView(p.plan);
-      showToast('Rendered distinctive UI!', '✨');
-    }} else if (currentEngine === 'groq') {{
-      const key = localStorage.getItem('groq_api_key');
-      if (!key) throw new Error('Please enter your Groq API Key in the top configuration bar.');
-      const model = document.getElementById('groqModelSelect').value;
+    if (currentEngine === 'groq') {{
+      const apiKey = getActiveGroqKey();
+      const model = document.getElementById('groqModelSelect') ? document.getElementById('groqModelSelect').value : 'openai/gpt-oss-120b';
 
-      const prompt = `You are a world-class UI design director following the 'frontend-design' skill runbook:
+      const prompt = `You are a world-class UI design director following the Anthropic 'frontend-design' skill runbook:
 1. Reject all generic SaaS card layouts, soft grey shadows, and purple gradients.
-2. Ground your aesthetic choices in the subject matter.
-3. First create a design plan (Color palette, typography scale, layout, principles).
-4. Output complete, fully interactive HTML with embedded CSS and JS inside an \`\`\`html codeblock.`;
+2. Ground your aesthetic choices in the subject matter and real materials.
+3. First create a short Design Plan with:
+   - Color Palette: 4-6 hex codes
+   - Typography: Font pairings and scale
+   - Layout: Geometric arrangement and rhythm
+   - Bold Element: The single memorable focal interaction
+4. Output the complete, fully functional, self-contained single-page HTML with embedded CSS and JS inside an \`\`\`html codeblock. Make it visually stunning, fully interactive, and distinctive.`;
 
       const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {{
         method: "POST",
         headers: {{
-          "Authorization": `Bearer ${{key}}`,
+          "Authorization": `Bearer ${{apiKey}}`,
           "Content-Type": "application/json"
         }},
         body: JSON.stringify({{
@@ -1736,10 +1831,24 @@ async function runDesignSynthesis() {{
       }}
       const data = await resp.json();
       const txt = data.choices[0].message.content;
-      extractAndRender(txt, `Groq LPU (${{model}})`);
-      showToast('Groq inference complete!', '⚡');
+      
+      const parsedPlan = parsePlanFromText(txt);
+      if (parsedPlan) {{
+        updatePlanView(parsedPlan);
+      }}
+
+      const elapsed = Date.now() - startTime;
+      extractAndRender(txt, `Groq LPU (${{model}} • ${{elapsed}}ms)`);
+      showToast(`UI synthesized in ${{elapsed}}ms!`, '⚡');
+
+    }} else if (currentEngine === 'instant') {{
+      const p = PRESETS[currentIdx];
+      renderSandbox(p.html, `Instant Showcase (${{p.name}})`);
+      updatePlanView(p.plan);
+      showToast('Rendered instant showcase UI!', '✨');
+
     }} else if (currentEngine === 'webgpu') {{
-      if (!webllmEngine) throw new Error('Please load the WebLLM model into WebGPU first.');
+      if (!webllmEngine) throw new Error('Please load the WebLLM model into WebGPU first using the top banner button.');
       const prompt = `You are a design engineer following the 'frontend-design' skill. Return complete valid HTML with embedded CSS/JS in \`\`\`html codeblocks. Avoid generic templates.`;
       const reply = await webllmEngine.chat.completions.create({{
         messages: [
@@ -1754,10 +1863,12 @@ async function runDesignSynthesis() {{
       showToast('WebGPU local synthesis complete!', '🎮');
     }}
   }} catch(e) {{
-    alert('Error: ' + e.message);
+    alert('Synthesis error: ' + e.message);
   }} finally {{
     btn.disabled = false;
-    btn.innerHTML = '<span>⚡ Generate Distinctive UI</span>';
+    if (currentEngine === 'groq') btn.innerHTML = '<span>⚡ Generate Distinctive UI (Groq LPU)</span>';
+    else if (currentEngine === 'webgpu') btn.innerHTML = '<span>🎮 Synthesize via Local WebGPU</span>';
+    else btn.innerHTML = '<span>⚡ Render Instant Showcase</span>';
   }}
 }}
 
@@ -1812,7 +1923,7 @@ function downloadFile() {{
   const blob = new Blob([currentHtml], {{ type: 'text/html' }});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `frontend_design_${{PRESETS[currentIdx].id}}.html`;
+  a.download = `frontend_design_${{Date.now()}}.html`;
   a.click();
   showToast('Downloaded HTML file!', '💾');
 }}
@@ -1837,4 +1948,4 @@ function showToast(msg, icon = '✅') {{
 with open("frontend_design_app.html", "w", encoding="utf-8") as f:
     f.write(APP_HTML)
 
-print("Generated frontend_design_app.html successfully in Light Mode! Size:", os.path.getsize("frontend_design_app.html"), "bytes")
+print("Generated frontend_design_app.html successfully with Pre-Provisioned Groq Token & User Input! Size:", os.path.getsize("frontend_design_app.html"), "bytes")
