@@ -1293,7 +1293,39 @@ def generate_html():
   function renderCanvas(html, source) {{
     currentHtml = html;
     const frame = document.getElementById('stageFrame');
-    frame.srcdoc = html;
+
+    let safeHtml = html;
+    const errorBoundary = `<script>
+      window.onerror = function(msg, url, line) {{
+        console.error('Canvas Error:', msg, line);
+        const div = document.createElement('div');
+        div.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;background:rgba(220,38,38,0.92);color:#fff;padding:8px 12px;border-radius:6px;font-family:sans-serif;font-size:11px;z-index:9999;';
+        div.innerHTML = '⚠️ <strong>Canvas Runtime Notice:</strong> ' + msg + ' (Line ' + line + '). Click Synthesize again or try another seed.';
+        document.body.appendChild(div);
+      }};
+    <\\/script>
+    <style>
+      button, #downloadBtn, .download-btn {{ display: none !important; }}
+      body, html {{ margin: 0; padding: 0; overflow: hidden; background: #0A0D14; }}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"><\\/script>`;
+
+    if (safeHtml.includes('<head>')) {{
+      safeHtml = safeHtml.replace('<head>', '<head>' + errorBoundary);
+    }} else if (safeHtml.includes('<html>')) {{
+      safeHtml = safeHtml.replace('<html>', '<html><head>' + errorBoundary + '</head>');
+    }} else {{
+      safeHtml = '<!DOCTYPE html><html><head><script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"><\\/script>' + errorBoundary + '</head><body>' + safeHtml + '</body></html>';
+    }}
+
+    if (safeHtml.includes('<script') && !safeHtml.includes('</script>')) {{
+      safeHtml += '<\\/script>';
+    }}
+    if (!safeHtml.includes('</html>')) {{
+      safeHtml += '</body></html>';
+    }}
+
+    frame.srcdoc = safeHtml;
     document.getElementById('codeText').innerText = html;
     document.getElementById('renderSourceInfo').innerText = `Rendered via: ${{source}} • Seed: ${{currentSeed}} • algorithmic-art compliant`;
   }}
@@ -1376,14 +1408,15 @@ def generate_html():
         const model = document.getElementById('groqModelSelect') ? document.getElementById('groqModelSelect').value : 'openai/gpt-oss-120b';
 
         const prompt = "You are a master generative artist following the Anthropic 'algorithmic-art' skill runbook:\\n" +
-          "1. Step 1: Write an Algorithmic Philosophy Manifesto (.md format): Name the movement, explain computational processes, emergent behavior, noise fields, and mathematical laws.\\n" +
-          "2. Step 2: Express the philosophy by generating self-contained p5.js art inside an ```html codeblock.\\n" +
-          "   - Import p5.js from CDN: https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js\\n" +
-          "   - Use seeded randomness: `let seed = 12345; randomSeed(seed); noiseSeed(seed);`\\n" +
-          "   - Implement window.setSeed(s) function for seed navigation\\n" +
-          "   - Implement window.exportCanvas() for PNG download\\n" +
-          "   - Full window canvas (windowWidth, windowHeight) with clean, high-craftsmanship aesthetics.\\n" +
-          "Make the algorithm feel meticulously crafted, refined, and deeply computational.";
+          "Step 1: Write a concise Algorithmic Philosophy Manifesto (3-4 bullet points, ~80 words total).\\n" +
+          "Step 2: Express the philosophy by generating self-contained p5.js art inside an ```html codeblock.\\n\\n" +
+          "CRITICAL CRAFTSMANSHIP & RUNTIME RULES:\\n" +
+          "1. PURE p5.js ONLY: Zero external libraries (NO d3, NO external packages). Use only p5.js CDN.\\n" +
+          "2. 60 FPS PERFORMANCE: Use particle dynamics, vector flow fields, trigonometric harmonics, or connected polygon meshes. NEVER do brute-force CPU pixel loops (NO pg.loadPixels / NO pixels[] loops) as they freeze mobile browsers.\\n" +
+          "3. NO HTML BUTTONS: Do NOT render any <button> or UI controls in the HTML body. The parent studio already provides all controls.\\n" +
+          "4. LUMINOUS PALETTE: Paint rich, glowing, translucent colors (cyan, magenta, gold, emerald, violet, electric coral) on dark obsidian background (#0A0D14) so the canvas is vibrantly alive.\\n" +
+          "5. REQUIRED HOOKS: Define window.setSeed(s) and window.exportCanvas().\\n" +
+          "6. COMPLETE CODE: Keep the sketch elegant and under 150 lines so the output is 100% complete and never truncated.";
 
         const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {{
           method: "POST",
@@ -1398,7 +1431,7 @@ def generate_html():
               {{ role: "user", content: brief }}
             ],
             temperature: 0.7,
-            max_tokens: 4096
+            max_tokens: 8192
           }})
         }});
 
@@ -1504,7 +1537,7 @@ def generate_html():
       }}
       renderCanvas(html, source);
     }} else {{
-      alert('Unable to extract valid HTML from LLM output.');
+      showToast('Unable to extract valid HTML: please retry.', '⚠️');
     }}
   }}
 
