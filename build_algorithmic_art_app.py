@@ -1294,35 +1294,31 @@ def generate_html():
     currentHtml = html;
     const frame = document.getElementById('stageFrame');
 
-    let safeHtml = html;
-    const errorBoundary = `<script>
+    const S_TAG = '<' + 'script>';
+    const E_TAG = '<' + '/script>';
+    const D3_TAG = '<' + 'script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6">' + E_TAG;
+
+    const errorBoundary = S_TAG + `
       window.onerror = function(msg, url, line) {{
         console.error('Canvas Error:', msg, line);
         const div = document.createElement('div');
         div.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;background:rgba(220,38,38,0.92);color:#fff;padding:8px 12px;border-radius:6px;font-family:sans-serif;font-size:11px;z-index:9999;';
-        div.innerHTML = '⚠️ <strong>Canvas Runtime Notice:</strong> ' + msg + ' (Line ' + line + '). Click Synthesize again or try another seed.';
+        div.innerHTML = '⚠️ <strong>Canvas Notice:</strong> ' + msg + ' (Line ' + line + '). Click Synthesize again or pick another seed.';
         document.body.appendChild(div);
       }};
-    <\\/script>
+    ` + E_TAG + `
     <style>
       button, #downloadBtn, .download-btn {{ display: none !important; }}
       body, html {{ margin: 0; padding: 0; overflow: hidden; background: #0A0D14; }}
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"><\\/script>`;
+    </style>` + D3_TAG;
 
+    let safeHtml = html;
     if (safeHtml.includes('<head>')) {{
       safeHtml = safeHtml.replace('<head>', '<head>' + errorBoundary);
     }} else if (safeHtml.includes('<html>')) {{
       safeHtml = safeHtml.replace('<html>', '<html><head>' + errorBoundary + '</head>');
     }} else {{
-      safeHtml = '<!DOCTYPE html><html><head><script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"><\\/script>' + errorBoundary + '</head><body>' + safeHtml + '</body></html>';
-    }}
-
-    if (safeHtml.includes('<script') && !safeHtml.includes('</script>')) {{
-      safeHtml += '<\\/script>';
-    }}
-    if (!safeHtml.includes('</html>')) {{
-      safeHtml += '</body></html>';
+      safeHtml = '<!DOCTYPE html><html><head>' + S_TAG + ' src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js">' + E_TAG + errorBoundary + '</head><body>' + safeHtml + '</body></html>';
     }}
 
     frame.srcdoc = safeHtml;
