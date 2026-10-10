@@ -2,7 +2,8 @@
 build_skill_18_web_artifacts_builder.py
 Builds web_artifacts_builder_app.html for Skill #18: web-artifacts-builder (Apache 2.0).
 Interactive Meta-Builder Studio for elaborate multi-component single-file HTML artifacts
-with LIVE sandboxed iframe preview for AI-generated artifacts.
+with LIVE sandboxed iframe preview, automated live simulation (NEVER static zeros),
+and mobile-optimized responsive layout.
 """
 
 import os
@@ -65,41 +66,43 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       position: sticky;
       top: 0;
       z-index: 50;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .brand-group { display: flex; align-items: center; gap: 12px; }
     .brand-badge {
       width: 40px; height: 40px; border-radius: 9px;
       background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
       display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.25rem; font-weight: 800;
+      color: #fff; font-size: 1.25rem; font-weight: 800; flex-shrink: 0;
     }
     .brand-text h1 {
       font-family: var(--font-display);
-      font-size: 1.25rem; font-weight: 800;
-      display: flex; align-items: center; gap: 8px;
+      font-size: 1.2rem; font-weight: 800;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
     .badge-skill {
       font-size: 0.65rem; background: #f5f3ff; color: #6d28d9;
       border: 1px solid #ddd6fe; border-radius: 999px; padding: 2px 8px;
       font-family: var(--font-mono); font-weight: 700;
     }
-    .brand-text p { font-size: 0.76rem; color: var(--text-muted); }
-    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .brand-text p { font-size: 0.74rem; color: var(--text-muted); }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .engine-switch {
       display: flex; background: var(--bg-panel-subtle); padding: 3px;
       border-radius: 8px; border: 1px solid var(--border-subtle); gap: 2px;
     }
     .engine-btn {
-      padding: 6px 13px; border-radius: 6px; border: none; background: transparent;
-      font-size: 0.76rem; font-weight: 700; color: var(--text-muted); cursor: pointer;
+      padding: 6px 11px; border-radius: 6px; border: none; background: transparent;
+      font-size: 0.74rem; font-weight: 700; color: var(--text-muted); cursor: pointer;
     }
     .engine-btn.active.groq { background: #7c3aed; color: #fff; }
     .engine-btn.active.webgpu { background: #4f46e5; color: #fff; }
     .engine-btn.active.instant { background: #0f172a; color: #fff; }
     .theme-toggle-btn {
       background: var(--bg-panel-subtle); border: 1px solid var(--border-subtle);
-      color: var(--text-primary); padding: 6px 12px; border-radius: 6px;
-      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      color: var(--text-primary); padding: 6px 11px; border-radius: 6px;
+      font-size: 0.76rem; font-weight: 600; cursor: pointer;
     }
     .runtime-banner {
       background: var(--bg-panel); border-bottom: 1px solid var(--border-subtle);
@@ -145,15 +148,16 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
     .stage-tabs {
       background: var(--bg-panel); border-bottom: 1px solid var(--border-subtle);
-      display: flex; padding: 0 1.5rem; gap: 4px;
+      display: flex; padding: 0 1.5rem; gap: 4px; overflow-x: auto; flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
     }
     .tab-btn {
-      padding: 12px 16px; background: transparent; border: none;
-      border-bottom: 2px solid transparent; font-size: 0.8rem; font-weight: 700;
-      color: var(--text-muted); cursor: pointer;
+      padding: 12px 14px; background: transparent; border: none;
+      border-bottom: 2px solid transparent; font-size: 0.78rem; font-weight: 700;
+      color: var(--text-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
     }
     .tab-btn.active { color: var(--artifact-purple); border-bottom-color: var(--artifact-purple); }
-    .stage-content { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+    .stage-content { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
     
     /* Interactive Sandboxed Widget Container */
     .sandbox-frame-card {
@@ -164,19 +168,19 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     .widget-bar {
       display: flex; justify-content: space-between; align-items: center;
       background: var(--bg-panel-subtle); border-bottom: 1px solid var(--border-subtle);
-      padding: 10px 16px;
+      padding: 10px 14px; flex-wrap: wrap; gap: 8px;
     }
-    .widget-title { font-family: var(--font-display); font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .widget-controls { display: flex; gap: 8px; }
+    .widget-title { font-family: var(--font-display); font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .widget-controls { display: flex; gap: 6px; }
     .widget-btn {
       background: var(--bg-panel); border: 1px solid var(--border-subtle);
-      padding: 5px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 600;
+      padding: 4px 9px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;
       cursor: pointer; color: var(--text-primary); transition: all 0.15s;
     }
     .widget-btn:hover { background: #ede9fe; color: #6d28d9; }
     
     .sandbox-iframe {
-      width: 100%; min-height: 540px; border: none; background: #ffffff;
+      width: 100%; min-height: 520px; border: none; background: #ffffff;
       flex: 1;
     }
 
@@ -188,12 +192,20 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     .bottom-bar {
       background: var(--bg-panel); border-top: 1px solid var(--border-subtle);
       padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
-      margin-top: auto;
+      margin-top: auto; flex-wrap: wrap; gap: 8px;
     }
     .toast-box {
       position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: #fff;
       padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
       display: none; z-index: 100;
+    }
+
+    @media (max-width: 768px) {
+      .app-header { padding: 0.6rem 1rem; }
+      .stage-tabs { padding: 0 0.75rem; }
+      .stage-content { padding: 0.75rem; }
+      .bottom-bar { flex-direction: column; text-align: center; gap: 8px; }
+      .bottom-bar div:last-child { display: flex; gap: 8px; justify-content: center; }
     }
   </style>
 </head>
@@ -319,50 +331,79 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; padding: 24px; margin: 0; }
-    .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px; }
-    .title { font-size: 1.25rem; font-weight: 800; color: #1e1b4b; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-    .stat-box { background: #f1f5f9; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
-    .stat-val { font-size: 1.8rem; font-weight: 800; color: #7c3aed; }
-    .stat-lbl { font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .bars { display: flex; align-items: flex-end; gap: 10px; height: 160px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
-    .bar { flex: 1; background: linear-gradient(180deg, #7c3aed, #a78bfa); border-radius: 4px 4px 0 0; transition: height 0.4s ease; }
-    .btn { background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
-    .btn:hover { background: #6d28d9; }
+    :root {
+      --bg: #ffffff;
+      --card-bg: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #7c3aed;
+      --emerald: #059669;
+    }
+    body.dark {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 18px; transition: background 0.2s, color 0.2s; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .title { font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+    .stat-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+    .stat-lbl { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .bars { display: flex; align-items: flex-end; gap: 8px; height: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .bar { flex: 1; background: linear-gradient(180deg, #7c3aed, #a78bfa); border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 8px; }
+    .btn { background: var(--accent); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; cursor: pointer; }
+    .btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="header">
       <div>
-        <div class="title">SaaS Cluster Health &amp; Telemetry</div>
-        <div style="font-size:0.75rem; color:#64748b;">Active Region: us-east-1 • 64 Microservices</div>
+        <div class="title"><span class="pulse-dot"></span> SaaS Operations Telemetry</div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Live Ingress • US-EAST-1 Cluster</div>
       </div>
-      <button class="btn" onclick="jitter()">⚡ Jitter Live Load</button>
+      <div style="display:flex; gap:6px;">
+        <button class="btn outline" onclick="document.body.classList.toggle('dark')">🌓 Toggle Theme</button>
+        <button class="btn" onclick="jitter()">⚡ Manual Pulse</button>
+      </div>
     </div>
     <div class="grid">
-      <div class="stat-box"><span class="stat-lbl">P99 Latency</span><span class="stat-val" id="lat">14.2 ms</span></div>
-      <div class="stat-box"><span class="stat-lbl">Requests / Sec</span><span class="stat-val" id="rps">19,420</span></div>
-      <div class="stat-box"><span class="stat-lbl">Availability</span><span class="stat-val" style="color:#059669;" id="avail">99.98%</span></div>
+      <div class="stat-box"><span class="stat-lbl">Active Users</span><span class="stat-val" id="users">2,845</span><span style="font-size:0.68rem; color:#059669;">+14% vs avg</span></div>
+      <div class="stat-box"><span class="stat-lbl">Tx / Minute</span><span class="stat-val" id="tx">18,420</span><span style="font-size:0.68rem; color:#059669;">Normal Range</span></div>
+      <div class="stat-box"><span class="stat-lbl">P99 Latency</span><span class="stat-val" style="color:#059669;" id="lat">14.2 ms</span><span style="font-size:0.68rem; color:#059669;">Sub-20ms SLA</span></div>
     </div>
-    <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px; color:#475569;">12-Second Ingress Throughput</div>
+    <div style="font-size:0.75rem; font-weight:700; margin-bottom:8px; color:var(--muted);">Real-Time Node Load Distribution (Live Stream)</div>
     <div class="bars" id="bars"></div>
   </div>
   <script>
     let vals = [45, 62, 38, 79, 91, 54, 70, 83, 49, 65, 88, 72];
     function render() {
-      document.getElementById('bars').innerHTML = vals.map(v => '<div class="bar" style="height:'+v+'%;"></div>').join('');
+      const box = document.getElementById('bars');
+      if (box) box.innerHTML = vals.map(v => '<div class="bar" style="height:'+v+'%;"></div>').join('');
     }
     function jitter() {
       vals = vals.map(() => Math.floor(Math.random() * 65) + 30);
-      document.getElementById('lat').innerText = (11 + Math.random()*7).toFixed(1) + ' ms';
-      document.getElementById('rps').innerText = Math.floor(16000 + Math.random()*6000).toLocaleString();
+      const u = document.getElementById('users');
+      if (u) u.innerText = (2800 + Math.floor(Math.random()*90)).toLocaleString();
+      const t = document.getElementById('tx');
+      if (t) t.innerText = (18200 + Math.floor(Math.random()*600)).toLocaleString();
+      const l = document.getElementById('lat');
+      if (l) l.innerText = (12 + Math.random()*5).toFixed(1) + ' ms';
       render();
     }
     render();
+    setInterval(jitter, 1800);
   <\/script>
 </body>
 </html>`
@@ -375,33 +416,34 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; padding: 24px; margin: 0; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
-    .bars { display: flex; align-items: flex-end; gap: 4px; height: 200px; background: #090d16; border-radius: 8px; padding: 12px; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 180px; background: #090d16; border-radius: 8px; padding: 10px; }
     .bar { flex: 1; background: #38bdf8; border-radius: 2px 2px 0 0; }
-    .btn { background: #38bdf8; color: #0f172a; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 700; cursor: pointer; margin-right: 6px; }
+    .btn { background: #38bdf8; color: #0f172a; border: none; padding: 7px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; margin-right: 6px; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="margin:0;">Bubble Sort Visualizer</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; font-size:1rem;">Quicksort Algorithm Visualizer</h3>
       <div>
         <button class="btn" onclick="shuffle()">🎲 Shuffle</button>
         <button class="btn" onclick="sort()">▶ Run Sort</button>
       </div>
     </div>
     <div class="bars" id="box"></div>
-    <div style="margin-top:10px; font-size:0.8rem; color:#94a3b8;" id="status">Comparisons: 0</div>
+    <div style="margin-top:10px; font-size:0.75rem; color:#94a3b8;" id="status">Active Elements: 16 • Click 'Run Sort' to animate</div>
   </div>
   <script>
     let arr = [60, 20, 85, 45, 10, 95, 30, 75, 40, 50, 15, 80, 25, 70, 35, 90];
     function draw() {
-      document.getElementById('box').innerHTML = arr.map(v => '<div class="bar" style="height:'+v+'%;"></div>').join('');
+      const b = document.getElementById('box');
+      if (b) b.innerHTML = arr.map(v => '<div class="bar" style="height:'+v+'%;"></div>').join('');
     }
     function shuffle() {
       arr = arr.sort(() => Math.random() - 0.5);
-      document.getElementById('status').innerText = 'Comparisons: 0 (Shuffled)';
+      document.getElementById('status').innerText = 'Array shuffled randomly.';
       draw();
     }
     async function sort() {
@@ -416,7 +458,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           }
         }
       }
-      document.getElementById('status').innerText = 'Comparisons: ' + comps + ' • Sorted!';
+      document.getElementById('status').innerText = 'Finished in ' + comps + ' comparisons! Array sorted.';
     }
     draw();
   <\/script>
@@ -431,29 +473,31 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; padding: 20px; margin: 0; }
-    .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .col { background: #f1f5f9; border-radius: 8px; padding: 14px; min-height: 260px; border: 1px solid #e2e8f0; }
-    .col-title { font-size: 0.82rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
-    .item { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); font-size: 0.85rem; font-weight: 600; }
+    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; padding: 18px; margin: 0; }
+    .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .col { background: #f1f5f9; border-radius: 8px; padding: 12px; min-height: 240px; border: 1px solid #e2e8f0; }
+    .col-title { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
+    .item { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 9px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); font-size: 0.82rem; font-weight: 600; }
   </style>
 </head>
 <body>
-  <div style="font-size:1.15rem; font-weight:800; margin-bottom:14px;">Sprint 42 Agile Flow</div>
+  <div style="font-size:1.1rem; font-weight:800; margin-bottom:12px;">Sprint 42 Agile Flow (7 Active Tasks)</div>
   <div class="board">
     <div class="col">
-      <div class="col-title">📋 Backlog (2)</div>
+      <div class="col-title">📋 Backlog (3)</div>
       <div class="item">Docker WebGPU Base Image</div>
       <div class="item">PostgreSQL Connection Pooling</div>
+      <div class="item">OAuth2 Token Refresh Queue</div>
     </div>
     <div class="col">
-      <div class="col-title">⚡ In Progress (1)</div>
+      <div class="col-title">⚡ In Progress (2)</div>
       <div class="item" style="border-left:4px solid #7c3aed;">Live Sandboxed Preview Runner</div>
+      <div class="item" style="border-left:4px solid #7c3aed;">Groq Fast Inference Cutover</div>
     </div>
     <div class="col">
       <div class="col-title">✅ Done (2)</div>
-      <div class="item">Groq LPU 500+ tok/s Key Cutover</div>
-      <div class="item">Skills 13-19 Web Studio Suite</div>
+      <div class="item" style="border-left:4px solid #059669;">Skills 13-19 Studio Deploy</div>
+      <div class="item" style="border-left:4px solid #059669;">Headless Selenium Test Suite</div>
     </div>
   </div>
 </body>
@@ -556,11 +600,17 @@ HTML_CONTENT = r'''<!DOCTYPE html>
               messages: [
                 {
                   role: "system",
-                  content: "You are the Web Artifacts Builder agent (Skill #18). Given a specification, generate an elaborate, beautiful, single-file HTML application with embedded CSS and JavaScript. Output only the complete <!DOCTYPE html> document without conversational text."
+                  content: `You are the Web Artifacts Builder Agent (Skill #18). Given a specification, generate an elaborate, polished, self-contained single-file HTML application (<!DOCTYPE html>) with embedded CSS and JavaScript.
+
+CRITICAL DIRECTIVES:
+1. NEVER USE STATIC ZEROS OR PLACEHOLDERS. Pre-populate all metric numbers with realistic, impressive production values (e.g. 2,845 Active Users, 18,420 Tx/min, 99.98% SLA, 14.2ms P99 Latency).
+2. AUTOMATIC LIVE SIMULATION: Include an immediate setInterval() timer loop in JavaScript that automatically updates metrics with micro-jitter and animates charts every 1.5 seconds on page load. Do NOT rely on DOMContentLoaded alone; execute initialization immediately.
+3. RICH VISUALS: Include SVG charts or animated gradient bar graphs, pulsing live status dots, and interactive controls (dark/light toggle, trigger buttons).
+4. OUTPUT FORMAT: Output ONLY the raw HTML code without markdown code fences or conversational text.`
                 },
                 { role: "user", content: text }
               ],
-              max_tokens: 1800
+              max_tokens: 2000
             })
           });
           const data = await res.json();
@@ -574,7 +624,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           showToast('✨ AI-Generated artifact running live in sandbox!');
         } else {
           setTimeout(() => {
-            loadPreset(1);
+            loadPreset(0);
             switchStage('preview');
             showToast('✨ Artifact running via Local WebGPU!');
           }, 1000);
@@ -620,4 +670,4 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 with open("web_artifacts_builder_app.html", "w", encoding="utf-8") as f:
     f.write(HTML_CONTENT)
 
-print("Successfully regenerated web_artifacts_builder_app.html (Skill #18) with live sandboxed preview runner!")
+print("Successfully regenerated web_artifacts_builder_app.html with live animated simulation, non-zero metrics, and mobile-friendly CSS!")

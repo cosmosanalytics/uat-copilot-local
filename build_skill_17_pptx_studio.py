@@ -227,6 +227,17 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
       display: none; z-index: 100;
     }
+    @media (max-width: 768px) {
+      .app-header { padding: 0.6rem 1rem; }
+      .stage-tabs { padding: 0 0.75rem; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+      .tab-btn { padding: 10px 12px; white-space: nowrap; font-size: 0.75rem; }
+      .stage-content { padding: 0.75rem; }
+      .slide-viewport { padding: 18px 20px; }
+      .slide-heading { font-size: 1.2rem; }
+      .slide-grid-3 { grid-template-columns: 1fr; gap: 8px; margin: 10px 0; }
+      .bottom-bar { flex-direction: column; text-align: center; gap: 8px; }
+      .bottom-bar div:last-child { display: flex; gap: 8px; justify-content: center; }
+    }
   </style>
 </head>
 <body>
