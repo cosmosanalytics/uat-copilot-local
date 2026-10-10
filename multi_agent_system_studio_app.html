@@ -359,7 +359,7 @@
         <button class="tab-btn" id="tabBtnQuorum" onclick="switchStage('quorum')">⚖️ Byzantine Quorum Voting</button>
         <button class="tab-btn" id="tabBtnGovernance" onclick="switchStage('governance')">🛡️ Hop Limiter &amp; Circuit Breaker</button>
         <button class="tab-btn" id="tabBtnCode" onclick="switchStage('code')">💻 Python Swarm Runtime</button>
-        <button class="tab-btn" id="tabBtnSkills" onclick="switchStage('skills')">📚 Dedicated SKILL.md Library (6 Skills)</button>
+        <button class="tab-btn" id="tabBtnSkills" onclick="switchStage('skills')">📚 SKILL.md Library (All 20 Skills: Swarm + Kernel + AWS)</button>
       </div>
 
       <!-- TAB 1: TOPOLOGY CANVAS -->
@@ -451,9 +451,10 @@
           <div style="padding: 12px 18px; background: var(--bg-panel-subtle); border-bottom: 1px solid var(--border-subtle); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <span style="font-weight: 800; font-size: 0.82rem; font-family: var(--font-display); color: var(--text-primary); margin-right: 4px;">CATEGORY:</span>
-              <button class="theme-toggle-btn active-filter" id="filterAll" onclick="filterSwarmSkills('all')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; border-color: var(--accent-purple); background: #faf5ff; color: #6d28d9;">All (6)</button>
-              <button class="theme-toggle-btn" id="filterArch" onclick="filterSwarmSkills('Swarm Architecture')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700;">Architecture (2)</button>
-              <button class="theme-toggle-btn" id="filterGov" onclick="filterSwarmSkills('Swarm Governance')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700;">Governance &amp; BFT (4)</button>
+              <button class="theme-toggle-btn active-filter" id="filterAll" onclick="filterSwarmSkills('all')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700; border-color: var(--accent-purple); background: #faf5ff; color: #6d28d9;">All (20)</button>
+              <button class="theme-toggle-btn" id="filterL2" onclick="filterSwarmSkills('L2')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700;">Level 2: Swarm (6)</button>
+              <button class="theme-toggle-btn" id="filterL1" onclick="filterSwarmSkills('L1')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700;">Level 1: Kernel (7)</button>
+              <button class="theme-toggle-btn" id="filterL0" onclick="filterSwarmSkills('L0')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 700;">Level 0: AWS (7)</button>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <input type="text" id="skillSearchInput" placeholder="🔍 Search swarm skills..." oninput="searchSwarmSkills()" style="padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-panel); font-size: 0.75rem; color: var(--text-primary); width: 170px;">
@@ -555,70 +556,244 @@
 
     const SWARM_SKILLS_LIBRARY = [
   {
+    "id": "aws-bedrock",
+    "name": "aws-bedrock",
+    "title": "Amazon Bedrock Proposal Synthesizer",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 3 (Untrusted Proposal Space)",
+    "service": "Amazon Bedrock",
+    "category": "AWS Cloud Primitives",
+    "description": "Foundation model inference engine generating strictly typed JSON proposals. Never executes mutations directly.",
+    "content": "---\nname: aws-bedrock\ndescription: Foundation model inference engine generating strictly typed JSON proposals. Never executes mutations directly.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 3 (Untrusted Proposal Space)\nservice: Amazon Bedrock\npermissions:\n  - bedrock:InvokeModel\n  - bedrock:InvokeModelWithResponseStream\ntools:\n  - synthesize_proposal\n  - evaluate_prompt_schema\n---\n\n# aws-bedrock: Foundation Model Proposal Engine\n\n## 1. Purpose & Architectural Boundary\n`aws-bedrock` operates strictly within **Ring 3 (Untrusted Proposal Space)**. Its sole role is to transform natural language user objectives and system contexts into deterministic, structured JSON schemas. Under the Ring 0 / Ring 3 segregation principle:\n- `aws-bedrock` **proposes** state changes.\n- It is **strictly forbidden** from holding IAM mutation credentials.\n- All generated payloads are quarantined until verified by `aws-agentcore`.\n\n## 2. Input JSON Schema\n```json\n{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\": \"object\",\n  \"required\": [\"prompt\", \"modelId\", \"responseSchema\"],\n  \"properties\": {\n    \"prompt\": { \"type\": \"string\", \"description\": \"User intent or task description\" },\n    \"systemPrompt\": { \"type\": \"string\", \"description\": \"Kernel-injected behavioral constraints\" },\n    \"modelId\": { \"type\": \"string\", \"default\": \"anthropic.claude-3-5-sonnet-20241022-v2:0\" },\n    \"temperature\": { \"type\": \"number\", \"minimum\": 0.0, \"maximum\": 1.0, \"default\": 0.2 },\n    \"responseSchema\": { \"type\": \"object\", \"description\": \"Target JSON schema for structured output\" }\n  }\n}\n```\n\n## 3. Output Schema & Guarantees\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"proposalId\", \"structuredPayload\", \"modelId\", \"reasoningHash\"],\n  \"properties\": {\n    \"proposalId\": { \"type\": \"string\", \"format\": \"uuid\" },\n    \"structuredPayload\": { \"type\": \"object\" },\n    \"modelId\": { \"type\": \"string\" },\n    \"reasoningHash\": { \"type\": \"string\", \"pattern\": \"^[a-f0-9]{64}$\" },\n    \"latencyMs\": { \"type\": \"integer\" }\n  }\n}\n```\n\n## 4. Deterministic Guardrails\n1. **No Out-of-Band Calls:** Bedrock responses must never trigger network requests without kernel mediation.\n2. **Schema Conformance:** If output violates `responseSchema`, the kernel triggers instant rejection without retry token bleed.\n3. **Receipt Tagging:** Bedrock outputs are hashed (SHA-256) and passed to `aws-s3-vault` before execution.\n"
+  },
+  {
+    "id": "aws-agentcore",
+    "name": "aws-agentcore",
+    "title": "AgentCore Cedar Guardrail Gatekeeper",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 0 (Kernel Supervisor)",
+    "service": "AWS Verified Permissions / IAM",
+    "category": "AWS Cloud Primitives",
+    "description": "Kernel-level gatekeeper validating agent tool proposals against Cedar policies and syscall boundaries.",
+    "content": "---\nname: aws-agentcore\ndescription: Kernel-level gatekeeper validating agent tool proposals against Cedar policies and syscall boundaries.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 0 (Kernel Gatekeeper)\nservice: AWS Verified Permissions\npermissions:\n  - verifiedpermissions:IsAuthorized\n  - verifiedpermissions:GetPolicy\ntools:\n  - enforce_cedar_guardrails\n  - validate_syscall_args\n---\n\n# aws-agentcore: Ring 0 Cedar Guardrail Engine\n\n## 1. Purpose & Security Model\n`aws-agentcore` forms the **unbypassable hardware-like boundary** between autonomous reasoning (Ring 3) and cloud infrastructure (Ring 0). Every action proposed by Bedrock must be submitted to `aws-agentcore` for authorization before any AWS SDK call occurs.\n\n## 2. Cedar Policy Definition Example\n```cedar\n// Permit financial operations only if leased by agent and bounded below $10,000\npermit(\n    principal in AgentGroup::\"FinanceWorkers\",\n    action in [Action::\"TransferFunds\", Action::\"ReconcileBatch\"],\n    resource in ResourceType::\"LedgerAccount\"\n) when {\n    context.hasValidLease == true &&\n    context.proposedAmount <= 10000 &&\n    context.s3ReceiptHash != \"\"\n};\n```\n\n## 3. Input JSON Schema\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"agentId\", \"proposedAction\", \"targetResourceArn\", \"actionParameters\"],\n  \"properties\": {\n    \"agentId\": { \"type\": \"string\" },\n    \"proposedAction\": { \"type\": \"string\" },\n    \"targetResourceArn\": { \"type\": \"string\" },\n    \"actionParameters\": { \"type\": \"object\" },\n    \"contextReceipts\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n  }\n}\n```\n\n## 4. Output Contract\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"decision\", \"evaluatedPolicyId\", \"auditSignature\"],\n  \"properties\": {\n    \"decision\": { \"type\": \"string\", \"enum\": [\"ALLOW\", \"DENY\"] },\n    \"evaluatedPolicyId\": { \"type\": \"string\" },\n    \"denialReason\": { \"type\": \"string\" },\n    \"auditSignature\": { \"type\": \"string\" }\n  }\n}\n```\n"
+  },
+  {
+    "id": "aws-s3-vault",
+    "name": "aws-s3-vault",
+    "title": "Amazon S3 WORM Receipt Vault",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 0 (Cryptographic Vault)",
+    "service": "Amazon S3 (Object Lock Compliance)",
+    "category": "AWS Cloud Primitives",
+    "description": "Cryptographic WORM storage ensuring all agent facts, audit logs, and outputs have immutable SHA-256 receipts.",
+    "content": "---\nname: aws-s3-vault\ndescription: Cryptographic WORM storage ensuring all agent facts, audit logs, and outputs have immutable SHA-256 receipts.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 0 (Immutable Vault)\nservice: Amazon S3\npermissions:\n  - s3:PutObject\n  - s3:GetObject\n  - s3:PutObjectLegalHold\ntools:\n  - commit_worm_receipt\n  - verify_receipt_hash\n---\n\n# aws-s3-vault: Write-Once-Read-Many Grounding Engine\n\n## 1. Purpose & Guarantees\nIn autonomous multi-agent environments, hallucinations often stem from mutable state and ungrounded memories. `aws-s3-vault` guarantees **Zero Hallucination Amnesia** by persisting all perception records, state transitions, and completed jobs under S3 Object Lock (`COMPLIANCE` mode).\n\n## 2. Invariants\n- **Non-deletable:** Even root accounts cannot overwrite or delete receipts before retention period expiry.\n- **SHA-256 Integrity:** Objects must be accompanied by an x-amz-checksum-sha256 header.\n- **Auditable URIs:** Receipts are addressed via `s3://bucket/receipts/{agent_id}/{timestamp}_{hash}.json`.\n\n## 3. Input Schema\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"bucket\", \"receiptKey\", \"payload\", \"retentionDays\"],\n  \"properties\": {\n    \"bucket\": { \"type\": \"string\" },\n    \"receiptKey\": { \"type\": \"string\" },\n    \"payload\": { \"type\": \"object\" },\n    \"retentionDays\": { \"type\": \"integer\", \"default\": 365 },\n    \"legalHold\": { \"type\": \"boolean\", \"default\": true }\n  }\n}\n```\n\n## 4. Output Contract\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"s3Uri\", \"sha256Checksum\", \"versionId\", \"wormStatus\"],\n  \"properties\": {\n    \"s3Uri\": { \"type\": \"string\" },\n    \"sha256Checksum\": { \"type\": \"string\" },\n    \"versionId\": { \"type\": \"string\" },\n    \"wormStatus\": { \"type\": \"string\", \"enum\": [\"COMPLIANT_LOCKED\"] }\n  }\n}\n```\n"
+  },
+  {
+    "id": "aws-database",
+    "name": "aws-database",
+    "title": "Distributed State, Vector & Graph Database",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 0 (State Store)",
+    "service": "Amazon DynamoDB + OpenSearch + Neptune",
+    "category": "AWS Cloud Primitives",
+    "description": "Multi-engine grounding store managing DynamoDB CAS mutex locks, OpenSearch vectors, and Neptune graph triples.",
+    "content": "---\nname: aws-database\ndescription: Multi-engine grounding store managing DynamoDB CAS mutex locks, OpenSearch vectors, and Neptune graph triples.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 0 (Distributed State)\nservice: DynamoDB, OpenSearch Serverless, Amazon Neptune\npermissions:\n  - dynamodb:PutItem\n  - dynamodb:UpdateItem\n  - aoss:APIAccessAll\n  - neptune-db:*\ntools:\n  - acquire_cas_mutex\n  - release_cas_mutex\n  - query_vector_embeddings\n  - match_graph_knowledge\n---\n\n# aws-database: State Mutex & Grounding Engine\n\n## 1. Capabilities\n1. **DynamoDB CAS Mutex (Distributed Locking):** Prevents multi-agent race conditions using atomic conditional expressions (`attribute_not_exists(LockKey) OR expiresAt < :now`).\n2. **OpenSearch Serverless (Vector Recall):** Cosine semantic similarity across high-dimensional agent memories ($k$-NN search).\n3. **Amazon Neptune (Relational Graph):** Knowledge graph triple storage (Subject-Predicate-Object) for relational queries.\n\n## 2. DynamoDB CAS Expression Reference\n```python\ndynamodb.put_item(\n    TableName='DistributedAgentLocks',\n    Item={\n        'LockKey': {'S': 'batch-recon-eur-usd'},\n        'OwnerAgentId': {'S': 'agent-fin-recon-01'},\n        'AcquiredAt': {'N': str(int(time.time()))},\n        'ExpiresAt': {'N': str(int(time.time() + 60))},\n        'LeaseToken': {'S': str(uuid.uuid4())}\n    },\n    ConditionExpression='attribute_not_exists(LockKey) OR ExpiresAt < :now',\n    ExpressionAttributeValues={':now': {'N': str(int(time.time()))}}\n)\n```\n\n## 3. Output Schema\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"success\", \"operation\"],\n  \"properties\": {\n    \"success\": { \"type\": \"boolean\" },\n    \"operation\": { \"type\": \"string\" },\n    \"leaseToken\": { \"type\": \"string\" },\n    \"ttlRemaining\": { \"type\": \"integer\" },\n    \"vectorHits\": { \"type\": \"array\" },\n    \"graphTriples\": { \"type\": \"array\" }\n  }\n}\n```\n"
+  },
+  {
+    "id": "aws-lambda",
+    "name": "aws-lambda",
+    "title": "AWS Lambda Firecracker MicroVM Sandbox",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 1 (Isolated Sandbox)",
+    "service": "AWS Lambda",
+    "category": "AWS Cloud Primitives",
+    "description": "Stateless, memory-capped compute execution in ephemeral Firecracker microVMs with strict execution budgets.",
+    "content": "---\nname: aws-lambda\ndescription: Stateless, memory-capped compute execution in ephemeral Firecracker microVMs with strict execution budgets.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 1 (Stateless Sandbox)\nservice: AWS Lambda\npermissions:\n  - lambda:InvokeFunction\ntools:\n  - execute_sandboxed_tool\n  - run_ephemeral_compute\n---\n\n# aws-lambda: Ephemeral Compute Sandbox\n\n## 1. Architectural Guardrails\n- **Zero Host Mutation:** Code runs in isolated Firecracker microVMs.\n- **Resource Hard Caps:** Default 512MB RAM, 10s execution timeout.\n- **Idempotent Calling:** Must supply `ClientContext` hash for request de-duplication.\n- **Stateless Lifecycle:** Memory and ephemeral disk (`/tmp`) are wiped immediately on completion.\n\n## 2. Input JSON Schema\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"functionName\", \"payload\"],\n  \"properties\": {\n    \"functionName\": { \"type\": \"string\" },\n    \"payload\": { \"type\": \"object\" },\n    \"timeoutSec\": { \"type\": \"integer\", \"maximum\": 60, \"default\": 10 },\n    \"memoryMb\": { \"type\": \"integer\", \"maximum\": 1024, \"default\": 512 }\n  }\n}\n```\n\n## 3. Output Schema\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"statusCode\", \"outputPayload\", \"billedDurationMs\"],\n  \"properties\": {\n    \"statusCode\": { \"type\": \"integer\" },\n    \"outputPayload\": { \"type\": \"object\" },\n    \"billedDurationMs\": { \"type\": \"integer\" },\n    \"memoryUsedMb\": { \"type\": \"integer\" }\n  }\n}\n```\n"
+  },
+  {
+    "id": "aws-stepfunctions",
+    "name": "aws-stepfunctions",
+    "title": "AWS Step Functions HFSM Orchestrator",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 0 (Deterministic State Machine)",
+    "service": "AWS Step Functions",
+    "category": "AWS Cloud Primitives",
+    "description": "Hierarchical Finite State Machine workflow manager ensuring deterministic transitions and automatic rollback.",
+    "content": "---\nname: aws-stepfunctions\ndescription: Hierarchical Finite State Machine workflow manager ensuring deterministic transitions and automatic rollback.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 0 (Workflow HFSM)\nservice: AWS Step Functions\npermissions:\n  - states:StartExecution\n  - states:DescribeExecution\n  - states:StopExecution\ntools:\n  - execute_state_machine\n  - trigger_rollback_compensation\n---\n\n# aws-stepfunctions: Deterministic Workflow Engine\n\n## 1. Core Principles\nUnconstrained LLM loops wander and hallucinate. `aws-stepfunctions` binds agent action into **Hierarchical Finite State Machines (HFSM)**:\n1. Each state must finish with a deterministic status (`SUCCESS`, `RETRY`, `FAIL`).\n2. Retries are strictly budget-capped (exponential backoff, max 3 attempts).\n3. Any unrecoverable error branches to a **Compensation State** to undo distributed mutations (e.g. release locks, refund charges).\n\n## 2. Execution Definition Example\n```json\n{\n  \"StartAt\": \"AcquireDynamoDBLock\",\n  \"States\": {\n    \"AcquireDynamoDBLock\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"arn:aws:states:::dynamodb:putItem\",\n      \"Next\": \"VerifyS3Receipts\",\n      \"Catch\": [{ \"ErrorEquals\": [\"States.ALL\"], \"Next\": \"AbortWorkflow\" }]\n    },\n    \"VerifyS3Receipts\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"arn:aws:lambda:function:VerifyS3Receipts\",\n      \"Next\": \"InvokeLambdaLedger\",\n      \"Catch\": [{ \"ErrorEquals\": [\"States.ALL\"], \"Next\": \"ReleaseLockCompensation\" }]\n    },\n    \"InvokeLambdaLedger\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"arn:aws:lambda:function:ReconcileLedgerMicroVM\",\n      \"Next\": \"ReleaseDynamoDBLock\"\n    },\n    \"ReleaseDynamoDBLock\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"arn:aws:states:::dynamodb:deleteItem\",\n      \"End\": true\n    },\n    \"ReleaseLockCompensation\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"arn:aws:states:::dynamodb:deleteItem\",\n      \"Next\": \"WorkflowFailed\"\n    },\n    \"AbortWorkflow\": { \"Type\": \"Fail\" },\n    \"WorkflowFailed\": { \"Type\": \"Fail\" }\n  }\n}\n```\n"
+  },
+  {
+    "id": "aws-client-api",
+    "name": "aws-client-api",
+    "title": "Amazon EventBridge & API Gateway Telemetry",
+    "tier": "Level 0",
+    "tierCode": "L0",
+    "ring": "Ring 0 (Network Ingress/Egress)",
+    "service": "Amazon EventBridge / API Gateway",
+    "category": "AWS Cloud Primitives",
+    "description": "Network ingress and telemetry gateway validating HTTP contracts and publishing inter-agent events.",
+    "content": "---\nname: aws-client-api\ndescription: Network ingress and telemetry gateway validating HTTP contracts and publishing inter-agent events.\nversion: 1.0.0\ntier: Level 0 (Physical Cloud Primitives)\nring: Ring 0 (Gateway & Ingress)\nservice: Amazon EventBridge & API Gateway\npermissions:\n  - events:PutEvents\n  - apigateway:POST\ntools:\n  - publish_eventbridge_event\n  - validate_api_ingress\n---\n\n# aws-client-api: Ingress & Egress Gateway\n\n## 1. Capabilities\n- **API Gateway Contract Validation:** Enforces OpenAPI v3 schema validation at the perimeter before payload reaches any agent.\n- **EventBridge Inter-Cluster Pub/Sub:** Asynchronous, decoupled event broadcasting for multi-agent swarm updates.\n- **Audit Stream Ingress:** Emits all state change events to CloudWatch Logs and S3 WORM archives.\n\n## 2. EventBridge Event Envelope\n```json\n{\n  \"Source\": \"corp.agent.os\",\n  \"DetailType\": \"AgentStateTransitionCompleted\",\n  \"Detail\": {\n    \"agentId\": \"agent-fin-recon-01\",\n    \"step\": \"CommitAuditRecord\",\n    \"receiptS3Uri\": \"s3://agent-grounding-receipts-vault-prod/receipts/rec-9872.json\",\n    \"timestamp\": \"2026-10-10T21:40:00Z\"\n  },\n  \"EventBusName\": \"AgentCoordinationBus\"\n}\n```\n"
+  },
+  {
+    "id": "kernel-propose-decide",
+    "name": "kernel-propose-decide",
+    "title": "Kernel Propose-Decide Arbiter",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Executive Control)",
+    "service": "Agent OS Core",
+    "category": "Executive Control Suite",
+    "description": "Prefrontal executive arbiter ensuring model outputs are treated as untrusted proposals subject to kernel verdict.",
+    "content": "---\nname: kernel-propose-decide\ndescription: Prefrontal executive arbiter ensuring model outputs are treated as untrusted proposals subject to kernel verdict.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Executive Control)\ncategory: Prefrontal Executive Suite\npermissions:\n  - kernel:EvaluateProposal\n  - kernel:DispatchSyscall\ntools:\n  - evaluate_model_proposal\n  - commit_kernel_verdict\n---\n\n# kernel-propose-decide: The Executive Gatekeeper\n\n## 1. Axiom of Separation\nAn LLM is an **inference engine**, not a trustworthy operating system.\n`kernel-propose-decide` enforces the fundamental invariant:\n$$\\text{Action} = \\text{Verdict}_{\\text{Kernel}}(\\text{Proposal}_{\\text{Model}})$$\n\n## 2. Decision Pipeline\n1. Model generates proposed tool call and parameter JSON (Ring 3).\n2. Kernel validates against JSON Schema and active goal invariants (Ring 0).\n3. Kernel checks active CAS leases and Cedar authorization rules.\n4. If valid, kernel issues syscall to Level 0 AWS skill.\n5. If invalid, kernel writes denial to episodic memory and halts loop.\n"
+  },
+  {
+    "id": "kernel-runbook-engine",
+    "name": "kernel-runbook-engine",
+    "title": "Kernel Procedural Runbook Engine",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Procedural Memory)",
+    "service": "Agent OS Core",
+    "category": "Executive Control Suite",
+    "description": "Procedural memory engine parsing and executing strictly typed DAG workflow runbooks.",
+    "content": "---\nname: kernel-runbook-engine\ndescription: Procedural memory engine parsing and executing strictly typed DAG workflow runbooks.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Procedural Memory)\ncategory: Prefrontal Executive Suite\npermissions:\n  - kernel:LoadRunbook\n  - kernel:ExecuteStep\ntools:\n  - parse_runbook_dag\n  - advance_step_barrier\n---\n\n# kernel-runbook-engine: Procedural DAG Dispatcher\n\n## 1. Design Overview\nPrevents erratic agent wandering by converting standard operating procedures into Directed Acyclic Graphs (DAGs). Each step must pass pre-condition checks before execution and post-condition checks before the barrier advances.\n"
+  },
+  {
+    "id": "kernel-supervisor-circuit",
+    "name": "kernel-supervisor-circuit",
+    "title": "Kernel Supervisor Circuit Breaker",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Supervisory Watchdog)",
+    "service": "Agent OS Core",
+    "category": "Executive Control Suite",
+    "description": "Watchdog supervisor tracking token budgets, execution loops, and trip circuits on drift.",
+    "content": "---\nname: kernel-supervisor-circuit\ndescription: Watchdog supervisor tracking token budgets, execution loops, and trip circuits on drift.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Supervisor)\ncategory: Prefrontal Executive Suite\npermissions:\n  - kernel:MonitorHealth\n  - kernel:TripBreaker\ntools:\n  - check_loop_divergence\n  - emergency_kill_switch\n---\n\n# kernel-supervisor-circuit: Watchdog & Safety Loop\n\n## 1. Trip Conditions\n- **Loop Detection:** 3 consecutive identical proposals trip circuit instantly.\n- **Token Budget:** Execution terminating if token burn exceeds $10\\times$ baseline.\n- **Timeout Watchdog:** Kills hung microVMs after 15 seconds.\n"
+  },
+  {
+    "id": "kernel-mutex-lease",
+    "name": "kernel-mutex-lease",
+    "title": "Kernel CAS Mutex Lease Coordinator",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Concurrency)",
+    "service": "Agent OS Core",
+    "category": "Executive Control Suite",
+    "description": "Distributed concurrency coordinator acquiring and renewing DynamoDB CAS leases with randomized jitter.",
+    "content": "---\nname: kernel-mutex-lease\ndescription: Distributed concurrency coordinator acquiring and renewing DynamoDB CAS leases with randomized jitter.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Concurrency)\ncategory: Prefrontal Executive Suite\npermissions:\n  - kernel:AcquireLease\n  - kernel:HeartbeatLease\ntools:\n  - acquire_lease_with_retry\n  - heartbeat_lease_renewal\n---\n\n# kernel-mutex-lease: CAS Mutex Coordinator\n\n## 1. Guarantee\nGuarantees strict single-agent exclusivity over shared business entities (e.g., bank accounts, flight seats, customer records) across distributed swarms.\n"
+  },
+  {
+    "id": "kernel-context-pager",
+    "name": "kernel-context-pager",
+    "title": "Kernel Virtual Context Pager",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Working Memory)",
+    "service": "Agent OS Core",
+    "category": "Multi-Store Memory Suite",
+    "description": "Virtual working memory pager implementing O(1) active token window with LRU disk paging.",
+    "content": "---\nname: kernel-context-pager\ndescription: Virtual working memory pager implementing O(1) active token window with LRU disk paging.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Working Memory)\ncategory: Multi-Store Memory Suite\npermissions:\n  - kernel:PageContext\n  - kernel:EvictColdFrames\ntools:\n  - page_in_hot_memory\n  - page_out_cold_frames\n---\n\n# kernel-context-pager: Virtual Working Memory\n\n## 1. Context Window Virtualization\nModels suffer from \"Lost in the Middle\" attention degradation when contexts exceed 16k tokens. `kernel-context-pager` maintains a compact $O(1)$ active sliding window of relevant tokens, paging older context frames out to local disk and S3 vaults.\n"
+  },
+  {
+    "id": "kernel-episodic-ledger",
+    "name": "kernel-episodic-ledger",
+    "title": "Kernel Episodic Hash-Chained Ledger",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Episodic Memory)",
+    "service": "Agent OS Core",
+    "category": "Multi-Store Memory Suite",
+    "description": "Append-only, SHA-256 hash-chained episodic memory ledger recording all perceptions, decisions, and outcomes.",
+    "content": "---\nname: kernel-episodic-ledger\ndescription: Append-only, SHA-256 hash-chained episodic memory ledger recording all perceptions, decisions, and outcomes.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Episodic Memory)\ncategory: Multi-Store Memory Suite\npermissions:\n  - kernel:AppendEpisodicRecord\n  - kernel:VerifyChainIntegrity\ntools:\n  - append_episode_block\n  - audit_ledger_chain\n---\n\n# kernel-episodic-ledger: Hash-Chained Episodic Memory\n\n## 1. Blockchain-Style Ledger\nEvery perception, proposal, and syscall is stamped into an append-only block:\n$$\\text{Hash}_i = \\text{SHA-256}(\\text{Hash}_{i-1} \\parallel \\text{Timestamp} \\parallel \\text{Payload})$$\nProvides complete mathematical auditability of agent reasoning over time.\n"
+  },
+  {
+    "id": "kernel-grounding-certifier",
+    "name": "kernel-grounding-certifier",
+    "title": "Kernel Hybrid Grounding Certifier",
+    "tier": "Level 1",
+    "tierCode": "L1",
+    "ring": "Ring 0 (Semantic Grounding)",
+    "service": "Agent OS Core",
+    "category": "Multi-Store Memory Suite",
+    "description": "Triangulates model assertions against S3 WORM receipts, OpenSearch vector cosine distance, and Neptune graph entities.",
+    "content": "---\nname: kernel-grounding-certifier\ndescription: Triangulates model assertions against S3 WORM receipts, OpenSearch vector cosine distance, and Neptune graph entities.\nversion: 1.0.0\ntier: Level 1 (Individual Agent OS Kernel)\nring: Ring 0 (Semantic Grounding)\ncategory: Multi-Store Memory Suite\npermissions:\n  - kernel:CertifyGrounding\ntools:\n  - certify_factual_claim\n  - triangulate_evidence\n---\n\n# kernel-grounding-certifier: Factual Truth Verifier\n\n## 1. Multi-Store Triangulation\nAn agent assertion is certified as grounded **only if**:\n1. It matches an S3 WORM receipt with verified SHA-256 checksum.\n2. It has vector similarity $\\ge 0.82$ in OpenSearch embeddings.\n3. It resolves to a valid entity-relationship node in Amazon Neptune.\n"
+  },
+  {
     "id": "swarm-topology-builder",
     "name": "swarm-topology-builder",
-    "title": "Watts-Strogatz Small-World Topology Builder",
-    "category": "Swarm Architecture",
-    "ring": "Ring 0 (Topology Governor)",
-    "kernelLineage": "kernel-runbook-engine + kernel-propose-decide",
-    "awsLineage": "aws-stepfunctions (DAGs) + aws-client-api (EventBridge)",
-    "description": "Constructs small-world agent collaboration lattices with high local clustering and short characteristic path length (p=0.15).",
-    "content": "---\nname: swarm-topology-builder\ndescription: Constructs small-world agent collaboration lattices with high local clustering and short characteristic path length (p=0.15).\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Topology Architecture)\ncategory: Swarm Architecture Suite\nlineage:\n  level_1_kernel: kernel-runbook-engine, kernel-propose-decide\n  level_0_aws: aws-stepfunctions, aws-client-api (EventBridge)\npermissions:\n  - swarm:BuildLattice\n  - swarm:RewireBridge\n  - events:PutEvents\ntools:\n  - generate_watts_strogatz_mesh\n  - calculate_clustering_metrics\n  - optimize_shortcut_bridges\n---\n\n# swarm-topology-builder: Small-World Lattice Generator\n\n## 1. Mathematical Architecture\nUnstructured multi-agent systems suffer from two fatal extremes:\n1. **Fully Connected Mesh ($O(N^2)$):** Exponential token chatter, broadcast storms, and cognitive collapse.\n2. **Linear Pipeline ($O(N)$):** High latency, single points of failure, and zero parallel specialist consultation.\n\n`swarm-topology-builder` implements a **Watts-Strogatz Small-World Graph**:\n- Starts with a 1D ring lattice of $N$ agents, each connected to $K$ nearest neighbors ($K=4$).\n- With probability $p = 0.15$, edges are randomly rewired across distant specialist clusters.\n- **Result:**\n  $$C(p) \\gg C_{\\text{random}} \\quad \\text{(High specialist cohesion)}$$\n  $$L(p) \\approx L_{\\text{random}} \\propto \\ln N \\quad \\text{(Short cross-swarm hops)}$$\n\n## 2. Input JSON Schema\n```json\n{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\": \"object\",\n  \"required\": [\"agentCount\", \"nearestNeighbors\", \"rewiringProbability\"],\n  \"properties\": {\n    \"agentCount\": { \"type\": \"integer\", \"minimum\": 4, \"default\": 12 },\n    \"nearestNeighbors\": { \"type\": \"integer\", \"default\": 4 },\n    \"rewiringProbability\": { \"type\": \"number\", \"minimum\": 0.05, \"maximum\": 0.3, \"default\": 0.15 },\n    \"specialistPods\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n  }\n}\n```\n\n## 3. Output Graph Contract\n```json\n{\n  \"type\": \"object\",\n  \"required\": [\"graphId\", \"nodes\", \"adjacencyMatrix\", \"clusteringCoefficient\", \"averagePathLength\"],\n  \"properties\": {\n    \"graphId\": { \"type\": \"string\", \"format\": \"uuid\" },\n    \"nodes\": { \"type\": \"array\" },\n    \"adjacencyMatrix\": { \"type\": \"array\" },\n    \"clusteringCoefficient\": { \"type\": \"number\" },\n    \"averagePathLength\": { \"type\": \"number\" },\n    \"liaisonNodes\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n  }\n}\n```\n"
+    "title": "Swarm Watts-Strogatz Topology Builder",
+    "tier": "Level 2",
+    "tierCode": "L2",
+    "ring": "Ring 0 (Network Topology)",
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Builds small-world agent networks with high clustering and short characteristic path length (rewiring probability p=0.15).",
+    "content": "---\nname: swarm-topology-builder\ndescription: Builds small-world agent networks with high clustering and short characteristic path length (rewiring probability p=0.15).\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Topology Architecture)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:BuildLattice\n  - swarm:RewireBridges\ntools:\n  - generate_small_world_mesh\n  - calculate_clustering_coefficient\n---\n\n# swarm-topology-builder: Watts-Strogatz Lattice\n\n## 1. Mathematical Foundation\nAvoids both chaotic fully-connected $O(N^2)$ chatter and fragile linear chains.\nGenerates small-world graphs:\n- High local clustering coefficient ($C \\gg C_{\\text{random}}$)\n- Short average path length ($L \\approx L_{\\text{random}} \\propto \\ln N$)\n- Rewiring probability: $p = 0.15$\n"
   },
   {
     "id": "swarm-liaison-router",
     "name": "swarm-liaison-router",
-    "title": "Inter-Cluster Specialist Liaison Router",
-    "category": "Swarm Routing",
+    "title": "Swarm Inter-Cluster Liaison Router",
+    "tier": "Level 2",
+    "tierCode": "L2",
     "ring": "Ring 0 (Inter-Cluster Routing)",
-    "kernelLineage": "kernel-propose-decide + kernel-supervisor-circuit",
-    "awsLineage": "aws-client-api (API Gateway & EventBridge Buses)",
-    "description": "Mediates all cross-pod communication through designated liaison agents, preventing inter-cluster broadcast noise.",
-    "content": "---\nname: swarm-liaison-router\ndescription: Mediates all cross-pod communication through designated liaison agents, preventing inter-cluster broadcast noise.\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Inter-Cluster Bridge Routing)\ncategory: Swarm Routing Suite\nlineage:\n  level_1_kernel: kernel-propose-decide, kernel-supervisor-circuit\n  level_0_aws: aws-client-api (EventBridge Buses, API Gateway)\npermissions:\n  - swarm:RouteCrossCluster\n  - events:PutEvents\ntools:\n  - dispatch_liaison_request\n  - quarantine_pod_boundary\n  - summarize_interpod_payload\n---\n\n# swarm-liaison-router: Inter-Cluster Bridge Router\n\n## 1. Domain Separation Principle\nSpecialist pods (e.g., Finance Pod, Compliance Pod, Code Pod) must not broadcast internal reasoning turns to the whole swarm.\n- All outbound requests are funneled through a **Liaison Agent**.\n- The Liaison Agent compresses, validates, and routes the request across designated Watts-Strogatz bridge edges.\n- Eliminates cross-domain noise and hallucination leakage between unrelated agents.\n\n## 2. Routing Protocol\n$$\\text{Agent}_{A} \\to \\text{Liaison}_{A} \\xrightarrow{\\text{EventBridge Bridge}} \\text{Liaison}_{B} \\to \\text{Agent}_{B}$$\n"
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Dedicated bridge router mediating communication between dense specialist clusters without message flooding.",
+    "content": "---\nname: swarm-liaison-router\ndescription: Dedicated bridge router mediating communication between dense specialist clusters without message flooding.\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Inter-Cluster Routing)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:RouteCrossCluster\ntools:\n  - dispatch_liaison_message\n  - resolve_cluster_boundary\n---\n\n# swarm-liaison-router: Bridge Router\n\n## 1. Isolation & Efficiency\nSpecialist agent teams (e.g., Coding Pod, Finance Pod, Compliance Pod) communicate internally with high bandwidth. All cross-pod requests must traverse designated **Liaison Nodes**, preventing network pollution and cross-domain hallucination cascades.\n"
   },
   {
     "id": "swarm-hop-limiter",
     "name": "swarm-hop-limiter",
-    "title": "Gossip & Delegation Hop Limiter",
-    "category": "Swarm Governance",
+    "title": "Swarm Gossip & Delegation Hop Limiter",
+    "tier": "Level 2",
+    "tierCode": "L2",
     "ring": "Ring 0 (Gossip Control)",
-    "kernelLineage": "kernel-supervisor-circuit + kernel-runbook-engine",
-    "awsLineage": "aws-client-api (Headers) + aws-lambda (Watchdog)",
-    "description": "Enforces strict TTL and hop budgets (Max Hops <= 3) to prevent infinite ping-pong delegation cascades.",
-    "content": "---\nname: swarm-hop-limiter\ndescription: Enforces strict TTL and hop budgets (Max Hops <= 3) to prevent infinite ping-pong delegation cascades.\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Gossip Protocol Governor)\ncategory: Swarm Governance Suite\nlineage:\n  level_1_kernel: kernel-supervisor-circuit, kernel-runbook-engine\n  level_0_aws: aws-client-api, aws-lambda\npermissions:\n  - swarm:EnforceHopLimit\n  - swarm:DropExpiredPacket\ntools:\n  - decrement_hop_budget\n  - detect_delegation_cycle\n  - emit_drop_telemetry\n---\n\n# swarm-hop-limiter: Delegation Guardrails\n\n## 1. Anti-Cascade Invariant\nIn autonomous swarms, agents often pass tasks to peers, creating runaway delegation cycles:\n$$\\text{Agent}_1 \\to \\text{Agent}_2 \\to \\text{Agent}_3 \\to \\text{Agent}_1 \\quad (\\text{Infinite Loop})$$\n\n`swarm-hop-limiter` enforces a hard invariant on every inter-agent packet:\n- Header: `x-swarm-max-hops: 3`\n- Every intermediary decrements `x-swarm-max-hops -= 1`.\n- If `hops == 0`: Packet is **dropped immediately**; kernel triggers fallback to primary supervisor.\n"
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Enforces strict TTL and hop budgets (max 3 hops) on inter-agent task delegation to stop infinite loops.",
+    "content": "---\nname: swarm-hop-limiter\ndescription: Enforces strict TTL and hop budgets (max 3 hops) on inter-agent task delegation to stop infinite loops.\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Gossip Protocol)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:EnforceHopLimit\ntools:\n  - decrement_hop_budget\n  - drop_expired_messages\n---\n\n# swarm-hop-limiter: Delegation Guardrails\n\n## 1. Hop Budget Rule\nEvery inter-agent message carries a `MaxHops = 3` header.\nUpon receipt, the router decrements the counter:\n- If `Hops == 0`: Packet dropped immediately; notification sent to consensus arbiter.\n- Prevents infinite ping-pong delegation cascades across autonomous agents.\n"
   },
   {
     "id": "swarm-shared-whiteboard",
     "name": "swarm-shared-whiteboard",
-    "title": "O(N) Shared Whiteboard Blackboard Memory",
-    "category": "Shared State",
-    "ring": "Ring 0 (Blackboard State)",
-    "kernelLineage": "kernel-episodic-ledger + kernel-mutex-lease",
-    "awsLineage": "aws-s3-vault (WORM Receipts) + aws-database (DynamoDB CAS)",
-    "description": "Append-only global state blackboard providing linear O(N) multi-agent coordination without O(N\u00b2) peer messaging.",
-    "content": "---\nname: swarm-shared-whiteboard\ndescription: Append-only global state blackboard providing linear O(N) multi-agent coordination without O(N\u00b2) peer messaging.\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Global Shared State)\ncategory: Shared State Suite\nlineage:\n  level_1_kernel: kernel-episodic-ledger, kernel-mutex-lease\n  level_0_aws: aws-s3-vault (WORM), aws-database (DynamoDB Mutex)\npermissions:\n  - s3:PutObject\n  - dynamodb:PutItem\n  - dynamodb:GetItem\ntools:\n  - post_blackboard_claim\n  - read_blackboard_lane\n  - subscribe_state_changes\n---\n\n# swarm-shared-whiteboard: Linear Blackboard Architecture\n\n## 1. Complexity Comparison\n| Architecture | Message Complexity | Failure Risk | Auditability |\n| :--- | :--- | :--- | :--- |\n| **Peer-to-Peer Mesh** | $O(N^2)$ | Extremely High | Fragmented |\n| **Centralized Dispatcher** | $O(N)$ | Single Bottleneck | Centralized |\n| **Shared Whiteboard (O(N))** | $O(N)$ Linear | Resilient | Cryptographic WORM |\n\nAgents publish verified findings to partitioned topic lanes (Finance, Compliance, Engineering) with SHA-256 S3 WORM receipts. Peers read asynchronous state changes without blocking.\n"
+    "title": "Swarm O(N) Shared Whiteboard Memory",
+    "tier": "Level 2",
+    "tierCode": "L2",
+    "ring": "Ring 0 (Global Shared State)",
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Append-only global state blackboard providing O(N) linear coordination without O(N\u00b2) peer-to-peer chat overhead.",
+    "content": "---\nname: swarm-shared-whiteboard\ndescription: Append-only global state blackboard providing O(N) linear coordination without O(N\u00b2) peer-to-peer chat overhead.\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Shared State)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:WriteWhiteboard\n  - swarm:SubscribeWhiteboard\ntools:\n  - post_blackboard_update\n  - query_blackboard_state\n---\n\n# swarm-shared-whiteboard: The Blackboard Pattern\n\n## 1. Complexity Comparison\n- **Point-to-Point Mesh:** $N \\times (N-1) / 2 = O(N^2)$ message complexity. Unsustainable for $N > 10$.\n- **Shared Whiteboard:** $O(N)$ linear updates. Agents read and write to partitioned topic lanes with immutable receipts.\n"
   },
   {
     "id": "swarm-consensus-arbiter",
     "name": "swarm-consensus-arbiter",
-    "title": "Byzantine Fault-Tolerant Quorum Arbiter",
-    "category": "Consensus & Voting",
+    "title": "Swarm Byzantine Quorum Consensus Arbiter",
+    "tier": "Level 2",
+    "tierCode": "L2",
     "ring": "Ring 0 (Consensus Engine)",
-    "kernelLineage": "kernel-grounding-certifier + kernel-propose-decide",
-    "awsLineage": "aws-database (DynamoDB CAS) + aws-s3-vault",
-    "description": "Byzantine fault-tolerant voting arbiter requiring a 2/3 + 1 supermajority quorum for high-stakes actions.",
-    "content": "---\nname: swarm-consensus-arbiter\ndescription: Byzantine fault-tolerant voting arbiter requiring a 2/3 + 1 supermajority quorum for high-stakes actions.\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Consensus Engine)\ncategory: Consensus & Voting Suite\nlineage:\n  level_1_kernel: kernel-grounding-certifier, kernel-propose-decide\n  level_0_aws: aws-database, aws-s3-vault\npermissions:\n  - swarm:CollectVotes\n  - swarm:CommitQuorum\n  - dynamodb:UpdateItem\ntools:\n  - solicit_agent_ballots\n  - verify_byzantine_quorum\n  - record_consensus_receipt\n---\n\n# swarm-consensus-arbiter: High-Stakes Quorum Engine\n\n## 1. Byzantine Fault Tolerance (BFT)\nFor actions exceeding high monetary or regulatory thresholds, a single agent's reasoning is insufficient.\n`swarm-consensus-arbiter` requires:\n$$Q = \\left\\lfloor \\frac{2N}{3} \\right\\rfloor + 1$$\nIndependent agents cast cryptographic ballots backed by SHA-256 grounding receipts.\nIf any agent attempts a hallucinated or ungrounded proposal, the quorum isolates it.\n"
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Byzantine fault-tolerant voting arbiter requiring 2/3+1 quorum for high-stakes actions.",
+    "content": "---\nname: swarm-consensus-arbiter\ndescription: Byzantine fault-tolerant voting arbiter requiring 2/3+1 quorum for high-stakes actions.\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Consensus Engine)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:GatherQuorum\n  - swarm:CommitConsensus\ntools:\n  - solicit_agent_votes\n  - certify_byzantine_quorum\n---\n\n# swarm-consensus-arbiter: High-Stakes Quorum\n\n## 1. Byzantine Fault Tolerance (BFT)\nFor actions exceeding a predetermined risk threshold (e.g. fund transfers, production schema migrations), a supermajority quorum is mandatory:\n$$Q = \\left\\lfloor \\frac{2N}{3} \\right\\rfloor + 1$$\nIndependent agents cast cryptographic votes verified by SHA-256 signatures.\n"
   },
   {
     "id": "swarm-circuit-breaker",
     "name": "swarm-circuit-breaker",
-    "title": "Distributed Cascade Quarantine Circuit Breaker",
-    "category": "Cascade Prevention",
-    "ring": "Ring 0 (Quarantine Isolation)",
-    "kernelLineage": "kernel-supervisor-circuit + kernel-mutex-lease",
-    "awsLineage": "aws-agentcore (Cedar Revocation) + aws-lambda",
-    "description": "Network partitioner isolating rogue or hallucinating agent nodes before systemic swarm contamination occurs.",
-    "content": "---\nname: swarm-circuit-breaker\ndescription: Network partitioner isolating rogue or hallucinating agent nodes before systemic swarm contamination occurs.\nversion: 1.0.0\ntier: Level 2 (Multi-Agent System Swarm)\nring: Ring 0 (Quarantine & Partition)\ncategory: Cascade Prevention Suite\nlineage:\n  level_1_kernel: kernel-supervisor-circuit, kernel-mutex-lease\n  level_0_aws: aws-agentcore, aws-lambda\npermissions:\n  - swarm:QuarantineNode\n  - verifiedpermissions:RevokeToken\n  - dynamodb:DeleteItem\ntools:\n  - sever_node_edges\n  - revoke_agent_leases\n  - rebalance_swarm_partitions\n---\n\n# swarm-circuit-breaker: Epidemic Cascade Prevention\n\n## 1. Automated Quarantine Protocol\nIf an agent generates $k \\ge 3$ rejected proposals, fails grounding certification, or exhibits semantic looping:\n1. `swarm-circuit-breaker` trips.\n2. The agent's DynamoDB CAS mutex leases are revoked immediately.\n3. Its edges in the Watts-Strogatz graph are severed.\n4. The remaining swarm rebalances without experiencing cascading contagion.\n"
+    "title": "Swarm Distributed Cascading Circuit Breaker",
+    "tier": "Level 2",
+    "tierCode": "L2",
+    "ring": "Ring 0 (Cascade Isolation)",
+    "service": "Swarm Coordinator",
+    "category": "Multi-Agent Swarm Suite",
+    "description": "Network partitioner isolating malfunctioning or hallucinating agent nodes before systemic contamination occurs.",
+    "content": "---\nname: swarm-circuit-breaker\ndescription: Network partitioner isolating malfunctioning or hallucinating agent nodes before systemic contamination occurs.\nversion: 1.0.0\ntier: Level 2 (Small-World Multi-Agent Network)\nring: Ring 0 (Cascade Isolation)\ncategory: Swarm Coordination Suite\npermissions:\n  - swarm:QuarantineNode\n  - swarm:RestoreCluster\ntools:\n  - isolate_rogue_agent\n  - trigger_network_partition\n---\n\n# swarm-circuit-breaker: Epidemic Cascade Prevention\n\n## 1. Automated Quarantine\nIf an agent repeatedly fails grounding certification or generates rejected syscall proposals ($k \\ge 3$), `swarm-circuit-breaker` immediately revokes its lease tokens and severs its edges in the Watts-Strogatz graph.\n"
   }
 ];
     let currentSelectedSkillId = "swarm-topology-builder";
@@ -884,9 +1059,9 @@ print("Swarm state committed successfully!")
       selectSwarmSkill(currentSelectedSkillId);
     }
 
-    function filterSwarmSkills(category) {
-      activeCategoryFilter = category;
-      ['filterAll', 'filterArch', 'filterGov'].forEach(id => {
+    function filterSwarmSkills(tierCode) {
+      activeCategoryFilter = tierCode;
+      ['filterAll', 'filterL2', 'filterL1', 'filterL0'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) {
           btn.style.borderColor = 'var(--border-subtle)';
@@ -894,7 +1069,7 @@ print("Swarm state committed successfully!")
           btn.style.color = 'var(--text-secondary)';
         }
       });
-      const targetId = category === 'all' ? 'filterAll' : (category === 'Swarm Architecture' ? 'filterArch' : 'filterGov');
+      const targetId = tierCode === 'all' ? 'filterAll' : 'filter' + tierCode;
       const activeBtn = document.getElementById(targetId);
       if (activeBtn) {
         activeBtn.style.borderColor = 'var(--accent-purple)';
@@ -914,9 +1089,7 @@ print("Swarm state committed successfully!")
       const query = (document.getElementById('skillSearchInput')?.value || '').toLowerCase();
 
       let filtered = SWARM_SKILLS_LIBRARY.filter(s => {
-        const matchesCat = activeCategoryFilter === 'all' ||
-                           (activeCategoryFilter === 'Swarm Architecture' && (s.category.includes('Architecture') || s.category.includes('Routing'))) ||
-                           (activeCategoryFilter === 'Swarm Governance' && (s.category.includes('Governance') || s.category.includes('Consensus') || s.category.includes('Cascade') || s.category.includes('State')));
+        const matchesCat = activeCategoryFilter === 'all' || s.tierCode === activeCategoryFilter;
         const matchesQuery = s.name.toLowerCase().includes(query) ||
                              s.title.toLowerCase().includes(query) ||
                              s.description.toLowerCase().includes(query) ||
@@ -936,10 +1109,10 @@ print("Swarm state committed successfully!")
           <div onclick="selectSwarmSkill('${s.id}')" style="cursor: pointer; padding: 9px 11px; border-radius: 8px; border: 1.5px solid; ${bgStyle} display: flex; flex-direction: column; gap: 3px; transition: all 0.15s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.76rem; color: var(--text-primary);">${s.name}</span>
-              <span style="font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; background: #7c3aed15; color: #7c3aed;">SWARM &bull; L2</span>
+              <span style="font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; background: ${s.tierCode === 'L2' ? '#7c3aed15' : (s.tierCode === 'L1' ? '#2563eb15' : '#05966915')}; color: ${s.tierCode === 'L2' ? '#7c3aed' : (s.tierCode === 'L1' ? '#2563eb' : '#059669')};">${s.tierCode === 'L2' ? 'SWARM &bull; L2' : (s.tierCode === 'L1' ? 'KERNEL &bull; L1' : 'AWS &bull; L0')}</span>
             </div>
             <div style="font-size: 0.68rem; color: var(--text-secondary); line-height: 1.25;">${s.title}</div>
-            <div style="font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono);">Lineage: ${s.kernelLineage.split('+')[0].trim()}</div>
+            <div style="font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono);">${s.kernelLineage ? 'Lineage: ' + s.kernelLineage.split('+')[0].trim() : (s.service || s.category || s.tier)}</div>
           </div>
         `;
       }).join('');
@@ -951,8 +1124,8 @@ print("Swarm state committed successfully!")
       currentSelectedSkillId = skillId;
 
       document.getElementById('swarmSkillHeaderTitle').textContent = `${skill.name}/SKILL.md`;
-      document.getElementById('swarmSkillHeaderMeta').textContent = `Level 2 • ${skill.category} • Kernel: ${skill.kernelLineage} • AWS: ${skill.awsLineage}`;
-      document.getElementById('swarmSkillBadge').textContent = "LEVEL 2";
+      document.getElementById('swarmSkillHeaderMeta').textContent = `${skill.tier || 'Level 2'} • ${skill.ring} • ${skill.kernelLineage ? 'Kernel: ' + skill.kernelLineage : (skill.service || skill.category)}`;
+      document.getElementById('swarmSkillBadge').textContent = (skill.tier || 'LEVEL 2').toUpperCase();
       document.getElementById('swarmSkillContentPre').textContent = skill.content.trim();
 
       renderSwarmSkillsList();
