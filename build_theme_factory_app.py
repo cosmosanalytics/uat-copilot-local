@@ -538,6 +538,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       background: var(--accent-purple-light);
       color: var(--accent-purple);
     }
+    .prompt-chip.active {
+      border-color: var(--accent-purple);
+      background: var(--accent-purple);
+      color: #ffffff;
+    }
 
     /* Brief Input */
     .brief-input {
@@ -876,10 +881,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
           <!-- Prompt suggestion chips -->
           <div class="prompt-chips-row">
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('A neon-lit cyberpunk Tokyo night market with electric magenta, cyan signage, obsidian asphalt, and industrial monospace headers')">🏮 Cyberpunk Tokyo</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('A distinguished Swiss private wealth management bank in Zurich with deep alpine navy, chalk gold leaf, and high-contrast Didot typography')">🏛️ Swiss Private Bank</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('A Scandinavian cold-water surf retreat in Lofoten with slate storm clouds, driftwood cedar, sea spray, and geometric sans typography')">🏄 Nordic Surf Shack</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('An advanced genomic CRISPR biotech laboratory with clean sterile white, bioluminescent emerald green, and precision laboratory typography')">🔬 Genomic Biotech</button>
+            <button type="button" class="prompt-chip active" onclick="setPromptBrief('A neon-lit cyberpunk Tokyo night market with electric magenta, cyan signage, obsidian asphalt, and industrial monospace headers', this)">🏮 Cyberpunk Tokyo</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('A distinguished Swiss private wealth management bank in Zurich with deep alpine navy, chalk gold leaf, and high-contrast Didot typography', this)">🏛️ Swiss Private Bank</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('A Scandinavian cold-water surf retreat in Lofoten with slate storm clouds, driftwood cedar, sea spray, and geometric sans typography', this)">🏄 Nordic Surf Shack</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('An advanced genomic CRISPR biotech laboratory with clean sterile white, bioluminescent emerald green, and precision laboratory typography', this)">🔬 Genomic Biotech</button>
           </div>
 
           <textarea class="brief-input" id="briefInput" placeholder="Describe any brand identity, industry, or mood to synthesize a bespoke theme on-the-fly... (e.g. Kyoto pottery studio with wabi-sabi clay tones)"></textarea>
@@ -972,6 +977,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     renderRuntimeBanner();
     renderThemesList();
     selectTheme(0);
+    const defaultBrief = "A neon-lit cyberpunk Tokyo night market with electric magenta, cyan signage, obsidian asphalt, and industrial monospace headers";
+    const input = document.getElementById('briefInput');
+    if (input) input.value = defaultBrief;
   });
 
   function initTheme() {
@@ -1178,8 +1186,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     `;
   }
 
-  function setPromptBrief(txt) {
+  function setPromptBrief(txt, el) {
     document.getElementById('briefInput').value = txt;
+    document.querySelectorAll('.prompt-chip').forEach(c => c.classList.remove('active'));
+    if (el) el.classList.add('active');
   }
 
   function switchArtifact(type) {
@@ -1697,8 +1707,14 @@ ${JSON.stringify({
   }
 
   async function runThemeSynthesis() {
-    const brief = document.getElementById('briefInput').value.trim();
-    if (!brief) return alert('Please enter a theme description or click one of the suggested prompts.');
+    let brief = document.getElementById('briefInput').value.trim();
+    if (!brief) {
+      brief = "A neon-lit cyberpunk Tokyo night market with electric magenta, cyan signage, obsidian asphalt, and industrial monospace headers";
+      document.getElementById('briefInput').value = brief;
+      const firstChip = document.querySelector('.prompt-chip');
+      if (firstChip) firstChip.classList.add('active');
+      showToast('Using Cyberpunk Tokyo prompt', '🏮');
+    }
 
     const btn = document.getElementById('btnSynthesize');
     btn.disabled = true;
@@ -1781,7 +1797,8 @@ ${JSON.stringify({
         showToast('WebGPU local synthesis complete!', '🎮');
       }
     } catch(e) {
-      alert('Theme synthesis error: ' + e.message);
+      showToast('Synthesis error: ' + (e.message || 'Check network'), '⚠️');
+      console.error(e);
     } finally {
       btn.disabled = false;
       if (currentEngine === 'groq') btn.innerHTML = '<span>⚡ Synthesize Custom Theme (Groq LPU)</span>';
@@ -1817,7 +1834,7 @@ ${JSON.stringify({
       showToast(`Custom theme "${themeObj.name}" applied!`, '🎨');
     } catch(err) {
       console.error(err, rawText);
-      alert('Failed to parse synthesized theme: ' + err.message);
+      showToast('Failed to parse theme: ' + err.message, '⚠️');
     }
   }
 

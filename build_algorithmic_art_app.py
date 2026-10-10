@@ -667,6 +667,11 @@ def generate_html():
       background: var(--accent-purple-light);
       color: var(--accent-purple);
     }}
+    .prompt-chip.active {{
+      border-color: var(--accent-purple);
+      background: var(--accent-purple);
+      color: #ffffff;
+    }}
 
     /* Brief Input */
     .brief-input {{
@@ -1000,10 +1005,10 @@ def generate_html():
 
           <!-- Prompt suggestion chips -->
           <div class="prompt-chips-row">
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('A fluid magnetic ferrofluid simulation with swirling vortex attractors, dark titanium ink, and neon violet magnetic field lines')">🌌 Ferrofluid Vortex</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('A generative cellular automaton simulating bio-lichen growth on granite slate with organic clustering rules')">🌿 Bio-Lichen</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('Hyperbolic Voronoi crystal tessellation with relaxation dynamics and translucent stained-glass opacity')">🌀 Hyperbolic Voronoi</button>
-            <button type="button" class="prompt-chip" onclick="setPromptBrief('N-body celestial gravitational dance tracing orbital resonance loops with luminous starlight trails')">🪐 Gravitational Orbits</button>
+            <button type="button" class="prompt-chip active" onclick="setPromptBrief('A fluid magnetic ferrofluid simulation with swirling vortex attractors, dark titanium ink, and neon violet magnetic field lines', this)">🌌 Ferrofluid Vortex</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('A generative cellular automaton simulating bio-lichen growth on granite slate with organic clustering rules', this)">🌿 Bio-Lichen</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('Hyperbolic Voronoi crystal tessellation with relaxation dynamics and translucent stained-glass opacity', this)">🌀 Hyperbolic Voronoi</button>
+            <button type="button" class="prompt-chip" onclick="setPromptBrief('N-body celestial gravitational dance tracing orbital resonance loops with luminous starlight trails', this)">🪐 Gravitational Orbits</button>
           </div>
 
           <textarea class="brief-input" id="briefInput" placeholder="Describe any generative art concept, mathematical system, or physics simulation... (e.g. Swirling cosmic nebula particle stream with gravitational lensing)"></textarea>
@@ -1307,8 +1312,10 @@ def generate_html():
     view.innerHTML = `<p>${{parsed}}</p>`;
   }}
 
-  function setPromptBrief(text) {{
+  function setPromptBrief(text, el) {{
     document.getElementById('briefInput').value = text;
+    document.querySelectorAll('.prompt-chip').forEach(c => c.classList.remove('active'));
+    if (el) el.classList.add('active');
   }}
 
   function stepSeed(delta) {{
@@ -1348,8 +1355,14 @@ def generate_html():
   }}
 
   async function runAlgorithmicSynthesis() {{
-    const brief = document.getElementById('briefInput').value.trim();
-    if (!brief) return alert('Please enter an algorithmic art brief or select a suggestion chip.');
+    let brief = document.getElementById('briefInput').value.trim();
+    if (!brief) {{
+      brief = 'A fluid magnetic ferrofluid simulation with swirling vortex attractors, dark titanium ink, and neon violet magnetic field lines';
+      document.getElementById('briefInput').value = brief;
+      const firstChip = document.querySelector('.prompt-chip');
+      if (firstChip) firstChip.classList.add('active');
+      showToast('Loaded Ferrofluid Vortex prompt', '🌌');
+    }}
 
     const btn = document.getElementById('btnSynthesize');
     btn.disabled = true;
@@ -1423,7 +1436,8 @@ def generate_html():
         showToast('WebGPU local synthesis complete!', '🎮');
       }}
     }} catch(e) {{
-      alert('Synthesis error: ' + e.message);
+      showToast('Synthesis error: ' + (e.message || 'Check network'), '⚠️');
+      console.error(e);
     }} finally {{
       btn.disabled = false;
       if (currentEngine === 'groq') btn.innerHTML = '<span>⚡ Synthesize Algorithmic Art (Groq LPU)</span>';

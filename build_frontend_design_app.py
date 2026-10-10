@@ -1081,6 +1081,11 @@ APP_HTML = f"""<!DOCTYPE html>
     border-color: var(--green-safe);
     transform: translateY(-1px);
   }}
+  .prompt-chip.active {{
+    background: var(--green-safe);
+    color: #fff;
+    border-color: var(--green-safe);
+  }}
 
   .brief-input {{
     width: 100%;
@@ -1435,10 +1440,10 @@ APP_HTML = f"""<!DOCTYPE html>
         
         <!-- Prompt suggestion chips -->
         <div class="prompt-chips-row">
-          <button type="button" class="prompt-chip" onclick="setPromptBrief('A brutalist Scandinavian coffee roastery ordering terminal with single-origin beans, extraction ratio calculator, and stark monochrome typography')">☕ Nordic Coffee</button>
-          <button type="button" class="prompt-chip" onclick="setPromptBrief('A retro 1980s analog synthesizer drum machine with glowing vacuum tube LEDs, clickable pads, and playable rotary knobs')">📻 80s Synth</button>
-          <button type="button" class="prompt-chip" onclick="setPromptBrief('A bio-luminescent deep-space rover telemetry console monitoring seismic tremors on Jovian ocean moon Europa')">🚀 Europa Rover</button>
-          <button type="button" class="prompt-chip" onclick="setPromptBrief('An artisanal French perfumery olfactory pyramid explorer with botanical watercolor tints and delicate serif typography')">🌸 French Perfume</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A brutalist Scandinavian coffee roastery ordering terminal with single-origin beans, extraction ratio calculator, and stark monochrome typography', this)">☕ Nordic Coffee</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A retro 1980s analog synthesizer drum machine with glowing vacuum tube LEDs, clickable pads, and playable rotary knobs', this)">📻 80s Synth</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A bio-luminescent deep-space rover telemetry console monitoring seismic tremors on Jovian ocean moon Europa', this)">🚀 Europa Rover</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('An artisanal French perfumery olfactory pyramid explorer with botanical watercolor tints and delicate serif typography', this)">🌸 French Perfume</button>
         </div>
 
         <textarea class="brief-input" id="briefInput" placeholder="Type ANY UI idea or customize the brief here... (e.g., A minimalist audio player with waveform canvas, or a cyberdeck diagnostic terminal)"></textarea>
@@ -1670,9 +1675,11 @@ function saveCustomGroqKey(val) {{
   showToast(val.trim() ? 'Custom Groq key saved!' : 'Reverted to pre-provisioned free tier key!', '🔑');
 }}
 
-function setPromptBrief(text) {{
+function setPromptBrief(text, el) {{
   document.getElementById('briefInput').value = text;
-  document.querySelectorAll('.preset-card').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.preset-card').forEach(item => item.classList.remove('active'));
+  document.querySelectorAll('.prompt-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
   showToast('Brief loaded! Click Generate to run Groq LPU.', '✍️');
 }}
 
@@ -1791,8 +1798,12 @@ function parsePlanFromText(txt) {{
 }}
 
 async function runDesignSynthesis() {{
-  const brief = document.getElementById('briefInput').value.trim();
-  if (!brief) return alert('Please enter a brief or select one of the suggested prompts.');
+  let brief = document.getElementById('briefInput').value.trim();
+  if (!brief) {{
+    brief = 'A stark, unapologetically bold typographic catalog for an independent digital type foundry in Basel. Rebuff the generic SaaS rounded card look. Feature an interactive variable weight specimen slider and character glyph inspection grid.';
+    document.getElementById('briefInput').value = brief;
+    showToast('Loaded Basel Typographic Catalog prompt', '📐');
+  }}
 
   const btn = document.getElementById('btnSynthesize');
   btn.disabled = true;
@@ -1869,7 +1880,8 @@ async function runDesignSynthesis() {{
       showToast('WebGPU local synthesis complete!', '🎮');
     }}
   }} catch(e) {{
-    alert('Synthesis error: ' + e.message);
+    showToast('Synthesis error: ' + (e.message || 'Check network'), '⚠️');
+    console.error(e);
   }} finally {{
     btn.disabled = false;
     if (currentEngine === 'groq') btn.innerHTML = '<span>⚡ Generate Distinctive UI (Groq LPU)</span>';
