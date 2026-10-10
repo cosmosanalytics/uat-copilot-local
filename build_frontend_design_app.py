@@ -1437,7 +1437,7 @@ APP_HTML = f"""<!DOCTYPE html>
         <div class="prompt-chips-row">
           <button type="button" class="prompt-chip" onclick="setPromptBrief('A brutalist Scandinavian coffee roastery ordering terminal with single-origin beans, extraction ratio calculator, and stark monochrome typography')">☕ Nordic Coffee</button>
           <button type="button" class="prompt-chip" onclick="setPromptBrief('A retro 1980s analog synthesizer drum machine with glowing vacuum tube LEDs, clickable pads, and playable rotary knobs')">📻 80s Synth</button>
-          <button type="button" class="prompt-chip" onclick="setPromptBrief('A bio-luminescent deep-space rover telemetry console monitoring seismic tremors on Jupiter\'s ocean moon Europa')">🚀 Europa Rover</button>
+          <button type="button" class="prompt-chip" onclick="setPromptBrief('A bio-luminescent deep-space rover telemetry console monitoring seismic tremors on Jovian ocean moon Europa')">🚀 Europa Rover</button>
           <button type="button" class="prompt-chip" onclick="setPromptBrief('An artisanal French perfumery olfactory pyramid explorer with botanical watercolor tints and delicate serif typography')">🌸 French Perfume</button>
         </div>
 
@@ -1755,30 +1755,36 @@ function renderSandbox(html, source) {{
 }}
 
 function parsePlanFromText(txt) {{
-  let palette = null, typography = null, layout = null, bold = null;
+  let palette = [];
+  let typography = "";
+  let layout = "";
+  let bold = "";
+
+  const hexMatches = txt.match(/#[0-9a-fA-F]{{6}}(?:\\s*-\\s*[^\\n\\r|,]+)?/g);
+  if (hexMatches && hexMatches.length > 0) {{
+    palette = hexMatches.slice(0, 6).map(c => c.trim());
+  }}
+
   const lines = txt.split('\\n');
   for (const line of lines) {{
     const l = line.toLowerCase();
-    if ((l.includes('palette') || l.includes('color')) && l.includes(':')) {{
-      palette = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    if ((l.includes('typography') || l.includes('heading') || l.includes('font')) && !typography) {{
+      typography = line.replace(/[*#|]/g, '').trim();
     }}
-    if ((l.includes('typograph') || l.includes('font')) && l.includes(':')) {{
-      typography = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    if (l.includes('layout') && !layout) {{
+      layout = line.replace(/[*#|]/g, '').trim();
     }}
-    if (l.includes('layout') && l.includes(':')) {{
-      layout = line.split(':')[1].replace(/\\*\\*/g, '').trim();
-    }}
-    if ((l.includes('bold') || l.includes('principle') || l.includes('focal')) && l.includes(':')) {{
-      bold = line.split(':')[1].replace(/\\*\\*/g, '').trim();
+    if ((l.includes('bold element') || l.includes('interaction')) && !bold) {{
+      bold = line.replace(/[*#|]/g, '').trim();
     }}
   }}
-  if (palette || typography || layout || bold) {{
-    const colorsList = palette ? palette.split(',').map(c => c.trim()) : ['#0F172A (Primary)', '#059669 (Accent)', '#F8FAFC (Base)'];
+
+  if (palette.length > 0 || typography || layout || bold) {{
     return {{
-      palette: colorsList,
-      typography: typography || 'Disciplined bespoke typography hierarchy',
-      layout: layout || 'Asymmetrical layout tailored to subject domain',
-      bold_element: bold || 'Single memorable interactive element'
+      palette: palette.length > 0 ? palette : ['#2E3B2F (Moss)', '#A87C52 (Cedar)', '#E8E2D1 (Washi)', '#4B5B6E (Indigo)', '#C5B89F (Stone)'],
+      typography: typography || 'Noto Serif JP display with refined sans-serif UI labels',
+      layout: layout || 'Asymmetrical vertical alcove sections with intentional negative space',
+      bold_element: bold || 'Single memorable tactile interactive focal point'
     }};
   }}
   return null;
@@ -1799,15 +1805,15 @@ async function runDesignSynthesis() {{
       const apiKey = getActiveGroqKey();
       const model = document.getElementById('groqModelSelect') ? document.getElementById('groqModelSelect').value : 'openai/gpt-oss-120b';
 
-      const prompt = `You are a world-class UI design director following the Anthropic 'frontend-design' skill runbook:
-1. Reject all generic SaaS card layouts, soft grey shadows, and purple gradients.
-2. Ground your aesthetic choices in the subject matter and real materials.
-3. First create a short Design Plan with:
-   - Color Palette: 4-6 hex codes
-   - Typography: Font pairings and scale
-   - Layout: Geometric arrangement and rhythm
-   - Bold Element: The single memorable focal interaction
-4. Output the complete, fully functional, self-contained single-page HTML with embedded CSS and JS inside an \`\`\`html codeblock. Make it visually stunning, fully interactive, and distinctive.`;
+      const prompt = "You are a world-class UI design director following the Anthropic 'frontend-design' skill runbook:\\n" +
+        "1. Reject all generic SaaS card layouts, soft grey shadows, and purple gradients.\\n" +
+        "2. Ground your aesthetic choices in the subject matter and real materials.\\n" +
+        "3. First create a short Design Plan:\\n" +
+        "   - Color Palette: 4-6 hex codes with names\\n" +
+        "   - Typography: Font pairings and scale\\n" +
+        "   - Layout: Geometric arrangement and rhythm\\n" +
+        "   - Bold Element: The single memorable focal interaction\\n" +
+        "4. Then output the complete, fully functional, self-contained single-page HTML with embedded CSS and JS inside an ```html codeblock. Make it visually stunning, fully interactive, and distinctive.";
 
       const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {{
         method: "POST",
@@ -1822,7 +1828,7 @@ async function runDesignSynthesis() {{
             {{ role: "user", content: brief }}
           ],
           temperature: 0.7,
-          max_tokens: 3500
+          max_tokens: 4096
         }})
       }});
       if (!resp.ok) {{
@@ -1849,7 +1855,7 @@ async function runDesignSynthesis() {{
 
     }} else if (currentEngine === 'webgpu') {{
       if (!webllmEngine) throw new Error('Please load the WebLLM model into WebGPU first using the top banner button.');
-      const prompt = `You are a design engineer following the 'frontend-design' skill. Return complete valid HTML with embedded CSS/JS in \`\`\`html codeblocks. Avoid generic templates.`;
+      const prompt = "You are a design engineer following the 'frontend-design' skill. Return complete valid HTML with embedded CSS/JS in ```html codeblocks. Avoid generic templates.";
       const reply = await webllmEngine.chat.completions.create({{
         messages: [
           {{ role: "system", content: prompt }},
@@ -1873,16 +1879,66 @@ async function runDesignSynthesis() {{
 }}
 
 function extractAndRender(rawText, source) {{
-  let html = rawText;
-  const match = rawText.match(/```html([\\s\\S]*?)```/);
-  if (match) {{
-    html = match[1].trim();
-  }} else if (rawText.includes('<!DOCTYPE html>') || rawText.includes('<html')) {{
-    const start = rawText.indexOf('<');
-    html = rawText.substring(start).trim();
+  let html = "";
+  
+  // 1. Look for ```html or ```xml
+  const htmlMarker = rawText.indexOf('```html');
+  const xmlMarker = rawText.indexOf('```xml');
+
+  if (htmlMarker !== -1) {{
+    let candidate = rawText.substring(htmlMarker + 7).trim();
+    const endFence = candidate.lastIndexOf('```');
+    if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+    html = candidate;
+  }} else if (xmlMarker !== -1) {{
+    let candidate = rawText.substring(xmlMarker + 6).trim();
+    const endFence = candidate.lastIndexOf('```');
+    if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+    html = candidate;
+  }} else {{
+    // 2. Look for <!DOCTYPE html> or <html tag directly
+    const doctypeIdx = rawText.search(/<!DOCTYPE\\s+html/i);
+    const htmlTagIdx = rawText.search(/<html[\\s>]/i);
+
+    let start = -1;
+    if (doctypeIdx !== -1) start = doctypeIdx;
+    else if (htmlTagIdx !== -1) start = htmlTagIdx;
+
+    if (start !== -1) {{
+      let candidate = rawText.substring(start).trim();
+      const endFence = candidate.lastIndexOf('```');
+      if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+      html = candidate;
+    }}
   }}
+
+  // 3. Fallback: generic ``` code block containing html
+  if (!html) {{
+    const genericFenceIdx = rawText.indexOf('```');
+    if (genericFenceIdx !== -1) {{
+      let candidate = rawText.substring(genericFenceIdx + 3).trim();
+      const endFence = candidate.lastIndexOf('```');
+      if (endFence !== -1) candidate = candidate.substring(0, endFence).trim();
+      if (candidate.includes('<') && candidate.includes('>')) {{
+        html = candidate;
+      }}
+    }}
+  }}
+
+  // 4. Wrap with complete document structure if incomplete
+  if (html && !html.toLowerCase().includes('<html')) {{
+    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${{html}}</body></html>`;
+  }}
+
+  // Ensure clean fallback
+  if (!html) {{
+    html = `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:2rem;"><pre style="white-space:pre-wrap;">${{rawText.replace(/</g, '&lt;')}}</pre></body></html>`;
+  }}
+
   renderSandbox(html, source);
 }}
+
+
 
 function switchStage(stage) {{
   document.getElementById('tabBtnPreview').classList.toggle('active', stage === 'preview');
