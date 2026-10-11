@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 build_side_by_side_skills_pdf.py
-Generates the definitive 22-page landscape PDF:
+Generates the definitive 22-page landscape PDF in pure LIGHT MODE:
 '20_Agentic_Skills_Side_By_Side_Guide.pdf'
 Features:
-- Page 1: Architectural Methodology Cover & The Skill Authoring Rosetta Stone
-- Pages 2-21: 20 Skills, 1 Page per Skill (Side-by-Side: 4th-Grader Model vs. Production SKILL.md Contract)
-- Page 22: The Master 3-Tier Enterprise Architecture Blueprint & Wire Graph
+- Page 1: Architectural Methodology Cover & The Skill Authoring Rosetta Stone (Light Mode)
+- Pages 2-21: 20 Skills, 1 Page per Skill (Light Mode Side-by-Side: 4th-Grader Model vs. Production SKILL.md Contract)
+- Page 22: The Master 3-Tier Enterprise Architecture Blueprint & Wire Graph (Light Mode Header)
 """
 
 import os
@@ -38,42 +38,6 @@ def wrap_text(c, text, font_name, font_size, max_width):
     if current_line:
         lines.append(" ".join(current_line))
     return lines
-
-# Extract structured sections from SKILL.md content
-def parse_skill_md(content):
-    lines = content.strip().splitlines()
-    yaml_lines = []
-    in_yaml = False
-    body_lines = []
-    for line in lines:
-        if line.strip() == "---":
-            if not in_yaml:
-                in_yaml = True
-                continue
-            else:
-                in_yaml = False
-                continue
-        if in_yaml:
-            yaml_lines.append(line)
-        else:
-            body_lines.append(line)
-    
-    # Parse yaml dict
-    yaml_dict = {}
-    current_key = None
-    for yl in yaml_lines:
-        if ":" in yl and not yl.strip().startswith("-"):
-            parts = yl.split(":", 1)
-            k = parts[0].strip()
-            v = parts[1].strip()
-            yaml_dict[k] = v
-            current_key = k
-        elif yl.strip().startswith("-") and current_key:
-            if not isinstance(yaml_dict[current_key], list):
-                yaml_dict[current_key] = []
-            yaml_dict[current_key].append(yl.strip()[2:])
-
-    return yaml_dict, "\n".join(body_lines)
 
 # Structured production data for the 20 skills
 PROD_DETAILS = [
@@ -621,79 +585,79 @@ PROD_DETAILS = [
 ]
 
 def render_cover_page(c, width, height):
-    # Dark modern cover background
-    c.setFillColor(colors.HexColor("#0f172a"))
+    # Pure clean light background
+    c.setFillColor(colors.HexColor("#f8fafc"))
     c.rect(0, 0, width, height, stroke=0, fill=1)
 
     # Top accent line
-    c.setFillColor(colors.HexColor("#38bdf8"))
+    c.setFillColor(colors.HexColor("#0284c7"))
     c.rect(0, height - 8, width, 8, stroke=0, fill=1)
 
-    # Title container
-    c.setFillColor(colors.HexColor("#1e293b"))
-    c.setStrokeColor(colors.HexColor("#334155"))
-    c.roundRect(30, height - 140, width - 60, 115, 10, stroke=1, fill=1)
-
-    c.setFillColor(colors.HexColor("#38bdf8"))
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(45, height - 52, "ENTERPRISE AI ARCHITECTURE • SPECIFICATION & PEDAGOGY")
-
+    # Title container (clean white card with crisp border)
     c.setFillColor(colors.white)
+    c.setStrokeColor(colors.HexColor("#cbd5e1"))
+    c.roundRect(30, height - 135, width - 60, 110, 10, stroke=1, fill=1)
+
+    c.setFillColor(colors.HexColor("#0284c7"))
+    c.setFont("Helvetica-Bold", 9.5)
+    c.drawString(45, height - 48, "ENTERPRISE AI ARCHITECTURE • SPECIFICATION & PEDAGOGY")
+
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 22)
-    c.drawString(45, height - 82, "The 3-Tier Enterprise Agent Stack")
+    c.drawString(45, height - 76, "The 3-Tier Enterprise Agent Stack")
 
-    c.setFillColor(colors.HexColor("#94a3b8"))
+    c.setFillColor(colors.HexColor("#475569"))
     c.setFont("Helvetica", 11)
-    c.drawString(45, height - 105, "Side-by-Side Study Guide: Production SKILL.md Specifications vs. 4th-Grader Mental Models")
-    c.setFont("Helvetica-Oblique", 9.5)
-    c.setFillColor(colors.HexColor("#cbd5e1"))
-    c.drawString(45, height - 125, "Learn how to architect, structure, and document agentic skills with rigorous engineering contracts and intuitive metaphors.")
+    c.drawString(45, height - 98, "Side-by-Side Study Guide: Production SKILL.md Specifications vs. 4th-Grader Mental Models")
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColor(colors.HexColor("#64748b"))
+    c.drawString(45, height - 116, "Learn how to architect, structure, and document agentic skills with rigorous engineering contracts and intuitive metaphors.")
 
-    # 3-Tier Summary Boxes
+    # 3-Tier Summary Boxes in Light Mode
     box_w = (width - 60 - 30) / 3
     box_h = 75
     tiers = [
-        ("TIER 0: CLOUD PRIMITIVES", "Skills #1 – #7", "Physical AWS hardware, DynamoDB CAS locks, S3 WORM vaults, Firecracker microVMs, and EventBridge buses.", "#059669", "#064e3b"),
-        ("TIER 1: AGENT OS KERNEL", "Skills #8 – #14", "Individual robot brain: Prefrontal propose-decide gates, DAG runbooks, mutex leases, context pagers, and fact detectives.", "#2563eb", "#1e3a8a"),
-        ("TIER 2: MULTI-AGENT SWARMS", "Skills #15 – #20", "Social clubhouse governance: Watts-Strogatz small worlds, liaison ambassadors, bounded hops, shared whiteboards & quorums.", "#7c3aed", "#4c1d95")
+        ("TIER 0: CLOUD PRIMITIVES", "Skills #1 – #7", "Physical AWS hardware, DynamoDB CAS locks, S3 WORM vaults, Firecracker microVMs, and EventBridge buses.", "#ecfdf5", "#059669", "#065f46"),
+        ("TIER 1: AGENT OS KERNEL", "Skills #8 – #14", "Individual robot brain: Prefrontal propose-decide gates, DAG runbooks, mutex leases, context pagers, and fact detectives.", "#eff6ff", "#2563eb", "#1e40af"),
+        ("TIER 2: MULTI-AGENT SWARMS", "Skills #15 – #20", "Social clubhouse governance: Watts-Strogatz small worlds, liaison ambassadors, bounded hops, shared whiteboards & quorums.", "#faf5ff", "#7c3aed", "#5b21b6")
     ]
-    for idx, (t_title, t_sub, t_desc, bg_color, border_color) in enumerate(tiers):
+    for idx, (t_title, t_sub, t_desc, bg_color, border_color, text_color) in enumerate(tiers):
         bx = 30 + idx * (box_w + 15)
-        by = height - 230
-        c.setFillColor(colors.HexColor(border_color))
-        c.setStrokeColor(colors.HexColor(bg_color))
+        by = height - 225
+        c.setFillColor(colors.HexColor(bg_color))
+        c.setStrokeColor(colors.HexColor(border_color))
         c.roundRect(bx, by, box_w, box_h, 8, stroke=1, fill=1)
 
-        c.setFillColor(colors.HexColor(bg_color))
+        c.setFillColor(colors.HexColor(text_color))
         c.setFont("Helvetica-Bold", 9.5)
         c.drawString(bx + 12, by + box_h - 18, t_title)
-        c.setFillColor(colors.HexColor("#f8fafc"))
+        c.setFillColor(colors.HexColor("#0f172a"))
         c.setFont("Helvetica-Bold", 8.5)
         c.drawString(bx + 12, by + box_h - 32, t_sub)
         
         c.setFont("Helvetica", 7.5)
-        c.setFillColor(colors.HexColor("#cbd5e1"))
+        c.setFillColor(colors.HexColor("#334155"))
         lines = wrap_text(c, t_desc, "Helvetica", 7.5, box_w - 24)
         ly = by + box_h - 46
         for l in lines:
             c.drawString(bx + 12, ly, l)
             ly -= 9.5
 
-    # ROSETTA STONE TRANSLATION TABLE (Side-by-Side Mental Model)
-    ty = height - 250
-    c.setFillColor(colors.HexColor("#1e293b"))
-    c.setStrokeColor(colors.HexColor("#334155"))
-    c.roundRect(30, 40, width - 60, ty - 40, 10, stroke=1, fill=1)
+    # ROSETTA STONE TRANSLATION TABLE (Light Mode)
+    ty = height - 245
+    c.setFillColor(colors.white)
+    c.setStrokeColor(colors.HexColor("#cbd5e1"))
+    c.roundRect(30, 36, width - 60, ty - 36, 10, stroke=1, fill=1)
 
-    c.setFillColor(colors.HexColor("#facc15"))
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 11)
     c.drawString(45, ty - 22, "THE SKILL AUTHORING ROSETTA STONE: HOW PLAYGROUND ANALOGIES MAP TO CODE")
 
     # Table Header
     th_y = ty - 42
-    c.setFillColor(colors.HexColor("#0f172a"))
+    c.setFillColor(colors.HexColor("#f1f5f9"))
     c.rect(42, th_y - 8, width - 84, 22, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#38bdf8"))
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 8)
     c.drawString(50, th_y + 4, "4TH-GRADER CARD COMPONENT")
     c.drawString(220, th_y + 4, "INTUITIVE PLAYGROUND METAPHOR")
@@ -706,34 +670,34 @@ def render_cover_page(c, width, height):
         ("Playground Recess Story", "Buzzy writes on paper with hands locked", "1. Purpose & Architectural Boundary", "Strict operational boundary; separation of concerns."),
         ("Toy Box Flowchart", "Idea Box -> Paper Blueprint -> Safe World", "2. Interface Contract (JSON Schema)", "Typed JSON schema validating inputs & returns."),
         ("The Golden Rule", "'Wait for the stick before your turn!'", "3. Core System Invariants", "Non-negotiable invariants (CAS locks, zero IAM write)."),
-        ("Page 21 Wire Connection", "Blue wire plugs down into Safe #3", "4. Execution Flow & Syscalls", "Deterministic state machine and downstream calls."),
+        ("Page 22 Wire Connection", "Blue wire plugs down into Safe #3", "4. Execution Flow & Syscalls", "Deterministic state machine and downstream calls."),
         ("Superpower", "Crushes hallucinations with 3 clues", "5. Failure Modes & Self-Healing", "SLAs, timeout caps, fallback rollback handlers.")
     ]
 
     ry = th_y - 24
     for r_idx, (r1, r2, r3, r4) in enumerate(rows):
         if r_idx % 2 == 1:
-            c.setFillColor(colors.HexColor("#162032"))
+            c.setFillColor(colors.HexColor("#f8fafc"))
             c.rect(42, ry - 6, width - 84, 18, stroke=0, fill=1)
         c.setFont("Helvetica-Bold", 7.5)
-        c.setFillColor(colors.HexColor("#f8fafc"))
+        c.setFillColor(colors.HexColor("#0f172a"))
         c.drawString(50, ry + 2, r1)
         c.setFont("Helvetica", 7.2)
-        c.setFillColor(colors.HexColor("#94a3b8"))
+        c.setFillColor(colors.HexColor("#475569"))
         c.drawString(220, ry + 2, r2)
         c.setFont("Courier-Bold", 7.2)
-        c.setFillColor(colors.HexColor("#38bdf8"))
+        c.setFillColor(colors.HexColor("#0284c7"))
         c.drawString(420, ry + 2, r3)
         c.setFont("Helvetica", 7.2)
-        c.setFillColor(colors.HexColor("#cbd5e1"))
+        c.setFillColor(colors.HexColor("#334155"))
         c.drawString(610, ry + 2, r4)
         ry -= 20
 
     # Footer note
     c.setFillColor(colors.HexColor("#64748b"))
     c.setFont("Helvetica", 8)
-    c.drawString(45, 20, "Generated by Antigravity AI Engineering • 20 Skills Side-by-Side Study Guide")
-    c.drawRightString(width - 45, 20, "Page 1 of 22 • Methodology & Rosetta Stone")
+    c.drawString(45, 18, "Generated by Antigravity AI Engineering • 20 Skills Side-by-Side Study Guide (Light Mode)")
+    c.drawRightString(width - 45, 18, "Page 1 of 22 • Methodology & Rosetta Stone")
 
     c.showPage()
 
@@ -744,6 +708,10 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
     left_x = 20
     right_x = 404
     col_y = 28
+
+    # Background of entire page: crisp light canvas
+    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.rect(0, 0, width, height, stroke=0, fill=1)
 
     # 1. TOP HEADER BAR (height 50)
     c.setFillColor(tier_color)
@@ -772,11 +740,11 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
     # 2. FOOTER
     c.setFillColor(colors.HexColor("#64748b"))
     c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(20, 14, "THE 3-TIER ENTERPRISE AGENT STACK — SIDE-BY-SIDE ARCHITECTURAL STUDY GUIDE")
+    c.drawString(20, 14, "THE 3-TIER ENTERPRISE AGENT STACK — SIDE-BY-SIDE ARCHITECTURAL STUDY GUIDE (LIGHT MODE)")
     c.drawRightString(width - 20, 14, f"Skill #{k_skill['page']} of 20 | Page {page_num} of 22")
 
-    # 3. LEFT COLUMN: 4TH-GRADER PLAYGROUND MENTAL MODEL
-    c.setFillColor(colors.HexColor("#f8fafc"))
+    # 3. LEFT COLUMN: 4TH-GRADER PLAYGROUND MENTAL MODEL (CLEAN WHITE CARD)
+    c.setFillColor(colors.white)
     c.setStrokeColor(colors.HexColor("#cbd5e1"))
     c.roundRect(left_x, col_y, col_w, col_h, 8, stroke=1, fill=1)
 
@@ -821,11 +789,10 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
 
     # Visual Workflow Diagram Box
     dy_box = sy - 8
-    c.setFillColor(colors.HexColor("#f1f5f9"))
-    c.setStrokeColor(colors.HexColor("#cbd5e1"))
+    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.setStrokeColor(colors.HexColor("#e2e8f0"))
     c.roundRect(left_x + 12, dy_box - 54, col_w - 24, 56, 6, stroke=1, fill=1)
 
-    # 3 mini steps in diagram
     step_w = 92
     step_h = 36
     c.setFillColor(colors.HexColor("#fef3c7"))
@@ -890,51 +857,52 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
     c.setFont("Helvetica-Oblique", 7.8)
     c.drawString(left_x + 20, gy - 39, f"\"{k_skill['kid_rule'][:65]}\"")
 
-    # 4. RIGHT COLUMN: PRODUCTION SKILL.MD SPECIFICATION
-    c.setFillColor(colors.HexColor("#0f172a")) # Slate-900 dark background
-    c.setStrokeColor(colors.HexColor("#334155"))
+    # 4. RIGHT COLUMN: PRODUCTION SKILL.MD SPECIFICATION (LIGHT MODE WHITE CARD)
+    c.setFillColor(colors.white)
+    c.setStrokeColor(colors.HexColor("#cbd5e1"))
     c.roundRect(right_x, col_y, col_w, col_h, 8, stroke=1, fill=1)
 
-    # Right Header
-    c.setFillColor(colors.HexColor("#1e293b"))
+    # Right Header (Light Cyan/Sky)
+    c.setFillColor(colors.HexColor("#f0f9ff"))
     c.roundRect(right_x + 6, col_y + col_h - 32, col_w - 12, 26, 6, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#38bdf8"))
+    c.setFillColor(colors.HexColor("#0369a1"))
     c.setFont("Helvetica-Bold", 9)
     c.drawString(right_x + 14, col_y + col_h - 22, "PRODUCTION SKILL.MD SPECIFICATION (ENGINEERING CONTRACT)")
 
-    # YAML Frontmatter Box
-    c.setFillColor(colors.HexColor("#020617"))
-    c.setStrokeColor(colors.HexColor("#1e293b"))
+    # YAML Frontmatter Box (GitHub Light / VS Code Light theme)
+    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.setStrokeColor(colors.HexColor("#e2e8f0"))
     c.roundRect(right_x + 12, col_y + col_h - 130, col_w - 24, 92, 6, stroke=1, fill=1)
 
     c.setFont("Courier-Bold", 7)
-    c.setFillColor(colors.HexColor("#94a3b8"))
+    c.setFillColor(colors.HexColor("#64748b"))
     c.drawString(right_x + 20, col_y + col_h - 46, "---")
 
     yy = col_y + col_h - 56
     for key, val in p_detail["yaml"][:6]:
         c.setFont("Courier-Bold", 6.8)
-        c.setFillColor(colors.HexColor("#f43f5e")) # Pink key
+        c.setFillColor(colors.HexColor("#be123c")) # Crimson key
         c.drawString(right_x + 20, yy, key)
-        c.setFillColor(colors.HexColor("#38bdf8")) # Blue val
+        c.setFillColor(colors.HexColor("#0369a1")) # Sky blue value
         c.setFont("Courier", 6.8)
         kw = c.stringWidth(key, "Courier-Bold", 6.8)
+        # Wrap or display cleanly
         c.drawString(right_x + 20 + kw + 4, yy, val[:50])
         yy -= 9.5
     c.setFont("Courier-Bold", 7)
-    c.setFillColor(colors.HexColor("#94a3b8"))
+    c.setFillColor(colors.HexColor("#64748b"))
     c.drawString(right_x + 20, yy, "---")
 
-    # Specification Sections
+    # Specification Sections in Light Mode
     my = col_y + col_h - 142
 
     # 1. Purpose & Axiom
-    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 8.2)
     c.drawString(right_x + 14, my, "1. Purpose & Architectural Boundary")
     my -= 10
     c.setFont("Helvetica", 7.2)
-    c.setFillColor(colors.HexColor("#cbd5e1"))
+    c.setFillColor(colors.HexColor("#334155"))
     ax_lines = wrap_text(c, p_detail["axiom"], "Helvetica", 7.2, col_w - 28)
     for al in ax_lines[:2]:
         c.drawString(right_x + 14, my, al)
@@ -942,36 +910,36 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
     my -= 4
 
     # 2. Invariants
-    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 8.2)
     c.drawString(right_x + 14, my, "2. Core System Invariants (Non-Negotiable)")
     my -= 10
     c.setFont("Helvetica", 7)
-    c.setFillColor(colors.HexColor("#94a3b8"))
+    c.setFillColor(colors.HexColor("#1e293b"))
     for inv in p_detail["invariants"][:3]:
         c.drawString(right_x + 14, my, inv[:75])
         my -= 9.5
     my -= 4
 
     # 3. Execution Pipeline
-    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 8.2)
     c.drawString(right_x + 14, my, "3. Execution Protocol & Syscalls")
     my -= 10
     c.setFont("Helvetica", 7)
-    c.setFillColor(colors.HexColor("#cbd5e1"))
+    c.setFillColor(colors.HexColor("#334155"))
     for stp in p_detail["pipeline"][:4]:
         c.drawString(right_x + 14, my, stp[:75])
         my -= 9.5
     my -= 4
 
-    # 4. Failure Modes
-    c.setFillColor(colors.HexColor("#f8fafc"))
+    # 4. Failure Modes (Soft Rose Alert Container)
+    c.setFillColor(colors.HexColor("#0f172a"))
     c.setFont("Helvetica-Bold", 8.2)
     c.drawString(right_x + 14, my, "4. Failure Modes & Self-Healing")
     my -= 10
     c.setFont("Helvetica", 7)
-    c.setFillColor(colors.HexColor("#fca5a5")) # Soft red/amber
+    c.setFillColor(colors.HexColor("#b91c1c")) # Crimson for errors
     for fl in p_detail["failures"][:2]:
         c.drawString(right_x + 14, my, fl[:75])
         my -= 9.5
@@ -979,14 +947,18 @@ def render_side_by_side_page(c, width, height, k_skill, p_skill, p_detail, page_
     c.showPage()
 
 def render_blueprint_page(c, width, height):
-    # Dark header for Master Blueprint page
-    c.setFillColor(colors.HexColor("#0f172a"))
+    # Pure clean light background
+    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.rect(0, 0, width, height, stroke=0, fill=1)
+
+    # Top header bar (Light Mode purple theme)
+    c.setFillColor(colors.HexColor("#7c3aed"))
     c.rect(0, height - 52, width, 52, stroke=0, fill=1)
 
     # Badge
-    c.setFillColor(colors.HexColor("#7c3aed"))
-    c.roundRect(24, height - 42, 60, 30, 6, stroke=0, fill=1)
     c.setFillColor(colors.white)
+    c.roundRect(24, height - 42, 60, 30, 6, stroke=0, fill=1)
+    c.setFillColor(colors.HexColor("#7c3aed"))
     c.setFont("Helvetica-Bold", 10)
     c.drawCentredString(54, height - 32, "MAP")
 
@@ -1000,11 +972,11 @@ def render_blueprint_page(c, width, height):
     c.setFont("Helvetica", 8)
     c.drawRightString(width - 24, height - 40, "Summary Page • Page 22 of 22")
 
-    # Subtitle banner
-    c.setFillColor(colors.HexColor("#1e293b"))
+    # Subtitle banner (clean light slate)
+    c.setFillColor(colors.HexColor("#f1f5f9"))
     c.rect(0, height - 76, width, 24, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#cbd5e1"))
-    c.setFont("Helvetica", 8)
+    c.setFillColor(colors.HexColor("#334155"))
+    c.setFont("Helvetica-Bold", 8)
     sub = "Look at the colorful wires! Purple wires connect Playground Swarms (#15-20) to Robot Brains (#8-14). Blue wires connect Robot Brains down to Ground-Floor Cloud Safes (#1-7)!"
     c.drawCentredString(width / 2, height - 68, sub)
 
@@ -1019,7 +991,7 @@ def render_blueprint_page(c, width, height):
     # Footer
     c.setFillColor(colors.HexColor("#64748b"))
     c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(20, 10, "THE 3-TIER ENTERPRISE AGENT STACK — 20 SKILLS COMPLETE DEPENDENCY BLUEPRINT")
+    c.drawString(20, 10, "THE 3-TIER ENTERPRISE AGENT STACK — 20 SKILLS COMPLETE DEPENDENCY BLUEPRINT (LIGHT MODE)")
     c.drawRightString(width - 20, 10, "Page 22 of 22 (Final Master Map)")
     c.showPage()
 
@@ -1027,10 +999,10 @@ def build_pdf():
     c = canvas.Canvas(PDF_OUTPUT, pagesize=landscape(letter))
     width, height = landscape(letter) # 792 x 612
 
-    print("Building Page 1: Cover & Methodology Rosetta Stone...")
+    print("Building Page 1: Cover & Methodology Rosetta Stone (Light Mode)...")
     render_cover_page(c, width, height)
 
-    print("Building Pages 2 to 21: 20 Side-by-Side Skill Pages...")
+    print("Building Pages 2 to 21: 20 Side-by-Side Skill Pages (Light Mode)...")
     for idx in range(20):
         k_s = KID_SKILLS[idx]
         p_s = PROD_SKILLS[idx]
@@ -1039,11 +1011,11 @@ def build_pdf():
         print(f"  Rendering Skill #{idx+1:02d}: {k_s['id']} (Page {page_num}/22)...")
         render_side_by_side_page(c, width, height, k_s, p_s, p_d, page_num)
 
-    print("Building Page 22: Master Blueprint Landscape...")
+    print("Building Page 22: Master Blueprint Landscape (Light Mode)...")
     render_blueprint_page(c, width, height)
 
     c.save()
-    print(f"Successfully generated {PDF_OUTPUT}!")
+    print(f"Successfully generated {PDF_OUTPUT} in Light Mode!")
 
 if __name__ == "__main__":
     build_pdf()
