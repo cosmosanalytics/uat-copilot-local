@@ -730,15 +730,25 @@
             <span>&uarr; Vetted individual kernel decisions propagate up to Multi-Agent Swarm Lattice &uarr;</span>
           </div>
 
-          <!-- TIER 2 CARD (Multi-Agent Swarm) -->
+          <!-- TIER 2 CARD (Multi-Agent Swarm with Embedded Watts-Strogatz Canvas) -->
           <div class="tier-stack-card tier-2-card" id="mCardTier2">
             <div class="tier-head-row">
               <div class="tier-title-badge">
                 <span class="pill-tier pill-t2">TIER 2</span>
-                <span>Watts-Strogatz Multi-Agent Swarm Coordination</span>
+                <span>Watts-Strogatz Multi-Agent Swarm Coordination (p=0.15 Small-World Lattice)</span>
               </div>
               <span class="service-status status-proc" id="statusBadgeT2">LATTICE ONLINE</span>
             </div>
+            
+            <!-- EMBEDDED TOPOLOGY VISUALIZER -->
+            <div style="background: #0f172a; border-radius: 8px; padding: 8px; margin-bottom: 10px; border: 1px solid var(--border-subtle);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.70rem; color:#94a3b8; font-family:var(--font-mono);">
+                <span>🕸️ SMALL-WORLD PROPAGATION (SHORTCUT BRIDGES &bull; PACKET PULSES)</span>
+                <span>Clustering: 0.68 &bull; Avg Path: 1.8 Hops</span>
+              </div>
+              <canvas id="matrixTopologyCanvas" width="860" height="200" style="width:100%; height:200px; display:block;"></canvas>
+            </div>
+
             <div class="tier-items-grid">
               <div class="tier-item-box" id="mBoxT2Liaison">
                 <div class="tier-item-title"><span>🌉 Liaison Router</span><span>EventBridge Bus</span></div>
@@ -1348,12 +1358,20 @@ print("Swarm state committed successfully!")
     let packetAnimationTimer = null;
 
     function drawTopologyCanvas(packetPos = 0) {
-      const canvas = document.getElementById('topologyCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      const canvases = [
+        document.getElementById('topologyCanvas'),
+        document.getElementById('matrixTopologyCanvas')
+      ].filter(Boolean);
+
+      canvases.forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        const isMini = canvas.id === 'matrixTopologyCanvas';
+        const scaleX = isMini ? (w / 900) : 1;
+        const scaleY = isMini ? (h / 340) : 1;
 
       const nodes = [
         // Finance Pod (Purple)
@@ -1391,8 +1409,8 @@ print("Swarm state committed successfully!")
         const isBridge = !!e[2];
 
         ctx.beginPath();
-        ctx.moveTo(n1.x, n1.y);
-        ctx.lineTo(n2.x, n2.y);
+        ctx.moveTo(n1.x * scaleX, n1.y * scaleY);
+        ctx.lineTo(n2.x * scaleX, n2.y * scaleY);
         ctx.lineWidth = isBridge ? 2.5 : 1.2;
         ctx.strokeStyle = isBridge ? '#f59e0b' : 'rgba(148, 163, 184, 0.35)';
         if (isBridge) ctx.setLineDash([5, 3]); else ctx.setLineDash([]);
@@ -1400,8 +1418,8 @@ print("Swarm state committed successfully!")
 
         // Animate packets traversing shortcut bridges if packetPos > 0
         if (isBridge && packetPos > 0) {
-          const px = n1.x + (n2.x - n1.x) * packetPos;
-          const py = n1.y + (n2.y - n1.y) * packetPos;
+          const px = (n1.x + (n2.x - n1.x) * packetPos) * scaleX;
+          const py = (n1.y + (n2.y - n1.y) * packetPos) * scaleY;
           ctx.save();
           ctx.beginPath();
           ctx.arc(px, py, 5.5, 0, Math.PI * 2);
@@ -1415,20 +1433,25 @@ print("Swarm state committed successfully!")
       ctx.setLineDash([]);
 
       // Draw Nodes
-      nodes.forEach(n => {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.isLiaison ? 18 : 14, 0, Math.PI * 2);
-        ctx.fillStyle = n.color;
-        ctx.fill();
-        ctx.lineWidth = n.isLiaison ? 3 : 1.5;
-        ctx.strokeStyle = n.isLiaison ? '#f59e0b' : '#ffffff';
-        ctx.stroke();
+        nodes.forEach(rawN => {
+          const nx = rawN.x * scaleX;
+          const ny = rawN.y * scaleY;
+          const radius = (rawN.isLiaison ? 16 : 12) * (isMini ? 0.85 : 1);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 10px JetBrains Mono';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(n.label, n.x, n.y);
+          ctx.beginPath();
+          ctx.arc(nx, ny, radius, 0, Math.PI * 2);
+          ctx.fillStyle = rawN.color;
+          ctx.fill();
+          ctx.lineWidth = rawN.isLiaison ? 2.5 : 1.5;
+          ctx.strokeStyle = rawN.isLiaison ? '#f59e0b' : '#ffffff';
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = (isMini ? 'bold 8px' : 'bold 10px') + ' JetBrains Mono';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(rawN.label, nx, ny);
+        });
       });
     }
 
