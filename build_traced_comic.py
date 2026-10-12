@@ -1,23 +1,24 @@
 # -*- coding: utf-8 -*-
 """
 build_traced_comic.py
-Generates the comprehensive Downward-Traced Copy of the 3-Tier Enterprise Agent Stack Comic:
-For EACH skill in Tier 1 and Tier 2 (Skills #8 to #20), explicitly traces down all the way to Tier 0 AWS Cloud Primitives:
-- Tier 2 Swarm Lattice -> Tier 1 Kernel OS -> Tier 0 AWS Infrastructure
-- Tier 1 Kernel Controls -> Tier 0 AWS Infrastructure
+Builds the definitive Traced Copy of the 3-Tier Enterprise Agent Stack Comic Graphic Novel:
+- RETAINS ALL ORIGINAL PICTURES / CARTOONS (SVG vector illustrations in every single panel of every episode)
+- ADDS DOWNWARD TRACING TO TIER 0 AWS for all skills in Tier 1 (Skills #8-#14) and Tier 2 (Skills #15-#20)
+- Preserves full cover art, character dialogue, comic sound effects, and production invariants
 Outputs:
-1. `comic_book_traced_printable.html`
-2. `The_3_Tier_Enterprise_Agent_Stack_Traced_Comic_Story.pdf`
-3. `comic_book_traced_reader.html` (Responsive Mobile/Desktop Reader)
+1. `comic_book_traced_printable.html` (Complete graphic novel with all SVG cartoons + downward traces)
+2. `The_3_Tier_Enterprise_Agent_Stack_Traced_Comic_Story.pdf` (Compiled via headless Chrome)
+3. `comic_book_traced_reader.html` (Mobile and desktop responsive reader with chapter selection)
 """
 
 import os
 import sys
 import subprocess
 import base64
-import shutil
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+from build_complete_comic import generate_svg, illus_map, episodes
 
 # Read cover image as base64
 cover_img_path = r"c:\Users\richa\ai-engineering\comic_cover.jpg"
@@ -30,85 +31,6 @@ else:
 
 # Downward Traceability Specifications for Tier 1 and Tier 2 Skills
 TIER_DOWNWARD_TRACES = {
-    # TIER 0 FOUNDATION SPECIFICATIONS (Skills 1 to 7)
-    1: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Hardware Root of Trust: Model Isolation",
-        "path": "Ring 3 Proposal Space ➔ AWS Bedrock ➔ AWS Nitro Enclaves",
-        "steps": [
-            ("AWS Compute Engine", "AWS Bedrock Claude 3.5 Sonnet / Llama-3-70B running in isolated VPC tenants."),
-            ("Zero Mutation Guarantee", "IAM execution credentials strictly stripped from model invocation envelope."),
-            ("Hardware Protection", "Nitro Enclave cryptographically attests model output hash before kernel evaluation.")
-        ]
-    },
-    2: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Cryptographic Root of Trust: Hardware Attestation",
-        "path": "Hardware Enclave ➔ AWS AgentCore ➔ Nitro Attestation Document (PCR0)",
-        "steps": [
-            ("Nitro Hypervisor", "Dedicated CPU/RAM hardware partition isolated from host OS; zero shared memory."),
-            ("PCR0 Platform Registers", "Cryptographic measurement of kernel binary signed by AWS hardware certificate authority."),
-            ("Cedar Policy Engine", "Deterministic Cedar AST compiled directly inside Enclave memory; sub-millisecond evaluation.")
-        ]
-    },
-    3: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Immutable Compliance Storage: S3 WORM Vault",
-        "path": "Agent State Snapshot ➔ S3 Object Lock (Compliance Mode) ➔ AWS KMS",
-        "steps": [
-            ("Object Lock Compliance", "Strict WORM compliance: deletion or overwrite mathematically rejected even by AWS Root."),
-            ("Customer KMS CMK", "Envelope encryption via customer-managed KMS key alias/sop-audit-ledger with 90-day rotation."),
-            ("Audit Certification", "FINRA 17a-4 / SEC Rule compliant immutable log stream.")
-        ]
-    },
-    4: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Atomic State Engine: DynamoDB CAS Locks",
-        "path": "State Mutex ➔ Amazon DynamoDB Conditional PutItem ➔ Global Tables",
-        "steps": [
-            ("Conditional CAS Lock", "PutItem conditional expression: attribute_not_exists(lock_id) OR lease_expiry < :now."),
-            ("Automatic Lease TTL", "Hardware TTL thread reaps stale locks automatically after 15s node crash."),
-            ("Global Table Sync", "Multi-region active-active replication with vector timestamps and sub-second convergence.")
-        ]
-    },
-    5: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Ephemeral Compute: Lambda MicroVM Cgroups",
-        "path": "Task Execution ➔ AWS Lambda Firecracker MicroVM ➔ VPC PrivateLink",
-        "steps": [
-            ("Firecracker MicroVM", "Sub-5ms ephemeral container boot with dedicated Linux kernel and jailed cgroups."),
-            ("Memory / Clock Budget", "Hard wall-clock timeout (max 15.0s) and memory ceiling (2048MB) enforced by hypervisor."),
-            ("Zero Persistent State", "Ephemeral disk scrubbed upon container freeze; zero data leakage across invocations.")
-        ]
-    },
-    6: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Deterministic Orchestration: Step Functions Rail",
-        "path": "Mission SOP ➔ AWS Step Functions (Express Workflows) ➔ IAM Role Boundaries",
-        "steps": [
-            ("Unskippable State DAG", "State transition JSON graph enforced by AWS orchestration engine; zero step skipping."),
-            ("Heartbeat Watchdogs", "HeartbeatSeconds and TimeoutSeconds fire automated task retry or supervisor kill signal."),
-            ("IAM Service Boundaries", "State tasks assume tightly scoped task-specific IAM session tokens per execution.")
-        ]
-    },
-    7: {
-        "badge": "TIER 0 FOUNDATION PRIMITIVE",
-        "badge_bg": "#059669",
-        "title": "Decoupled Event Bus: Amazon EventBridge",
-        "path": "Swarm Signal ➔ Amazon EventBridge ➔ SQS Dead Letter Queue (DLQ)",
-        "steps": [
-            ("Event Pattern Matching", "Content-based filtering inspects event envelope headers before routing to workers."),
-            ("Audit Archive", "EventBridge Archive preserves full replayable event stream for forensic investigation."),
-            ("SQS DLQ Containment", "Poison pill or malformed payloads routed to quarantine DLQ; swarm protected from crash.")
-        ]
-    },
-
     # TIER 1 DOWNWARD TRACES (Skills 8 to 14 -> Tier 0 AWS)
     8: {
         "badge": "⬇️ DOWNWARD TRACE TO TIER 0 AWS",
@@ -308,14 +230,14 @@ body {
 }
 .page-title {
     font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 19px;
+    font-size: 18px;
     color: #0f172a;
     letter-spacing: 0.5px;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 .spec-sub {
     font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 10px;
+    font-size: 9.5px;
     color: #334155;
     font-weight: 700;
 }
@@ -342,7 +264,7 @@ body {
     border: 3px solid #0f172a;
     border-radius: 10px;
     background: #ffffff;
-    padding: 9px;
+    padding: 7px 9px;
     box-shadow: 3.5px 3.5px 0px #0f172a;
     display: flex;
     flex-direction: column;
@@ -350,25 +272,67 @@ body {
 }
 .panel-header {
     font-family: 'Impact', sans-serif;
-    font-size: 13px;
+    font-size: 12.5px;
     color: #0f172a;
     border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 3px;
-    margin-bottom: 5px;
+    padding-bottom: 2px;
+    margin-bottom: 3px;
 }
 .scene-desc {
-    font-size: 10.5px;
+    font-size: 9.5px;
     color: #475569;
     font-style: italic;
-    line-height: 1.35;
-    margin-bottom: 6px;
+    line-height: 1.25;
+    margin-bottom: 4px;
 }
+
+/* CARTOON PICTURE / ILLUSTRATION BOXES */
+.illus-box {
+    border: 2.5px solid #0f172a;
+    border-radius: 8px;
+    background: #f1f5f9;
+    overflow: hidden;
+    margin: 3px 0;
+    box-shadow: 2.5px 2.5px 0px rgba(15,23,42,0.15);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 310px;
+}
+.illus-box-traced {
+    border: 2.5px solid #0f172a;
+    border-radius: 8px;
+    background: #f1f5f9;
+    overflow: hidden;
+    margin: 2px 0;
+    box-shadow: 2px 2px 0px rgba(15,23,42,0.15);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 235px;
+}
+.illus-box-3col {
+    border: 2.5px solid #0f172a;
+    border-radius: 8px;
+    background: #f1f5f9;
+    overflow: hidden;
+    margin: 3px 0;
+    box-shadow: 2px 2px 0px rgba(15,23,42,0.15);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 290px;
+}
+
 .sfx-badge {
     font-family: 'Impact', sans-serif;
-    font-size: 13px;
-    padding: 2px 9px;
+    font-size: 12px;
+    padding: 2px 8px;
     border: 2px solid #0f172a;
-    border-radius: 6px;
+    border-radius: 5px;
     box-shadow: 2px 2px 0px #0f172a;
     display: inline-block;
     transform: rotate(-1deg);
@@ -376,13 +340,13 @@ body {
 }
 .speech-bubble {
     border: 2px solid #0f172a;
-    border-radius: 8px;
+    border-radius: 7px;
     background: #f8fafc;
-    padding: 6px 8px;
-    margin-top: 5px;
-    font-size: 10.5px;
-    line-height: 1.3;
-    box-shadow: 2px 2px 0px rgba(15, 23, 42, 0.15);
+    padding: 4px 7px;
+    margin-top: 3px;
+    font-size: 9.5px;
+    line-height: 1.25;
+    box-shadow: 2px 2px 0px rgba(15, 23, 42, 0.12);
 }
 .speech-bubble strong {
     color: #0f172a;
@@ -393,8 +357,8 @@ body {
     border: 2.5px solid #0f172a;
     border-radius: 9px;
     background: #ffffff;
-    padding: 7px 11px;
-    margin-top: 6px;
+    padding: 6px 10px;
+    margin-top: 5px;
     box-shadow: 3px 3px 0px #0f172a;
 }
 .trace-header-row {
@@ -402,11 +366,11 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1.5px solid #e2e8f0;
-    padding-bottom: 4px;
-    margin-bottom: 5px;
+    padding-bottom: 3px;
+    margin-bottom: 4px;
 }
 .trace-badge-tag {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 900;
     padding: 2px 7px;
     border-radius: 4px;
@@ -416,76 +380,76 @@ body {
 }
 .trace-path-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 700;
     color: #475569;
 }
 .trace-steps-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
+    gap: 7px;
 }
 .trace-step-pill {
     background: #f8fafc;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 5px 7px;
+    border-radius: 5px;
+    padding: 4px 6px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 .trace-step-title {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     color: #0f172a;
     font-family: 'Segoe UI', sans-serif;
 }
 .trace-step-desc {
-    font-size: 9px;
+    font-size: 8.5px;
     color: #334155;
-    line-height: 1.25;
+    line-height: 1.2;
     font-family: 'JetBrains Mono', monospace;
 }
 
 .rule-footer {
     border: 3px solid #0f172a;
-    border-radius: 10px;
+    border-radius: 9px;
     background: #1e293b;
     color: #ffffff;
-    padding: 7px 14px;
+    padding: 6px 12px;
     box-shadow: 3px 3px 0px #0f172a;
-    margin-top: 6px;
+    margin-top: 5px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 .rule-title {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 900;
     color: #f59e0b;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .rule-text {
-    font-size: 11px;
+    font-size: 10px;
     font-style: italic;
     color: #e2e8f0;
-    line-height: 1.3;
+    line-height: 1.25;
 }
 .superpower-tag {
     background: #0f172a;
     border: 2px solid #38bdf8;
     color: #38bdf8;
     font-weight: 800;
-    font-size: 10px;
-    padding: 3px 9px;
-    border-radius: 6px;
+    font-size: 9.5px;
+    padding: 3px 8px;
+    border-radius: 5px;
     white-space: nowrap;
 }
 .page-footer-num {
     text-align: center;
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 700;
     color: #64748b;
     margin-top: 2px;
@@ -493,8 +457,6 @@ body {
 """
 
 def generate_traced_comic():
-    from generate_comic_pdf import episodes
-
     pages_html = []
 
     # 1. COVER PAGE
@@ -502,12 +464,12 @@ def generate_traced_comic():
     <div class="page" style="background: #090d16; color: #ffffff; padding: 0.28in 0.36in; justify-content: space-between;">
         <div style="border: 3px solid #38bdf8; border-radius: 12px; background: #0f172a; padding: 10px 16px; box-shadow: 0 4px 20px rgba(56,189,248,0.25); display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <span style="background: #f59e0b; color: #000; font-weight: 900; font-size: 11px; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">ANTIGRAVITY COMIC SERIES • ISSUE #1 (TRACED EDITION)</span>
+                <span style="background: #f59e0b; color: #000; font-weight: 900; font-size: 11px; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">ANTIGRAVITY COMIC SERIES • ISSUE #1 (ORIGINAL WITH TRACING)</span>
                 <div style="font-family: 'Impact', sans-serif; font-size: 25px; color: #38bdf8; letter-spacing: 1px; margin-top: 3px;">THE 3-TIER ENTERPRISE AGENT STACK</div>
             </div>
             <div style="text-align: right;">
                 <div style="font-size: 10px; color: #94a3b8; font-weight: bold;">SPECIAL ARCHITECTURAL EDITION</div>
-                <div style="font-size: 11px; color: #10b981; font-weight: 900;">TIER 1 & 2 TRACED DOWN TO TIER 0 AWS</div>
+                <div style="font-size: 11px; color: #10b981; font-weight: 900;">ALL PICTURES + TIER 0 DOWNWARD TRACING</div>
             </div>
         </div>
 
@@ -517,7 +479,7 @@ def generate_traced_comic():
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div style="background: #1e293b; border: 2px solid #475569; border-radius: 10px; padding: 10px 14px;">
-                <div style="font-size: 11px; font-weight: 900; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px;">STARRING THE CITADEL CAST</div>
+                <div style="font-size: 11px; font-weight: 900; color: #38bdf8; text-transform: uppercase; margin-bottom: 4px;">STARRING THE CITADEL HEROES</div>
                 <div style="font-size: 10px; line-height: 1.45; color: #cbd5e1;">
                     • <strong>The Dreamer (Bedrock)</strong>: Savant architect with zero IAM write hands<br>
                     • <strong>Bouncer Cedar (AgentCore)</strong>: 2ms AST gatekeeper immune to injection<br>
@@ -531,7 +493,7 @@ def generate_traced_comic():
                     • <strong>Tier 0 Cloud Primitives</strong>: WORM vaults, MicroVMs, DynamoDB CAS locks<br>
                     • <strong>Tier 1 Agent OS Kernel</strong>: Cedar gates, DAGs, RAM pagers & hash chains<br>
                     • <strong>Tier 2 Swarm Coordination</strong>: Small-world routing, quorums & red cards<br>
-                    • <strong>100% Traceability</strong>: Every high-level swarm move maps to physical AWS hardware
+                    • <strong>100% Traceability</strong>: Every Tier 1 & 2 skill traces down to physical AWS hardware
                 </div>
             </div>
         </div>
@@ -543,7 +505,7 @@ def generate_traced_comic():
     """
     pages_html.append(cover_page)
 
-    # 2. EPISODES 1 TO 22
+    # 2. EPISODES 1 TO 22 (WITH FULL SVG PICTURES IN EVERY PANEL)
     for ep in episodes:
         p_num = ep["page_num"]
         tier_label = ep["tier"]
@@ -555,15 +517,25 @@ def generate_traced_comic():
         superpower = ep["superpower"]
         rule = ep["rule"]
 
-        # Comic Panels
-        panels_html = []
-        grid_class = "panel-grid-2" if layout == "2-col" else "panel-grid-3"
+        # Determine if this page has a downward trace section (Tier 1 & Tier 2: Skills 8 to 20, corresponding to p_num 9 to 21)
+        has_trace = (p_num in range(9, 22))
+        trace_data = TIER_DOWNWARD_TRACES.get(p_num - 1)
 
-        for p in ep["panels"]:
+        is_3col = (layout == "3-col")
+        grid_class = "panel-grid-2" if layout == "2-col" else "panel-grid-3"
+        illus_keys = illus_map.get(p_num, ["default", "default", "default"])
+
+        panels_html = []
+
+        for i, p in enumerate(ep["panels"]):
             p_head = p["head"]
             sfx_text, sfx_bg, sfx_col = p["sfx"]
             p_desc = p["desc"]
             
+            # Fetch SVG cartoon illustration
+            svg_kind = illus_keys[i] if i < len(illus_keys) else "default"
+            svg_markup = generate_svg(svg_kind, is_3col=is_3col)
+
             dialogue_html = ""
             for speaker, text in p["dialogue"]:
                 dialogue_html += f"""
@@ -572,16 +544,28 @@ def generate_traced_comic():
                 </div>
                 """
 
+            # Adjust box class based on whether page has a trace box below
+            if is_3col:
+                box_class = "illus-box-3col"
+            elif has_trace:
+                box_class = "illus-box-traced"
+            else:
+                box_class = "illus-box"
+
             panel_markup = f"""
             <div class="comic-panel">
                 <div>
                     <div class="panel-header">{p_head}</div>
                     <div class="scene-desc">{p_desc}</div>
-                    <div style="text-align: center; margin: 3px 0;">
-                        <span class="sfx-badge" style="background: {sfx_bg}; color: {sfx_col};">{sfx_text}</span>
-                    </div>
+                </div>
+                <!-- CARTOON PICTURE / SVG ILLUSTRATION -->
+                <div class="{box_class}">
+                    {svg_markup}
                 </div>
                 <div>
+                    <div style="text-align: center; margin: 2px 0;">
+                        <span class="sfx-badge" style="background: {sfx_bg}; color: {sfx_col};">{sfx_text}</span>
+                    </div>
                     {dialogue_html}
                 </div>
             </div>
@@ -590,11 +574,9 @@ def generate_traced_comic():
 
         panels_combined = "".join(panels_html)
 
-        # Downward Traceability Section
-        trace_data = TIER_DOWNWARD_TRACES.get(p_num - 1) # Skills 1 to 20 correspond to p_num 2 to 21
+        # Downward Traceability Section (for Tier 1 & Tier 2 skills)
         trace_markup = ""
-
-        if trace_data:
+        if has_trace and trace_data:
             steps_html = ""
             for step_title, step_desc in trace_data["steps"]:
                 steps_html += f"""
@@ -615,52 +597,6 @@ def generate_traced_comic():
                 </div>
             </div>
             """
-        elif p_num == 1:
-            trace_markup = """
-            <div class="trace-card-box">
-                <div class="trace-header-row">
-                    <span class="trace-badge-tag" style="background: #eab308;">THE ROSETTA STONE PRINCIPLE</span>
-                    <span class="trace-path-label">Tier 2 Swarm Lattice ➔ Tier 1 Agent Kernel OS ➔ Tier 0 Cloud Safes</span>
-                </div>
-                <div class="trace-steps-container">
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Tier 2: Multi-Agent Swarms</div>
-                        <div class="trace-step-desc">Small-world topology, cross-pod liaison channels, O(N) whiteboards, Byzantine quorum.</div>
-                    </div>
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Tier 1: Individual Agent Kernel</div>
-                        <div class="trace-step-desc">Ring 0 Cedar deterministic gate, 15s supervisor watchdogs, context paging, hash chain.</div>
-                    </div>
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Tier 0: Cloud Primitives</div>
-                        <div class="trace-step-desc">DynamoDB CAS mutex locks, S3 WORM vaults, Nitro Enclaves, KMS key attestation.</div>
-                    </div>
-                </div>
-            </div>
-            """
-        elif p_num == 22:
-            trace_markup = """
-            <div class="trace-card-box">
-                <div class="trace-header-row">
-                    <span class="trace-badge-tag" style="background: #eab308;">MASTER ARCHITECTURAL TRACEABILITY COMPLETE</span>
-                    <span class="trace-path-label">20 Skills Fully Grounded in AWS Physical Infrastructure</span>
-                </div>
-                <div class="trace-steps-container">
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Swarm Resilience Guarantee</div>
-                        <div class="trace-step-desc">Zero cascade crashes; circuit breaker benches faulty nodes in <50ms.</div>
-                    </div>
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Deterministic Kernel Gate</div>
-                        <div class="trace-step-desc">Cedar evaluates AST rules in <1ms; unvetted mutations rejected at OS level.</div>
-                    </div>
-                    <div class="trace-step-pill">
-                        <div class="trace-step-title">Physical Cloud Immutability</div>
-                        <div class="trace-step-desc">DynamoDB CAS prevents race conditions; S3 Object Lock enforces 7-year WORM compliance.</div>
-                    </div>
-                </div>
-            </div>
-            """
 
         page_markup = f"""
         <div class="page">
@@ -672,18 +608,18 @@ def generate_traced_comic():
                 </div>
                 <div style="text-align: right;">
                     <div class="spec-sub">{spec}</div>
-                    <div style="font-size: 9.5px; font-weight: 800; color: #0f172a; margin-top: 2px;">PAGE {p_num} OF 22 • TRACED COPY</div>
+                    <div style="font-size: 9px; font-weight: 800; color: #0f172a; margin-top: 1px;">PAGE {p_num} OF 22 • TRACED COPY</div>
                 </div>
             </div>
 
-            <!-- Comic Panels -->
+            <!-- Comic Panels with Full Cartoon Pictures -->
             <div class="panels-container">
                 <div class="{grid_class}">
                     {panels_combined}
                 </div>
             </div>
 
-            <!-- Downward Traceability to Tier 0 Section -->
+            <!-- Downward Traceability to Tier 0 Section (for Tier 1 & 2 skills) -->
             {trace_markup}
 
             <!-- Rule / Superpower Footer -->
@@ -698,7 +634,7 @@ def generate_traced_comic():
             </div>
 
             <div class="page-footer-num">
-                The 3-Tier Enterprise Agent Stack (Traced Copy) • Graphic Novel Episode {p_num} • Antigravity AI Engineering
+                The 3-Tier Enterprise Agent Stack (Traced Copy with Pictures) • Graphic Novel Episode {p_num} • Antigravity AI Engineering
             </div>
         </div>
         """
@@ -708,7 +644,7 @@ def generate_traced_comic():
 <html>
 <head>
     <meta charset="utf-8">
-    <title>The 3-Tier Enterprise Agent Stack - Downward Traced Comic Copy</title>
+    <title>The 3-Tier Enterprise Agent Stack - Traced Comic Copy with Pictures</title>
     <style>
 {css}
     </style>
@@ -719,13 +655,13 @@ def generate_traced_comic():
 </html>
 """
 
-    # 3. Write Printable HTML
+    # Write Printable HTML
     out_printable_html = "comic_book_traced_printable.html"
     with open(out_printable_html, "w", encoding="utf-8") as f:
         f.write(all_content)
-    print(f"Generated {out_printable_html} ({len(all_content)} bytes)")
+    print(f"Generated {out_printable_html} with ALL CARTOONS ({len(all_content)} bytes)")
 
-    # 4. Generate PDF via Edge / Chrome Headless
+    # Compile PDF via Chrome / Edge Headless
     out_pdf = "The_3_Tier_Enterprise_Agent_Stack_Traced_Comic_Story.pdf"
     chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
     if not os.path.exists(chrome_path):
@@ -741,14 +677,14 @@ def generate_traced_comic():
         f"--print-to-pdf={os.path.abspath(out_pdf)}",
         f"file:///{abs_html}"
     ]
-    print(f"Compiling PDF via {chrome_path}...")
+    print(f"Compiling PDF with pictures & tracing via {chrome_path}...")
     subprocess.run(cmd, capture_output=True, text=True)
     if os.path.exists(out_pdf):
-        print(f"SUCCESS: Generated PDF at {out_pdf} ({os.path.getsize(out_pdf)/(1024*1024):.2f} MB)")
+        print(f"SUCCESS: Generated Traced PDF with PICTURES at {out_pdf} ({os.path.getsize(out_pdf)/(1024*1024):.2f} MB)")
     else:
-        print("WARNING: PDF generation failed, check browser path.")
+        print("WARNING: PDF generation failed.")
 
-    # 5. Create Responsive Web Reader for GitHub Pages
+    # Create Responsive Web Reader
     generate_traced_reader(all_content, out_pdf)
 
 def generate_traced_reader(source_html, pdf_filename):
@@ -777,6 +713,9 @@ def generate_traced_reader(source_html, pdf_filename):
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
+  }
+  .illus-box, .illus-box-traced, .illus-box-3col {
+    height: 260px !important;
   }
   .trace-steps-container {
     grid-template-columns: 1fr !important;
@@ -841,7 +780,7 @@ def generate_traced_reader(source_html, pdf_filename):
 
     nav_bar = f"""
 <div class="comic-nav-bar">
-  <div class="comic-nav-title">⬇️ THE 3-TIER AGENT STACK COMIC (TRACED COPY)</div>
+  <div class="comic-nav-title">🎨 THE 3-TIER AGENT STACK COMIC (PICTURES + TRACING)</div>
   <div class="comic-nav-actions">
     <select class="comic-nav-select" onchange="jumpToEpisode(this.value)">
       <option value="0">📖 Cover: Wild West vs Citadel</option>
