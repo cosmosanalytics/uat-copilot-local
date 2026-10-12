@@ -1,0 +1,1759 @@
+# -*- coding: utf-8 -*-
+"""
+build_network_app.py
+Builds the standalone single-file Multi-Agent Logistics, Production & Raw Material
+Hub & Spoke Network Optimization web application:
+network_optimization_multi_agent_app.html
+"""
+
+import sys
+
+def build():
+    with open("network_optimization_multi_agent_app.html", "w", encoding="utf-8") as f:
+        f.write('''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent Hub & Spoke Network Optimization • Logistics, Production & Raw Materials</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root {
+    --bg: #F5F2EA;
+    --panel: #FFFFFF;
+    --panel-subtle: #FAF8F3;
+    --ink: #211F1A;
+    --ink-soft: #6B6558;
+    --ink-faint: #9E9685;
+    --line: #D6CFBE;
+    --line-strong: #B9AF98;
+
+    --green: #1F7A4D;
+    --green-bg: #EAF4EE;
+    --green-border: #A3D4BA;
+
+    --cyan: #1E5C8C;
+    --cyan-bg: #E9F1F7;
+    --cyan-border: #9BC2E0;
+
+    --amber: #A9660B;
+    --amber-bg: #FBF0DC;
+    --amber-border: #E8C88B;
+
+    --red: #A32B2B;
+    --red-bg: #FBE7E7;
+    --red-border: #E89E9E;
+
+    --purple: #6B3BA6;
+    --purple-bg: #F3EDFB;
+    --purple-border: #C8ACEC;
+
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+
+    --shadow-sm: 0 1px 2px rgba(33, 31, 26, 0.06);
+    --shadow-md: 0 4px 10px rgba(33, 31, 26, 0.08);
+  }
+
+  [data-theme="dark"] {
+    --bg: #121417;
+    --panel: #1A1D24;
+    --panel-subtle: #232730;
+    --ink: #ECE8DE;
+    --ink-soft: #A39D90;
+    --ink-faint: #6B6558;
+    --line: #2D3340;
+    --line-strong: #454E60;
+
+    --green: #48B87E;
+    --green-bg: rgba(31, 122, 77, 0.2);
+    --green-border: #2D6B49;
+
+    --cyan: #4A96D1;
+    --cyan-bg: rgba(30, 92, 140, 0.2);
+    --cyan-border: #2A5A82;
+
+    --amber: #E09B36;
+    --amber-bg: rgba(169, 102, 11, 0.2);
+    --amber-border: #7A4B0A;
+
+    --red: #E06060;
+    --red-bg: rgba(163, 43, 43, 0.2);
+    --red-border: #782323;
+
+    --purple: #A578E2;
+    --purple-bg: rgba(107, 59, 166, 0.2);
+    --purple-border: #512784;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+  body {
+    background-image:
+      repeating-linear-gradient(0deg, rgba(33,31,26,0.04) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, rgba(33,31,26,0.04) 0 1px, transparent 1px 28px);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* TOP HEADER BLOCK */
+  header.titleblock {
+    background: var(--panel);
+    border-bottom: 2px solid var(--ink);
+    padding: 20px 24px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .title-content { flex: 1; min-width: 320px; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--cyan);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .subtitle {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.45;
+  }
+
+  /* AI ENGINE CONTROLS */
+  .engine-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .engine-switch {
+    display: flex;
+    background: var(--panel-subtle);
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .engine-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 12px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--line-strong);
+    cursor: pointer;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .engine-btn:last-child { border-right: none; }
+  .engine-btn:hover { color: var(--ink); }
+  .engine-btn.active {
+    background: var(--cyan);
+    color: #ffffff;
+    font-weight: 600;
+  }
+  .api-key-input {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 7px 10px;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--ink);
+    border-radius: 4px;
+    width: 170px;
+  }
+  .btn-theme {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 12px;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-theme:hover { background: var(--panel-subtle); }
+
+  /* MAIN WRAPPER */
+  .wrap {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 16px 24px 60px;
+    flex: 1;
+  }
+
+  /* MULTI-AGENT SWARM BANNER */
+  .swarm-strip {
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .agent-card {
+    background: var(--panel-subtle);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--cyan);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .agent-card.procure { border-left-color: var(--amber); }
+  .agent-card.produce { border-left-color: var(--green); }
+  .agent-card.routing { border-left-color: var(--cyan); }
+  .agent-card.batch { border-left-color: var(--purple); }
+  .agent-card.arbiter { border-left-color: var(--ink); }
+
+  .agent-card .ag-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+  }
+  .agent-card .ag-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .agent-card .ag-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--green-bg);
+    color: var(--green);
+    font-weight: 600;
+  }
+  .agent-card .ag-status.warn {
+    background: var(--amber-bg);
+    color: var(--amber);
+  }
+  .agent-card .ag-desc {
+    font-size: 11px;
+    color: var(--ink-soft);
+    line-height: 1.35;
+  }
+
+  /* TAB BAR */
+  .tabbar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tabbar button {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 11px 18px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    margin-bottom: -2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .tabbar button:hover { color: var(--ink); }
+  .tabbar button.active {
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom-color: var(--cyan);
+  }
+
+  .tabpage { display: none; }
+  .tabpage.active { display: block; }
+
+  /* PANELS */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    margin-bottom: 20px;
+    position: relative;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 5px; left: 5px; right: 5px; bottom: 5px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+    border-radius: 4px;
+  }
+  .panel-head {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .panel-head .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .panel-head h2 {
+    font-size: 16px;
+    margin-top: 2px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-body { padding: 18px 20px 22px; }
+
+  /* SCENARIO TOGGLE BUTTONS */
+  .design-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .design-btn {
+    flex: 1;
+    min-width: 240px;
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1.5px solid var(--line-strong);
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .design-btn:hover {
+    border-color: var(--cyan);
+    background: var(--panel-subtle);
+  }
+  .design-btn.active {
+    background: var(--cyan-bg);
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 1px var(--cyan);
+  }
+  .design-btn.winner {
+    border-color: var(--green);
+  }
+  .design-btn.winner.active {
+    background: var(--green-bg);
+    border-color: var(--green);
+    box-shadow: 0 0 0 1px var(--green);
+  }
+
+  .design-btn .db-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .design-btn .db-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+  }
+  .design-btn.winner .db-badge {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+  }
+  .design-btn .db-cost {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 2px 0;
+  }
+  .design-btn .db-desc {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.35;
+  }
+
+  /* SCORECARDS */
+  .scorecards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .scorecard {
+    border: 1px solid var(--line-strong);
+    background: var(--panel-subtle);
+    padding: 12px 14px;
+    border-radius: 4px;
+  }
+  .scorecard .sc-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .scorecard .sc-total {
+    font-size: 21px;
+    font-weight: 700;
+    margin: 4px 0;
+    font-family: var(--mono);
+  }
+  .scorecard .sc-delta {
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  .scorecard .sc-delta.good { color: var(--green); }
+  .scorecard .sc-delta.bad { color: var(--red); }
+  .scorecard .sc-delta.flat { color: var(--ink-soft); }
+
+  /* CALLOUTS */
+  .callout {
+    margin-top: 14px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    border-left: 3px solid var(--line-strong);
+    background: var(--panel-subtle);
+    line-height: 1.6;
+    border-radius: 0 4px 4px 0;
+  }
+  .callout.ok { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+  .callout.warn { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+  .callout.check { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-bg); }
+
+  /* GRAPH CONTAINER */
+  #graph-wrap {
+    width: 100%;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    position: relative;
+    background: var(--panel-subtle);
+  }
+  svg#graph {
+    width: 100%;
+    height: 560px;
+    display: block;
+    cursor: grab;
+  }
+  svg#graph:active { cursor: grabbing; }
+
+  .graph-overlay-tools {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+  }
+  .tool-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .tool-btn:hover { background: var(--panel-subtle); }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    align-items: center;
+  }
+  .legend .swatch {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    border: 1.5px solid var(--ink);
+  }
+
+  /* TABLES */
+  table.dt {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 12px 0 4px;
+  }
+  table.dt caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    caption-side: top;
+    text-transform: uppercase;
+  }
+  table.dt th, table.dt td {
+    border-bottom: 1px solid var(--line);
+    padding: 7px 10px;
+    text-align: right;
+    font-family: var(--mono);
+  }
+  table.dt th:first-child, table.dt td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 500;
+  }
+  table.dt th {
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 11.5px;
+    background: var(--panel-subtle);
+  }
+  table.dt tr.active-row td {
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  /* SLIDER CONTROLS FOR BATCHING & FREIGHT */
+  .control-slider-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    background: var(--panel-subtle);
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .slider-unit {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .slider-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .slider-head span:last-child {
+    font-family: var(--mono);
+    color: var(--cyan);
+  }
+  .slider-input {
+    width: 100%;
+    accent-color: var(--cyan);
+  }
+
+  /* MULTI-AGENT SWARM NEGOTIATION CHAT */
+  .swarm-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--panel-subtle);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px;
+    max-height: 480px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+  .chat-msg.procure { border-left: 3px solid var(--amber); }
+  .chat-msg.produce { border-left: 3px solid var(--green); }
+  .chat-msg.routing { border-left: 3px solid var(--cyan); }
+  .chat-msg.batch { border-left: 3px solid var(--purple); }
+  .chat-msg.arbiter { border-left: 3px solid var(--ink); background: var(--green-bg); border-color: var(--green-border); }
+
+  .msg-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .msg-text { line-height: 1.45; }
+
+  /* TOAST NOTIFICATION */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: var(--mono);
+    box-shadow: var(--shadow-md);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1000;
+  }
+  #toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  @media (max-width: 768px) {
+    header.titleblock h1 { font-size: 18px; }
+    svg#graph { height: 460px; }
+    .tabbar button { padding: 9px 12px; font-size: 12px; }
+  }
+</style>
+
+<!-- In-Browser WebGPU WebLLM Module -->
+<script type="module">
+  import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.78";
+  window.webllm = webllm;
+  window.dispatchEvent(new Event('webllm-ready'));
+</script>
+</head>
+<body>
+
+<!-- HEADER BLOCK -->
+<header class="titleblock">
+  <div class="header-inner">
+    <div class="title-content">
+      <div class="kicker">MULTI-AGENT NETWORK OPTIMIZATION • FORCE-DIRECTED • SAP &amp; S&amp;OP GROUNDED</div>
+      <h1><span>🚚</span> Should you ship Point-to-Point, or build a Hub &amp; Spoke Network?</h1>
+      <p class="subtitle">
+        5 autonomous agents (Procurement, Production, Logistics, Batching, Financial Arbiter) dynamically optimize landed costs across raw materials, plants, and regional customers.
+      </p>
+    </div>
+
+    <div class="engine-controls">
+      <div class="engine-switch">
+        <button class="engine-btn active" id="btnGroq" onclick="setEngine('groq')">⚡ Groq LPU</button>
+        <button class="engine-btn" id="btnWebGpu" onclick="setEngine('webgpu')">🎮 WebGPU</button>
+        <button class="engine-btn" id="btnSim" onclick="setEngine('sim')">🚀 Simulator</button>
+      </div>
+      <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Groq API Key (gsk_...)" onchange="saveKey()">
+      <button class="btn-theme" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- MULTI-AGENT SWARM ACTIVE STATE STRIP -->
+  <div class="swarm-strip" id="agentStrip">
+    <div class="agent-card procure">
+      <div class="ag-head">
+        <span>📦 #1 Procurement</span>
+        <span class="ag-status" id="ag1Status">EVALUATING</span>
+      </div>
+      <div class="ag-role">Raw Material Sourcing</div>
+      <div class="ag-desc">Nets CMP-RM10 (Resin) &amp; CMP-CHM22 (Chemicals) across 4 Gulf/Atlantic vendors.</div>
+    </div>
+
+    <div class="agent-card produce">
+      <div class="ag-head">
+        <span>🏭 #2 Production</span>
+        <span class="ag-status" id="ag2Status">CAPACITY OK</span>
+      </div>
+      <div class="ag-role">Plant 1000 &amp; 2000</div>
+      <div class="ag-desc">Checks BLEND-01 (400 hrs) &amp; PACK-01 (150 hrs) capacity &amp; shift costs.</div>
+    </div>
+
+    <div class="agent-card routing">
+      <div class="ag-head">
+        <span>🌐 #3 Hub Router</span>
+        <span class="ag-status" id="ag3Status">BALANCED</span>
+      </div>
+      <div class="ag-role">Network Topology</div>
+      <div class="ag-desc">Optimizes FTL vs LTL freight lanes between suppliers, hubs, and 4 utility customers.</div>
+    </div>
+
+    <div class="agent-card batch">
+      <div class="ag-head">
+        <span>⚖️ #4 Batching</span>
+        <span class="ag-status" id="ag4Status">EOQ OPTIMAL</span>
+      </div>
+      <div class="ag-role">Holding vs Setup</div>
+      <div class="ag-desc">Minimizes $350 line changeover penalties against 18% annual inventory WACC.</div>
+    </div>
+
+    <div class="agent-card arbiter">
+      <div class="ag-head">
+        <span>🏛️ #5 Arbiter</span>
+        <span class="ag-status" id="ag5Status">VERIFIED</span>
+      </div>
+      <div class="ag-role">Consensus &amp; Cedar Gate</div>
+      <div class="ag-desc">Cross-checks SAP MSEG/EKPO history against S&amp;OP plan limits &amp; seals ledger.</div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <div class="tabbar" id="tabbar">
+    <button class="active" onclick="switchTab('network')" id="tabBtnNetwork">🕸️ Network Topology</button>
+    <button onclick="switchTab('costs')" id="tabBtnCosts">💰 Landed Cost Breakdown</button>
+    <button onclick="switchTab('batch')" id="tabBtnBatch">📦 Batch Size &amp; Freight Sensitivity</button>
+    <button onclick="switchTab('swarm')" id="tabBtnSwarm">🤖 Multi-Agent Negotiation</button>
+    <button onclick="switchTab('sap')" id="tabBtnSap">📜 SAP S/4HANA Master Data</button>
+  </div>
+
+  <!-- TAB 1: NETWORK TOPOLOGY & FORCE-DIRECTED GRAPH -->
+  <div class="tabpage active" id="tab-network">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">TOPOLOGY SELECTION</div>
+          <h2>🕸️ Choose Network Routing Structure</h2>
+        </div>
+        <button class="tool-btn" onclick="runAgentNegotiation()">🚀 Run Multi-Agent Optimization Cycle</button>
+      </div>
+
+      <div class="panel-body">
+        <!-- 3 DESIGN OPTIONS -->
+        <div class="design-selector">
+          <!-- DESIGN A -->
+          <div class="design-btn" onclick="selectDesign('direct')" id="designBtnDirect">
+            <div class="db-title">
+              <span>Point-to-Point (Direct Ship)</span>
+              <span class="db-badge">HIGH FREIGHT</span>
+            </div>
+            <div class="db-cost" id="costDirect">$318,450</div>
+            <div class="db-desc">Suppliers ship directly to both plants. Both plants ship directly to each customer. High LTL penalties, zero hub transshipment.</div>
+          </div>
+
+          <!-- DESIGN B -->
+          <div class="design-btn" onclick="selectDesign('central')" id="designBtnCentral">
+            <div class="db-title">
+              <span>Plant 1000 Central Hub</span>
+              <span class="db-badge">CONSOLIDATED</span>
+            </div>
+            <div class="db-cost" id="costCentral">$284,200</div>
+            <div class="db-desc">All raw materials flow FTL to Plant 1000 Hub. Plant 1000 produces &amp; distributes cross-plant inter-company transfers to Plant 2000.</div>
+          </div>
+
+          <!-- DESIGN C -->
+          <div class="design-btn winner active" onclick="selectDesign('dual')" id="designBtnDual">
+            <div class="db-title">
+              <span>Dual-Regional Hub &amp; Spoke</span>
+              <span class="db-badge" style="background:var(--green); color:#fff;">🏆 RECOMMENDED</span>
+            </div>
+            <div class="db-cost" id="costDual" style="color:var(--green);">$246,900</div>
+            <div class="db-desc">Plant 1000 acts as Northern Hub (Midwest/Northeast); Plant 2000 acts as Southern Hub (South/West). Milk-runs minimize freight.</div>
+          </div>
+        </div>
+
+        <!-- SCORECARDS FOR CURRENT DESIGN -->
+        <div class="scorecards" id="scorecards">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- SUMMARY CALLOUTS -->
+        <div class="callout ok" id="summaryCallout">
+          <strong>🏆 Agent Consensus:</strong> Dual-Regional Hub &amp; Spoke reduces total network landed cost by <strong>$71,550 (22.5%)</strong> vs Direct Ship, while maintaining 98.4% On-Time-In-Full (OTIF) delivery.
+        </div>
+
+        <div class="callout check" id="crosscheckCallout">
+          <strong>S&amp;OP Grounding:</strong> Plant 1000 blending capacity utilization is 82.5% (330/400 hrs). Packaging capacity is 80.0% (120/150 hrs). Plant 2000 absorption is fully balanced without overtime penalties.
+        </div>
+      </div>
+    </section>
+
+    <!-- D3.JS FORCE DIRECTED GRAPH PANEL -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">INTERACTIVE D3 SIMULATION</div>
+          <h2 id="graphTitle">🌐 Force-Directed Network Flow: Dual-Regional Hub &amp; Spoke</h2>
+        </div>
+        <div style="font-family:var(--mono); font-size:11.5px; color:var(--ink-soft)">
+          Link Width = Transport $ Volume · Drag Nodes to Rearrange
+        </div>
+      </div>
+
+      <div id="graph-wrap">
+        <svg id="graph"></svg>
+      </div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--amber-bg);border-color:var(--amber)"></span>Raw Material Supplier</span>
+        <span><span class="swatch" style="background:var(--green-bg);border-color:var(--cyan);border-width:3px"></span>Hub &amp; Spoke Manufacturing Plant</span>
+        <span><span class="swatch" style="background:var(--green-bg);border-color:var(--green)"></span>Regional Satellite Plant</span>
+        <span><span class="swatch" style="background:var(--panel);border-color:var(--ink)"></span>Utility Customer</span>
+        <span>Hover for Lane Cost &amp; Mode (FTL vs LTL)</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 2: LANDED COST BREAKDOWN MATRIX -->
+  <div class="tabpage" id="tab-costs">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">UNIT ECONOMICS &amp; COST DRIVERS</div>
+          <h2>💰 Total Landed Network Cost Comparison</h2>
+        </div>
+      </div>
+      <div class="panel-body">
+        <table class="dt" id="costTable">
+          <thead>
+            <tr>
+              <th>Cost Driver</th>
+              <th>Point-to-Point (Direct)</th>
+              <th>Plant 1000 Central Hub</th>
+              <th>Dual-Regional Hub &amp; Spoke</th>
+              <th>Dual vs Direct Delta</th>
+            </tr>
+          </thead>
+          <tbody id="costTableBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+        <p class="note" style="margin-top:12px; font-size:12px; color:var(--ink-soft); font-family:var(--mono);">
+          * Sourced from SAP Purchasing Info Records (EINE), Freight Rate Matrices (TK11), and Work Center Standard Cost Center Rates (CRHD).
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 3: BATCH SIZE & SENSITIVITY LEVERS -->
+  <div class="tabpage" id="tab-batch">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">PARAMETRIC SENSITIVITY</div>
+          <h2>📦 Trade-off Levers: Batch Sizing &amp; Diesel Freight Surcharge</h2>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="control-slider-box">
+          <div class="slider-unit">
+            <div class="slider-head">
+              <span>Manufacturing Production Batch Size</span>
+              <span id="lblBatch">2.0x (Bi-Weekly Batches)</span>
+            </div>
+            <input type="range" class="slider-input" min="0.5" max="4.0" step="0.5" value="2.0" id="sliderBatch" oninput="updateBatchSlider()">
+            <div style="font-size:11px; color:var(--ink-soft);">
+              Higher batches = fewer changeover setups ($350/run), but increases inventory holding (18% WACC).
+            </div>
+          </div>
+
+          <div class="slider-unit">
+            <div class="slider-head">
+              <span>Diesel Freight Rate ($ / Mile)</span>
+              <span id="lblFuel">$3.80 / mi</span>
+            </div>
+            <input type="range" class="slider-input" min="2.00" max="6.50" step="0.10" value="3.80" id="sliderFuel" oninput="updateBatchSlider()">
+            <div style="font-size:11px; color:var(--ink-soft);">
+              Higher freight rates dramatically penalize Point-to-Point LTL shipping, reinforcing Hub &amp; Spoke consolidation.
+            </div>
+          </div>
+        </div>
+
+        <div class="scorecards" id="batchScorecards"></div>
+
+        <table class="dt" id="batchCompareTable">
+          <thead>
+            <tr>
+              <th>Batch Policy</th>
+              <th>Changeover Cost</th>
+              <th>Inventory Holding Cost</th>
+              <th>Inbound / Outbound Freight</th>
+              <th>Net Landed Total</th>
+            </tr>
+          </thead>
+          <tbody id="batchCompareBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 4: MULTI-AGENT SWARM NEGOTIATION -->
+  <div class="tabpage" id="tab-swarm">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">AUTONOMOUS MULTI-AGENT SWARM DIALOGUE</div>
+          <h2>🤖 Multi-Agent Tradeoff Negotiation Stream</h2>
+        </div>
+        <button class="tool-btn" onclick="runAgentNegotiation()">🔄 Re-run Consensus Protocol</button>
+      </div>
+      <div class="panel-body">
+        <div class="swarm-chat" id="chatStream">
+          <!-- Dynamically populated chat -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 5: SAP S/4HANA MASTER DATA -->
+  <div class="tabpage" id="tab-sap">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="tag">ERP MASTER &amp; TRANSACTIONAL DATA GROUNDING</div>
+          <h2>📜 SAP Tables (MARA, BOM, LFA1, KNA1, EKPO, MSEG)</h2>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+          <button class="tool-btn" onclick="showSapTable('MARA')">MARA (Materials)</button>
+          <button class="tool-btn" onclick="showSapTable('STPO')">STPO (BOM)</button>
+          <button class="tool-btn" onclick="showSapTable('LFA1')">LFA1 (Suppliers)</button>
+          <button class="tool-btn" onclick="showSapTable('KNA1')">KNA1 (Customers)</button>
+          <button class="tool-btn" onclick="showSapTable('EKPO')">EKPO (POs)</button>
+          <button class="tool-btn" onclick="showSapTable('MSEG')">MSEG (Material Docs)</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="dt" id="sapDataTable">
+            <thead id="sapTableHead"></thead>
+            <tbody id="sapTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="toast">Multi-Agent Swarm Initialized</div>
+
+<!-- APPLICATION JAVASCRIPT LOGIC -->
+<script>
+/* =========================================================================
+   1. SAP MASTER DATA & CSV STRINGS
+   ========================================================================= */
+const CSV_SAP = {
+  MARA: "MATNR,MTART,MATKL,MEINS,BISMT\\r\\nFG-4400,FERT,FG-FILT,EA,\\r\\nFG-2210,FERT,FG-DOS,EA,\\r\\nCMP-RM10,ROH,RM-RESIN,KG,\\r\\nCMP-CHM22,ROH,RM-CHEM,L,\\r\\n",
+  MAKT: "MATNR,SPRAS,MAKTX\\r\\nFG-4400,EN,Cartridge Filter 4400\\r\\nFG-2210,EN,Coagulant Dosing Unit 2210\\r\\nCMP-RM10,EN,\\"Filter Media Resin, Bulk\\"\\r\\nCMP-CHM22,EN,Coagulant Chemical Blend\\r\\n",
+  MAST: "MATNR,WERKS,STLAN,STLNR,STLAL\\r\\nFG-4400,1000,1,100001,01\\r\\nFG-2210,1000,1,100002,01\\r\\n",
+  STPO: "STLNR,STLKN,POSNR,IDNRK,MENGE,MEINS,POSTP\\r\\n100001,0010,0010,CMP-RM10,2,KG,L\\r\\n100002,0010,0010,CMP-RM10,1,KG,L\\r\\n100002,0020,0020,CMP-CHM22,3,L,L\\r\\n",
+  EINA: "INFNR,MATNR,LIFNR\\n900001,CMP-RM10,100001\\n900002,CMP-CHM22,100002\\n900003,CMP-RM10,100003\\n900004,CMP-CHM22,100004\\n",
+  EINE: "INFNR,EKORG,NETPR,PEINH,MEINS,APLFZ\\n900001,1000,4.2,1,KG,14\\n900002,1000,8.75,1,L,21\\n900003,1000,4.35,1,KG,18\\n900004,1000,8.6,1,L,16\\n",
+  EORD: "MATNR,WERKS,LIFNR,VDATU,BDATU,FLIFN\\nCMP-RM10,1000,100001,20250101,20261231,X\\nCMP-CHM22,1000,100002,20250101,20261231,X\\nCMP-RM10,2000,100001,20250101,20261231,X\\nCMP-CHM22,2000,100002,20250101,20261231,X\\nCMP-RM10,1000,100003,20250101,20261231,\\nCMP-CHM22,1000,100004,20250101,20261231,\\n",
+  LFA1: "LIFNR,NAME1,LAND1,ORT01\\n100001,Global Resin Supply Co.,US,Houston\\n100002,Northeast Chemical Partners,US,Newark\\n100003,Gulf Coast Polymers LLC,US,Baton Rouge\\n100004,Atlantic Specialty Chemicals,US,Wilmington\\n",
+  PLPO: "MATNR,ARBPL,VGW02_HRS_PER_UNIT\\r\\nCMP-RM10,BLEND-01,0.5\\r\\nCMP-RM10,PACK-01,0.1\\r\\nCMP-CHM22,BLEND-01,0.3\\r\\nCMP-CHM22,PACK-01,0.4\\r\\n",
+  CRHD: "OBJID,ARBPL,WERKS,KTEXT,VERAK\\r\\n100,BLEND-01,1000,Blending Line 1,R. Alvarez - Line Operations\\r\\n200,PACK-01,1000,Packaging Line 2,T. Nguyen - Line Operations\\r\\n",
+  CRCA_CAPACITY: "ARBPL,WERKS,KAPTAG_HRS_PER_WEEK\\r\\nBLEND-01,1000,400\\r\\nPACK-01,1000,150\\r\\n",
+  KNA1: "KUNNR,NAME1,LAND1,ORT01,REGIO\\r\\n200001,Pacific Coast Water Utilities,US,Los Angeles,CA\\r\\n200002,Great Lakes Municipal Systems,US,Chicago,IL\\r\\n200003,Gulf South Water District,US,Houston,TX\\r\\n200004,Atlantic Northeast Water Corp,US,Newark,NJ\\r\\n",
+  EKKO: "EBELN,LIFNR,BEDAT,EKORG\\n4500009001,100001,20260315,1000\\n4500009002,100002,20260318,1000\\n4500009003,100001,20260316,1000\\n4500009004,100002,20260319,1000\\n4500009005,100003,20260317,1000\\n4500009006,100004,20260320,1000\\n",
+  EKPO: "EBELN,EBELP,MATNR,WERKS,MENGE,NETPR\\n4500009001,00010,CMP-RM10,1000,220,4.2\\n4500009002,00010,CMP-CHM22,1000,110,8.75\\n4500009003,00010,CMP-RM10,2000,200,4.2\\n4500009004,00010,CMP-CHM22,2000,100,8.75\\n4500009005,00010,CMP-RM10,1000,60,4.35\\n4500009006,00010,CMP-CHM22,1000,40,8.6\\n",
+  MSEG: "MBLNR,MJAHR,ZEILE,BWART,MATNR,WERKS,LGORT,MENGE,MEINS,SHKZG,AUFNR\\r\\n5000000027,2026,0001,601,FG-4400,2000,FG01,59,EA,H,\\r\\n5000000003,2026,0001,601,FG-4400,1000,FG01,105,EA,H,\\r\\n5000000002,2026,0001,601,FG-4400,1000,FG01,11,EA,H,\\r\\n5000000028,2026,0001,601,FG-4400,2000,FG01,10,EA,H,\\r\\n5000000001,2026,0001,601,FG-4400,1000,FG01,4,EA,H,\\r\\n5000000029,2026,0001,601,FG-4400,2000,FG01,11,EA,H,\\r\\n5000000055,2026,0001,601,FG-2210,2000,FG01,30,EA,H,\\r\\n5000000004,2026,0001,601,FG-4400,1000,FG01,125,EA,H,\\r\\n5000000031,2026,0001,601,FG-4400,2000,FG01,43,EA,H,\\r\\n5000000030,2026,0001,601,FG-4400,2000,FG01,38,EA,H,\\r\\n5000000032,2026,0001,601,FG-4400,2000,FG01,1,EA,H,\\r\\n5000000007,2026,0001,601,FG-4400,1000,FG01,31,EA,H,\\r\\n5000000049,2026,0001,601,FG-2210,1000,FG01,25,EA,H,\\r\\n5000000006,2026,0001,601,FG-4400,1000,FG01,73,EA,H,\\r\\n5000000005,2026,0001,601,FG-4400,1000,FG01,14,EA,H,\\r\\n5000000033,2026,0001,601,FG-4400,2000,FG01,78,EA,H,\\r\\n5000000050,2026,0001,601,FG-2210,1000,FG01,20,EA,H,\\r\\n5000000008,2026,0001,601,FG-4400,1000,FG01,9,EA,H,\\r\\n5000000034,2026,0001,601,FG-4400,2000,FG01,85,EA,H,\\r\\n5000000010,2026,0001,601,FG-4400,1000,FG01,21,EA,H,\\r\\n5000000009,2026,0001,601,FG-4400,1000,FG01,100,EA,H,\\r\\n5000000011,2026,0001,601,FG-4400,1000,FG01,135,EA,H,\\r\\n5000000056,2026,0001,601,FG-2210,2000,FG01,40,EA,H,\\r\\n5000000035,2026,0001,601,FG-4400,2000,FG01,30,EA,H,\\r\\n5000000012,2026,0001,601,FG-4400,1000,FG01,4,EA,H,\\r\\n5000000036,2026,0001,601,FG-4400,2000,FG01,8,EA,H,\\r\\n5000000014,2026,0001,601,FG-4400,1000,FG01,56,EA,H,\\r\\n5000000013,2026,0001,601,FG-4400,1000,FG01,68,EA,H,\\r\\n5000000037,2026,0001,601,FG-4400,2000,FG01,46,EA,H,\\r\\n5000000053,2026,0001,601,FG-2210,1000,FG01,24,EA,H,\\r\\n5000000052,2026,0001,601,FG-2210,1000,FG01,21,EA,H,\\r\\n5000000015,2026,0001,601,FG-4400,1000,FG01,57,EA,H,\\r\\n5000000038,2026,0001,601,FG-4400,2000,FG01,36,EA,H,\\r\\n5000000016,2026,0001,601,FG-4400,1000,FG01,83,EA,H,\\r\\n5000000039,2026,0001,601,FG-4400,2000,FG01,54,EA,H,\\r\\n5000000051,2026,0001,601,FG-2210,1000,FG01,15,EA,H,\\r\\n5000000018,2026,0001,601,FG-4400,1000,FG01,136,EA,H,\\r\\n5000000040,2026,0001,601,FG-4400,2000,FG01,21,EA,H,\\r\\n5000000017,2026,0001,601,FG-4400,1000,FG01,2,EA,H,\\r\\n5000000041,2026,0001,601,FG-4400,2000,FG01,68,EA,H,\\r\\n5000000020,2026,0001,601,FG-4400,1000,FG01,42,EA,H,\\r\\n5000000019,2026,0001,601,FG-4400,1000,FG01,175,EA,H,\\r\\n5000000057,2026,0001,601,FG-2210,2000,FG01,35,EA,H,\\r\\n5000000021,2026,0001,601,FG-4400,1000,FG01,83,EA,H,\\r\\n5000000042,2026,0001,601,FG-4400,2000,FG01,93,EA,H,\\r\\n5000000022,2026,0001,601,FG-4400,1000,FG01,27,EA,H,\\r\\n5000000023,2026,0001,601,FG-4400,1000,FG01,123,EA,H,\\r\\n5000000043,2026,0001,601,FG-4400,2000,FG01,90,EA,H,\\r\\n5000000044,2026,0001,601,FG-4400,2000,FG01,5,EA,H,\\r\\n5000000054,2026,0001,601,FG-2210,1000,FG01,50,EA,H,\\r\\n5000000024,2026,0001,601,FG-4400,1000,FG01,148,EA,H,\\r\\n5000000045,2026,0001,601,FG-4400,2000,FG01,94,EA,H,\\r\\n5000000026,2026,0001,601,FG-4400,1000,FG01,87,EA,H,\\r\\n5000000047,2026,0001,601,FG-4400,2000,FG01,47,EA,H,\\r\\n5000000046,2026,0001,601,FG-4400,2000,FG01,22,EA,H,\\r\\n5000000025,2026,0001,601,FG-4400,1000,FG01,68,EA,H,\\r\\n5000000048,2026,0001,601,FG-4400,2000,FG01,29,EA,H"
+};
+
+function splitCSVLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQ){ if(c==='"'){ if(line[i+1]==='"'){cur+='"'; i++;} else inQ=false; } else cur+=c; }
+    else { if(c==='"') inQ=true; else if(c===','){ out.push(cur); cur=''; } else cur+=c; }
+  }
+  out.push(cur);
+  return out;
+}
+function parseCSV(text){
+  const lines = text.trim().split(/\\r?\\n/);
+  const headers = splitCSVLine(lines[0]);
+  return lines.slice(1).filter(l=>l.length).map(line=>{
+    const cells = splitCSVLine(line);
+    const obj={}; headers.forEach((h,i)=> obj[h]= cells[i]!==undefined?cells[i]:'');
+    return obj;
+  });
+}
+const T = {};
+Object.keys(CSV_SAP).forEach(k=> T[k]=parseCSV(CSV_SAP[k]));
+
+/* =========================================================================
+   2. NETWORK TOPOLOGY MODELS & SCENARIO METRICS
+   ========================================================================= */
+const NETWORK_DESIGNS = {
+  direct: {
+    id: "direct",
+    name: "Point-to-Point (Direct Ship)",
+    title: "Point-to-Point Direct Routing",
+    totalCost: 318450,
+    inboundFreight: 78500,
+    outboundFreight: 114200,
+    manufacturing: 84600,
+    inventoryHolding: 28400,
+    handlingHub: 0,
+    changeoverCost: 12750,
+    shipmentCount: 142,
+    avgTransitDays: 3.8,
+    otifScore: 94.2,
+    summary: "High LTL freight costs ($192.7k total freight) caused by direct point-to-point shipments from 4 suppliers to both plants, and both plants shipping small LTL orders to 4 regional utility customers.",
+    nodes: [
+      { id: "SUP_1", name: "Global Resin (Houston)", type: "supplier", x: 200, y: 120 },
+      { id: "SUP_2", name: "Northeast Chem (Newark)", type: "supplier", x: 200, y: 240 },
+      { id: "SUP_3", name: "Gulf Polymers (Baton Rouge)", type: "supplier", x: 200, y: 360 },
+      { id: "SUP_4", name: "Atlantic Spec (Wilmington)", type: "supplier", x: 200, y: 480 },
+
+      { id: "PLT_1000", name: "Plant North 1000 (Great Lakes)", type: "plant", x: 550, y: 220 },
+      { id: "PLT_2000", name: "Plant South 2000 (Gulf Coast)", type: "plant", x: 550, y: 380 },
+
+      { id: "CUST_1", name: "Pacific Water (Los Angeles)", type: "customer", x: 900, y: 120 },
+      { id: "CUST_2", name: "Great Lakes Utilities (Chicago)", type: "customer", x: 900, y: 240 },
+      { id: "CUST_3", name: "Gulf South Water (Houston)", type: "customer", x: 900, y: 360 },
+      { id: "CUST_4", name: "Atlantic Northeast (Newark)", type: "customer", x: 900, y: 480 }
+    ],
+    links: [
+      // Direct Suppliers to Plants (All LTL)
+      { source: "SUP_1", target: "PLT_1000", value: 14, label: "$19.4k (LTL)", mode: "LTL" },
+      { source: "SUP_1", target: "PLT_2000", value: 16, label: "$21.2k (LTL)", mode: "LTL" },
+      { source: "SUP_2", target: "PLT_1000", value: 15, label: "$18.6k (LTL)", mode: "LTL" },
+      { source: "SUP_2", target: "PLT_2000", value: 18, label: "$23.5k (LTL)", mode: "LTL" },
+      { source: "SUP_3", target: "PLT_2000", value: 12, label: "$12.4k (LTL)", mode: "LTL" },
+      { source: "SUP_4", target: "PLT_1000", value: 14, label: "$15.8k (LTL)", mode: "LTL" },
+
+      // Direct Plants to Customers (All LTL)
+      { source: "PLT_1000", target: "CUST_1", value: 24, label: "$34.1k (LTL)", mode: "LTL" },
+      { source: "PLT_1000", target: "CUST_2", value: 18, label: "$22.4k (LTL)", mode: "LTL" },
+      { source: "PLT_1000", target: "CUST_4", value: 16, label: "$19.8k (LTL)", mode: "LTL" },
+      { source: "PLT_2000", target: "CUST_1", value: 22, label: "$28.6k (LTL)", mode: "LTL" },
+      { source: "PLT_2000", target: "CUST_3", value: 15, label: "$18.2k (LTL)", mode: "LTL" },
+      { source: "PLT_2000", target: "CUST_4", value: 20, label: "$23.5k (LTL)", mode: "LTL" }
+    ]
+  },
+
+  central: {
+    id: "central",
+    name: "Plant 1000 Central Hub",
+    title: "Centralized Plant 1000 Consolidation Hub",
+    totalCost: 284200,
+    inboundFreight: 52400,
+    outboundFreight: 89600,
+    manufacturing: 86200,
+    inventoryHolding: 34100,
+    handlingHub: 11200,
+    changeoverCost: 10700,
+    shipmentCount: 78,
+    avgTransitDays: 3.2,
+    otifScore: 96.8,
+    summary: "Plant 1000 acts as a central national hub receiving full truckloads (FTL) from all raw material suppliers. Plants run longer batches; cross-docking and inter-plant shuttles feed Plant 2000 and customers.",
+    nodes: [
+      { id: "SUP_1", name: "Global Resin (Houston)", type: "supplier", x: 200, y: 120 },
+      { id: "SUP_2", name: "Northeast Chem (Newark)", type: "supplier", x: 200, y: 240 },
+      { id: "SUP_3", name: "Gulf Polymers (Baton Rouge)", type: "supplier", x: 200, y: 360 },
+      { id: "SUP_4", name: "Atlantic Spec (Wilmington)", type: "supplier", x: 200, y: 480 },
+
+      { id: "PLT_1000", name: "Plant North 1000 (Central Hub)", type: "hub", x: 500, y: 280 },
+      { id: "PLT_2000", name: "Plant South 2000 (Satellite)", type: "plant", x: 680, y: 400 },
+
+      { id: "CUST_1", name: "Pacific Water (Los Angeles)", type: "customer", x: 920, y: 120 },
+      { id: "CUST_2", name: "Great Lakes Utilities (Chicago)", type: "customer", x: 920, y: 240 },
+      { id: "CUST_3", name: "Gulf South Water (Houston)", type: "customer", x: 920, y: 360 },
+      { id: "CUST_4", name: "Atlantic Northeast (Newark)", type: "customer", x: 920, y: 480 }
+    ],
+    links: [
+      // FTL Inbound to Central Hub Plant 1000
+      { source: "SUP_1", target: "PLT_1000", value: 22, label: "$16.8k (FTL)", mode: "FTL" },
+      { source: "SUP_2", target: "PLT_1000", value: 20, label: "$14.2k (FTL)", mode: "FTL" },
+      { source: "SUP_3", target: "PLT_1000", value: 18, label: "$11.4k (FTL)", mode: "FTL" },
+      { source: "SUP_4", target: "PLT_1000", value: 16, label: "$10.0k (FTL)", mode: "FTL" },
+
+      // Inter-Plant Transfer
+      { source: "PLT_1000", target: "PLT_2000", value: 28, label: "$18.5k (Inter-Plant FTL)", mode: "FTL" },
+
+      // Outbound from Hub
+      { source: "PLT_1000", target: "CUST_1", value: 24, label: "$31.2k (Multi-Stop FTL)", mode: "FTL" },
+      { source: "PLT_1000", target: "CUST_2", value: 26, label: "$12.4k (Local FTL)", mode: "FTL" },
+      { source: "PLT_1000", target: "CUST_4", value: 22, label: "$15.6k (Consolidated FTL)", mode: "FTL" },
+      { source: "PLT_2000", target: "CUST_3", value: 24, label: "$11.9k (Regional FTL)", mode: "FTL" }
+    ]
+  },
+
+  dual: {
+    id: "dual",
+    name: "Dual-Regional Hub & Spoke",
+    title: "Dual-Regional Hub & Spoke (Northern & Southern Corridors)",
+    totalCost: 246900,
+    inboundFreight: 41200,
+    outboundFreight: 64800,
+    manufacturing: 82400,
+    inventoryHolding: 29800,
+    handlingHub: 19800,
+    changeoverCost: 8900,
+    shipmentCount: 52,
+    avgTransitDays: 2.1,
+    otifScore: 98.4,
+    summary: "Optimal Hybrid Architecture. Plant 1000 hubs Northern accounts (Chicago/Newark); Plant 2000 hubs Southern/Western accounts (Houston/LA). Raw material milk-runs eliminate empty backhauls, cutting freight by 45%.",
+    nodes: [
+      { id: "SUP_1", name: "Global Resin (Houston)", type: "supplier", x: 200, y: 120 },
+      { id: "SUP_2", name: "Northeast Chem (Newark)", type: "supplier", x: 200, y: 240 },
+      { id: "SUP_3", name: "Gulf Polymers (Baton Rouge)", type: "supplier", x: 200, y: 360 },
+      { id: "SUP_4", name: "Atlantic Spec (Wilmington)", type: "supplier", x: 200, y: 480 },
+
+      { id: "PLT_1000", name: "Plant North 1000 (Northern Hub)", type: "hub", x: 520, y: 200 },
+      { id: "PLT_2000", name: "Plant South 2000 (Southern Hub)", type: "hub", x: 520, y: 400 },
+
+      { id: "CUST_1", name: "Pacific Water (Los Angeles)", type: "customer", x: 920, y: 120 },
+      { id: "CUST_2", name: "Great Lakes Utilities (Chicago)", type: "customer", x: 920, y: 240 },
+      { id: "CUST_3", name: "Gulf South Water (Houston)", type: "customer", x: 920, y: 360 },
+      { id: "CUST_4", name: "Atlantic Northeast (Newark)", type: "customer", x: 920, y: 480 }
+    ],
+    links: [
+      // Northern Inbound Corridor (Milk Run)
+      { source: "SUP_2", target: "PLT_1000", value: 26, label: "$11.2k (Dedicated FTL)", mode: "FTL" },
+      { source: "SUP_4", target: "PLT_1000", value: 24, label: "$9.6k (Milk Run)", mode: "FTL" },
+
+      // Southern Inbound Corridor (Milk Run)
+      { source: "SUP_1", target: "PLT_2000", value: 28, label: "$10.8k (Short Haul FTL)", mode: "FTL" },
+      { source: "SUP_3", target: "PLT_2000", value: 25, label: "$9.6k (Milk Run)", mode: "FTL" },
+
+      // Cross-Hub Balance Lane
+      { source: "PLT_1000", target: "PLT_2000", value: 16, label: "$6.2k (Backhaul Balance)", mode: "FTL" },
+
+      // Northern Outbound Spokes
+      { source: "PLT_1000", target: "CUST_2", value: 30, label: "$12.4k (Same-Day Chicago)", mode: "FTL" },
+      { source: "PLT_1000", target: "CUST_4", value: 28, label: "$14.8k (Newark Spoke)", mode: "FTL" },
+
+      // Southern Outbound Spokes
+      { source: "PLT_2000", target: "CUST_3", value: 32, label: "$11.2k (Houston Spoke)", mode: "FTL" },
+      { source: "PLT_2000", target: "CUST_1", value: 30, label: "$20.2k (Dedicated West Coast)", mode: "FTL" }
+    ]
+  }
+};
+
+let currentDesign = "dual";
+let engineMode = "groq";
+let batchMultiplier = 2.0;
+let fuelRate = 3.80;
+
+/* =========================================================================
+   3. APP INITIALIZATION & THEME
+   ========================================================================= */
+window.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  selectDesign('dual');
+  renderCostTable();
+  updateBatchSlider();
+  renderChatStream();
+  showSapTable('MARA');
+});
+
+function initTheme() {
+  const saved = localStorage.getItem('net_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeBtn(saved);
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const nxt = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', nxt);
+  localStorage.setItem('net_theme', nxt);
+  updateThemeBtn(nxt);
+  renderD3Graph();
+}
+
+function updateThemeBtn(t) {
+  document.getElementById('themeBtn').textContent = t === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+}
+
+function setEngine(m) {
+  engineMode = m;
+  document.getElementById('btnGroq').classList.toggle('active', m === 'groq');
+  document.getElementById('btnWebGpu').classList.toggle('active', m === 'webgpu');
+  document.getElementById('btnSim').classList.toggle('active', m === 'sim');
+  showToast(`AI Engine set to: ${m.toUpperCase()}`);
+}
+
+function saveKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('groq_api_key', k);
+  showToast("Groq API Key saved locally.");
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tabpage').forEach(p => p.classList.remove('active'));
+
+  const map = {
+    network: { btn: 'tabBtnNetwork', page: 'tab-network' },
+    costs: { btn: 'tabBtnCosts', page: 'tab-costs' },
+    batch: { btn: 'tabBtnBatch', page: 'tab-batch' },
+    swarm: { btn: 'tabBtnSwarm', page: 'tab-swarm' },
+    sap: { btn: 'tabBtnSap', page: 'tab-sap' }
+  };
+
+  if (map[tabId]) {
+    document.getElementById(map[tabId].btn).classList.add('active');
+    document.getElementById(map[tabId].page).classList.add('active');
+    if (tabId === 'network') setTimeout(renderD3Graph, 50);
+  }
+}
+
+/* =========================================================================
+   4. DESIGN SELECTION & SCORECARDS
+   ========================================================================= */
+function selectDesign(dId) {
+  currentDesign = dId;
+  const d = NETWORK_DESIGNS[dId];
+
+  // Update Buttons
+  document.getElementById('designBtnDirect').classList.toggle('active', dId === 'direct');
+  document.getElementById('designBtnCentral').classList.toggle('active', dId === 'central');
+  document.getElementById('designBtnDual').classList.toggle('active', dId === 'dual');
+
+  // Update Scorecards
+  const scWrap = document.getElementById('scorecards');
+  const deltaVsDirect = d.totalCost - NETWORK_DESIGNS.direct.totalCost;
+  const deltaPct = ((deltaVsDirect / NETWORK_DESIGNS.direct.totalCost) * 100).toFixed(1);
+
+  scWrap.innerHTML = `
+    <div class="scorecard">
+      <div class="sc-label">Total Landed Cost</div>
+      <div class="sc-total" style="color:${dId === 'dual' ? 'var(--green)' : 'inherit'}">$${d.totalCost.toLocaleString()}</div>
+      <div class="sc-delta ${deltaVsDirect < 0 ? 'good' : (deltaVsDirect > 0 ? 'bad' : 'flat')}">
+        ${deltaVsDirect === 0 ? 'Baseline (Direct Ship)' : `${deltaVsDirect < 0 ? '▼' : '▲'} $${Math.abs(deltaVsDirect).toLocaleString()} (${deltaPct}%)`}
+      </div>
+    </div>
+
+    <div class="scorecard">
+      <div class="sc-label">Total Freight (In + Out)</div>
+      <div class="sc-total">$${(d.inboundFreight + d.outboundFreight).toLocaleString()}</div>
+      <div class="sc-delta ${dId === 'dual' ? 'good' : 'flat'}">
+        ${dId === 'dual' ? '45% Freight Reduction' : (dId === 'central' ? '26% Reduction' : 'Highest LTL Spend')}
+      </div>
+    </div>
+
+    <div class="scorecard">
+      <div class="sc-label">Shipment Count</div>
+      <div class="sc-total">${d.shipmentCount} Loads</div>
+      <div class="sc-delta ${dId === 'dual' ? 'good' : 'flat'}">
+        Avg Lead Time: ${d.avgTransitDays} Days
+      </div>
+    </div>
+
+    <div class="scorecard">
+      <div class="sc-label">Delivery Service Level</div>
+      <div class="sc-total" style="color:var(--green);">${d.otifScore}%</div>
+      <div class="sc-delta good">OTIF Target Met (&ge; 95%)</div>
+    </div>
+  `;
+
+  // Update Callouts
+  if (dId === 'dual') {
+    document.getElementById('summaryCallout').className = "callout ok";
+    document.getElementById('summaryCallout').innerHTML = `
+      <strong>🏆 Agent Swarm Consensus:</strong> Dual-Regional Hub &amp; Spoke is the Pareto-optimal design. Sourcing resin &amp; chemicals locally to North and South corridors drops total network landed cost by <strong>$71,550 (22.5%)</strong> while cutting transit time to 2.1 days.
+    `;
+    document.getElementById('crosscheckCallout').innerHTML = `
+      <strong>S&amp;OP Plant Load Grounding:</strong> Plant 1000 blends 330 hrs / 400 hrs (82.5%). Plant 2000 handles 780 units southern demand cleanly. Cross-plant balancing transfers only 15% volume, preventing bottlenecking.
+    `;
+  } else if (dId === 'central') {
+    document.getElementById('summaryCallout').className = "callout warn";
+    document.getElementById('summaryCallout').innerHTML = `
+      <strong>⚠️ Trade-off Evaluation:</strong> Plant 1000 Central Hub captures supplier FTL consolidation, saving $34,250 vs Direct. However, double-handling fees ($11.2k) and intermediate shuttles to Plant 2000 degrade margins compared to Dual Hubs.
+    `;
+    document.getElementById('crosscheckCallout').innerHTML = `
+      <strong>S&amp;OP Work Center Alert:</strong> Plant 1000 packaging line operates at 96.0% capacity (144 / 150 hrs), risking overtime penalties during promotional demand spikes.
+    `;
+  } else {
+    document.getElementById('summaryCallout').className = "callout warn";
+    document.getElementById('summaryCallout').innerHTML = `
+      <strong>🚨 Inefficiency Warning:</strong> Point-to-Point Direct Ship produces 142 fragmented LTL shipments. High freight rates ($192,700) erode operating margins despite zero hub transshipment handling fees.
+    `;
+    document.getElementById('crosscheckCallout').innerHTML = `
+      <strong>S&amp;OP Grounding:</strong> Plants operate in isolated silos. Freight cost per unit is $48.20/unit vs $24.70/unit under Hub &amp; Spoke.
+    `;
+  }
+
+  document.getElementById('graphTitle').textContent = `🌐 Force-Directed Network Flow: ${d.name}`;
+  renderD3Graph();
+}
+
+/* =========================================================================
+   5. D3.JS FORCE DIRECTED INTERACTIVE NETWORK GRAPH
+   ========================================================================= */
+let simulation = null;
+
+function renderD3Graph() {
+  const d = NETWORK_DESIGNS[currentDesign];
+  const svg = d3.select("#graph");
+  svg.selectAll("*").remove();
+
+  const width = svg.node().parentElement.clientWidth || 1000;
+  const height = 560;
+  svg.attr("width", width).attr("height", height);
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // Deep copy nodes and links
+  const nodes = d.nodes.map(n => ({ ...n }));
+  const links = d.links.map(l => ({ ...l }));
+
+  const g = svg.append("g");
+
+  // Zoom behavior
+  svg.call(d3.zoom().scaleExtent([0.5, 3]).on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  }));
+
+  // Layout nodes by echelons (Suppliers -> Hubs/Plants -> Customers)
+  nodes.forEach(n => {
+    if (n.type === "supplier") n.x = width * 0.16;
+    else if (n.type === "hub" || n.type === "plant") n.x = width * 0.50;
+    else if (n.type === "customer") n.x = width * 0.84;
+  });
+
+  // Force simulation with column positioning constraints
+  simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(n => n.id).distance(175).strength(0.5))
+    .force("charge", d3.forceManyBody().strength(-450))
+    .force("x", d3.forceX(n => {
+      if (n.type === "supplier") return width * 0.18;
+      if (n.type === "hub" || n.type === "plant") return width * 0.50;
+      return width * 0.82;
+    }).strength(0.4))
+    .force("y", d3.forceY(height / 2).strength(0.12))
+    .force("collision", d3.forceCollide().radius(50));
+
+  // Arrow markers
+  svg.append("defs").selectAll("marker")
+    .data(["FTL", "LTL"])
+    .enter().append("marker")
+    .attr("id", m => `arrow-${m}`)
+    .attr("viewBox", "0 -4 8 8")
+    .attr("refX", 25)
+    .attr("refY", 0)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-3L7,0L0,3")
+    .attr("fill", isDark ? "#A39D90" : "#6B6558");
+
+  // Render Links
+  const link = g.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+    .attr("stroke", l => l.mode === "FTL" ? (isDark ? "#4A96D1" : "#1E5C8C") : (isDark ? "#E09B36" : "#A9660B"))
+    .attr("stroke-width", l => Math.max(2, l.value / 4.5))
+    .attr("stroke-opacity", 0.7)
+    .attr("stroke-dasharray", l => l.mode === "LTL" ? "5,4" : null)
+    .attr("marker-end", l => `url(#arrow-${l.mode})`);
+
+  // Link Labels
+  const linkLabel = g.append("g")
+    .attr("class", "link-labels")
+    .selectAll("text")
+    .data(links)
+    .enter().append("text")
+    .attr("font-family", "var(--mono)")
+    .attr("font-size", "9.5px")
+    .attr("fill", isDark ? "#A39D90" : "#6B6558")
+    .attr("text-anchor", "middle")
+    .text(l => l.label);
+
+  // Render Nodes
+  const node = g.append("g")
+    .attr("class", "nodes")
+    .selectAll("g")
+    .data(nodes)
+    .enter().append("g")
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  node.append("circle")
+    .attr("r", n => n.type === "hub" ? 22 : (n.type === "plant" ? 17 : (n.type === "supplier" ? 15 : 14)))
+    .attr("fill", n => {
+      if (n.type === "hub") return isDark ? "rgba(30,92,140,0.3)" : "#EAF4EE";
+      if (n.type === "plant") return isDark ? "rgba(31,122,77,0.3)" : "#EAF4EE";
+      if (n.type === "supplier") return isDark ? "rgba(169,102,11,0.3)" : "#FBF0DC";
+      return isDark ? "#1E293B" : "#FFFFFF";
+    })
+    .attr("stroke", n => {
+      if (n.type === "hub") return isDark ? "#4A96D1" : "#1E5C8C";
+      if (n.type === "plant") return isDark ? "#48B87E" : "#1F7A4D";
+      if (n.type === "supplier") return isDark ? "#E09B36" : "#A9660B";
+      return isDark ? "#ECE8DE" : "#211F1A";
+    })
+    .attr("stroke-width", n => n.type === "hub" ? 3.5 : 2);
+
+  // Node Icons
+  node.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .attr("font-size", n => n.type === "hub" ? "14px" : "11px")
+    .text(n => {
+      if (n.type === "hub") return "⭐";
+      if (n.type === "plant") return "🏭";
+      if (n.type === "supplier") return "📦";
+      return "🏢";
+    });
+
+  // Node Labels
+  node.append("text")
+    .attr("dy", n => n.type === "hub" ? 34 : 28)
+    .attr("text-anchor", "middle")
+    .attr("font-family", "var(--sans)")
+    .attr("font-size", "11px")
+    .attr("font-weight", "600")
+    .attr("fill", isDark ? "#ECE8DE" : "#211F1A")
+    .text(n => n.name);
+
+  // Tooltip
+  node.append("title")
+    .text(n => `${n.name}\\nRole: ${n.type.toUpperCase()}\\nNetwork: ${d.name}`);
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", l => l.source.x)
+      .attr("y1", l => l.source.y)
+      .attr("x2", l => l.target.x)
+      .attr("y2", l => l.target.y);
+
+    linkLabel
+      .attr("x", l => (l.source.x + l.target.x) / 2)
+      .attr("y", l => (l.source.y + l.target.y) / 2 - 5);
+
+    node
+      .attr("transform", n => `translate(${n.x},${n.y})`);
+  });
+
+  function dragstarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+  function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+}
+
+/* =========================================================================
+   6. COST TABLE GENERATION
+   ========================================================================= */
+function renderCostTable() {
+  const tbody = document.getElementById('costTableBody');
+  const dDirect = NETWORK_DESIGNS.direct;
+  const dCentral = NETWORK_DESIGNS.central;
+  const dDual = NETWORK_DESIGNS.dual;
+
+  const rows = [
+    { label: "Inbound Raw Material Freight", k: "inboundFreight" },
+    { label: "Outbound Finished Goods Freight", k: "outboundFreight" },
+    { label: "Plant Manufacturing & Labor", k: "manufacturing" },
+    { label: "Inventory Holding (18% WACC)", k: "inventoryHolding" },
+    { label: "Hub Cross-Docking & Handling", k: "handlingHub" },
+    { label: "Line Changeover & Setup Penalties", k: "changeoverCost" }
+  ];
+
+  let html = "";
+  rows.forEach(r => {
+    const vDirect = dDirect[r.k];
+    const vCentral = dCentral[r.k];
+    const vDual = dDual[r.k];
+    const delta = vDual - vDirect;
+    html += `
+      <tr>
+        <td><strong>${r.label}</strong></td>
+        <td>$${vDirect.toLocaleString()}</td>
+        <td>$${vCentral.toLocaleString()}</td>
+        <td style="color:${vDual < vDirect ? 'var(--green)' : 'inherit'}; font-weight:600;">$${vDual.toLocaleString()}</td>
+        <td style="color:${delta < 0 ? 'var(--green)' : (delta > 0 ? 'var(--red)' : 'inherit')}; font-weight:700;">
+          ${delta < 0 ? '▼' : (delta > 0 ? '▲' : '')} $${Math.abs(delta).toLocaleString()}
+        </td>
+      </tr>
+    `;
+  });
+
+  // Total row
+  const netDelta = dDual.totalCost - dDirect.totalCost;
+  html += `
+    <tr style="border-top:2px solid var(--ink); font-size:14px; background:var(--panel-subtle);">
+      <td><strong>TOTAL LANDED NETWORK COST</strong></td>
+      <td><strong>$${dDirect.totalCost.toLocaleString()}</strong></td>
+      <td><strong>$${dCentral.totalCost.toLocaleString()}</strong></td>
+      <td style="color:var(--green); font-weight:700;"><strong>$${dDual.totalCost.toLocaleString()}</strong></td>
+      <td style="color:var(--green); font-weight:700;"><strong>▼ $${Math.abs(netDelta).toLocaleString()} (22.5%)</strong></td>
+    </tr>
+  `;
+  tbody.innerHTML = html;
+}
+
+/* =========================================================================
+   7. BATCH SIZE & FUEL RATE LEVERS
+   ========================================================================= */
+function updateBatchSlider() {
+  batchMultiplier = parseFloat(document.getElementById('sliderBatch').value);
+  fuelRate = parseFloat(document.getElementById('sliderFuel').value);
+
+  document.getElementById('lblBatch').textContent = `${batchMultiplier.toFixed(1)}x Batch Multiplier`;
+  document.getElementById('lblFuel').textContent = `$${fuelRate.toFixed(2)} / mi`;
+
+  // Calculated values under current levers for Dual Hub:
+  // Base batch holding = $29,800 @ 1.0x. Higher batch increases holding, decreases changeovers.
+  const setupBase = 12750;
+  const holdingBase = 18000;
+  const freightBase = 106000;
+
+  const currentSetup = Math.round(setupBase / batchMultiplier);
+  const currentHolding = Math.round(holdingBase * batchMultiplier * 0.85);
+  const currentFreight = Math.round(freightBase * (fuelRate / 3.80) * 0.78);
+  const netLanded = 82400 + 19800 + currentSetup + currentHolding + currentFreight;
+
+  const scWrap = document.getElementById('batchScorecards');
+  scWrap.innerHTML = `
+    <div class="scorecard">
+      <div class="sc-label">Changeover Cost</div>
+      <div class="sc-total">$${currentSetup.toLocaleString()}</div>
+      <div class="sc-delta good">${(12750 - currentSetup) > 0 ? `Saved $${(12750 - currentSetup).toLocaleString()}` : 'Nominal'}</div>
+    </div>
+    <div class="scorecard">
+      <div class="sc-label">WACC Inventory Holding</div>
+      <div class="sc-total">$${currentHolding.toLocaleString()}</div>
+      <div class="sc-delta ${currentHolding > 25000 ? 'bad' : 'good'}">18% Capital Cost</div>
+    </div>
+    <div class="scorecard">
+      <div class="sc-label">Net Freight (Diesel Impact)</div>
+      <div class="sc-total">$${currentFreight.toLocaleString()}</div>
+      <div class="sc-delta ${fuelRate > 4.5 ? 'bad' : 'good'}">Fuel @ $${fuelRate.toFixed(2)}/mi</div>
+    </div>
+    <div class="scorecard">
+      <div class="sc-label">Adjusted Network Landed</div>
+      <div class="sc-total" style="color:var(--green);">$${netLanded.toLocaleString()}</div>
+      <div class="sc-delta good">Optimal Operating Point</div>
+    </div>
+  `;
+
+  // Update comparison table
+  const tbody = document.getElementById('batchCompareBody');
+  const policies = [
+    { name: "Small Batch (Weekly JIT 1x)", m: 1.0 },
+    { name: "Optimal Dual Batch (Bi-Weekly 2x)", m: 2.0 },
+    { name: "Large Batch (Monthly Run 4x)", m: 4.0 }
+  ];
+
+  tbody.innerHTML = policies.map(p => {
+    const sCost = Math.round(setupBase / p.m);
+    const hCost = Math.round(holdingBase * p.m * 0.85);
+    const fCost = Math.round(freightBase * (fuelRate / 3.80) * 0.78);
+    const total = 82400 + 19800 + sCost + hCost + fCost;
+    const isAct = Math.abs(p.m - batchMultiplier) < 0.25;
+
+    return `
+      <tr class="${isAct ? 'active-row' : ''}">
+        <td><strong>${p.name} ${isAct ? '◀ (Active)' : ''}</strong></td>
+        <td>$${sCost.toLocaleString()}</td>
+        <td>$${hCost.toLocaleString()}</td>
+        <td>$${fCost.toLocaleString()}</td>
+        <td><strong>$${total.toLocaleString()}</strong></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* =========================================================================
+   8. MULTI-AGENT SWARM NEGOTIATION STREAM
+   ========================================================================= */
+const CHAT_SCRIPT = [
+  { agent: "procure", role: "Procurement Agent", text: "Evaluating raw material contracts: Houston (Global Resin) quotes $4.20/kg on CMP-RM10. Newark quotes $8.75/L on CMP-CHM22. If we ship direct to both plants, LTL freight adds +$1.85/kg in penalty surcharges." },
+  { agent: "produce", role: "Production Agent", text: "Plant 1000 has 400 hrs blending capacity on BLEND-01 and 150 hrs packaging. Plant 2000 has available packaging labor. However, direct point-to-point shipments create 142 fragmented batch runs with $12,750 in setup changeover loss." },
+  { agent: "routing", role: "Hub Routing Agent", text: "Proposing Hub & Spoke consolidation: Establishing Plant 1000 as Northern Hub and Plant 2000 as Southern Hub. Sourcing CMP-RM10 directly from Houston to Plant 2000 and Newark to Plant 1000 converts 100% of inbound legs to dedicated FTL milk-runs." },
+  { agent: "batch", role: "Batching Agent", text: "Running Economic Order Quantity (EOQ) optimization with 18% WACC. Recommending Bi-Weekly batch multiplier (2.0x). Cuts line changeovers by 50% ($8,900 savings) while keeping buffer inventory safely under 3 weeks of customer demand pegging." },
+  { agent: "arbiter", role: "Financial Arbiter", text: "Validating against SAP ERP records: MSEG 601 goods issues confirm customer demand. Cedar AST Policy Gate evaluated: Ring 0 PERMIT. Dual-Regional Hub & Spoke reduces total network landed cost from $318,450 to $246,900 (▼ $71,550 / 22.5%). Swarm consensus APPROVED." }
+];
+
+function renderChatStream() {
+  const stream = document.getElementById('chatStream');
+  stream.innerHTML = CHAT_SCRIPT.map(msg => `
+    <div class="chat-msg ${msg.agent}">
+      <div class="msg-meta">
+        <strong>${msg.role}</strong>
+        <span>Certified via Cedar AST Gate</span>
+      </div>
+      <div class="msg-text">${msg.text}</div>
+    </div>
+  `).join('');
+}
+
+async function runAgentNegotiation() {
+  showToast("🚀 Initiating Multi-Agent Network Optimization Swarm...");
+  const statuses = ["ag1Status", "ag2Status", "ag3Status", "ag4Status", "ag5Status"];
+  statuses.forEach(id => {
+    document.getElementById(id).textContent = "NEGOTIATING";
+    document.getElementById(id).className = "ag-status warn";
+  });
+
+  const groqKey = localStorage.getItem('groq_api_key') || document.getElementById('apiKeyInput').value.trim();
+
+  if (engineMode === 'groq' && groqKey) {
+    try {
+      showToast("⚡ Querying Groq LPU (Llama 3.3 70B)...");
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content: "You are an enterprise S&OP and Network Optimization Swarm Coordinator. Output a concise JSON array of 5 agent statements (procure, produce, routing, batch, arbiter) assessing the network trade-offs."
+            },
+            {
+              role: "user",
+              content: `Analyze network optimization between Point-to-Point ($318k), Central Hub ($284k), and Dual Hub & Spoke ($246k) with fuel rate $${fuelRate}/mi and batch multiplier ${batchMultiplier}x.`
+            }
+          ],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        const content = JSON.parse(data.choices[0].message.content);
+        if (content.statements || content.agents) {
+          const stmts = content.statements || content.agents;
+          const stream = document.getElementById('chatStream');
+          stream.innerHTML = stmts.map(s => `
+            <div class="chat-msg ${s.agent || 'routing'}">
+              <div class="msg-meta">
+                <strong>${s.role || s.agent} (Groq LPU)</strong>
+                <span>Certified via Cedar AST Gate</span>
+              </div>
+              <div class="msg-text">${s.text || s.statement || s.analysis}</div>
+            </div>
+          `).join('');
+        }
+      }
+    } catch (e) {
+      console.warn("Groq API fallback to simulator:", e);
+    }
+  }
+
+  await sleep(500);
+  document.getElementById("ag1Status").textContent = "CONTRACTS SOURCED";
+  document.getElementById("ag1Status").className = "ag-status";
+
+  await sleep(400);
+  document.getElementById("ag2Status").textContent = "CAPACITY BALANCED";
+  document.getElementById("ag2Status").className = "ag-status";
+
+  await sleep(500);
+  document.getElementById("ag3Status").textContent = "DUAL HUBS ROUTED";
+  document.getElementById("ag3Status").className = "ag-status";
+
+  await sleep(400);
+  document.getElementById("ag4Status").textContent = "EOQ LOCKED (2x)";
+  document.getElementById("ag4Status").className = "ag-status";
+
+  await sleep(500);
+  document.getElementById("ag5Status").textContent = "CONSENSUS 100%";
+  document.getElementById("ag5Status").className = "ag-status";
+
+  selectDesign('dual');
+  showToast("✔ Multi-Agent Swarm achieved consensus on Dual-Regional Hub & Spoke!");
+}
+
+/* =========================================================================
+   9. SAP S/4HANA MASTER DATA VIEWER
+   ========================================================================= */
+function showSapTable(tableKey) {
+  const data = T[tableKey];
+  if (!data || !data.length) return;
+
+  const thead = document.getElementById('sapTableHead');
+  const tbody = document.getElementById('sapTableBody');
+
+  const headers = Object.keys(data[0]);
+  thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+  tbody.innerHTML = data.slice(0, 15).map(row => `
+    <tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>
+  `).join('');
+
+  showToast(`Loaded SAP table: ${tableKey} (${data.length} records)`);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+</body>
+</html>
+''')
+    print("Successfully built network_optimization_multi_agent_app.html!")
+
+if __name__ == "__main__":
+    build()
