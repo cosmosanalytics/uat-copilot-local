@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&OP Swarm Studio • 11-Stage Multi-Agent Planning</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-subtle: #f1f5f9;
+      --bg-canvas: #ffffff;
+      --border-color: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-subtle: #94a3b8;
+      --swarm-purple: #7c3aed;
+      --swarm-purple-bg: #faf5ff;
+      --swarm-purple-border: #d8b4fe;
+      --kernel-blue: #2563eb;
+      --kernel-blue-bg: #eff6ff;
+      --kernel-blue-border: #93c5fd;
+      --cloud-green: #059669;
+      --cloud-green-bg: #ecfdf5;
+      --cloud-green-border: #a7f3d0;
+      --accent-amber: #d97706;
+      --accent-red: #dc2626;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-page: #090d16;
+      --bg-card: #0f172a;
+      --bg-card-subtle: #1e293b;
+      --bg-canvas: #0b1120;
+      --border-color: #334155;
+      --border-subtle: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-subtle: #64748b;
+      --swarm-purple: #a855f7;
+      --swarm-purple-bg: #2e1065;
+      --swarm-purple-border: #6b21a8;
+      --kernel-blue: #38bdf8;
+      --kernel-blue-bg: #082f49;
+      --kernel-blue-border: #0284c7;
+      --cloud-green: #10b981;
+      --cloud-green-bg: #064e3b;
+      --cloud-green-border: #047857;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--swarm-purple), var(--kernel-blue));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .brand-subtitle {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ENGINE SELECTOR */
+    .engine-bar {
+      display: flex;
+      background: var(--bg-card-subtle);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      gap: 2px;
+    }
+
+    .engine-btn {
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .engine-btn.active {
+      background: var(--bg-card);
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .api-key-input {
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      width: 170px;
+    }
+
+    .btn-action {
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-action:hover {
+      background: var(--bg-card-subtle);
+    }
+
+    .btn-primary {
+      background: var(--swarm-purple);
+      color: white;
+      border-color: var(--swarm-purple);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.92;
+      background: var(--swarm-purple);
+    }
+
+    /* MAIN S&OP PROCESS HEADER RIBBON */
+    .sop-ribbon {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .pod-card {
+      border: 1.5px solid;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pod-card.demand {
+      background: var(--swarm-purple-bg);
+      border-color: var(--swarm-purple-border);
+    }
+
+    .pod-card.supply {
+      background: var(--kernel-blue-bg);
+      border-color: var(--kernel-blue-border);
+    }
+
+    .pod-card.control {
+      background: var(--cloud-green-bg);
+      border-color: var(--cloud-green-border);
+    }
+
+    .pod-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .pod-header.demand { color: var(--swarm-purple); }
+    .pod-header.supply { color: var(--kernel-blue); }
+    .pod-header.control { color: var(--cloud-green); }
+
+    .pod-stages {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .stage-pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .stage-pill.active {
+      border-color: var(--accent-amber);
+      box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25);
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .stage-pill.completed {
+      border-color: var(--cloud-green);
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .stage-pill .stage-num {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      opacity: 0.7;
+    }
+
+    /* WORKSPACE LAYOUT */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 320px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .preset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border-color);
+      background: var(--bg-card-subtle);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--swarm-purple);
+      background: var(--bg-card);
+    }
+
+    .preset-btn.active {
+      border-color: var(--swarm-purple);
+      background: var(--swarm-purple-bg);
+    }
+
+    .preset-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .preset-desc {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .control-box {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .input-field {
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    /* MAIN CONTENT VIEW */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* STAGE TABS BAR */
+    .tab-bar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 24px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+    }
+
+    .tab-item {
+      padding: 12px 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .tab-item:hover {
+      color: var(--text-main);
+    }
+
+    .tab-item.active {
+      color: var(--swarm-purple);
+      border-bottom-color: var(--swarm-purple);
+    }
+
+    .tab-content {
+      padding: 20px 24px;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* S&OP CANVAS CONTAINER */
+    .canvas-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .canvas-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #swarmCanvas {
+      width: 100%;
+      height: 340px;
+      border-radius: 8px;
+      background: #0b1120;
+      display: block;
+    }
+
+    /* PLAN MATRIX TABLE */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .plan-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      text-align: left;
+    }
+
+    .plan-table th {
+      background: var(--bg-card-subtle);
+      padding: 10px 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    .plan-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    .plan-table tr:hover {
+      background: var(--bg-card-subtle);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .badge-locked { background: #fee2e2; color: #991b1b; }
+    .badge-ok { background: #dcfce7; color: #166534; }
+    .badge-warn { background: #fef3c7; color: #92400e; }
+    .badge-info { background: #e0f2fe; color: #075985; }
+
+    /* DUAL TRACEABILITY CARDS */
+    .trace-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .trace-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .trace-card:hover {
+      border-color: var(--swarm-purple);
+      box-shadow: var(--shadow-md);
+    }
+
+    .trace-flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .flow-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .flow-arrow {
+      color: var(--text-subtle);
+      font-weight: 800;
+    }
+
+    .flow-badge.t2 { background: var(--swarm-purple-bg); color: var(--swarm-purple); border: 1px solid var(--swarm-purple-border); }
+    .flow-badge.t1 { background: var(--kernel-blue-bg); color: var(--kernel-blue); border: 1px solid var(--kernel-blue-border); }
+    .flow-badge.t0 { background: var(--cloud-green-bg); color: var(--cloud-green); border: 1px solid var(--cloud-green-border); }
+
+    .trace-desc {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* BYZANTINE VOTING GRID */
+    .quorum-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .vote-node-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .vote-node-card.yes { border-color: #22c55e; background: #f0fdf4; }
+    .vote-node-card.no { border-color: #ef4444; background: #fef2f2; }
+
+    /* TOAST */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(100px);
+      transition: transform 0.25s ease;
+      z-index: 999;
+    }
+    #toast.show {
+      transform: translateY(0);
+    }
+  </style>
+
+  <!-- WebLLM Module -->
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.78";
+    window.webllm = webllm;
+    window.dispatchEvent(new Event('webllm-ready'));
+  </script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand-section">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">S&amp;OP Swarm Studio • 11-Stage Multi-Agent Planning</div>
+        <div class="brand-subtitle">Autonomous Sales &amp; Operations Planning powered by 3-Tier Enterprise Agent Architecture</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="engine-bar">
+        <button class="engine-btn active" id="btnGroq" onclick="setEngine('groq')">⚡ Groq LPU</button>
+        <button class="engine-btn" id="btnWebGpu" onclick="setEngine('webgpu')">🎮 In-Browser WebGPU</button>
+        <button class="engine-btn" id="btnSim" onclick="setEngine('sim')">🚀 Instant Simulator</button>
+      </div>
+      <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Groq API Key (gsk_...)" onchange="saveKey()">
+      <button class="btn-action" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
+    </div>
+  </header>
+
+  <!-- S&OP PODS & 11 AGENTS RIBBON -->
+  <div class="sop-ribbon">
+    <!-- POD 1: DEMAND SIDE -->
+    <div class="pod-card demand">
+      <div class="pod-header demand">
+        <span>🟣 Demand Side Pod</span>
+        <span>Stages 1 – 5</span>
+      </div>
+      <div class="pod-stages">
+        <div class="stage-pill" id="pill-1"><span class="stage-num">1</span> Aggregate</div>
+        <div class="stage-pill" id="pill-2"><span class="stage-num">2</span> Forecast</div>
+        <div class="stage-pill" id="pill-3"><span class="stage-num">3</span> Consensus</div>
+        <div class="stage-pill" id="pill-4"><span class="stage-num">4</span> Disaggregate</div>
+        <div class="stage-pill" id="pill-5"><span class="stage-num">5</span> Consumption</div>
+      </div>
+    </div>
+
+    <!-- POD 2: SUPPLY SIDE -->
+    <div class="pod-card supply">
+      <div class="pod-header supply">
+        <span>🔵 Supply Side Pod</span>
+        <span>Stages 6 – 9</span>
+      </div>
+      <div class="pod-stages">
+        <div class="stage-pill" id="pill-6"><span class="stage-num">6</span> Dep Demand</div>
+        <div class="stage-pill" id="pill-7"><span class="stage-num">7</span> Firming</div>
+        <div class="stage-pill" id="pill-8"><span class="stage-num">8</span> Capacity Pool</div>
+        <div class="stage-pill" id="pill-9"><span class="stage-num">9</span> Inventory</div>
+      </div>
+    </div>
+
+    <!-- POD 3: CONTROL -->
+    <div class="pod-card control">
+      <div class="pod-header control">
+        <span>🟢 Control Pod</span>
+        <span>Stages 10 – 11</span>
+      </div>
+      <div class="pod-stages">
+        <div class="stage-pill" id="pill-10"><span class="stage-num">10</span> Monitor</div>
+        <div class="stage-pill" id="pill-11"><span class="stage-num">11</span> Owner</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+      <div class="section-title">
+        <span>S&amp;OP Scenarios</span>
+        <span>3 Presets</span>
+      </div>
+
+      <div class="preset-list">
+        <div class="preset-btn active" onclick="loadPreset(0)" id="preset-0">
+          <div class="preset-title">🎯 Enterprise Router XR-900 Demand Surge</div>
+          <div class="preset-desc">Q4 holiday demand spike (+25%, +$5M). Requires Stage 3 Consensus uplift, Cedar review, and SMT line capacity check.</div>
+        </div>
+        <div class="preset-btn" onclick="loadPreset(1)" id="preset-1">
+          <div class="preset-title">⚡ Semiconductor Wafer Port Delay</div>
+          <div class="preset-desc">Tier-1 fab supply disruption (3-week lead time delay). Stage 6 BOM explosion nets backlog and pools secondary supplier.</div>
+        </div>
+        <div class="preset-btn" onclick="loadPreset(2)" id="preset-2">
+          <div class="preset-title">🚨 Rogue Purchasing Agent Test</div>
+          <div class="preset-desc">Simulates Stage 7 Firming releasing duplicate $10M POs. Watchdog trips Circuit Breaker (#20) &amp; revokes Mutex (#11).</div>
+        </div>
+      </div>
+
+      <div class="control-box">
+        <div class="section-title">Scenario Parameters</div>
+        <div class="input-group">
+          <label class="input-label">Product Family</label>
+          <input type="text" class="input-field" id="paramProduct" value="XR-900 Enterprise Router">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Baseline Monthly Demand</label>
+          <input type="text" class="input-field" id="paramDemand" value="12,500 units ($25.0M)">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Proposed Consensus Uplift</label>
+          <input type="text" class="input-field" id="paramUplift" value="+$5.0M Promotional (Stage 3)">
+        </div>
+        <div class="input-group">
+          <label class="input-label">BOM Complexity / Components</label>
+          <input type="text" class="input-field" id="paramBOM" value="84 Sub-assemblies, 4 Critical ASICs">
+        </div>
+
+        <button class="btn-action btn-primary" onclick="runSwarmExecution()" id="btnRunSwarm" style="margin-top: 8px;">
+          <span>🚀 Execute 11-Stage S&amp;OP Cycle</span>
+        </button>
+        <button class="btn-action" onclick="resetPlanState()">
+          <span>🔄 Reset Baseline State</span>
+        </button>
+      </div>
+
+      <!-- AGENT TELEMETRY CARD -->
+      <div class="control-box" style="font-size:0.72rem;">
+        <div class="section-title">Active Agent Telemetry</div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">Stage Order:</span>
+          <strong id="telemetryStage">Stage 1 of 11</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">Lambda Sandbox:</span>
+          <span id="telemetrySandbox" class="status-badge badge-info">15s Timer Armed</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">Cedar AST Gate:</span>
+          <span id="telemetryCedar" class="status-badge badge-ok">Ring 0 PASS</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">CAS Mutex Lease:</span>
+          <span id="telemetryMutex" class="status-badge badge-warn">UNLOCKED</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">S3 WORM Hash:</span>
+          <span id="telemetryWorm" style="font-family:var(--font-mono); font-size:0.65rem;">e3b0c442...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT PANE -->
+    <div class="main-content">
+      <!-- TABS -->
+      <div class="tab-bar">
+        <button class="tab-item active" onclick="switchTab('pipeline')" id="tabBtnPipeline">🌐 11-Stage Swarm Pipeline</button>
+        <button class="tab-item" onclick="switchTab('whiteboard')" id="tabBtnWhiteboard">📋 O(N) Shared Whiteboard</button>
+        <button class="tab-item" onclick="switchTab('quorum')" id="tabBtnQuorum">⚖️ Byzantine Consensus Quorum</button>
+        <button class="tab-item" onclick="switchTab('traceability')" id="tabBtnTraceability">🔀 3-Tier Traceability Matrix</button>
+        <button class="tab-item" onclick="switchTab('audit')" id="tabBtnAudit">📜 Episodic Audit Hash-Chain</button>
+      </div>
+
+      <!-- TAB 1: 11-STAGE PIPELINE CANVAS & PLAN MATRIX -->
+      <div class="tab-content active" id="tabPipeline">
+        <div class="canvas-container">
+          <div class="canvas-head">
+            <div>
+              <strong style="font-size:0.88rem;">11-Stage S&amp;OP Autonomous Swarm Topology</strong>
+              <div style="font-size:0.72rem; color:var(--text-muted);">
+                Demand Pod (1–5) ➔ Inter-Pod Liaison Bridge ➔ Supply Pod (6–9) ➔ Control Pod (10–11)
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <span class="status-badge badge-info">Liaison Max Hops: &le; 3</span>
+              <span class="status-badge badge-ok" id="swarmStatusBadge">SWARM IDLE</span>
+            </div>
+          </div>
+          <canvas id="swarmCanvas" width="900" height="340"></canvas>
+        </div>
+
+        <!-- S&OP PLAN MATRIX (TABLE) -->
+        <div class="table-container">
+          <table class="plan-table" id="planTable">
+            <thead>
+              <tr>
+                <th>Stage Agent</th>
+                <th>Pod</th>
+                <th>Operation</th>
+                <th>Demand / Volume</th>
+                <th>Financial Value</th>
+                <th>Active Control</th>
+                <th>WORM Receipt</th>
+              </tr>
+            </thead>
+            <tbody id="planTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: O(N) SHARED WHITEBOARD -->
+      <div class="tab-content" id="tabWhiteboard">
+        <div class="canvas-container">
+          <div class="canvas-head">
+            <div>
+              <strong style="font-size:0.88rem;">O(N) Partitioned Shared Whiteboard (Blackboard Pattern)</strong>
+              <div style="font-size:0.72rem; color:var(--text-muted);">
+                Single shared plan state replacing O(N&sup2;) peer-to-peer message storms. One writer per plan row via DynamoDB CAS Mutex.
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <span class="status-badge badge-warn" id="whiteboardLockStatus">MUTEX: IDLE</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-top:8px;" id="whiteboardLanes">
+            <!-- LANE 1: DEMAND STATE -->
+            <div style="background:var(--bg-card-subtle); border:1.5px solid var(--swarm-purple-border); border-radius:8px; padding:12px;">
+              <div style="font-size:0.78rem; font-weight:800; color:var(--swarm-purple); margin-bottom:8px;">🟣 DEMAND LANE (Stages 1–5)</div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:10px;">Owned by Demand Pod. Write access gated by Stage 3 Consensus.</div>
+              <div id="laneDemandContent" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="background:var(--bg-card); padding:8px; border-radius:6px; border:1px solid var(--border-color); font-size:0.72rem;">
+                  <div><strong>Total Demand:</strong> 12,500 units</div>
+                  <div style="color:var(--text-muted)">Baseline Roll-Up: Confirmed</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LANE 2: SUPPLY STATE -->
+            <div style="background:var(--bg-card-subtle); border:1.5px solid var(--kernel-blue-border); border-radius:8px; padding:12px;">
+              <div style="font-size:0.78rem; font-weight:800; color:var(--kernel-blue); margin-bottom:8px;">🔵 SUPPLY LANE (Stages 6–9)</div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:10px;">Owned by Supply Pod. BOM Exploded &amp; SMT Capacity Allocated.</div>
+              <div id="laneSupplyContent" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="background:var(--bg-card); padding:8px; border-radius:6px; border:1px solid var(--border-color); font-size:0.72rem;">
+                  <div><strong>Gross Requirements:</strong> 12,500 units</div>
+                  <div style="color:var(--text-muted)">Planned Orders: Standby</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LANE 3: CONTROL & EXCEPTIONS -->
+            <div style="background:var(--bg-card-subtle); border:1.5px solid var(--cloud-green-border); border-radius:8px; padding:12px;">
+              <div style="font-size:0.78rem; font-weight:800; color:var(--cloud-green); margin-bottom:8px;">🟢 CONTROL LANE (Stages 10–11)</div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:10px;">Owned by Control Pod. Anomaly thresholds &amp; escalation routing.</div>
+              <div id="laneControlContent" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="background:var(--bg-card); padding:8px; border-radius:6px; border:1px solid var(--border-color); font-size:0.72rem;">
+                  <div><strong>Variance Threshold:</strong> 0.0% Breach</div>
+                  <div style="color:var(--text-muted)">Owner Routing: Normal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: BYZANTINE CONSENSUS QUORUM -->
+      <div class="tab-content" id="tabQuorum">
+        <div class="canvas-container">
+          <div class="canvas-head">
+            <div>
+              <strong style="font-size:0.88rem;">Byzantine Fault-Tolerant Consensus Arbiter (&ge; 2/3 + 1)</strong>
+              <div style="font-size:0.72rem; color:var(--text-muted);">
+                High-Stakes Purchase Order / Promotional Uplift Verification. Every ballot requires 3-source proof from Grounding Certifier (#14).
+              </div>
+            </div>
+            <span class="status-badge badge-ok" id="quorumResultBadge">QUORUM READY (10 / 12 VOTES NEEDED)</span>
+          </div>
+
+          <!-- 3-SOURCE GROUNDING PROOF BOX -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; background:var(--bg-card-subtle); padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:var(--cloud-green);">PROOF 1: S3 WORM RECEIPT</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); font-family:var(--font-mono)">s3://vault/contracts/po-9418.pdf</div>
+              <div style="font-size:0.7rem; color:#059669;">✔ SHA-256 Validated</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:var(--kernel-blue);">PROOF 2: OPENSEARCH VECTOR MATCH</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); font-family:var(--font-mono)">Cosine: 0.89 (&ge; 0.82 Floor)</div>
+              <div style="font-size:0.7rem; color:#2563eb;">✔ Semantic Alignment Pass</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:var(--swarm-purple);">PROOF 3: NEPTUNE GRAPH TRIPLE</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); font-family:var(--font-mono)">Supplier &rarr; HasCapacity &rarr; Verified</div>
+              <div style="font-size:0.7rem; color:#7c3aed;">✔ Relational Ontologic Pass</div>
+            </div>
+          </div>
+
+          <!-- 12 NODE VOTING CARDS -->
+          <div class="quorum-grid" id="quorumGrid">
+            <!-- Dynamically populated voting cards -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: 3-TIER TRACEABILITY MATRIX -->
+      <div class="tab-content" id="tabTraceability">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="font-size:0.88rem;">Dual 3-Tier Traceability Matrix</strong>
+            <div style="font-size:0.72rem; color:var(--text-muted);">
+              Page 2 (Tier 2 Swarm Down to Cloud) vs. Page 3 (Tier 0 Cloud Up to Swarm)
+            </div>
+          </div>
+          <div class="engine-bar">
+            <button class="engine-btn active" id="btnTraceDown" onclick="setTraceView('down')">⬇️ Tier 2 Down to Cloud</button>
+            <button class="engine-btn" id="btnTraceUp" onclick="setTraceView('up')">⬆️ Tier 0 Up to Swarm</button>
+          </div>
+        </div>
+
+        <div class="trace-grid" id="traceCardsContainer">
+          <!-- Dynamically populated trace cards -->
+        </div>
+      </div>
+
+      <!-- TAB 5: AUDIT TRAIL -->
+      <div class="tab-content" id="tabAudit">
+        <div class="canvas-container">
+          <div class="canvas-head">
+            <div>
+              <strong style="font-size:0.88rem;">Episodic Ledger: SHA-256 Hash-Chained S&amp;OP Audit Trail</strong>
+              <div style="font-size:0.72rem; color:var(--text-muted);">
+                Immutable cryptographic chain: Block(n) = SHA-256(Block(n-1) + Perception + S&amp;OP Decision). Locked under S3 Compliance WORM.
+              </div>
+            </div>
+            <span class="status-badge badge-ok">7-YEAR LEGAL HOLD ACTIVE</span>
+          </div>
+          <div id="auditLogStream" style="display:flex; flex-direction:column; gap:8px; font-family:var(--font-mono); font-size:0.72rem;">
+            <!-- Dynamically added blocks -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">S&amp;OP Swarm Studio Ready</div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /* =========================================================================
+       1. DATA STRUCTURES & DEFINITIONS
+       ========================================================================= */
+    const STAGES = [
+      { id: 1, name: "Aggregate", pod: "demand", desc: "Roll history up", role: "Demand Aggregator", volume: "12,500 units", val: "$25.0M", wire: "9 Runbook &rarr; 5 Lambda" },
+      { id: 2, name: "Forecast", pod: "demand", desc: "Clean, fit, select", role: "Statistical Modeler", volume: "12,500 units", val: "$25.0M", wire: "1 Bedrock &rarr; 8 Propose-Decide" },
+      { id: 3, name: "Consensus", pod: "demand", desc: "Forecast + adjust", role: "Commercial Arbiter", volume: "+$5.0M uplift", val: "$30.0M", wire: "2 Cedar Pass &rarr; 16 Liaison" },
+      { id: 4, name: "Disaggregate", pod: "demand", desc: "Split to detail", role: "SKU Allocator", volume: "15,000 units", val: "$30.0M", wire: "9 Runbook &rarr; 6 Step Functions" },
+      { id: 5, name: "Consumption", pod: "demand", desc: "Net the backlog", role: "Backlog Netter", volume: "14,200 net", val: "$28.4M", wire: "18 Whiteboard &rarr; 4 Database" },
+      { id: 6, name: "Dep Demand", pod: "supply", desc: "Explode the BOM", role: "BOM Exploder", volume: "84 Sub-assemblies", val: "$18.2M", wire: "9 Runbook &rarr; 5 Lambda" },
+      { id: 7, name: "Firming", pod: "supply", desc: "Plan the orders", role: "Production Planner", volume: "14,200 orders", val: "$28.4M", wire: "11 Mutex &rarr; 4 DB CAS Lock" },
+      { id: 8, name: "Capacity Pool", pod: "supply", desc: "Check resources", role: "SMT Capacity Arbiter", volume: "92% Utilization", val: "$28.4M", wire: "14 Grounding &rarr; 19 Quorum" },
+      { id: 9, name: "Inventory", pod: "supply", desc: "Set safety stock", role: "Buffer Controller", volume: "2,400 safety stock", val: "$4.8M", wire: "18 Whiteboard &rarr; 13 Ledger" },
+      { id: 10, name: "Monitor", pod: "control", desc: "Flag thresholds", role: "Variance Watchdog", volume: "0.0% variance", val: "Nominal", wire: "17 Hop Limiter &rarr; 10 Supervisor" },
+      { id: 11, name: "Owner", pod: "control", desc: "Route the alert", role: "Planner Dispatcher", volume: "1 Lead Planner", val: "Escalated", wire: "7 EventBridge Bus" }
+    ];
+
+    const PRESETS = [
+      {
+        product: "XR-900 Enterprise Router",
+        demand: "12,500 units ($25.0M)",
+        uplift: "+$5.0M Promotional (Stage 3)",
+        bom: "84 Sub-assemblies, 4 Critical ASICs",
+        desc: "Q4 holiday promotional demand spike. Consensus passes uplift through Cedar review to SMT line capacity."
+      },
+      {
+        product: "Quantum ASIC Line Q-40",
+        demand: "8,000 units ($40.0M)",
+        uplift: "Lead Time Delay: +21 Days",
+        bom: "16 Advanced Packaging Nodes",
+        desc: "Tier-1 semiconductor packaging disruption. BOM explosion triggers capacity pooling and buffer rebalance."
+      },
+      {
+        product: "Industrial Switch IS-200",
+        demand: "5,000 units ($10.0M)",
+        uplift: "DUPLICATE PO INJECTION",
+        bom: "42 PCB Assemblies",
+        desc: "Rogue agent simulation. Stage 7 attempts duplicate $10M PO releases; Circuit Breaker benches agent."
+      }
+    ];
+
+    const TRACE_DOWN_DATA = [
+      { swarm: "15 Topology", kernel: "9 Runbook", cloud: "5 Lambda + 6 Step Functions", desc: "Arranges 11 stages into 3 pods (demand, supply, control) so agents talk only to neighbours. Runbook fixes order; Step Functions executes." },
+      { swarm: "16 Liaison Router", kernel: "8 Propose-Decide", cloud: "1 Bedrock + 2 AgentCore", desc: "Cross-pod hand-offs go through one liaison. Consensus passes approved total to supply pod, gated by Bedrock proposal & Cedar authority." },
+      { swarm: "17 Hop Limiter", kernel: "10 Supervisor", cloud: "7 EventBridge + 5 Lambda", desc: "Delegation chain capped at 3 hops. If late-order alert bounces between Monitor and Owner, Supervisor trips and kills stuck Lambda." },
+      { swarm: "18 Whiteboard", kernel: "11 Mutex Lease & 13 Episodic Ledger", cloud: "4 Database + 3 S3 Vault", desc: "Shared plan state (Total, NettedDemand, GrossReq) on blackboard. Mutex locks row in DB; Ledger seals update into 7-yr S3 WORM." },
+      { swarm: "19 Consensus Quorum", kernel: "14 Grounding Certifier", cloud: "3 S3 Vault + 4 Database", desc: "Stage 3 & 7 require 10 of 12 votes for high-stakes POs. Every vote backed by Grounding proofs from S3 contract & Neptune DB graph." },
+      { swarm: "20 Circuit Breaker", kernel: "10 Supervisor & 11 Mutex Lease", cloud: "7 EventBridge + 5 Lambda + 4 Database", desc: "Benches misbehaving stage releasing duplicate POs. Supervisor kills container; Mutex revokes DB write lock to protect chain." }
+    ];
+
+    const TRACE_UP_DATA = [
+      { cloud: "1 Bedrock", kernel: "8 Propose-Decide", swarm: "16 Liaison Router", desc: "Forecast and Consensus draft models with Bedrock in Ring 3; Propose-Decide holds draft until decided, and Liaison routes to next pod." },
+      { cloud: "2 AgentCore", kernel: "8 Propose-Decide", swarm: "16 Liaison Router", desc: "AgentCore with Cedar decides who may approve a Consensus uplift or PO release; checked on every pod hand-off." },
+      { cloud: "3 S3 Vault", kernel: "12 Context Pager, 13 Episodic Ledger, 14 Grounding", swarm: "18 Whiteboard + 19 Consensus Quorum", desc: "Immutable 7-year WORM audit safe storing Ledger snapshots and Certifier proofs behind every Quorum ballot." },
+      { cloud: "4 Database", kernel: "11 Mutex Lease & 14 Grounding Certifier", swarm: "18 Whiteboard + 19 Quorum + 20 Breaker", desc: "DynamoDB CAS mutex locks protect row edits; OpenSearch vectors and Neptune graph feed Certifier facts for voting." },
+      { cloud: "5 Lambda", kernel: "9 Runbook & 10 Supervisor", swarm: "15 Topology + 17 Hop Limiter + 20 Breaker", desc: "Ephemeral 15-second sandbox for each stage computation. Supervisor kills container if Hop Limiter or Breaker trips." },
+      { cloud: "6 Step Functions", kernel: "9 Runbook", swarm: "15 Topology", desc: "Runs the 11 stages in strict DAG order so each consumes previous output; rolls back cleanly if stage fails." },
+      { cloud: "7 EventBridge", kernel: "10 Supervisor", swarm: "17 Hop Limiter + 20 Circuit Breaker", desc: "Pub/Sub bus delivering alerts only to subscribed stage owners when a trip or anomaly occurs." }
+    ];
+
+    let currentPreset = 0;
+    let engineMode = "groq";
+    let isRunning = false;
+    let activeTraceView = "down";
+    let animFrame = null;
+    let packetT = 0;
+
+    /* =========================================================================
+       2. INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      renderPlanTable();
+      renderTraceCards();
+      renderQuorumGrid();
+      initCanvas();
+      addAuditLog("System Bootstrap", "S&OP Swarm Coordinator online. 11 Stages mapped across 3 Pods.", "7a8f902c4b1e...");
+    });
+
+    function initTheme() {
+      const saved = localStorage.getItem('sop_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateThemeBtn(saved);
+    }
+
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme') || 'light';
+      const nxt = cur === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', nxt);
+      localStorage.setItem('sop_theme', nxt);
+      updateThemeBtn(nxt);
+      drawSwarmCanvas();
+    }
+
+    function updateThemeBtn(t) {
+      document.getElementById('themeBtn').textContent = t === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+    }
+
+    function setEngine(m) {
+      engineMode = m;
+      document.getElementById('btnGroq').classList.toggle('active', m === 'groq');
+      document.getElementById('btnWebGpu').classList.toggle('active', m === 'webgpu');
+      document.getElementById('btnSim').classList.toggle('active', m === 'sim');
+      showToast(`AI Engine set to: ${m.toUpperCase()}`);
+    }
+
+    function saveKey() {
+      const k = document.getElementById('apiKeyInput').value.trim();
+      localStorage.setItem('groq_api_key', k);
+      showToast("Groq API Key saved locally.");
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      const map = {
+        pipeline: { btn: 'tabBtnPipeline', pane: 'tabPipeline' },
+        whiteboard: { btn: 'tabBtnWhiteboard', pane: 'tabWhiteboard' },
+        quorum: { btn: 'tabBtnQuorum', pane: 'tabQuorum' },
+        traceability: { btn: 'tabBtnTraceability', pane: 'tabTraceability' },
+        audit: { btn: 'tabBtnAudit', pane: 'tabAudit' }
+      };
+
+      if (map[tabId]) {
+        document.getElementById(map[tabId].btn).classList.add('active');
+        document.getElementById(map[tabId].pane).classList.add('active');
+        if (tabId === 'pipeline') setTimeout(drawSwarmCanvas, 50);
+      }
+    }
+
+    /* =========================================================================
+       3. S&OP PIPELINE CANVAS RENDERING
+       ========================================================================= */
+    function initCanvas() {
+      const canvas = document.getElementById('swarmCanvas');
+      if (canvas && canvas.parentElement) {
+        canvas.width = canvas.parentElement.clientWidth - 32;
+      }
+      window.addEventListener('resize', () => {
+        const c = document.getElementById('swarmCanvas');
+        if (c && c.parentElement) {
+          c.width = c.parentElement.clientWidth - 32;
+          drawSwarmCanvas();
+        }
+      });
+      drawSwarmCanvas();
+    }
+
+    function drawSwarmCanvas(activeStageIdx = -1) {
+      const canvas = document.getElementById('swarmCanvas');
+      if (!canvas) return;
+      if (canvas.parentElement) {
+        const targetW = canvas.parentElement.clientWidth - 32;
+        if (targetW > 400 && Math.abs(canvas.width - targetW) > 5) {
+          canvas.width = targetW;
+        }
+      }
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Background
+      ctx.fillStyle = isDark ? '#0f172a' : '#1e293b';
+      ctx.fillRect(0, 0, w, h);
+
+      const p1W = (w - 60) * 0.42;
+      const p2W = (w - 60) * 0.34;
+      const p3W = (w - 60) * 0.24;
+      const p1X = 15;
+      const p2X = p1X + p1W + 15;
+      const p3X = p2X + p2W + 15;
+
+      // Draw Pod Zones
+      // Zone 1: Demand Pod (Stages 1-5)
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.12)';
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 1.5;
+      ctx.roundRect(p1X, 20, p1W, h - 40, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 11px Inter';
+      ctx.textAlign = 'left';
+      ctx.fillText('🟣 DEMAND POD (STAGES 1–5)', p1X + 15, 42);
+
+      // Zone 2: Supply Pod (Stages 6-9)
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.12)';
+      ctx.strokeStyle = '#2563eb';
+      ctx.roundRect(p2X, 20, p2W, h - 40, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#60a5fa';
+      ctx.fillText('🔵 SUPPLY POD (STAGES 6–9)', p2X + 15, 42);
+
+      // Zone 3: Control Pod (Stages 10-11)
+      ctx.fillStyle = 'rgba(5, 150, 105, 0.12)';
+      ctx.strokeStyle = '#059669';
+      ctx.roundRect(p3X, 20, p3W, h - 40, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('🟢 CONTROL POD (10–11)', p3X + 15, 42);
+
+      // Stage Node Coordinates
+      const coords = [
+        // Demand Pod
+        { id: 1, x: p1X + p1W * 0.12, y: 110, name: "1. Aggregate" },
+        { id: 2, x: p1X + p1W * 0.31, y: 195, name: "2. Forecast" },
+        { id: 3, x: p1X + p1W * 0.51, y: 110, name: "3. Consensus" },
+        { id: 4, x: p1X + p1W * 0.70, y: 220, name: "4. Disaggregate" },
+        { id: 5, x: p1X + p1W * 0.88, y: 120, name: "5. Consumption" },
+
+        // Supply Pod
+        { id: 6, x: p2X + p2W * 0.15, y: 185, name: "6. Dep Demand" },
+        { id: 7, x: p2X + p2W * 0.40, y: 105, name: "7. Firming" },
+        { id: 8, x: p2X + p2W * 0.65, y: 215, name: "8. Capacity" },
+        { id: 9, x: p2X + p2W * 0.88, y: 125, name: "9. Inventory" },
+
+        // Control Pod
+        { id: 10, x: p3X + p3W * 0.30, y: 145, name: "10. Monitor" },
+        { id: 11, x: p3X + p3W * 0.75, y: 195, name: "11. Owner" }
+      ];
+
+      // Draw Connection Wires
+      ctx.lineWidth = 2;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const n1 = coords[i];
+        const n2 = coords[i+1];
+
+        const isInterPod = (i === 4 || i === 8);
+        ctx.strokeStyle = isInterPod ? '#f59e0b' : 'rgba(255,255,255,0.2)';
+        ctx.setLineDash(isInterPod ? [6, 4] : []);
+
+        ctx.beginPath();
+        ctx.moveTo(n1.x, n1.y);
+        ctx.lineTo(n2.x, n2.y);
+        ctx.stroke();
+
+        // Draw Liaison Bridge Label
+        if (isInterPod) {
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 9px JetBrains Mono';
+          const mx = (n1.x + n2.x) / 2;
+          const my = (n1.y + n2.y) / 2 - 8;
+          ctx.fillText('Liaison Bridge', mx - 28, my);
+        }
+      }
+      ctx.setLineDash([]);
+
+      // Draw Packet Pulse if running
+      if (activeStageIdx >= 0 && activeStageIdx < coords.length - 1) {
+        const fromN = coords[activeStageIdx];
+        const toN = coords[activeStageIdx + 1];
+        const px = fromN.x + (toN.x - fromN.x) * packetT;
+        const py = fromN.y + (toN.y - fromN.y) * packetT;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Draw Stage Nodes
+      coords.forEach((n, idx) => {
+        const isActive = idx === activeStageIdx;
+        const isDone = activeStageIdx > idx;
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, isActive ? 16 : 12, 0, Math.PI * 2);
+
+        if (isActive) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.shadowColor = '#fbbf24';
+          ctx.shadowBlur = 15;
+        } else if (isDone) {
+          ctx.fillStyle = '#10b981';
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = idx < 5 ? '#a855f7' : (idx < 9 ? '#3b82f6' : '#10b981');
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(n.name, n.x, n.y + 24);
+      });
+    }
+
+    /* =========================================================================
+       4. S&OP PLAN TABLE POPULATION
+       ========================================================================= */
+    function renderPlanTable() {
+      const tbody = document.getElementById('planTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      STAGES.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.id = `row-stage-${s.id}`;
+        tr.innerHTML = `
+          <td><strong>#${s.id} ${s.name}</strong></td>
+          <td><span class="status-badge ${s.pod === 'demand' ? 'badge-info' : (s.pod === 'supply' ? 'badge-ok' : 'badge-warn')}">${s.pod.toUpperCase()}</span></td>
+          <td style="font-family:var(--font-sans)">${s.desc}</td>
+          <td>${s.volume}</td>
+          <td style="color:${s.val.includes('$') ? '#059669' : 'inherit'}">${s.val}</td>
+          <td><span class="status-badge badge-info">${s.wire}</span></td>
+          <td><span style="opacity:0.6">e3b0c442...</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* =========================================================================
+       5. DUAL TRACEABILITY MATRIX RENDERING
+       ========================================================================= */
+    function setTraceView(view) {
+      activeTraceView = view;
+      document.getElementById('btnTraceDown').classList.toggle('active', view === 'down');
+      document.getElementById('btnTraceUp').classList.toggle('active', view === 'up');
+      renderTraceCards();
+    }
+
+    function renderTraceCards() {
+      const container = document.getElementById('traceCardsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const data = activeTraceView === 'down' ? TRACE_DOWN_DATA : TRACE_UP_DATA;
+
+      data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'trace-card';
+
+        if (activeTraceView === 'down') {
+          card.innerHTML = `
+            <div class="trace-flow">
+              <span class="flow-badge t2">🟣 ${item.swarm}</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-badge t1">🔵 ${item.kernel}</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-badge t0">🟢 ${item.cloud}</span>
+            </div>
+            <div class="trace-desc">${item.desc}</div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="trace-flow">
+              <span class="flow-badge t0">🟢 ${item.cloud}</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-badge t1">🔵 ${item.kernel}</span>
+              <span class="flow-arrow">&rarr;</span>
+              <span class="flow-badge t2">🟣 ${item.swarm}</span>
+            </div>
+            <div class="trace-desc">${item.desc}</div>
+          `;
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    /* =========================================================================
+       6. BYZANTINE CONSENSUS VOTING GRID
+       ========================================================================= */
+    function renderQuorumGrid() {
+      const grid = document.getElementById('quorumGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      for (let i = 1; i <= 12; i++) {
+        const card = document.createElement('div');
+        card.className = 'vote-node-card yes';
+        card.id = `vote-node-${i}`;
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>Agent Node #${i}</strong>
+            <span class="status-badge badge-ok" id="vote-badge-${i}">YES ✔</span>
+          </div>
+          <div style="font-size:0.68rem; color:var(--text-muted)">Stage ${((i-1)%11)+1} Delegate</div>
+          <div style="font-size:0.65rem; font-family:var(--font-mono); color:#059669;">Grounding Cert: VALID</div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    /* =========================================================================
+       7. SCENARIO PRESETS
+       ========================================================================= */
+    function loadPreset(idx) {
+      currentPreset = idx;
+      document.querySelectorAll('.preset-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      const p = PRESETS[idx];
+      document.getElementById('paramProduct').value = p.product;
+      document.getElementById('paramDemand').value = p.demand;
+      document.getElementById('paramUplift').value = p.uplift;
+      document.getElementById('paramBOM').value = p.bom;
+      showToast(`Loaded Preset: ${p.product}`);
+    }
+
+    /* =========================================================================
+       8. SWARM SIMULATION & EXECUTION CONTROLLERS
+       ========================================================================= */
+    async function runSwarmExecution() {
+      if (isRunning) return;
+      isRunning = true;
+      const btn = document.getElementById('btnRunSwarm');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ Executing Swarm...</span>';
+      document.getElementById('swarmStatusBadge').textContent = 'SWARM EXECUTING';
+      document.getElementById('swarmStatusBadge').className = 'status-badge badge-warn';
+
+      showToast("🚀 Initiating 11-Stage S&OP Swarm Execution across 3 Pods...");
+
+      for (let i = 0; i < STAGES.length; i++) {
+        const s = STAGES[i];
+
+        // Animate stage pill
+        document.querySelectorAll('.stage-pill').forEach(p => p.classList.remove('active'));
+        document.getElementById(`pill-${s.id}`).classList.add('active');
+
+        // Update Telemetry
+        document.getElementById('telemetryStage').textContent = `Stage ${s.id} of 11: ${s.name}`;
+        document.getElementById('telemetrySandbox').textContent = `Running (${s.id * 1.2}s / 15s)`;
+        document.getElementById('telemetrySandbox').className = 'status-badge badge-warn';
+
+        if (s.id === 3) {
+          // Consensus uplift
+          document.getElementById('telemetryCedar').textContent = 'EVALUATING CEDAR...';
+          document.getElementById('telemetryMutex').textContent = 'MUTEX: LOCKED (DDB CAS)';
+          document.getElementById('telemetryMutex').className = 'status-badge badge-locked';
+          document.getElementById('whiteboardLockStatus').textContent = 'MUTEX LOCKED: Stage 3 Consensus';
+          document.getElementById('whiteboardLockStatus').className = 'status-badge badge-locked';
+          addWhiteboardEntry('demand', `Stage 3 Consensus applied ${document.getElementById('paramUplift').value}. Cedar rule evaluated.`);
+        } else if (s.id === 7) {
+          // Firming
+          document.getElementById('telemetryCedar').textContent = 'PERMIT (Ring 0)';
+          document.getElementById('telemetryMutex').textContent = 'MUTEX: LOCKED (Row Lock)';
+          addWhiteboardEntry('supply', `Stage 7 Firming committed planned orders: ${s.volume}.`);
+        } else if (s.id === 10) {
+          // Monitor
+          document.getElementById('telemetryMutex').textContent = 'UNLOCKED';
+          document.getElementById('telemetryMutex').className = 'status-badge badge-ok';
+          document.getElementById('whiteboardLockStatus').textContent = 'MUTEX: IDLE';
+          document.getElementById('whiteboardLockStatus').className = 'status-badge badge-ok';
+          addWhiteboardEntry('control', `Stage 10 Monitor: variance within tolerance bounds.`);
+        }
+
+        // Generate SHA-256 Mock hash
+        const mockHash = Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10);
+        document.getElementById('telemetryWorm').textContent = mockHash.substring(0, 10) + '...';
+
+        // Animate Canvas
+        packetT = 0;
+        for (let step = 0; step < 10; step++) {
+          packetT = step / 10;
+          drawSwarmCanvas(i);
+          await sleep(35);
+        }
+
+        // Highlight table row
+        document.querySelectorAll('#planTableBody tr').forEach(r => r.style.background = '');
+        const activeRow = document.getElementById(`row-stage-${s.id}`);
+        if (activeRow) activeRow.style.background = 'rgba(217, 119, 6, 0.15)';
+
+        // Add to audit trail
+        addAuditLog(`Stage ${s.id}: ${s.name}`, `Executed ${s.desc}. Telemetry certified via ${s.wire}.`, mockHash);
+
+        document.getElementById(`pill-${s.id}`).classList.remove('active');
+        document.getElementById(`pill-${s.id}`).classList.add('completed');
+        await sleep(300);
+      }
+
+      // Complete cycle
+      document.getElementById('swarmStatusBadge').textContent = 'S&OP PLAN COMMITTED ✔';
+      document.getElementById('swarmStatusBadge').className = 'status-badge badge-ok';
+      document.getElementById('telemetrySandbox').textContent = 'Sandboxes Disposed';
+      document.getElementById('telemetrySandbox').className = 'status-badge badge-ok';
+
+      showToast("✔ Full S&OP Swarm Cycle Completed! State synchronized to S3 WORM safe.");
+      btn.disabled = false;
+      btn.innerHTML = '<span>🚀 Execute 11-Stage S&amp;OP Cycle</span>';
+      isRunning = false;
+      drawSwarmCanvas(-1);
+    }
+
+    function addWhiteboardEntry(lane, text) {
+      const map = {
+        demand: 'laneDemandContent',
+        supply: 'laneSupplyContent',
+        control: 'laneControlContent'
+      };
+      const c = document.getElementById(map[lane]);
+      if (!c) return;
+      const el = document.createElement('div');
+      el.style.background = 'var(--bg-card)';
+      el.style.padding = '8px';
+      el.style.borderRadius = '6px';
+      el.style.border = '1px solid var(--border-color)';
+      el.style.fontSize = '0.72rem';
+      el.innerHTML = `<div>${text}</div><div style="color:var(--text-muted); font-size:0.65rem;">Committed: ${new Date().toLocaleTimeString()}</div>`;
+      c.prepend(el);
+    }
+
+    function addAuditLog(stage, event, hash) {
+      const stream = document.getElementById('auditLogStream');
+      if (!stream) return;
+      const item = document.createElement('div');
+      item.style.background = 'var(--bg-card)';
+      item.style.padding = '8px 12px';
+      item.style.borderRadius = '6px';
+      item.style.border = '1px solid var(--border-color)';
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.innerHTML = `
+        <div>
+          <span style="color:var(--swarm-purple); font-weight:700;">[${stage}]</span>
+          <span>${event}</span>
+        </div>
+        <div style="color:var(--cloud-green); font-size:0.65rem;">Block Hash: ${hash.substring(0,12)}...</div>
+      `;
+      stream.prepend(item);
+    }
+
+    function resetPlanState() {
+      document.querySelectorAll('.stage-pill').forEach(p => {
+        p.classList.remove('active');
+        p.classList.remove('completed');
+      });
+      document.getElementById('telemetryStage').textContent = 'Ready';
+      document.getElementById('telemetryMutex').textContent = 'UNLOCKED';
+      document.getElementById('telemetryMutex').className = 'status-badge badge-ok';
+      document.getElementById('swarmStatusBadge').textContent = 'SWARM IDLE';
+      document.getElementById('swarmStatusBadge').className = 'status-badge badge-ok';
+      drawSwarmCanvas(-1);
+      showToast('S&OP Plan State Reset to Baseline.');
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+</body>
+</html>
