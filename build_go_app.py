@@ -1040,7 +1040,6 @@ function getGroup(startR, startC) {
 }
 
 function triggerAiMove() {
-  // Simple heuristic AI stone selection
   const emptySpots = [];
   for (let r = 0; r < boardSize; r++) {
     for (let c = 0; c < boardSize; c++) {
@@ -1049,10 +1048,124 @@ function triggerAiMove() {
   }
   if (emptySpots.length === 0) return;
 
-  // Prefer star points or corners if early
-  const stars = getStarPoints(boardSize).filter(pt => grid[pt.r][pt.c] === 0);
-  let choice = stars.length > 0 ? stars[Math.floor(Math.random() * stars.length)] : emptySpots[Math.floor(Math.random() * emptySpots.length)];
+  const opponent = currentTurn === 1 ? 2 : 1;
+  const isEarlyGame = moveHistory.length < 24;
 
+  // Score each candidate spot using fundamental Weiqi / Go theory
+  let bestScore = -999999;
+  let bestMoves = [];
+
+  for (let spot of emptySpots) {
+    const { r, c } = spot;
+
+    // Line distance from board edge (0 = 1st line 'death line', 1 = 2nd line, 2 = 3rd line 'territory', 3 = 4th line 'influence')
+    const edgeDistR = Math.min(r, boardSize - 1 - r);
+    const edgeDistC = Math.min(c, boardSize - 1 - c);
+    const lineRank = Math.min(edgeDistR, edgeDistC); // 0 = 1st line, 1 = 2nd line, 2 = 3rd line, 3 = 4th line
+
+    let score = 0;
+
+    // RULE 1: STRICTLY PENALIZE 1st line ("Line of Death") and 2nd line in early/mid game
+    if (lineRank === 0) {
+      // 1st line: Heavy penalty unless capturing or saving a dying group
+      score -= 500;
+    } else if (lineRank === 1) {
+      // 2nd line: Heavy penalty in early game unless defending
+      score -= isEarlyGame ? 200 : 30;
+    } else if (lineRank === 2) {
+      // 3rd line: "Line of Territory" - Prime location
+      score += isEarlyGame ? 120 : 60;
+    } else if (lineRank === 3) {
+      // 4th line: "Line of Influence / Power" - Prime location
+      score += isEarlyGame ? 140 : 70;
+    } else {
+      // Center 5th line+: good for moyo development
+      score += 40;
+    }
+
+    // RULE 2: Corners > Sides > Center (Corner first, Side second, Center last)
+    const isCornerZone = (edgeDistR <= 3 && edgeDistC <= 3);
+    const isSideZone = (edgeDistR <= 3 || edgeDistC <= 3);
+
+    if (isEarlyGame) {
+      if (isCornerZone) score += 180;
+      else if (isSideZone) score += 80;
+    }
+
+    // Star point bonus (Hoshi / Komoku)
+    const isStar = (edgeDistR === 3 && edgeDistC === 3) || 
+                   (boardSize === 19 && ((edgeDistR === 3 && edgeDistC === 9) || (edgeDistR === 9 && edgeDistC === 3) || (r === 9 && c === 9)));
+    if (isStar && isEarlyGame) {
+      score += 220;
+    }
+
+    // 3-3 Invasion point (C3 / R3)
+    const isSanSan = (edgeDistR === 2 && edgeDistC === 2);
+    if (isSanSan && isEarlyGame) {
+      score += 150;
+    }
+
+    // RULE 3: Tactical Combat (Captures, Ataris, Liberties)
+    const neighbors = getNeighbors(r, c);
+    let wouldCapture = 0;
+    let enemyContact = 0;
+    let friendlyContact = 0;
+
+    for (let n of neighbors) {
+      const nVal = grid[n.r][n.c];
+      if (nVal === opponent) {
+        enemyContact++;
+        const oppGroup = getGroup(n.r, n.c);
+        if (oppGroup.liberties === 1) {
+          // Atari capture!
+          wouldCapture += oppGroup.stones.length;
+        }
+      } else if (nVal === currentTurn) {
+        friendlyContact++;
+      }
+    }
+
+    if (wouldCapture > 0) {
+      score += 600 + (wouldCapture * 150); // High priority: capture enemy stones
+    }
+
+    // Check self liberties after placing stone
+    grid[r][c] = currentTurn;
+    const selfGroup = getGroup(r, c);
+    grid[r][c] = 0; // Backtrack
+
+    if (selfGroup.liberties === 0) {
+      // Suicide is illegal anyway
+      continue;
+    } else if (selfGroup.liberties === 1) {
+      // Self-Atari danger: strongly avoid putting oneself in atari
+      score -= 400;
+    } else if (selfGroup.liberties >= 3) {
+      score += 40; // Healthy eye space & breathing room
+    }
+
+    // Extension from friendly stones / solid connection
+    if (friendlyContact > 0 && friendlyContact <= 2) {
+      score += 50; // Good connection
+    }
+
+    // Small jitter to prevent robotic identical repetitions
+    score += Math.random() * 8;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMoves = [spot];
+    } else if (Math.abs(score - bestScore) < 4) {
+      bestMoves.push(spot);
+    }
+  }
+
+  if (bestMoves.length === 0) {
+    passTurn();
+    return;
+  }
+
+  const choice = bestMoves[Math.floor(Math.random() * bestMoves.length)];
   playStone(choice.r, choice.c);
 }
 
