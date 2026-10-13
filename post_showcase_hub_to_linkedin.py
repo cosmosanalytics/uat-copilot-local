@@ -1,0 +1,99 @@
+# -*- coding: utf-8 -*-
+"""
+post_showcase_hub_to_linkedin.py
+Publishes a brief summary of the unified LinkedIn Posts & In-Browser AI Apps showcase website to LinkedIn.
+"""
+
+import sys
+import requests
+import json
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+TOKEN = 'AQUMlZr1hCCbt6otNDSlGTIQ9_0NImaIEx44nzuKW0cHLaRzNZ5fkcaT-wn-ss73mcLXwmAg6Xja4aT2izHOrm2Vl6NVBUDh9nBlRf_e2DaC87qyaZ2-0a0UDdQq-5LAseuE80LCE6XZ_iQ760Yt94FtORfAPh_f-bwvOx33OD0RzVIsTerHFTWUCVvbtZjPxw565cXQglfXyVpawUu8GhCI3tayZq56oU_badUpMAkq7mM8bqCmVu5eADt-qoXEvzelQ6vsDFlTqeOEzWwFkWdpd3QmnFYWDcJHqkFmm5hLSnfIiSnUsb6hmiPkqMzKUbyIZ4_oNpOOEScJfY0Tmjg1lH55AA'
+MEMBER_URN = 'urn:li:person:muZwZNN9P9'
+
+def escape_little_text(text: str) -> str:
+    reserved = ['\\', '|', '{', '}', '@', '[', ']', '(', ')', '<', '>', '*', '_', '~']
+    for ch in reserved:
+        text = text.replace(ch, '\\' + ch)
+    return text
+
+text = """The Cosmos AI Engineering Hub: 63 Deep-Dives & 35+ In-Browser AI Apps in One Place! 🚀⚡
+
+We consolidated all our architectural breakdowns, live WebGPU/WebLLM interactive apps, and open-source agentic research into a single, zero-install GitHub Pages showcase:
+
+• 🧠 Brain ⇄ AI Cognitive Systems: 41 brain functions mapped to multi-agent architectures (hippocampal indexing, 4-slot working memory, predictive coding).
+• 🤖 Multi-Agent War Rooms: Autonomous councils for M&A stress-testing, S&OP swarms, strategic games, and network routing.
+• 🛠️ 20 Open-Source Agentic Skills: Production patterns from MCP builders to document co-authoring and algorithmic canvas design.
+• ⚡ 100% Client-Side: Every app runs purely in your browser with Groq LPU (500+ tok/s) and local WebGPU—zero install, zero server.
+• 📋 1-Click Copy & Launch: Real-time search across all 63 posts, 1-click copy for LinkedIn sharing, and instant app launchers.
+
+👉 Explore the live showcase hub:
+https://cosmosanalytics.github.io/uat-copilot-local/linkedin_posts.html
+
+#AIEngineering #WebGPU #AIAgents #MultiAgent #CognitiveArchitecture #OpenSource #Groq"""
+
+def publish():
+    url = "https://api.linkedin.com/rest/posts"
+    headers = {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+        "LinkedIn-Version": "202609"
+    }
+
+    escaped = escape_little_text(text)
+    payload = {
+        "author": MEMBER_URN,
+        "commentary": escaped,
+        "visibility": "PUBLIC",
+        "distribution": {
+            "feedDistribution": "MAIN_FEED",
+            "targetEntities": [],
+            "thirdPartyDistributionChannels": []
+        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False
+    }
+
+    print("Publishing showcase website summary to LinkedIn...")
+    res = requests.post(url, headers=headers, json=payload)
+    print("Status code:", res.status_code)
+    print("Response headers:", res.headers)
+    print("Response text:", res.text)
+
+    if res.status_code == 201:
+        post_urn = res.headers.get("x-restli-id") or res.headers.get("x-linkedin-id")
+        print(f"\n[SUCCESS] Successfully published to LinkedIn! Post URN: {post_urn}")
+        return post_urn
+    else:
+        print("\n[ERROR] Failed to publish post via /rest/posts. Trying /v2/ugcPosts fallback...")
+        url_ugc = "https://api.linkedin.com/v2/ugcPosts"
+        headers_ugc = {
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0"
+        }
+        payload_ugc = {
+            "author": MEMBER_URN,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": text},
+                    "shareMediaCategory": "NONE"
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+        }
+        res2 = requests.post(url_ugc, headers=headers_ugc, json=payload_ugc)
+        print("Fallback Status code:", res2.status_code)
+        print("Fallback Response:", res2.text)
+        if res2.status_code == 201:
+            post_id = res2.json().get('id')
+            print(f"\n[SUCCESS] Successfully published via UGC! ID: {post_id}")
+            return post_id
+        return None
+
+if __name__ == "__main__":
+    publish()
