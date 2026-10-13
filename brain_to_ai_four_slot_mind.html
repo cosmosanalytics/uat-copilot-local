@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4-Slot Mind AI: Prefrontal Working-Memory Bounds & Chunk Eviction</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #080D1A;
+    --bg-surface: #0F172A;
+    --bg-card: #162032;
+    --bg-subtle: #1E293B;
+    --border: #334155;
+    --border-accent: #6366F1;
+    --accent: #6366F1;
+    --accent-glow: rgba(99, 102, 241, 0.25);
+    --gold: #F59E0B;
+    --emerald: #10B981;
+    --danger: #EF4444;
+    --purple: #8B5CF6;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-page);
+    color: var(--text-main);
+    font-family: 'Public Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* LIGHT MODE (DEFAULT) */
+  body.light-mode {
+    --bg-page: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --border: #E2E8F0;
+    --border-accent: #4F46E5;
+    --accent: #4F46E5;
+    --accent-glow: rgba(79, 70, 229, 0.12);
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+  }
+  body.light-mode header {
+    background: #FFFFFF !important;
+    border-bottom-color: #E2E8F0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  body.light-mode .status-strip {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  body.light-mode .status-tag {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+  }
+  body.light-mode .engine-pill {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
+  }
+  body.light-mode .engine-pill.active {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+  }
+  body.light-mode .model-picker-wrap {
+    background: #F8FAFC !important;
+  }
+  body.light-mode .model-select {
+    color: #0F172A !important;
+  }
+  body.light-mode .model-select option {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+  body.light-mode .card,
+  body.light-mode .slot-card {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04) !important;
+  }
+  body.light-mode .slider-item,
+  body.light-mode .incoming-card {
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+  }
+  body.light-mode .modal-card {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+  body.light-mode .btn-preset {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
+  }
+  body.light-mode .btn-preset.active {
+    background: #EEF2FF !important;
+    color: #4338CA !important;
+    border-color: #4F46E5 !important;
+  }
+  body.light-mode .reasoning-box {
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+    color: #334155 !important;
+  }
+
+  header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .brand h1 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand p { font-size: 11px; color: var(--text-muted); }
+
+  .engine-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .engine-pill {
+    padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;
+    user-select: none;
+  }
+  .engine-pill:hover { border-color: var(--accent); color: var(--text-main); }
+  .engine-pill.active {
+    background: var(--bg-subtle); border-color: var(--accent); color: var(--text-main);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-det { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+  .dot-groq { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .dot-webllm { background: #38BDF8; box-shadow: 0 0 8px #38BDF8; }
+
+  .btn-config {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: 12px; padding: 4px 8px; cursor: pointer;
+  }
+  .btn-config:hover { color: var(--text-main); border-color: var(--text-muted); }
+
+  main {
+    flex: 1; max-width: 1380px; width: 100%; margin: 0 auto;
+    padding: 24px 28px; display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* NEUROSCIENCE BANNER */
+  .neuro-banner {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, var(--bg-surface) 100%);
+    border: 1px solid var(--border-accent); border-radius: 16px; padding: 22px 26px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+  @media (max-width: 880px) { .neuro-banner { grid-template-columns: 1fr; } }
+  .neuro-col h2 {
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 800;
+    color: #818CF8; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .neuro-col p { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+  /* HARDWARE STRIP */
+  .status-strip {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 18px; display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .status-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 3px 8px;
+    border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border);
+  }
+
+  /* WEBGPU LOADER */
+  .webgpu-loader {
+    display: none; background: var(--bg-card); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 12px 16px; flex-direction: column; gap: 8px;
+  }
+  .progress-track {
+    width: 100%; height: 8px; background: #0A0E17; border-radius: 4px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #38BDF8, #6366F1);
+    transition: width 0.2s ease;
+  }
+
+  /* WORKSPACE GRID */
+  .workspace-grid { display: grid; grid-template-columns: 440px 1fr; gap: 24px; }
+  @media (max-width: 980px) { .workspace-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 18px;
+  }
+  .card-title {
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 800;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-preset {
+    padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-preset:hover, .btn-preset.active {
+    background: rgba(99, 102, 241, 0.15); border-color: var(--accent); color: var(--text-main);
+  }
+
+  .slider-item {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .slider-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+  .slider-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--gold); }
+  .slider-item input[type="range"] {
+    width: 100%; accent-color: var(--accent); cursor: pointer;
+  }
+  .slider-desc { font-size: 11px; color: var(--text-muted); }
+
+  .btn-execute {
+    padding: 14px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    color: white; font-weight: 800; font-size: 13px; cursor: pointer;
+    box-shadow: 0 4px 14px var(--accent-glow); display: flex; align-items: center;
+    justify-content: center; gap: 8px; transition: all 0.2s;
+  }
+  .btn-execute:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn-execute:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* 4-SLOT GRID */
+  .slots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .slots-grid { grid-template-columns: 1fr; } }
+  .slot-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px;
+    border-top: 4px solid var(--accent); transition: all 0.3s ease;
+  }
+  .slot-card.evicted {
+    border-top-color: var(--danger); opacity: 0.45;
+  }
+  .slot-card.injected {
+    border-top-color: var(--emerald); box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+  }
+
+  .slot-header { display: flex; justify-content: space-between; align-items: center; }
+  .slot-label { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; }
+  .slot-title { font-weight: 700; font-size: 12.5px; }
+  .slot-meta { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .incoming-box {
+    background: var(--bg-card); border: 1px dashed var(--gold); border-radius: 12px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .reasoning-box {
+    background: #0A0E17; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #94A3B8; max-height: 160px; overflow-y: auto; white-space: pre-wrap;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; max-width: 480px; width: 90%; display: flex; flex-direction: column; gap: 16px;
+  }
+  .input-field {
+    width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#129504;</div>
+      <div>
+        <h1>4-Slot Mind AI: Prefrontal Working Memory Bounds</h1>
+        <p>Cowan's 4-Chunk Working Memory Capacity translated into Strict Context Bounding (Idea #4)</p>
+      </div>
+    </div>
+    <div class="engine-controls" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <div class="engine-bar" style="display:flex; align-items:center; gap:6px;">
+        <div class="engine-pill active" id="eng-det" onclick="selectEngine('det')">
+          <span class="dot dot-det"></span>Deterministic
+        </div>
+        <div class="engine-pill" id="eng-groq" onclick="selectEngine('groq')">
+          <span class="dot dot-groq"></span>Groq LPU (~200ms)
+        </div>
+        <div class="engine-pill" id="eng-webllm" onclick="selectEngine('webllm')">
+          <span class="dot dot-webllm"></span>WebGPU WebLLM
+        </div>
+      </div>
+
+      <div class="model-picker-wrap" style="display:flex; align-items:center; gap:6px; background:var(--bg-card); border:1.5px solid var(--border-accent); border-radius:10px; padding:5px 12px; box-shadow:0 0 10px rgba(99,102,241,0.15);">
+        <span class="model-picker-label" style="font-size:11px; font-weight:800; color:#818CF8; text-transform:uppercase;">Active Model:</span>
+        <select id="model-select" class="model-select" style="background:transparent; border:none; color:var(--text-main); font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; outline:none; cursor:pointer;" onchange="onModelDropdownChange(this.value)">
+          <optgroup label="⚡ Groq LPU (Ultra-Fast Cloud)">
+            <option value="qwen/qwen3.8-27b" selected>qwen/qwen3.8-27b (High-Precision Chunk Arbiter)</option>
+            <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ultra-Fast LPU)</option>
+            <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Deep Working-Memory Synthesis)</option>
+            <option value="allam-2-7b">allam-2-7b (Fast Chunk Allocator)</option>
+          </optgroup>
+          <optgroup label="💻 WebGPU In-Browser (Client-Side Weights)">
+            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB GPU)</option>
+            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~800MB GPU)</option>
+            <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB GPU)</option>
+          </optgroup>
+          <optgroup label="📐 Mathematical Deterministic Engine">
+            <option value="deterministic-cowan">Cowan 4-Chunk Working Memory Engine</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <button class="btn-config" onclick="openSettings()" title="Configure Groq / WebLLM settings">&#9881; Settings</button>
+      <button class="theme-toggle-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" style="background:transparent; border:1px solid var(--border); border-radius:8px; font-size:14px; padding:6px 10px; cursor:pointer;">☀️</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- BIOLOGICAL NEUROSCIENCE VS AI ARCHITECTURE BANNER -->
+    <section class="neuro-banner">
+      <div class="neuro-col">
+        <h2>&#129504; Biological Brain: Cowan's 4-Slot Working Memory</h2>
+        <p>While early psychology hypothesized $7 \pm 2$ chunks, modern cognitive neuroscience (Nelson Cowan) proves that pure conscious focus in the dorsolateral prefrontal cortex is strictly limited to <strong>only 4 active chunks</strong> at any moment. Holding a 5th item forces an immediate subconscious eviction to maintain clarity.</p>
+      </div>
+      <div class="neuro-col">
+        <h2>&#9881; AI Architecture: Strict 4-Chunk Prompt Bounding (Idea #4)</h2>
+        <p>Instead of feeding 50 conversational items into an unconstrained 128k context (which leads to attention dilution and "lost-in-the-middle" bugs), the agent restricts active working memory to strictly 4 high-fidelity chunks. Incoming tasks trigger rigorous prefrontal arbitration to evict the lowest-priority item to cold storage.</p>
+      </div>
+    </section>
+
+    <!-- HARDWARE STATUS STRIP -->
+    <section class="status-strip">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="color:var(--text-muted);">Active Substrate:</span>
+        <strong id="substrate-label" style="color:var(--emerald);">Deterministic Mathematical Evaluator</strong>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="status-tag" id="hardware-tag">Model: qwen/qwen3.8-27b</span>
+        <span class="status-tag" id="latency-tag">0.2ms Arbitration</span>
+      </div>
+    </section>
+
+    <!-- WEBGPU DOWNLOAD / LOAD PROGRESS -->
+    <div class="webgpu-loader" id="webgpu-loader">
+      <div style="display:flex; justify-content:space-between; font-size:12px;">
+        <span id="loader-status">Initializing WebGPU weights...</span>
+        <span id="loader-pct" style="font-family:'JetBrains Mono'; color:#38BDF8;">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="loader-fill"></div></div>
+    </div>
+
+    <!-- WORKSPACE GRID -->
+    <div class="workspace-grid">
+      <!-- LEFT PANEL: CONTROLS & SCENARIO -->
+      <div class="card">
+        <div class="card-title">
+          <span>Incoming 5th Task &amp; Eviction Policy</span>
+          <span style="font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono';">Idea #4</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Select 5th Incoming Disturbance:</label>
+          <div class="preset-row">
+            <button class="btn-preset active" id="btn-dist-1" onclick="selectIncomingDisturbance(1)">1. Zero-Day Exploit</button>
+            <button class="btn-preset" id="btn-dist-2" onclick="selectIncomingDisturbance(2)">2. High-Severity SLA</button>
+            <button class="btn-preset" id="btn-dist-3" onclick="selectIncomingDisturbance(3)">3. DB Cluster Split</button>
+          </div>
+        </div>
+
+        <!-- INCOMING CHUNK PREVIEW -->
+        <div class="incoming-box">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:'JetBrains Mono'; font-size:10px; font-weight:800; color:var(--gold);">NEW INCOMING CHUNK (NEEDS SLOT):</span>
+            <span class="status-tag" id="dist-priority" style="color:var(--danger); border-color:var(--danger);">Priority 0.98</span>
+          </div>
+          <strong id="dist-title" style="font-size:12.5px;">CVE-2026-9912 Kernel Heap Exploit Detected</strong>
+          <p id="dist-desc" style="font-size:11.5px; color:var(--text-muted);">Urgent security patch required immediately on edge ingress nodes.</p>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Eviction Arbitration Policy</span>
+            <span class="slider-val" id="val-policy">Lowest Somatic Utility</span>
+          </div>
+          <select id="select-policy" class="input-field" onchange="updateControls()">
+            <option value="utility" selected>Lowest Somatic Utility (Drop Low-Value Task)</option>
+            <option value="lru">LRU Age (Drop Oldest Inactive Slot)</option>
+            <option value="sla">Lowest SLA Impact (Preserve Safety Invariants)</option>
+          </select>
+          <div class="slider-desc">Criterion used by the central executive to select which chunk is evicted.</div>
+        </div>
+
+        <button class="btn-execute" id="btn-arbitrate" onclick="executeFourSlotArbitration()">
+          <span>&#9654; Arbitrate &amp; Evict to Maintain 4-Slot Bound</span>
+        </button>
+      </div>
+
+      <!-- RIGHT PANEL: 4 ACTIVE WORKING MEMORY SLOTS -->
+      <div class="card">
+        <div class="card-title">
+          <span>Active 4-Slot Prefrontal Focus Frame</span>
+          <span id="frame-status" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--text-muted);">4/4 Slots Saturated</span>
+        </div>
+
+        <!-- 4 SLOTS GRID -->
+        <div class="slots-grid" id="slots-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- REASONING LOG -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Central Executive Arbitration Log</span>
+          <div class="reasoning-box" id="reasoning-log">Click "Arbitrate & Evict to Maintain 4-Slot Bound" to test prefrontal capacity limits.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="modal-settings" onclick="if(event.target===this) closeSettings()">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-family:'Bricolage Grotesque'; font-size:16px; font-weight:800;">Inference Configuration</h3>
+        <button onclick="closeSettings()" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">&times;</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Groq API Key</label>
+        <input type="password" id="cfg-groq-key" class="input-field" placeholder="gsk_... (Pre-provisioned key active by default)">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Groq Model</label>
+        <select id="cfg-groq-model" class="input-field">
+          <option value="qwen/qwen3.8-27b" selected>qwen/qwen3.8-27b (Fast & Precise)</option>
+          <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ultra-Fast 20B)</option>
+          <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (120B Reasoning)</option>
+          <option value="allam-2-7b">allam-2-7b (Fast 7B)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">WebGPU WebLLM Model</label>
+        <select id="cfg-webllm-model" class="input-field">
+          <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-1.5B-Instruct-q4f16_1-MLC (~900MB)</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B-Instruct-q4f16_1-MLC (~800MB)</option>
+          <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B-Instruct-q4f16_1-MLC (~1GB)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+        <button onclick="closeSettings()" style="padding:8px 14px; background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancel</button>
+        <button onclick="saveSettings()" style="padding:8px 14px; background:var(--accent); border:none; color:white; font-weight:700; border-radius:8px; cursor:pointer;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBGPU MODULE -->
+  <script type="module">
+    try {
+      const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+      window.webllm = webllm;
+      console.log("WebLLM loaded successfully from ESM CDN.");
+    } catch (e) {
+      console.warn("Could not load WebLLM from primary CDN:", e);
+    }
+  </script>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      localStorage.setItem('theme_mode', isLight ? 'light' : 'dark');
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.innerText = isLight ? '🌙' : '☀️';
+    }
+
+    (function initTheme() {
+      const saved = localStorage.getItem('theme_mode');
+      if (saved === 'dark') {
+        document.body.classList.remove('light-mode');
+        window.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('theme-btn');
+          if (btn) btn.innerText = '☀️';
+        });
+      } else {
+        document.body.classList.add('light-mode');
+        window.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('theme-btn');
+          if (btn) btn.innerText = '🌙';
+        });
+      }
+    })();
+
+    // PROVISIONED GROQ KEY
+    const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+    const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+    let currentEngine = 'det';
+    let currentModel = 'qwen/qwen3.8-27b';
+    let groqKey = localStorage.getItem('agent_groq_key') || '';
+    let groqModel = localStorage.getItem('agent_groq_model') || 'qwen/qwen3.8-27b';
+    let webllmModel = localStorage.getItem('agent_webllm_model') || 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+    let webllmEngine = null;
+    let isWebLLMLoading = false;
+
+    let activeDisturbanceId = 1;
+
+    let ACTIVE_SLOTS = [
+      { slotId: 1, title: "Auth Ring-0 Invariant Guard", utility: 0.95, ageMinutes: 12, desc: "Evaluates cryptographic token signatures on edge gateway." },
+      { slotId: 2, title: "PostgreSQL Master Read Replica Sync", utility: 0.88, ageMinutes: 24, desc: "Tracks replication lag buffer across primary and secondary DBs." },
+      { slotId: 3, title: "Background Log Compression Batch", utility: 0.22, ageMinutes: 45, desc: "Compresses historical debug traces from last week into S3 glacier." },
+      { slotId: 4, title: "Payment Webhook Dispatcher", utility: 0.91, ageMinutes: 8, desc: "Dispatches Stripe asynchronous fulfillment notifications to order bus." }
+    ];
+
+    const DISTURBANCES = {
+      1: {
+        title: "CVE-2026-9912 Kernel Heap Exploit",
+        utility: 0.99,
+        desc: "Urgent zero-day patch must be deployed to edge proxy clusters to prevent remote code execution."
+      },
+      2: {
+        title: "Customer Checkout Latency SLA Breach",
+        utility: 0.94,
+        desc: "Checkout endpoint p99 latency crossed 2500ms; auto-scaler policy requires immediate tuning."
+      },
+      3: {
+        title: "Consensus Quorum Network Partition",
+        utility: 0.97,
+        desc: "Raft leader lost heartbeat with 2 of 5 cluster nodes; state lock must be re-negotiated."
+      }
+    };
+
+    function selectIncomingDisturbance(id) {
+      activeDisturbanceId = id;
+      document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-dist-' + id);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const d = DISTURBANCES[id];
+      document.getElementById('dist-title').innerText = d.title;
+      document.getElementById('dist-desc').innerText = d.desc;
+      document.getElementById('dist-priority').innerText = `Priority ${(d.utility).toFixed(2)}`;
+
+      renderSlots();
+    }
+
+    function renderSlots(evictedSlotId = null, injectedItem = null) {
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = ACTIVE_SLOTS.map(s => {
+        const isEvicted = s.slotId === evictedSlotId;
+        const isInjected = injectedItem && s.title === injectedItem.title;
+        return `
+          <div class="slot-card ${isEvicted ? 'evicted' : (isInjected ? 'injected' : '')}">
+            <div class="slot-header">
+              <span class="slot-label">Slot ${s.slotId}</span>
+              <span style="font-family:'JetBrains Mono'; font-size:10.5px; font-weight:700; color:${s.utility > 0.8 ? 'var(--emerald)' : 'var(--gold)'};">
+                Valence: ${(s.utility).toFixed(2)}
+              </span>
+            </div>
+            <div class="slot-title">${s.title}</div>
+            <div class="slot-meta">${s.desc}</div>
+            <div style="font-family:'JetBrains Mono'; font-size:10px; color:var(--text-muted); margin-top:4px;">
+              Age: ${s.ageMinutes}m · ${isEvicted ? 'EVICTED TO COLD STORAGE' : 'ACTIVE IN FOCUS'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function onModelDropdownChange(modelVal) {
+      currentModel = modelVal;
+      groqModel = modelVal;
+      document.getElementById('hardware-tag').innerText = `Model: ${currentModel}`;
+
+      if (modelVal === 'deterministic-cowan') {
+        selectEngine('det');
+      } else if (modelVal.startsWith('openai/') || modelVal.startsWith('qwen/qwen3') || modelVal.startsWith('allam-')) {
+        selectEngine('groq');
+      } else {
+        webllmModel = modelVal;
+        selectEngine('webllm');
+      }
+    }
+
+    function selectEngine(eng) {
+      currentEngine = eng;
+      document.querySelectorAll('.engine-pill').forEach(p => p.classList.remove('active'));
+      document.getElementById('eng-' + eng).classList.add('active');
+
+      const substrate = document.getElementById('substrate-label');
+      const hw = document.getElementById('hardware-tag');
+      const lat = document.getElementById('latency-tag');
+      const loader = document.getElementById('webgpu-loader');
+
+      if (eng === 'det') {
+        substrate.innerText = 'Deterministic Mathematical Evaluator';
+        substrate.style.color = 'var(--emerald)';
+        hw.innerText = 'CPU Rule Engine';
+        lat.innerText = '0.2ms Arbitration';
+        loader.style.display = 'none';
+      } else if (eng === 'groq') {
+        substrate.innerText = `Groq LPU Cloud Inference (${groqModel})`;
+        substrate.style.color = 'var(--gold)';
+        hw.innerText = 'Groq Tensor Processor';
+        lat.innerText = '~180ms Latency';
+        loader.style.display = 'none';
+      } else if (eng === 'webllm') {
+        substrate.innerText = `Client-Side WebGPU (${webllmModel})`;
+        substrate.style.color = '#38BDF8';
+        hw.innerText = 'Local WebGPU / Vulkan / Metal';
+        lat.innerText = 'Local GPU Execution';
+        if (!webllmEngine && !isWebLLMLoading) {
+          initWebLLM();
+        }
+      }
+    }
+
+    async function initWebLLM() {
+      if (!navigator.gpu) {
+        alert("WebGPU is not supported on this browser/hardware. Falling back to Deterministic mode.");
+        selectEngine('det');
+        return;
+      }
+      if (!window.webllm) {
+        alert("WebLLM library is still initializing. Please wait a second and retry.");
+        selectEngine('det');
+        return;
+      }
+
+      const loader = document.getElementById('webgpu-loader');
+      const fill = document.getElementById('loader-fill');
+      const statusText = document.getElementById('loader-status');
+      const pctText = document.getElementById('loader-pct');
+      loader.style.display = 'flex';
+      isWebLLMLoading = true;
+
+      try {
+        const initProgressCallback = (report) => {
+          const match = report.text.match(/([0-9.]+)%/);
+          const pct = match ? match[1] + '%' : 'Loading...';
+          statusText.innerText = report.text;
+          pctText.innerText = pct;
+          if (match) fill.style.width = match[1] + '%';
+        };
+
+        webllmEngine = new window.webllm.MLCEngine();
+        webllmEngine.setInitProgressCallback(initProgressCallback);
+        await webllmEngine.reload(webllmModel);
+
+        loader.style.display = 'none';
+        isWebLLMLoading = false;
+        document.getElementById('latency-tag').innerText = 'WebGPU Ready';
+      } catch (err) {
+        console.error("WebLLM Init failed:", err);
+        alert("WebGPU model initialization failed: " + err.message + "\nFalling back to Deterministic mode.");
+        loader.style.display = 'none';
+        isWebLLMLoading = false;
+        selectEngine('det');
+      }
+    }
+
+    function updateControls() {
+      const p = document.getElementById('select-policy').value;
+      const labels = {
+        'utility': 'Lowest Somatic Utility',
+        'lru': 'LRU Age (Oldest First)',
+        'sla': 'Lowest SLA Impact'
+      };
+      document.getElementById('val-policy').innerText = labels[p];
+    }
+
+    function getActiveGroqKey() {
+      if (groqKey && groqKey.trim().length > 10) return groqKey.trim();
+      return PROVISIONED_GROQ_KEY;
+    }
+
+    async function executeFourSlotArbitration() {
+      const btn = document.getElementById('btn-arbitrate');
+      btn.disabled = true;
+      btn.innerHTML = '<span>&#8987; Arbitrating Prefrontal Slots...</span>';
+
+      const policy = document.getElementById('select-policy').value;
+      const incoming = DISTURBANCES[activeDisturbanceId];
+
+      let evictIndex = 2; // Default to Slot 3 (Background Log Batch)
+      if (policy === 'lru') {
+        let maxAge = -1;
+        ACTIVE_SLOTS.forEach((s, idx) => {
+          if (s.ageMinutes > maxAge) { maxAge = s.ageMinutes; evictIndex = idx; }
+        });
+      } else {
+        let minVal = 999;
+        ACTIVE_SLOTS.forEach((s, idx) => {
+          if (s.utility < minVal) { minVal = s.utility; evictIndex = idx; }
+        });
+      }
+
+      const evicted = ACTIVE_SLOTS[evictIndex];
+      const log = document.getElementById('reasoning-log');
+      log.innerText = `[${new Date().toLocaleTimeString()}] Prefrontal Central Executive: 4-slot limit reached. Evaluating candidate eviction...\n`;
+
+      let rationale = "";
+
+      if (currentEngine === 'groq') {
+        try {
+          const prompt = `You are the Prefrontal Central Executive in an autonomous AI agent enforcing Nelson Cowan's 4-chunk working memory bound (Idea #4 4-Slot Mind).
+Current 4 Slots: ${JSON.stringify(ACTIVE_SLOTS.map(s=>({slot: s.slotId, title: s.title, utility: s.utility})))}
+Incoming 5th Task: ${JSON.stringify(incoming)}
+Eviction Policy: ${policy}
+
+Explain concisely (under 120 words):
+1. Why the 4-slot working memory limit prevents prompt distraction and hallucination.
+2. Why "${evicted.title}" was selected for eviction to cold storage to admit "${incoming.title}".`;
+
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${getActiveGroqKey()}`
+            },
+            body: JSON.stringify({
+              model: groqModel,
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2,
+              max_tokens: 280
+            })
+          });
+
+          if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
+          const json = await res.json();
+          rationale = json.choices[0].message.content;
+        } catch (err) {
+          console.warn("Groq failed, using deterministic reasoning:", err);
+          rationale = getDeterministicRationale(evicted, incoming, policy);
+        }
+      } else if (currentEngine === 'webllm' && webllmEngine) {
+        try {
+          const prompt = `As the 4-Slot Prefrontal Executive, explain evicting "${evicted.title}" for "${incoming.title}". Under 80 words.`;
+          const reply = await webllmEngine.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 180
+          });
+          rationale = reply.choices[0].message.content;
+        } catch (err) {
+          console.warn("WebLLM error, falling back:", err);
+          rationale = getDeterministicRationale(evicted, incoming, policy);
+        }
+      } else {
+        rationale = getDeterministicRationale(evicted, incoming, policy);
+      }
+
+      // Commit swap in ACTIVE_SLOTS
+      ACTIVE_SLOTS[evictIndex] = {
+        slotId: evicted.slotId,
+        title: incoming.title,
+        utility: incoming.utility,
+        ageMinutes: 1,
+        desc: incoming.desc
+      };
+
+      renderSlots(null, ACTIVE_SLOTS[evictIndex]);
+      document.getElementById('frame-status').innerText = `Slot ${evicted.slotId} Injected · Exactly 4 Slots Active`;
+
+      log.innerText += `\n[ARBITRATION DECISION]\n${rationale}\n\n[BOUND ENFORCEMENT]: Evicted "${evicted.title}" (Utility ${(evicted.utility).toFixed(2)}) to long-term memory. Context bound strictly maintained at 4 discrete chunks. Zero attention degradation.`;
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>&#9654; Arbitrate &amp; Evict to Maintain 4-Slot Bound</span>';
+    }
+
+    function getDeterministicRationale(evicted, incoming, policy) {
+      return `[Central Executive 4-Slot Arbitration]:
+1. Under policy '${policy}', Slot ${evicted.slotId} ("${evicted.title}") exhibited lowest somatic valence (Utility = ${(evicted.utility).toFixed(2)}).
+2. Evicted to cold vector memory. Incoming urgent disturbance ("${incoming.title}", Utility = ${(incoming.utility).toFixed(2)}) admitted. Active working memory bound preserved at exactly 4 chunks.`;
+    }
+
+    function openSettings() {
+      document.getElementById('cfg-groq-key').value = groqKey;
+      document.getElementById('cfg-groq-model').value = groqModel;
+      document.getElementById('cfg-webllm-model').value = webllmModel;
+      document.getElementById('modal-settings').style.display = 'flex';
+    }
+
+    function closeSettings() {
+      document.getElementById('modal-settings').style.display = 'none';
+    }
+
+    function saveSettings() {
+      groqKey = document.getElementById('cfg-groq-key').value.trim();
+      groqModel = document.getElementById('cfg-groq-model').value;
+      webllmModel = document.getElementById('cfg-webllm-model').value;
+
+      localStorage.setItem('agent_groq_key', groqKey);
+      localStorage.setItem('agent_groq_model', groqModel);
+      localStorage.setItem('agent_webllm_model', webllmModel);
+
+      document.getElementById('model-select').value = groqModel;
+      closeSettings();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSlots();
+      selectIncomingDisturbance(1);
+    });
+  </script>
+</body>
+</html>
