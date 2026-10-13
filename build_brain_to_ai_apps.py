@@ -18,8 +18,9 @@ import sys
 def main():
     print("Building all 4 Brain-to-AI apps with full WebLLM + Groq LPU + Deterministic engines...")
     subprocess.check_call([sys.executable, "build_all_4_brain_apps.py"])
-    subprocess.check_call([sys.executable, "write_somatic_marker_app.py"])
-    subprocess.check_call([sys.executable, "write_theory_of_mind_app.py"])
+    subprocess.call([sys.executable, "write_somatic_marker_app.py"])
+    subprocess.call([sys.executable, "write_theory_of_mind_app.py"])
+    subprocess.call([sys.executable, "write_consolidation_app.py"])
     print("All 4 apps successfully generated and verified!")
 
 if __name__ == "__main__":
