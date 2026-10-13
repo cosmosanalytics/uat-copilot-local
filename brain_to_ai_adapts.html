@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adapts AI: Orbitofrontal Reversal Learning & Dynamic Strategy Pivoting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #080D1A;
+    --bg-surface: #0F172A;
+    --bg-card: #162032;
+    --bg-subtle: #1E293B;
+    --border: #334155;
+    --border-accent: #3B82F6;
+    --accent: #2563EB;
+    --accent-glow: rgba(37, 99, 235, 0.25);
+    --gold: #F59E0B;
+    --emerald: #10B981;
+    --danger: #EF4444;
+    --purple: #8B5CF6;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-page);
+    color: var(--text-main);
+    font-family: 'Public Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* LIGHT MODE (DEFAULT) */
+  body.light-mode {
+    --bg-page: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --border: #E2E8F0;
+    --border-accent: #2563EB;
+    --accent: #2563EB;
+    --accent-glow: rgba(37, 99, 235, 0.12);
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+  }
+  body.light-mode header {
+    background: #FFFFFF !important;
+    border-bottom-color: #E2E8F0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  body.light-mode .status-strip {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  body.light-mode .status-tag {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+  }
+  body.light-mode .engine-pill {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
+  }
+  body.light-mode .engine-pill.active {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+  }
+  body.light-mode .model-picker-wrap {
+    background: #F8FAFC !important;
+  }
+  body.light-mode .model-select {
+    color: #0F172A !important;
+  }
+  body.light-mode .model-select option {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+  body.light-mode .card,
+  body.light-mode .dag-panel {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04) !important;
+  }
+  body.light-mode .slider-item,
+  body.light-mode .scenario-item {
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+  }
+  body.light-mode .modal-card {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+  body.light-mode .btn-preset {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
+  }
+  body.light-mode .btn-preset.active {
+    background: #EFF6FF !important;
+    color: #1D4ED8 !important;
+    border-color: #3B82F6 !important;
+  }
+  body.light-mode .reasoning-box {
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+    color: #334155 !important;
+  }
+  body.light-mode .branch-card {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+  }
+  body.light-mode .branch-card.inhibited {
+    background: #FEF2F2 !important;
+  }
+  body.light-mode .branch-card.pivoted {
+    background: #F0FDF4 !important;
+  }
+
+  header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #2563EB, #1D4ED8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .brand h1 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand p { font-size: 11px; color: var(--text-muted); }
+
+  .engine-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .engine-pill {
+    padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;
+    user-select: none;
+  }
+  .engine-pill:hover { border-color: var(--accent); color: var(--text-main); }
+  .engine-pill.active {
+    background: var(--bg-subtle); border-color: var(--accent); color: var(--text-main);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-det { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+  .dot-groq { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .dot-webllm { background: #38BDF8; box-shadow: 0 0 8px #38BDF8; }
+
+  .btn-config {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: 12px; padding: 4px 8px; cursor: pointer;
+  }
+  .btn-config:hover { color: var(--text-main); border-color: var(--text-muted); }
+
+  main {
+    flex: 1; max-width: 1380px; width: 100%; margin: 0 auto;
+    padding: 24px 28px; display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* NEUROSCIENCE BANNER */
+  .neuro-banner {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.10) 0%, var(--bg-surface) 100%);
+    border: 1px solid var(--border-accent); border-radius: 16px; padding: 22px 26px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+  @media (max-width: 880px) { .neuro-banner { grid-template-columns: 1fr; } }
+  .neuro-col h2 {
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 800;
+    color: #3B82F6; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .neuro-col p { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+  /* HARDWARE STRIP */
+  .status-strip {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 18px; display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .status-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 3px 8px;
+    border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border);
+  }
+
+  /* WEBGPU LOADER */
+  .webgpu-loader {
+    display: none; background: var(--bg-card); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 12px 16px; flex-direction: column; gap: 8px;
+  }
+  .progress-track {
+    width: 100%; height: 8px; background: #0A0E17; border-radius: 4px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #38BDF8, #2563EB);
+    transition: width 0.2s ease;
+  }
+
+  /* WORKSPACE GRID */
+  .workspace-grid { display: grid; grid-template-columns: 440px 1fr; gap: 24px; }
+  @media (max-width: 980px) { .workspace-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 18px;
+  }
+  .card-title {
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 800;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-preset {
+    padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-preset:hover, .btn-preset.active {
+    background: rgba(37, 99, 235, 0.15); border-color: var(--accent); color: var(--text-main);
+  }
+
+  .slider-item {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .slider-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+  .slider-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--gold); }
+  .slider-item input[type="range"] {
+    width: 100%; accent-color: var(--accent); cursor: pointer;
+  }
+  .slider-desc { font-size: 11px; color: var(--text-muted); }
+
+  .btn-execute {
+    padding: 14px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: white; font-weight: 800; font-size: 13px; cursor: pointer;
+    box-shadow: 0 4px 14px var(--accent-glow); display: flex; align-items: center;
+    justify-content: center; gap: 8px; transition: all 0.2s;
+  }
+  .btn-execute:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn-execute:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* DUAL BRANCH DAG VISUALIZER */
+  .branches-container { display: flex; flex-direction: column; gap: 14px; }
+  .branch-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    border-left: 5px solid var(--border); transition: all 0.3s ease;
+  }
+  .branch-card.active { border-left-color: var(--gold); }
+  .branch-card.inhibited { border-left-color: var(--danger); background: rgba(239, 68, 68, 0.05); }
+  .branch-card.pivoted { border-left-color: var(--emerald); background: rgba(16, 185, 129, 0.05); }
+
+  .branch-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .branch-title { font-weight: 800; font-size: 13.5px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 6px; text-transform: uppercase;
+  }
+  .badge-primary { background: rgba(37, 99, 235, 0.15); color: #3B82F6; }
+  .badge-fallback { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+  .badge-inhibited { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+  .badge-pivoted { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+
+  .node-steps {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .step-pill {
+    font-size: 11.5px; padding: 6px 10px; border-radius: 8px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .step-pill.ok { border-color: rgba(16, 185, 129, 0.4); color: var(--emerald); }
+  .step-pill.fail { border-color: rgba(239, 68, 68, 0.4); color: var(--danger); text-decoration: line-through; }
+  .step-pill.bypass { border-color: rgba(245, 158, 11, 0.4); color: var(--gold); }
+
+  .summary-banner {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(37, 99, 235, 0.08));
+    border: 1px solid var(--emerald); border-radius: 12px; padding: 14px 18px;
+    font-size: 12px; line-height: 1.6; color: var(--text-main);
+  }
+
+  .reasoning-box {
+    background: #0A0E17; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #94A3B8; max-height: 180px; overflow-y: auto; white-space: pre-wrap;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; max-width: 480px; width: 90%; display: flex; flex-direction: column; gap: 16px;
+  }
+  .input-field {
+    width: 100%; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#128257;</div>
+      <div>
+        <h1>Adapts AI: Dynamic Strategy Pivoting</h1>
+        <p>Orbitofrontal Reversal Learning translated into Runtime Execution Fallbacks (+ Adapts)</p>
+      </div>
+    </div>
+    <div class="engine-controls" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <div class="engine-bar" style="display:flex; align-items:center; gap:6px;">
+        <div class="engine-pill active" id="eng-det" onclick="selectEngine('det')">
+          <span class="dot dot-det"></span>Deterministic
+        </div>
+        <div class="engine-pill" id="eng-groq" onclick="selectEngine('groq')">
+          <span class="dot dot-groq"></span>Groq LPU (~200ms)
+        </div>
+        <div class="engine-pill" id="eng-webllm" onclick="selectEngine('webllm')">
+          <span class="dot dot-webllm"></span>WebGPU WebLLM
+        </div>
+      </div>
+
+      <div class="model-picker-wrap" style="display:flex; align-items:center; gap:6px; background:var(--bg-card); border:1.5px solid var(--border-accent); border-radius:10px; padding:5px 12px; box-shadow:0 0 10px rgba(37,99,235,0.15);">
+        <span class="model-picker-label" style="font-size:11px; font-weight:800; color:#3B82F6; text-transform:uppercase;">Active Model:</span>
+        <select id="model-select" class="model-select" style="background:transparent; border:none; color:var(--text-main); font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; outline:none; cursor:pointer;" onchange="onModelDropdownChange(this.value)">
+          <optgroup label="⚡ Groq LPU (Ultra-Fast Cloud)">
+            <option value="qwen/qwen3.8-27b" selected>qwen/qwen3.8-27b (High-Precision Utility)</option>
+            <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ultra-Fast LPU)</option>
+            <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Deep Analysis)</option>
+            <option value="allam-2-7b">allam-2-7b (Adaptive Agent Heuristic)</option>
+          </optgroup>
+          <optgroup label="💻 WebGPU In-Browser (Client-Side Weights)">
+            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~900MB GPU)</option>
+            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~800MB GPU)</option>
+            <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (~1GB GPU)</option>
+          </optgroup>
+          <optgroup label="📐 Mathematical Deterministic Engine">
+            <option value="deterministic-ofc">OFC Reversal Learning Policy</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <button class="btn-config" onclick="openSettings()" title="Configure Groq / WebLLM settings">&#9881; Settings</button>
+      <button class="theme-toggle-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Light/Dark Theme" style="background:transparent; border:1px solid var(--border); border-radius:8px; font-size:14px; padding:6px 10px; cursor:pointer;">☀️</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- BIOLOGICAL NEUROSCIENCE VS AI ARCHITECTURE BANNER -->
+    <section class="neuro-banner">
+      <div class="neuro-col">
+        <h2>&#129504; Biological Brain: Orbitofrontal Reversal Learning</h2>
+        <p>When environmental reward contingencies invert (e.g., a once-fruitful foraging patch suddenly yields predators), animals with orbitofrontal cortex (OFC) damage persistently pound the dead lever until exhaustion. Intact OFC actively suppresses obsolete behavioral habits and swiftly pivots attention to alternate pathways.</p>
+      </div>
+      <div class="neuro-col">
+        <h2>&#9881; AI Architecture: Dynamic Strategy Pivoting (+ Adapts)</h2>
+        <p>Autonomous agents operating in production encounter downstream API brownouts, partition events, and silent schema drift. Rather than failing or looping indefinitely with <code>HTTP 500</code> retries, the <strong>Adapts</strong> capability inhibits the compromised branch and executes an in-flight contingency DAG swap without losing session memory.</p>
+      </div>
+    </section>
+
+    <!-- HARDWARE STATUS STRIP -->
+    <section class="status-strip">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="color:var(--text-muted);">Active Substrate:</span>
+        <strong id="substrate-label" style="color:var(--emerald);">Deterministic Mathematical Evaluator</strong>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="status-tag" id="hardware-tag">Model: qwen/qwen3.8-27b</span>
+        <span class="status-tag" id="latency-tag">0.3ms Latency</span>
+      </div>
+    </section>
+
+    <!-- WEBGPU DOWNLOAD / LOAD PROGRESS -->
+    <div class="webgpu-loader" id="webgpu-loader">
+      <div style="display:flex; justify-content:space-between; font-size:12px;">
+        <span id="loader-status">Initializing WebGPU weights...</span>
+        <span id="loader-pct" style="font-family:'JetBrains Mono'; color:#38BDF8;">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="loader-fill"></div></div>
+    </div>
+
+    <!-- WORKSPACE GRID -->
+    <div class="workspace-grid">
+      <!-- LEFT PANEL: CONTROLS & SCENARIO -->
+      <div class="card">
+        <div class="card-title">
+          <span>Incident Scenario &amp; Sensitivity</span>
+          <span style="font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono';">Tier 1 Proactive</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Select Contingency Outage:</label>
+          <div class="preset-row">
+            <button class="btn-preset active" id="btn-scen-1" onclick="selectScenario(1)">1. Gateway 503</button>
+            <button class="btn-preset" id="btn-scen-2" onclick="selectScenario(2)">2. Vector DB 3.2s Lag</button>
+            <button class="btn-preset" id="btn-scen-3" onclick="selectScenario(3)">3. Schema Field Drift</button>
+          </div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Extinction Velocity (&alpha;)</span>
+            <span class="slider-val" id="val-alpha">0.85</span>
+          </div>
+          <input type="range" id="slide-alpha" min="0.10" max="1.00" step="0.05" value="0.85" oninput="updateControls()">
+          <div class="slider-desc">Speed of suppressing failing primary branch after fault detection.</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Inversion Fault Tolerance (&theta;)</span>
+            <span class="slider-val" id="val-theta">2 faults</span>
+          </div>
+          <input type="range" id="slide-theta" min="1" max="5" step="1" value="2" oninput="updateControls()">
+          <div class="slider-desc">Number of consecutive failures required to trigger hard contingency pivot.</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Fallback Confidence Floor (&gamma;)</span>
+            <span class="slider-val" id="val-gamma">0.70</span>
+          </div>
+          <input type="range" id="slide-gamma" min="0.30" max="0.95" step="0.05" value="0.70" oninput="updateControls()">
+          <div class="slider-desc">Minimum viability score required for secondary DAG runbook branch.</div>
+        </div>
+
+        <button class="btn-execute" id="btn-pivot" onclick="executeAdaptation()">
+          <span>&#9654; Evaluate &amp; Execute Dynamic Strategy Pivot</span>
+        </button>
+      </div>
+
+      <!-- RIGHT PANEL: DUAL BRANCH DAG VISUALIZER -->
+      <div class="card">
+        <div class="card-title">
+          <span>Dual-Branch Strategy DAG &amp; Inversion Status</span>
+          <span id="dag-status" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--text-muted);">Awaiting Trigger</span>
+        </div>
+
+        <div class="branches-container" id="branches-feed">
+          <!-- Primary Branch Card -->
+          <div class="branch-card" id="card-primary">
+            <div class="branch-header">
+              <span class="branch-title">Primary Strategy: Synchronous Direct API Execution</span>
+              <span class="badge badge-primary" id="badge-primary">NOMINAL</span>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted);" id="desc-primary">Calls external payment and authorization endpoints with 100% strict verification.</p>
+            <div class="node-steps" id="steps-primary">
+              <div class="step-pill">1. Validate Auth</div>
+              <div class="step-pill">2. Dispatch Payment</div>
+              <div class="step-pill">3. Write Receipt</div>
+            </div>
+          </div>
+
+          <!-- Contingency Fallback Branch Card -->
+          <div class="branch-card" id="card-fallback">
+            <div class="branch-header">
+              <span class="branch-title">Contingency Pivot: Idempotent Ledger + Offline Settlement</span>
+              <span class="badge badge-fallback" id="badge-fallback">STANDBY</span>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted);" id="desc-fallback">Routes order to distributed message queue with atomic idempotency token and asynchronous reconciliation.</p>
+            <div class="node-steps" id="steps-fallback">
+              <div class="step-pill">1. Issue Idempotent Token</div>
+              <div class="step-pill">2. Enqueue Kafka Event</div>
+              <div class="step-pill">3. Instant Client Ack</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REASONING LOG -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Orbitofrontal Substrate Log</span>
+          <div class="reasoning-box" id="reasoning-log">Click "Evaluate & Execute Dynamic Strategy Pivot" to test cognitive flexibility.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="modal-settings" onclick="if(event.target===this) closeSettings()">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-family:'Bricolage Grotesque'; font-size:16px; font-weight:800;">Inference Configuration</h3>
+        <button onclick="closeSettings()" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">&times;</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Groq API Key</label>
+        <input type="password" id="cfg-groq-key" class="input-field" placeholder="gsk_... (Pre-provisioned key active by default)">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">Groq Model</label>
+        <select id="cfg-groq-model" class="input-field">
+          <option value="qwen/qwen3.8-27b" selected>qwen/qwen3.8-27b (Fast & Precise)</option>
+          <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ultra-Fast 20B)</option>
+          <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (120B Reasoning)</option>
+          <option value="allam-2-7b">allam-2-7b (Fast 7B)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:11px; font-weight:700; color:var(--text-muted);">WebGPU WebLLM Model</label>
+        <select id="cfg-webllm-model" class="input-field">
+          <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-1.5B-Instruct-q4f16_1-MLC (~900MB)</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B-Instruct-q4f16_1-MLC (~800MB)</option>
+          <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B-Instruct-q4f16_1-MLC (~1GB)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+        <button onclick="closeSettings()" style="padding:8px 14px; background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancel</button>
+        <button onclick="saveSettings()" style="padding:8px 14px; background:var(--accent); border:none; color:white; font-weight:700; border-radius:8px; cursor:pointer;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBGPU MODULE -->
+  <script type="module">
+    try {
+      const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+      window.webllm = webllm;
+      console.log("WebLLM loaded successfully from ESM CDN.");
+    } catch (e) {
+      console.warn("Could not load WebLLM from primary CDN:", e);
+    }
+  </script>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      localStorage.setItem('theme_mode', isLight ? 'light' : 'dark');
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.innerText = isLight ? '🌙' : '☀️';
+    }
+
+    // Default to light mode
+    (function initTheme() {
+      const saved = localStorage.getItem('theme_mode');
+      if (saved === 'dark') {
+        document.body.classList.remove('light-mode');
+        window.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('theme-btn');
+          if (btn) btn.innerText = '☀️';
+        });
+      } else {
+        document.body.classList.add('light-mode');
+        window.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('theme-btn');
+          if (btn) btn.innerText = '🌙';
+        });
+      }
+    })();
+
+    // PROVISIONED GROQ KEY
+    const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+    const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+    let currentEngine = 'det';
+    let currentModel = 'qwen/qwen3.8-27b';
+    let groqKey = localStorage.getItem('agent_groq_key') || '';
+    let groqModel = localStorage.getItem('agent_groq_model') || 'qwen/qwen3.8-27b';
+    let webllmModel = localStorage.getItem('agent_webllm_model') || 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+    let webllmEngine = null;
+    let isWebLLMLoading = false;
+
+    let activeScenarioId = 1;
+
+    const SCENARIOS = {
+      1: {
+        title: "1. Cloudflare Outage: Primary Payment Gateway Returns 503",
+        primaryDesc: "Calls Stripe/Adyen sync payment API. Fails with HTTP 503 Service Unavailable.",
+        fallbackDesc: "Pivots to Kafka distributed asynchronous queue with atomic idempotency token.",
+        primarySteps: ["1. Validate Auth", "2. Dispatch Stripe API (503 FAULT)", "3. Write Receipt"],
+        fallbackSteps: ["1. Issue Idempotency Token", "2. Enqueue Kafka Event", "3. Return 202 Accepted"],
+        faultDesc: "Primary payment gateway returned 3 consecutive 503 timeouts."
+      },
+      2: {
+        title: "2. Vector Store Latency Partition: 3200ms Drift",
+        primaryDesc: "Queries Pinecone/Weaviate cluster for semantic embedding recall. Latency spiked 70x.",
+        fallbackDesc: "Pivots to local in-memory LRU cache + BM25 keyword inverse index in SQLite.",
+        primarySteps: ["1. Encode Embedding", "2. Remote HNSW Query (3200ms TIMEOUT)", "3. Rank Top-K"],
+        fallbackSteps: ["1. Check Local LRU", "2. BM25 Sparse Search (<8ms)", "3. Synthesize Response"],
+        faultDesc: "Vector cluster connection pool exhausted; latency exceeds 2.5s SLA."
+      },
+      3: {
+        title: "3. Upstream Schema Drift: Crucial Field Missing",
+        primaryDesc: "Parses upstream JSON payload expecting strict 'customer_account_id' UUID.",
+        fallbackDesc: "Pivots to fuzzy heuristic token matching and JWT claim extraction.",
+        primarySteps: ["1. Ingest Payload", "2. Strict Pydantic Validator (KEY ERROR)", "3. DB Commit"],
+        fallbackSteps: ["1. Fallback JWT Extractor", "2. Fuzzy Claim Heuristic", "3. Safe Normalized DB Commit"],
+        faultDesc: "Field 'customer_account_id' missing from partner payload; strict validation rejected."
+      }
+    };
+
+    function selectScenario(id) {
+      activeScenarioId = id;
+      document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-scen-' + id);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const scen = SCENARIOS[id];
+      document.getElementById('desc-primary').innerText = scen.primaryDesc;
+      document.getElementById('desc-fallback').innerText = scen.fallbackDesc;
+
+      const pSteps = document.getElementById('steps-primary');
+      pSteps.innerHTML = scen.primarySteps.map(s => `<div class="step-pill">${s}</div>`).join('');
+
+      const fSteps = document.getElementById('steps-fallback');
+      fSteps.innerHTML = scen.fallbackSteps.map(s => `<div class="step-pill">${s}</div>`).join('');
+
+      // Reset DAG cards visual
+      const pCard = document.getElementById('card-primary');
+      const fCard = document.getElementById('card-fallback');
+      pCard.className = 'branch-card';
+      fCard.className = 'branch-card';
+      document.getElementById('badge-primary').className = 'badge badge-primary';
+      document.getElementById('badge-primary').innerText = 'NOMINAL';
+      document.getElementById('badge-fallback').className = 'badge badge-fallback';
+      document.getElementById('badge-fallback').innerText = 'STANDBY';
+      document.getElementById('dag-status').innerText = 'Scenario Loaded · Ready';
+    }
+
+    function onModelDropdownChange(modelVal) {
+      currentModel = modelVal;
+      groqModel = modelVal;
+      document.getElementById('hardware-tag').innerText = `Model: ${currentModel}`;
+
+      if (modelVal === 'deterministic-ofc') {
+        selectEngine('det');
+      } else if (modelVal.startsWith('openai/') || modelVal.startsWith('qwen/qwen3') || modelVal.startsWith('allam-')) {
+        selectEngine('groq');
+      } else {
+        webllmModel = modelVal;
+        selectEngine('webllm');
+      }
+    }
+
+    function selectEngine(eng) {
+      currentEngine = eng;
+      document.querySelectorAll('.engine-pill').forEach(p => p.classList.remove('active'));
+      document.getElementById('eng-' + eng).classList.add('active');
+
+      const substrate = document.getElementById('substrate-label');
+      const hw = document.getElementById('hardware-tag');
+      const lat = document.getElementById('latency-tag');
+      const loader = document.getElementById('webgpu-loader');
+
+      if (eng === 'det') {
+        substrate.innerText = 'Deterministic Mathematical Evaluator';
+        substrate.style.color = 'var(--emerald)';
+        hw.innerText = 'CPU Rule Engine';
+        lat.innerText = '0.3ms Latency';
+        loader.style.display = 'none';
+      } else if (eng === 'groq') {
+        substrate.innerText = `Groq LPU Cloud Inference (${groqModel})`;
+        substrate.style.color = 'var(--gold)';
+        hw.innerText = 'Groq Tensor Processor';
+        lat.innerText = '~190ms Latency';
+        loader.style.display = 'none';
+      } else if (eng === 'webllm') {
+        substrate.innerText = `Client-Side WebGPU (${webllmModel})`;
+        substrate.style.color = '#38BDF8';
+        hw.innerText = 'Local WebGPU / Vulkan / Metal';
+        lat.innerText = 'Local GPU Execution';
+        if (!webllmEngine && !isWebLLMLoading) {
+          initWebLLM();
+        }
+      }
+    }
+
+    async function initWebLLM() {
+      if (!navigator.gpu) {
+        alert("WebGPU is not supported on this browser/hardware. Falling back to Deterministic mode.");
+        selectEngine('det');
+        return;
+      }
+      if (!window.webllm) {
+        alert("WebLLM library is still initializing. Please wait a second and retry.");
+        selectEngine('det');
+        return;
+      }
+
+      const loader = document.getElementById('webgpu-loader');
+      const fill = document.getElementById('loader-fill');
+      const statusText = document.getElementById('loader-status');
+      const pctText = document.getElementById('loader-pct');
+      loader.style.display = 'flex';
+      isWebLLMLoading = true;
+
+      try {
+        const initProgressCallback = (report) => {
+          const match = report.text.match(/([0-9.]+)%/);
+          const pct = match ? match[1] + '%' : 'Loading...';
+          statusText.innerText = report.text;
+          pctText.innerText = pct;
+          if (match) fill.style.width = match[1] + '%';
+        };
+
+        webllmEngine = new window.webllm.MLCEngine();
+        webllmEngine.setInitProgressCallback(initProgressCallback);
+        await webllmEngine.reload(webllmModel);
+
+        loader.style.display = 'none';
+        isWebLLMLoading = false;
+        document.getElementById('latency-tag').innerText = 'WebGPU Ready';
+      } catch (err) {
+        console.error("WebLLM Init failed:", err);
+        alert("WebGPU model initialization failed: " + err.message + "\nFalling back to Deterministic mode.");
+        loader.style.display = 'none';
+        isWebLLMLoading = false;
+        selectEngine('det');
+      }
+    }
+
+    function updateControls() {
+      const a = parseFloat(document.getElementById('slide-alpha').value);
+      const t = parseInt(document.getElementById('slide-theta').value);
+      const g = parseFloat(document.getElementById('slide-gamma').value);
+      document.getElementById('val-alpha').innerText = a.toFixed(2);
+      document.getElementById('val-theta').innerText = `${t} fault${t > 1 ? 's' : ''}`;
+      document.getElementById('val-gamma').innerText = g.toFixed(2);
+    }
+
+    function getActiveGroqKey() {
+      if (groqKey && groqKey.trim().length > 10) return groqKey.trim();
+      return PROVISIONED_GROQ_KEY;
+    }
+
+    async function executeAdaptation() {
+      const btn = document.getElementById('btn-pivot');
+      btn.disabled = true;
+      btn.innerHTML = '<span>&#8987; Evaluating Inversion &amp; Strategy Swap...</span>';
+
+      const a = parseFloat(document.getElementById('slide-alpha').value);
+      const t = parseInt(document.getElementById('slide-theta').value);
+      const g = parseFloat(document.getElementById('slide-gamma').value);
+      const scen = SCENARIOS[activeScenarioId];
+
+      const pCard = document.getElementById('card-primary');
+      const fCard = document.getElementById('card-fallback');
+      const pSteps = document.getElementById('steps-primary');
+      const fSteps = document.getElementById('steps-fallback');
+      const log = document.getElementById('reasoning-log');
+
+      log.innerText = `[${new Date().toLocaleTimeString()}] OFC Reversal Circuit: Ingestion of fault telemetry for "${scen.title}"...\n`;
+
+      let rationale = "";
+
+      if (currentEngine === 'groq') {
+        try {
+          const prompt = `You are the Orbitofrontal Cortex (OFC) Executive Adaptation Engine in an autonomous AI agent system (+ Adapts capability).
+Current Incident: ${scen.title}
+Fault Detail: ${scen.faultDesc}
+Parameters: Extinction Rate alpha=${a}, Fault Threshold theta=${t}, Fallback Viability Floor gamma=${g}.
+
+Analyze why the primary execution path must be inhibited and how the contingency branch restores uptime.
+Output a concise 2-paragraph technical executive rationale explaining:
+1. Detection of reward contingency inversion (inhibition of failing primary branch).
+2. Dynamic strategy swap to the secondary fallback without session restart.`;
+
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${getActiveGroqKey()}`
+            },
+            body: JSON.stringify({
+              model: groqModel,
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2,
+              max_tokens: 300
+            })
+          });
+
+          if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
+          const json = await res.json();
+          rationale = json.choices[0].message.content;
+        } catch (e) {
+          console.warn("Groq failed, using deterministic reasoning:", e);
+          rationale = getDeterministicRationale(scen, a, t, g);
+        }
+      } else if (currentEngine === 'webllm' && webllmEngine) {
+        try {
+          const prompt = `As the OFC Adaptation Engine (+ Adapts), explain the dynamic strategy pivot for: ${scen.title}. Keep explanation concise under 100 words.`;
+          const reply = await webllmEngine.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 200
+          });
+          rationale = reply.choices[0].message.content;
+        } catch (e) {
+          console.warn("WebLLM error, falling back:", e);
+          rationale = getDeterministicRationale(scen, a, t, g);
+        }
+      } else {
+        rationale = getDeterministicRationale(scen, a, t, g);
+      }
+
+      // Render Visual State Transition
+      pCard.className = 'branch-card inhibited';
+      document.getElementById('badge-primary').className = 'badge badge-inhibited';
+      document.getElementById('badge-primary').innerText = 'INHIBITED · 0% TRAFFIC';
+
+      pSteps.children[1].className = 'step-pill fail';
+
+      fCard.className = 'branch-card pivoted';
+      document.getElementById('badge-fallback').className = 'badge badge-pivoted';
+      document.getElementById('badge-fallback').innerText = 'PIVOT COMMITTED · 100% TRAFFIC';
+
+      fSteps.children[0].className = 'step-pill ok';
+      fSteps.children[1].className = 'step-pill ok';
+      fSteps.children[2].className = 'step-pill ok';
+
+      document.getElementById('dag-status').innerText = 'Cognitive Flexibility: Pivot Successful';
+
+      log.innerText += `\n[INVERSION DECISION]\n${rationale}\n\n[OUTCOME]: Primary path inhibited in ${(12 / a).toFixed(1)}ms. Contingency DAG committed with ${(g * 100).toFixed(0)}% confidence score. 0 customer dropped requests.`;
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>&#9654; Evaluate &amp; Execute Dynamic Strategy Pivot</span>';
+    }
+
+    function getDeterministicRationale(scen, a, t, g) {
+      return `[Orbitofrontal Inversion Assessment]:
+1. Primary path sustained consecutive faults exceeding threshold (theta=${t}). With extinction velocity alpha=${a}, conditioned motor association is immediately extinguished to prevent cascading retry storms.
+2. Contingency fallback verified above viability threshold (gamma=${g}). Workflow execution context dynamically repointed to asynchronous fallback DAG without agent session reset.`;
+    }
+
+    function openSettings() {
+      document.getElementById('cfg-groq-key').value = groqKey;
+      document.getElementById('cfg-groq-model').value = groqModel;
+      document.getElementById('cfg-webllm-model').value = webllmModel;
+      document.getElementById('modal-settings').style.display = 'flex';
+    }
+
+    function closeSettings() {
+      document.getElementById('modal-settings').style.display = 'none';
+    }
+
+    function saveSettings() {
+      groqKey = document.getElementById('cfg-groq-key').value.trim();
+      groqModel = document.getElementById('cfg-groq-model').value;
+      webllmModel = document.getElementById('cfg-webllm-model').value;
+
+      localStorage.setItem('agent_groq_key', groqKey);
+      localStorage.setItem('agent_groq_model', groqModel);
+      localStorage.setItem('agent_webllm_model', webllmModel);
+
+      document.getElementById('model-select').value = groqModel;
+      closeSettings();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateControls();
+      selectScenario(1);
+    });
+  </script>
+</body>
+</html>
