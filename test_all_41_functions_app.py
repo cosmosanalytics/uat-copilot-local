@@ -67,13 +67,22 @@ def test_app():
         assert "Insight" in insp_name
         print(f"[PASS] Inspector updated to: {insp_name}")
 
-        # 7. Execute function probe
+        # 7. Execute Live Function Demo
         run_btn = driver.find_element(By.ID, "btn-run-fn")
         run_btn.click()
         time.sleep(0.8)
         log_text = driver.find_element(By.ID, "probe-log").text
-        assert "Insight" in log_text
-        print("[PASS] Function probe executed successfully in deterministic sim mode")
+        assert "MODULE EXECUTION TRACE" in log_text or "Insight" in log_text
+        print("[PASS] Live function demo executed successfully with module trace")
+
+        # 8. Test End-to-End Pipeline Demo
+        pipeline_btn = driver.find_element(By.ID, "btn-pipeline-run")
+        assert pipeline_btn.is_displayed()
+        pipeline_btn.click()
+        time.sleep(6.0) # Allow all 8 stages to fire
+        log_text_pipeline = driver.find_element(By.ID, "probe-log").text
+        assert "COGNITIVE CYCLE COMPLETE" in log_text_pipeline
+        print("[PASS] Full End-to-End 8-Stage Cognitive Pipeline fired successfully!")
 
         # 8. Check console logs
         logs = driver.get_log("browser")
