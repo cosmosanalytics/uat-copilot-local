@@ -20,7 +20,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 PDF_PATH = r"c:\Users\richa\ai-engineering\AWS_41_Brain_Functions_Developer_Guide.pdf"
 
-# PALETTE
+# PALETTE (LIGHT MODE)
 C_NAVY = colors.HexColor("#0B132B")
 C_BLUE = colors.HexColor("#1C2541")
 C_ACCENT = colors.HexColor("#4F46E5")
@@ -30,12 +30,14 @@ C_PURPLE = colors.HexColor("#7C3AED")
 C_EMERALD = colors.HexColor("#059669")
 C_DANGER = colors.HexColor("#DC2626")
 C_GOLD = colors.HexColor("#D97706")
-C_BG_CARD = colors.HexColor("#F8FAFC")
+C_BG_CARD = colors.HexColor("#FFFFFF")
 C_BORDER = colors.HexColor("#E2E8F0")
 C_TEXT_DARK = colors.HexColor("#0F172A")
 C_TEXT_MUTED = colors.HexColor("#475569")
-C_CODE_BG = colors.HexColor("#0F172A")
-C_CODE_TEXT = colors.HexColor("#F8FAFC")
+C_CODE_BG = colors.HexColor("#F8FAFC")
+C_CODE_TEXT = colors.HexColor("#0F172A")
+C_CODE_BORDER = colors.HexColor("#CBD5E1")
+C_CODE_COMMENT = "#0284C7"
 
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
@@ -134,7 +136,7 @@ def create_guide_pdf():
         fontName='Helvetica-Bold',
         fontSize=8,
         leading=10,
-        textColor=colors.white
+        textColor=C_TEXT_DARK
     )
     s_body = ParagraphStyle(
         'Body',
@@ -170,12 +172,12 @@ def create_guide_pdf():
         content = [
             Paragraph(f"<b>{fn_name}</b> <font size=7.5 color='{badge_color}'>[{cat_type}]</font> &bull; <b>AWS:</b> {aws_svc}", s_h2),
             Paragraph(f"<i>Bio:</i> {bio_desc}", s_body_muted),
-            Table([[Paragraph(f"<font color='#38BDF8'># AWS Implementation &bull; {aws_svc}</font><br/>{code_snippet}", s_code)]],
+            Table([[Paragraph(f"<font color='{C_CODE_COMMENT}'># AWS Implementation &bull; {aws_svc}</font><br/>{code_snippet}", s_code)]],
                   colWidths=[548],
                   style=[
                       ('BACKGROUND', (0,0), (-1,-1), C_CODE_BG),
                       ('PADDING', (0,0), (-1,-1), 2.5),
-                      ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor("#334155")),
+                      ('BOX', (0,0), (-1,-1), 0.5, C_CODE_BORDER),
                   ]),
             Paragraph(f"<b>Builder Tip:</b> {tip_text}", s_body_muted),
             Spacer(1, 2)
@@ -194,11 +196,11 @@ def create_guide_pdf():
     # 5 CLASSIFICATION STATS BOXES
     stats_data = [
         [
-            Paragraph("<font size=13><b>21</b></font><br/><b>REACTIVE</b><br/><font size=7 color='#1E40AF'>Responds After</font>", s_badge),
-            Paragraph("<font size=13><b>7</b></font><br/><b>PROACTIVE</b><br/><font size=7 color='#6B21A8'>Acts Before (+)</font>", s_badge),
-            Paragraph("<font size=13><b>1</b></font><br/><b>PARTLY</b><br/><font size=7 color='#075985'>Metacognition</font>", s_badge),
-            Paragraph("<font size=13><b>7</b></font><br/><b>NOT YET</b><br/><font size=7 color='#374151'>Currently Lacking</font>", s_badge),
-            Paragraph("<font size=13><b>5</b></font><br/><b>RESEARCH</b><br/><font size=7 color='#92400E'>Science Studying (?)</font>", s_badge),
+            Paragraph("<font size=13 color='#1E3A8A'><b>21</b></font><br/><font color='#1E3A8A'><b>REACTIVE</b></font><br/><font size=7 color='#1E40AF'>Responds After</font>", s_badge),
+            Paragraph("<font size=13 color='#581C87'><b>7</b></font><br/><font color='#581C87'><b>PROACTIVE</b></font><br/><font size=7 color='#6B21A8'>Acts Before (+)</font>", s_badge),
+            Paragraph("<font size=13 color='#0C4A6E'><b>1</b></font><br/><font color='#0C4A6E'><b>PARTLY</b></font><br/><font size=7 color='#075985'>Metacognition</font>", s_badge),
+            Paragraph("<font size=13 color='#1F2937'><b>7</b></font><br/><font color='#1F2937'><b>NOT YET</b></font><br/><font size=7 color='#374151'>Currently Lacking</font>", s_badge),
+            Paragraph("<font size=13 color='#78350F'><b>5</b></font><br/><font color='#78350F'><b>RESEARCH</b></font><br/><font size=7 color='#92400E'>Science Studying (?)</font>", s_badge),
         ]
     ]
     t_stats = Table(stats_data, colWidths=[108, 108, 108, 108, 108])
@@ -782,7 +784,7 @@ def create_guide_pdf():
     story.append(HRFlowable(width="100%", thickness=1, color=C_BORDER, spaceAfter=8, spaceBefore=4))
 
     deploy_code = (
-        "<font color='#38BDF8'># deploy_brain_stack.py &middot; Quickstart Reference</font><br/>"
+        f"<font color='{C_CODE_COMMENT}'># deploy_brain_stack.py &middot; Quickstart Reference</font><br/>"
         "import boto3, json<br/><br/>"
         "# 1. Initialize AWS Cognitive Substrates<br/>"
         "bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')<br/>"
