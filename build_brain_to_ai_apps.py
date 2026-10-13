@@ -21,7 +21,9 @@ def main():
     subprocess.call([sys.executable, "write_somatic_marker_app.py"])
     subprocess.call([sys.executable, "write_theory_of_mind_app.py"])
     subprocess.call([sys.executable, "write_consolidation_app.py"])
-    print("All 4 apps successfully generated and verified!")
+    subprocess.call([sys.executable, "add_model_pickers_to_all_apps.py"])
+    subprocess.call([sys.executable, "apply_light_mode_all_apps.py"])
+    print("All 4 apps successfully generated and verified in Light Mode!")
 
 if __name__ == "__main__":
     main()
