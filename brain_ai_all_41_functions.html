@@ -346,19 +346,43 @@
     transition: width 0.2s ease;
   }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center;
+  /* MULTI-AGENT STUDIO */
+  .multiagent-panel {
+    display: none; background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; flex-direction: column; gap: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
   }
-  .modal-card {
-    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
-    max-width: 500px; width: 90%; padding: 24px; display: flex; flex-direction: column; gap: 16px;
+  .agents-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
   }
-  .input-field {
-    width: 100%; background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px; color: var(--text-main); font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
+  @media (max-width: 1000px) { .agents-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 650px) { .agents-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .agent-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; text-align: center;
+    align-items: center; transition: all 0.25s ease;
+  }
+  .agent-card.speaking {
+    border-color: var(--accent); background: var(--bg-subtle);
+    box-shadow: 0 0 16px var(--accent-glow); transform: translateY(-3px);
+  }
+  .agent-icon {
+    width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; margin-bottom: 2px;
+  }
+  .agent-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 11.5px; font-weight: 800; }
+  .agent-role { font-size: 10px; color: var(--text-muted); }
+
+  .multiagent-chat-log {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    font-size: 11.5px; font-family: 'JetBrains Mono', monospace;
+  }
+  .agent-bubble {
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg-subtle); display: flex; flex-direction: column; gap: 4px;
+    line-height: 1.45;
   }
 </style>
 </head>
@@ -488,12 +512,89 @@
         <button class="btn-filter" id="btn-flt-research" onclick="filterCategory('research')">5 Research (?)</button>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn-filter" id="btn-toggle-multiagent" onclick="toggleMultiAgentView()" style="background:#0284C7; color:white; border:none; font-weight:700; box-shadow:0 2px 8px rgba(2, 132, 199, 0.25);">
+          🤖 Multi-Agent Team Mode
+        </button>
         <button class="btn-filter" id="btn-pipeline-run" onclick="runFullPipelineDemo()" style="background:linear-gradient(135deg, #4F46E5, #7C3AED); color:white; border:none; font-weight:800; box-shadow:0 2px 10px var(--accent-glow);">
           ⚡ Run End-to-End Cognitive Pipeline Demo
         </button>
         <input type="text" class="search-input" id="search-box" placeholder="&#128269; Search any brain function..." oninput="onSearchInput(this.value)">
       </div>
     </div>
+
+    <!-- MULTI-AGENT SOCIETY OF MIND STUDIO -->
+    <section class="multiagent-panel" id="multiagent-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2 style="font-family:'Bricolage Grotesque', sans-serif; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;">
+            <span>🤖 Society of Mind &middot; 6 Specialized Pillar Agents</span>
+            <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Global Workspace Star Network</span>
+          </h2>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:2px;">Specialized autonomous agents embodying each brain pillar communicating over a shared conscious blackboard.</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="multiagent-scenario-select" class="input-field" style="width:auto; padding:6px 10px; font-size:11px;">
+            <option value="security">Scenario A: Zero-Day Exploit &amp; Ransomware Probe</option>
+            <option value="outage">Scenario B: Distributed Shard Deadlock &amp; Database Failover</option>
+            <option value="insight">Scenario C: Creative Lateral Thinking &amp; Paradox Resolution</option>
+          </select>
+          <button class="btn-execute" id="btn-run-multiagent" onclick="runMultiAgentCollaboration()" style="padding:8px 14px; font-size:11.5px;">
+            <span>&#9654; Run Multi-Agent Collaboration Session</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- THE 6 SPECIALIZED AGENTS CARDS -->
+      <div class="agents-grid">
+        <div class="agent-card" id="agent-perceive">
+          <div class="agent-icon" style="background:#EFF6FF; color:#2563EB;">&#128065;</div>
+          <span class="agent-title">Perceptor Agent</span>
+          <span class="agent-role">Thalamus &amp; Gating</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Perceive &amp; Attend</span>
+        </div>
+        <div class="agent-card" id="agent-memory">
+          <div class="agent-icon" style="background:#EEF2FF; color:#4F46E5;">&#128190;</div>
+          <span class="agent-title">Memory Agent</span>
+          <span class="agent-role">Hippocampal Librarian</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Remember</span>
+        </div>
+        <div class="agent-card" id="agent-executive">
+          <div class="agent-icon" style="background:#F5F3FF; color:#7C3AED;">&#129300;</div>
+          <span class="agent-title">Executive Judge</span>
+          <span class="agent-role">PFC &amp; Metacognition</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Think &amp; Decide</span>
+        </div>
+        <div class="agent-card" id="agent-affective">
+          <div class="agent-icon" style="background:#FEF2F2; color:#DC2626;">&#128220;</div>
+          <span class="agent-title">Affective Agent</span>
+          <span class="agent-role">Amygdala &amp; Valuation</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Learn &amp; Feel</span>
+        </div>
+        <div class="agent-card" id="agent-motor">
+          <div class="agent-icon" style="background:#ECFDF5; color:#059669;">&#9889;</div>
+          <span class="agent-title">Motor Governor</span>
+          <span class="agent-role">M1 &amp; Homeostasis</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Act &amp; Regulate</span>
+        </div>
+        <div class="agent-card" id="agent-gws">
+          <div class="agent-icon" style="background:#F0F9FF; color:#0284C7;">&#128279;</div>
+          <span class="agent-title">Workspace Hub</span>
+          <span class="agent-role">Conscious Blackboard</span>
+          <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Pillar: Connect &amp; Aware</span>
+        </div>
+      </div>
+
+      <!-- LIVE INTER-AGENT DIALOGUE FEED -->
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--text-muted);">Global Workspace Communication Bus (Live Inter-Agent Message Log)</span>
+          <span id="multiagent-status" style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; color:var(--emerald);">Agents Ready &middot; O(N) Shared Blackboard</span>
+        </div>
+        <div class="multiagent-chat-log" id="multiagent-chat-log">
+          <div style="color:var(--text-muted); text-align:center; padding:12px;">Click 'Run Multi-Agent Collaboration Session' to observe the 6 specialized pillar agents solve complex problems via conscious broadcast communication.</div>
+        </div>
+      </div>
+    </section>
 
     <!-- MAIN WORKSPACE: 6 PILLARS & FUNCTION INSPECTOR -->
     <div class="layout-grid">
@@ -1484,6 +1585,250 @@ Task:
 
       document.getElementById('model-select').value = groqModel;
       closeSettings();
+    }
+
+    // MULTI-AGENT SOCIETY OF MIND LOGIC
+    function toggleMultiAgentView() {
+      const panel = document.getElementById('multiagent-panel');
+      const btn = document.getElementById('btn-toggle-multiagent');
+      if (panel.style.display === 'flex') {
+        panel.style.display = 'none';
+        btn.style.background = '#0284C7';
+      } else {
+        panel.style.display = 'flex';
+        btn.style.background = '#0369A1';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    async function runMultiAgentCollaboration() {
+      const scenSelect = document.getElementById('multiagent-scenario-select');
+      const scenKey = scenSelect.value;
+      const btn = document.getElementById('btn-run-multiagent');
+      const chatLog = document.getElementById('multiagent-chat-log');
+      const statusBadge = document.getElementById('multiagent-status');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>&#8987; Agents Collaborating...</span>';
+      chatLog.innerHTML = '';
+
+      const SCENARIO_DATA = {
+        security: {
+          title: "Zero-Day Exploit & Ransomware Probe",
+          stimulus: "Ingress Telemetry: 14,000 requests/sec with malicious payload 'eval(atob(...))' attempting privilege escalation on Shard-3.",
+          turns: [
+            {
+              agentId: "agent-perceive",
+              name: "Perceptor Agent",
+              role: "Thalamic Intake & Gating",
+              color: "#2563EB",
+              functions: ["perception", "selective_attention"],
+              message: "Gated 14,000 raw packet vectors. Suppressed benign pings and isolated malicious payload hash 0x9f8c targeted at auth token /v1/escalate."
+            },
+            {
+              agentId: "agent-memory",
+              name: "Memory Agent",
+              role: "Hippocampal Librarian",
+              color: "#4F46E5",
+              functions: ["working_memory", "episodic_memory"],
+              message: "Matched past incident: Autoassociative recall retrieved CVE-2024-9042 from episodic store. Initializing working memory buffer with 4 containment variables."
+            },
+            {
+              agentId: "agent-affective",
+              name: "Affective Agent",
+              role: "Amygdala & Valuation",
+              color: "#DC2626",
+              functions: ["emotion", "prioritizing"],
+              message: "Threat valuation computed: Somatic urgency score 96/100 (HIGH). Threat radius: Catastrophic data exfiltration. Elevating priority to P0."
+            },
+            {
+              agentId: "agent-executive",
+              name: "Executive Judge",
+              role: "PFC & Metacognition",
+              color: "#7C3AED",
+              functions: ["metacognition", "response_inhibition", "planning"],
+              message: "Epistemic confidence calibrated at 94.2%. Response inhibition: Vetoed naive reboot to prevent malware persistent write. Approved 3-stage isolation DAG."
+            },
+            {
+              agentId: "agent-motor",
+              name: "Motor Governor",
+              role: "M1 & Homeostasis",
+              color: "#059669",
+              functions: ["motor_execution", "self_regulation"],
+              message: "Executing containment: Issued signed iptables firewall drop on port 8080 and rotated IAM keys. Host GPU/VRAM telemetry stable at 44%."
+            },
+            {
+              agentId: "agent-gws",
+              name: "Workspace Hub",
+              role: "Conscious Blackboard",
+              color: "#0284C7",
+              functions: ["global_workspace", "evidence_voting"],
+              message: "Global Workspace Broadcast: Shard-3 successfully quarantined in 210ms. All 6 agents synchronized with 0 consensus drift. Incident resolved."
+            }
+          ]
+        },
+        outage: {
+          title: "Distributed Shard Deadlock & Database Failover",
+          stimulus: "Cluster Telemetry: Shard-2 and Shard-5 mutual lock detected on orders table during peak Black Friday checkout.",
+          turns: [
+            {
+              agentId: "agent-perceive",
+              name: "Perceptor Agent",
+              role: "Thalamic Intake & Gating",
+              color: "#2563EB",
+              functions: ["perception", "predictive_coding"],
+              message: "Perception filter detected transaction queue latency spike from 4ms to 9,200ms across 8,000 checkout threads."
+            },
+            {
+              agentId: "agent-memory",
+              name: "Memory Agent",
+              role: "Hippocampal Librarian",
+              color: "#4F46E5",
+              functions: ["working_memory", "consolidation"],
+              message: "Bound active database topology in working memory. Consolidating lock dependencies: Shard-2 waits on TX-4091; Shard-5 waits on TX-4092."
+            },
+            {
+              agentId: "agent-affective",
+              name: "Affective Agent",
+              role: "Amygdala & Valuation",
+              color: "#DC2626",
+              functions: ["emotion", "prioritizing"],
+              message: "Calculated revenue loss risk: $340,000/minute. Somatic urgency score: 91/100. Prioritizing zero-downtime hot failover over full restart."
+            },
+            {
+              agentId: "agent-executive",
+              name: "Executive Judge",
+              role: "PFC & Metacognition",
+              color: "#7C3AED",
+              functions: ["metacognition", "decision_making"],
+              message: "Metacognitive confidence 92.5%. Decision: Terminate lowest-value lock TX-4091 and promote replica-3 to master."
+            },
+            {
+              agentId: "agent-motor",
+              name: "Motor Governor",
+              role: "M1 & Homeostasis",
+              color: "#059669",
+              functions: ["motor_execution", "self_regulation"],
+              message: "Action dispatched: Terminated TX-4091 via kill command; promoted replica-3. Lock released; query latency back to 6ms."
+            },
+            {
+              agentId: "agent-gws",
+              name: "Workspace Hub",
+              role: "Conscious Blackboard",
+              color: "#0284C7",
+              functions: ["global_workspace", "evidence_voting"],
+              message: "Global Workspace Broadcast: Cluster re-anchored. Raft consensus confirmed 4/4 nodes healthy. Total resolution latency: 195ms."
+            }
+          ]
+        },
+        insight: {
+          title: "Creative Lateral Thinking & Paradox Resolution",
+          stimulus: "Paradox Prompt: 'An AI agent must provide answers to users while strictly adhering to a zero-storage, zero-compute privacy mandate.'",
+          turns: [
+            {
+              agentId: "agent-perceive",
+              name: "Perceptor Agent",
+              role: "Thalamic Intake & Gating",
+              color: "#2563EB",
+              functions: ["selective_attention"],
+              message: "Attention isolated the dialectical contradiction: 'Provide accurate answers' vs 'Zero-storage zero-compute on central servers'."
+            },
+            {
+              agentId: "agent-memory",
+              name: "Memory Agent",
+              role: "Hippocampal Librarian",
+              color: "#4F46E5",
+              functions: ["associative_memory", "skill_memory"],
+              message: "Associative recall explored cross-domain analogies: Homomorphic encryption, zero-knowledge proofs, client-side WebGPU execution."
+            },
+            {
+              agentId: "agent-affective",
+              name: "Affective Agent",
+              role: "Amygdala & Valuation",
+              color: "#DC2626",
+              functions: ["emotion", "reward_learning"],
+              message: "Curiosity valuation elevated. Risk of compliance violation = 0% if central compute is completely bypassed."
+            },
+            {
+              agentId: "agent-executive",
+              name: "Executive Judge",
+              role: "PFC & Metacognition",
+              color: "#7C3AED",
+              functions: ["metacognition", "insight"],
+              message: "Insight (Aha!) triggered: Shift the computation paradigm from cloud-server inference to client-side in-browser WebGPU WebLLM!"
+            },
+            {
+              agentId: "agent-motor",
+              name: "Motor Governor",
+              role: "M1 & Homeostasis",
+              color: "#059669",
+              functions: ["motor_execution"],
+              message: "Generated architecture: Pure HTML/WebGPU bundle. Zero telemetry sent to server; 100% private user VRAM execution."
+            },
+            {
+              agentId: "agent-gws",
+              name: "Workspace Hub",
+              role: "Conscious Blackboard",
+              color: "#0284C7",
+              functions: ["global_workspace", "consciousness"],
+              message: "Conscious Synthesis: The paradox dissolves when the boundary of the 'agent' shifts from cloud server to the user's browser."
+            }
+          ]
+        }
+      };
+
+      const scenario = SCENARIO_DATA[scenKey] || SCENARIO_DATA.security;
+
+      // Add intro bubble
+      const introDiv = document.createElement('div');
+      introDiv.className = 'agent-bubble';
+      introDiv.style.borderLeft = '4px solid var(--accent)';
+      introDiv.innerHTML = `
+        <span style="font-weight:700; color:var(--accent);">[STIMULUS BROADCAST] ${scenario.title}</span>
+        <span style="color:var(--text-main);">${scenario.stimulus}</span>
+      `;
+      chatLog.appendChild(introDiv);
+
+      for (let i = 0; i < scenario.turns.length; i++) {
+        const turn = scenario.turns[i];
+        statusBadge.innerText = `Turn ${i + 1}/6: ${turn.name} speaking...`;
+        statusBadge.style.color = turn.color;
+
+        // Animate speaking card
+        document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('speaking'));
+        const card = document.getElementById(turn.agentId);
+        if (card) card.classList.add('speaking');
+
+        // Highlight functions on the 41-map
+        document.querySelectorAll('.fn-tag').forEach(t => t.classList.remove('selected'));
+        turn.functions.forEach(fnId => {
+          const fnTag = document.getElementById(`fn-btn-${fnId}`);
+          if (fnTag) fnTag.classList.add('selected');
+        });
+
+        // Append speech bubble
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'agent-bubble';
+        msgDiv.style.borderLeft = `4px solid ${turn.color}`;
+        msgDiv.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:700; color:${turn.color};">${turn.name} <span style="font-size:10px; opacity:0.8;">(${turn.role})</span></span>
+            <span style="font-size:9.5px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Exercising: ${turn.functions.join(", ")}</span>
+          </div>
+          <span style="color:var(--text-main); margin-top:2px;">${turn.message}</span>
+        `;
+        chatLog.appendChild(msgDiv);
+        chatLog.scrollTop = chatLog.scrollHeight;
+
+        await new Promise(r => setTimeout(r, 700));
+      }
+
+      document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('speaking'));
+      statusBadge.innerText = 'Multi-Agent Collaboration: Complete · Consensus Reached';
+      statusBadge.style.color = 'var(--emerald)';
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>&#9654; Run Multi-Agent Collaboration Session</span>';
     }
 
     window.addEventListener('DOMContentLoaded', () => {

@@ -79,12 +79,35 @@ def test_app():
         pipeline_btn = driver.find_element(By.ID, "btn-pipeline-run")
         assert pipeline_btn.is_displayed()
         pipeline_btn.click()
-        time.sleep(6.0) # Allow all 8 stages to fire
+        time.sleep(5.5)
         log_text_pipeline = driver.find_element(By.ID, "probe-log").text
         assert "COGNITIVE CYCLE COMPLETE" in log_text_pipeline
         print("[PASS] Full End-to-End 8-Stage Cognitive Pipeline fired successfully!")
 
-        # 8. Check console logs
+        # 9. Test Multi-Agent Team Mode
+        toggle_ma_btn = driver.find_element(By.ID, "btn-toggle-multiagent")
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(0.3)
+        driver.execute_script("arguments[0].click();", toggle_ma_btn)
+        time.sleep(0.4)
+        ma_panel = driver.find_element(By.ID, "multiagent-panel")
+        assert ma_panel.is_displayed(), "Multi-agent panel should be visible after toggle"
+        print("[PASS] Multi-Agent Society of Mind panel opened")
+
+        # Check 6 agent cards
+        agent_cards = driver.find_elements(By.CLASS_NAME, "agent-card")
+        assert len(agent_cards) == 6, f"Expected 6 pillar agents, got {len(agent_cards)}"
+        print(f"[PASS] All 6 specialized pillar agents present ({len(agent_cards)} agents)")
+
+        # Run multi-agent collaboration
+        run_ma_btn = driver.find_element(By.ID, "btn-run-multiagent")
+        driver.execute_script("arguments[0].click();", run_ma_btn)
+        time.sleep(5.0) # Allow multi-agent session to progress
+        chat_bubbles = driver.find_elements(By.CLASS_NAME, "agent-bubble")
+        assert len(chat_bubbles) >= 4, f"Expected multi-agent chat bubbles, got {len(chat_bubbles)}"
+        print(f"[PASS] Multi-agent collaboration session successfully executed with {len(chat_bubbles)} inter-agent turns!")
+
+        # 10. Check console logs
         logs = driver.get_log("browser")
         severe_errors = [entry for entry in logs if entry["level"] == "SEVERE" and "favicon" not in entry["message"].lower()]
         if severe_errors:
