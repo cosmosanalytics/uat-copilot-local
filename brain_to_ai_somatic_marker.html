@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Somatic Marker AI: Emotion & Motivation Goal Weighting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #080D1A;
+    --bg-surface: #0F172A;
+    --bg-card: #1E293B;
+    --border: #334155;
+    --accent: #2563EB;
+    --accent-glow: rgba(37, 99, 235, 0.25);
+    --gold: #F59E0B;
+    --emerald: #10B981;
+    --danger: #EF4444;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-page); color: var(--text-main); font-family: 'Public Sans', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #2563EB, #1D4ED8); display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 12px var(--accent-glow); }
+  .brand h1 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; }
+  .brand p { font-size: 11px; color: var(--text-muted); }
+  .engine-bar { display: flex; gap: 8px; }
+  .engine-pill { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; }
+  .engine-pill.active { border-color: var(--accent); color: var(--text-main); box-shadow: 0 0 10px var(--accent-glow); }
+
+  main { flex: 1; max-width: 1300px; width: 100%; margin: 0 auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
+  .neuro-banner { background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, var(--bg-surface) 100%); border: 1px solid var(--accent); border-radius: 16px; padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 860px) { .neuro-banner { grid-template-columns: 1fr; } }
+  .neuro-col h2 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 800; color: #60A5FA; margin-bottom: 6px; }
+  .neuro-col p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  .layout-grid { display: grid; grid-template-columns: 420px 1fr; gap: 24px; }
+  @media (max-width: 960px) { .layout-grid { grid-template-columns: 1fr; } }
+
+  .weights-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .weight-slider-box { background: var(--bg-card); border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .weight-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+  .weight-val { font-family: 'JetBrains Mono', monospace; color: var(--gold); }
+  .btn-run { padding: 12px; border-radius: 10px; background: linear-gradient(135deg, #2563EB, #1D4ED8); border: none; color: #fff; font-weight: 800; cursor: pointer; margin-top: 10px; }
+  .btn-run:hover { filter: brightness(1.15); }
+
+  .tree-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .tree-node { background: var(--bg-card); border-radius: 10px; padding: 14px; border-left: 4px solid var(--border); font-size: 12px; line-height: 1.5; }
+  .tree-node.pruned { border-left-color: var(--danger); text-decoration: line-through; opacity: 0.6; }
+  .tree-node.promoted { border-left-color: var(--emerald); background: rgba(16, 185, 129, 0.08); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#128203;</div>
+      <div>
+        <h1>Somatic Marker AI: Goal Weighting & Prioritization</h1>
+        <p>Damasio's Somatic Marker Hypothesis translated into Dynamic Utility & Sub-Task Pruning</p>
+      </div>
+    </div>
+    <div class="engine-bar">
+      <div class="engine-pill active" id="eng-det"><span style="color:var(--emerald);">&#9679;</span> Deterministic Engine</div>
+      <div class="engine-pill" id="eng-groq"><span style="color:var(--gold);">&#9679;</span> Groq LPU (~200ms)</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="neuro-banner">
+      <div class="neuro-col">
+        <h2>&#129504; Biological Brain: Somatic Marker Hypothesis</h2>
+        <p>Neurologist Antonio Damasio discovered that emotions (visceral somatic markers from the ventromedial prefrontal cortex) do not disrupt rationality—they <em>enable</em> it. Without emotional weighting, humans suffer analysis paralysis, evaluating hundreds of trivial options endlessly.</p>
+      </div>
+      <div class="neuro-col">
+        <h2>&#9881; AI Architecture: Dynamic Goal Weighting (+ Prioritizes)</h2>
+        <p>In autonomous agents, emotion translates to real-time utility re-weighting. When an emergency deadline approaches, the agent injects a "visceral urgency penalty," dropping low-value exploratory sub-tasks to guarantee mission SLA survival.</p>
+      </div>
+    </section>
+
+    <div class="layout-grid">
+      <div class="weights-card">
+        <h3 style="font-family:'Bricolage Grotesque', sans-serif; font-size:15px; font-weight:800;">Urgency &amp; Somatic Vector Controls</h3>
+
+        <div class="weight-slider-box">
+          <div class="weight-label"><span>Safety SLA Urgency Weight</span><span class="weight-val" id="val-sla">0.95</span></div>
+          <p style="font-size:11px; color:var(--text-muted);">Somatic fear response against breach</p>
+        </div>
+
+        <div class="weight-slider-box">
+          <div class="weight-label"><span>Cost Optimization Weight</span><span class="weight-val" id="val-cost">0.20</span></div>
+          <p style="font-size:11px; color:var(--text-muted);">Secondary resource thrift</p>
+        </div>
+
+        <div class="weight-slider-box">
+          <div class="weight-label"><span>Exploration Curiosity Weight</span><span class="weight-val" id="val-curious">0.10</span></div>
+          <p style="font-size:11px; color:var(--text-muted);">Suppressed under crisis urgency</p>
+        </div>
+
+        <button class="btn-run" onclick="runPrioritization()">&#9654; Evaluate &amp; Prune Execution Tree</button>
+      </div>
+
+      <div class="tree-card">
+        <h3 style="font-family:'Bricolage Grotesque', sans-serif; font-size:15px; font-weight:800;">Execution Tree: Pruning Low-Value Sub-Tasks</h3>
+        <div id="tree-container" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="tree-node">Task 1: Core Payload Encryption (Utility: 0.98) - Crucial safety invariant.</div>
+          <div class="tree-node">Task 2: Secondary Cloud Region Benchmark (Utility: 0.22) - Exploratory background probe.</div>
+          <div class="tree-node">Task 3: Historical Telemetry Deep Analysis (Utility: 0.15) - High token cost, low urgency.</div>
+          <div class="tree-node">Task 4: Fast Failover Route Synthesis (Utility: 0.94) - Critical uptime path.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function runPrioritization() {
+      const container = document.getElementById('tree-container');
+      container.innerHTML = `
+        <div class="tree-node promoted"><strong>[PROMOTED &middot; WEIGHT 0.98]</strong> Task 1: Core Payload Encryption &mdash; Priority #1, immediate dispatch.</div>
+        <div class="tree-node pruned"><strong>[DROPPED &middot; WEIGHT 0.22]</strong> Task 2: Secondary Cloud Region Benchmark &mdash; Somatic penalty applied; budget at risk.</div>
+        <div class="tree-node pruned"><strong>[DROPPED &middot; WEIGHT 0.15]</strong> Task 3: Historical Telemetry Deep Analysis &mdash; Evicted to preserve token headroom.</div>
+        <div class="tree-node promoted"><strong>[PROMOTED &middot; WEIGHT 0.94]</strong> Task 4: Fast Failover Route Synthesis &mdash; Priority #2, guaranteed SLA delivery.</div>
+        <div style="background:rgba(16,185,129,0.1); border:1px solid var(--emerald); border-radius:10px; padding:12px; font-size:12px; color:var(--emerald);">
+          <strong>Result:</strong> 2 non-essential tasks pruned. Execution latency reduced from 8.4s to 1.2s. Zero budget violation.
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
