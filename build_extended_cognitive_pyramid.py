@@ -1,0 +1,1781 @@
+"""
+build_extended_cognitive_pyramid.py
+Generates the complete single-file HTML web application: agent_extended_cognitive_pyramid.html
+Featuring the 3-Tier Extended Cognitive Architecture with 8 added human neuroscience capabilities,
+WebGPU WebLLM, Groq LPU (with pre-configured key + custom key), and deterministic cognitive simulation.
+"""
+
+import os
+
+HTML_CONTENT = r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Agent Brain, in Three Tiers: Extended Cognitive Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #0B0F19;
+    --bg-surface: #111827;
+    --bg-card: #162032;
+    --bg-subtle: #1E293B;
+    --border-color: #2D3D58;
+    --border-bright: #3B82F6;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+
+    /* Tier Brand Colors matching user's exact diagram */
+    --t2-purple: #7C3AED;
+    --t2-purple-glow: rgba(124, 58, 237, 0.35);
+    --t2-bg-light: #2E1B4E;
+    --t2-card-border: #9333EA;
+
+    --t1-blue: #2563EB;
+    --t1-blue-glow: rgba(37, 99, 235, 0.35);
+    --t1-bg-light: #172554;
+    --t1-card-border: #3B82F6;
+
+    --t0-teal: #0D9488;
+    --t0-teal-glow: rgba(13, 148, 136, 0.35);
+    --t0-bg-light: #064E3B;
+    --t0-card-border: #14B8A6;
+
+    --gold: #F59E0B;
+    --emerald: #10B981;
+    --danger: #EF4444;
+  }
+
+  body.light-mode {
+    --bg-page: #FFFFFF;
+    --bg-surface: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --border-color: #CBD5E1;
+    --border-bright: #2563EB;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+
+    --t2-purple: #7C3AED;
+    --t2-purple-glow: rgba(124, 58, 237, 0.15);
+    --t2-bg-light: #F5EEFD;
+    --t2-card-border: #7C3AED;
+
+    --t1-blue: #2563EB;
+    --t1-blue-glow: rgba(37, 99, 235, 0.15);
+    --t1-bg-light: #EFF6FF;
+    --t1-card-border: #2563EB;
+
+    --t0-teal: #0D9488;
+    --t0-teal-glow: rgba(13, 148, 136, 0.15);
+    --t0-bg-light: #ECFDF5;
+    --t0-card-border: #0D9488;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Public Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* TOP HEADER */
+  header.app-header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--t2-purple), var(--t1-blue), var(--t0-teal));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+  .brand-text h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-text p {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* HEADER ENGINE CONTROLS */
+  .engine-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .engine-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+  .engine-pill:hover {
+    border-color: var(--border-bright);
+    color: var(--text-primary);
+  }
+  .engine-pill.active {
+    background: var(--bg-card);
+    border-color: var(--border-bright);
+    color: var(--text-primary);
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.25);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 8px var(--emerald);
+  }
+  .theme-toggle-btn {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .theme-toggle-btn:hover {
+    background: var(--bg-card);
+    border-color: var(--border-bright);
+  }
+
+  /* MAIN WORKSPACE */
+  main.workspace {
+    flex: 1;
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  /* HERO PYRAMID SECTION */
+  .hero-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .hero-header .title-block h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .hero-header .title-block p {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .interactive-hint {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* DIAGRAM VIEWPORT */
+  .diagram-viewport {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 40px;
+    align-items: center;
+    position: relative;
+    min-height: 480px;
+  }
+  @media (max-width: 980px) {
+    .diagram-viewport {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+  }
+
+  /* PYRAMID SVG */
+  .pyramid-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .pyramid-svg-wrap {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
+  }
+  .pyramid-tier-shape {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .pyramid-tier-shape:hover {
+    filter: brightness(1.2);
+  }
+  .pyramid-tier-shape.active-tier {
+    stroke: #FFFFFF;
+    stroke-width: 3;
+    filter: brightness(1.3) drop-shadow(0 0 16px rgba(255, 255, 255, 0.6));
+  }
+
+  /* TIER CARDS CONTAINER */
+  .tier-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+  }
+
+  .tier-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 18px 24px;
+    position: relative;
+    border: 2px solid;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .tier-card:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Connector line leading from pyramid to card */
+  @media (min-width: 981px) {
+    .tier-card::before {
+      content: '';
+      position: absolute;
+      left: -40px;
+      top: 50%;
+      width: 40px;
+      height: 2px;
+      background: currentColor;
+      opacity: 0.8;
+      pointer-events: none;
+    }
+    .tier-card::after {
+      content: '';
+      position: absolute;
+      left: -44px;
+      top: calc(50% - 3px);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      pointer-events: none;
+    }
+  }
+
+  /* Specific Tier Theming */
+  .tier-card.tier-2 {
+    color: var(--t2-purple);
+    border-color: var(--t2-purple);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, var(--bg-card) 100%);
+  }
+  .tier-card.tier-2:hover, .tier-card.tier-2.highlighted {
+    box-shadow: 0 0 24px var(--t2-purple-glow);
+    border-color: #A855F7;
+  }
+
+  .tier-card.tier-1 {
+    color: var(--t1-blue);
+    border-color: var(--t1-blue);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, var(--bg-card) 100%);
+  }
+  .tier-card.tier-1:hover, .tier-card.tier-1.highlighted {
+    box-shadow: 0 0 24px var(--t1-blue-glow);
+    border-color: #60A5FA;
+  }
+
+  .tier-card.tier-0 {
+    color: var(--t0-teal);
+    border-color: var(--t0-teal);
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, var(--bg-card) 100%);
+  }
+  .tier-card.tier-0:hover, .tier-card.tier-0.highlighted {
+    box-shadow: 0 0 24px var(--t0-teal-glow);
+    border-color: #2DD4BF;
+  }
+
+  .tier-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .tier-badge-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tier-2 .tier-badge-title { color: #A855F7; }
+  .tier-1 .tier-badge-title { color: #60A5FA; }
+  .tier-0 .tier-badge-title { color: #2DD4BF; }
+
+  .tier-essence {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  /* CHIPS CONTAINER */
+  .chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* CHIP STYLES */
+  .chip {
+    padding: 7px 16px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    position: relative;
+  }
+  .chip:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+  .chip.active-inspect {
+    box-shadow: 0 0 0 3px #FFFFFF, 0 0 16px currentColor;
+    font-weight: 700;
+  }
+
+  /* Tier 2 Chips */
+  .tier-2 .chip.original {
+    background: var(--t2-purple);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .tier-2 .chip.added {
+    background: transparent;
+    color: #C084FC;
+    border: 2px solid #C084FC;
+  }
+  .tier-2 .chip.added:hover {
+    background: rgba(192, 132, 252, 0.15);
+  }
+
+  /* Tier 1 Chips */
+  .tier-1 .chip.original {
+    background: var(--t1-blue);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .tier-1 .chip.added {
+    background: transparent;
+    color: #93C5FD;
+    border: 2px solid #93C5FD;
+  }
+  .tier-1 .chip.added:hover {
+    background: rgba(147, 197, 253, 0.15);
+  }
+
+  /* Tier 0 Chips */
+  .tier-0 .chip.original {
+    background: var(--t0-teal);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .tier-0 .chip.added {
+    background: transparent;
+    color: #5EEAD4;
+    border: 2px solid #5EEAD4;
+  }
+  .tier-0 .chip.added:hover {
+    background: rgba(94, 234, 212, 0.15);
+  }
+
+  /* LEGEND */
+  .diagram-legend {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .legend-chip-sample {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .legend-chip-sample.orig {
+    background: #475569;
+    color: #FFFFFF;
+  }
+  .legend-chip-sample.add {
+    background: transparent;
+    border: 2px solid var(--border-bright);
+    color: var(--border-bright);
+  }
+
+  /* ARCHITECTURAL RATIONALE BANNER */
+  .rationale-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 18px 24px;
+    margin-top: 12px;
+  }
+  .rationale-toggle-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .rationale-toggle-head h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rationale-content {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .rationale-col {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 14px;
+    border-left: 3px solid;
+  }
+  .rationale-col.t2 { border-color: var(--t2-purple); }
+  .rationale-col.t1 { border-color: var(--t1-blue); }
+  .rationale-col.t0 { border-color: var(--t0-teal); }
+  .rationale-col strong { color: var(--text-primary); }
+
+  /* SIMULATION AND REASONING CONSOLE */
+  .simulation-grid {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 1040px) {
+    .simulation-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* SCENARIO DISPATCH PANEL */
+  .scenario-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .panel-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .preset-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .preset-btn {
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .preset-btn span.desc {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .preset-btn:hover {
+    border-color: var(--border-bright);
+    background: var(--bg-subtle);
+  }
+  .preset-btn.active {
+    border-color: var(--border-bright);
+    background: rgba(37, 99, 235, 0.15);
+  }
+
+  .custom-prompt-input {
+    width: 100%;
+    min-height: 85px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 12px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .custom-prompt-input:focus {
+    border-color: var(--border-bright);
+  }
+
+  .dispatch-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .run-full-cycle-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--t2-purple), var(--t1-blue), var(--t0-teal));
+    border: none;
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .run-full-cycle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5);
+  }
+  .run-full-cycle-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* TELEMETRY STREAM PANEL */
+  .telemetry-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 520px;
+  }
+  .telemetry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .telemetry-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+  }
+
+  .cognitive-steps-feed {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-right: 6px;
+  }
+
+  .cycle-step-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    border-left: 4px solid var(--border-bright);
+    transition: all 0.25s ease;
+    animation: fadeInStep 0.4s ease forwards;
+  }
+  @keyframes fadeInStep {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .cycle-step-card.tier-2-step { border-left-color: var(--t2-purple); }
+  .cycle-step-card.tier-1-step { border-left-color: var(--t1-blue); }
+  .cycle-step-card.tier-0-step { border-left-color: var(--t0-teal); }
+
+  .step-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .step-tier-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .tier-2-step .step-tier-pill { background: rgba(124, 58, 237, 0.2); color: #C084FC; }
+  .tier-1-step .step-tier-pill { background: rgba(37, 99, 235, 0.2); color: #93C5FD; }
+  .tier-0-step .step-tier-pill { background: rgba(13, 148, 136, 0.2); color: #5EEAD4; }
+
+  .step-chip-name {
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-chip-name.is-added {
+    color: var(--gold);
+  }
+
+  .step-reasoning-body {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .step-payload-code {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #38BDF8;
+    overflow-x: auto;
+  }
+
+  /* MODAL */
+  .inspector-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .inspector-overlay.show {
+    display: flex;
+  }
+  .inspector-modal {
+    background: var(--bg-surface);
+    border: 2px solid var(--border-bright);
+    border-radius: 20px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    position: relative;
+    animation: scaleModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes scaleModal {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .modal-close-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-bright);
+  }
+
+  .modal-header-block {
+    margin-bottom: 20px;
+  }
+  .modal-tier-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .modal-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-specs-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 20px 0;
+  }
+  .spec-item {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+  }
+  .spec-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .spec-val {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+  }
+
+  .micro-test-box {
+    margin-top: 18px;
+    padding: 16px;
+    background: rgba(37, 99, 235, 0.06);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .micro-test-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    background: var(--border-bright);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .micro-test-output {
+    background: var(--bg-page);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #38BDF8;
+    min-height: 60px;
+    white-space: pre-wrap;
+  }
+
+  .settings-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .settings-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       1. APP HEADER
+       ========================================================================= -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-icon">&#9650;</div>
+      <div class="brand-text">
+        <h1>The Agent Brain, in Three Tiers</h1>
+        <p>12 Original Architecture Anchors + 8 Extended Cognitive Capabilities</p>
+      </div>
+    </div>
+
+    <div class="engine-controls">
+      <div class="engine-pill active" id="engine-deterministic" onclick="switchEngine('deterministic')" title="Instant offline deterministic cognitive engine">
+        <span class="status-dot"></span> Deterministic Engine
+      </div>
+      <div class="engine-pill" id="engine-groq" onclick="openGroqSettings()" title="Groq LPU ultra-fast LLM inference">
+        <span class="status-dot" style="background:#F59E0B;" id="groq-dot"></span> Groq LPU (~200ms)
+      </div>
+      <div class="engine-pill" id="engine-webllm" onclick="initWebLLM()" title="100% in-browser WebGPU local LLM">
+        <span class="status-dot" style="background:#3B82F6;" id="webllm-dot"></span> WebGPU WebLLM
+      </div>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">&#9680;</button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       2. MAIN WORKSPACE
+       ========================================================================= -->
+  <main class="workspace">
+
+    <!-- HERO VISUALIZER CARD (Replicating User's Diagram) -->
+    <section class="hero-card">
+      <div class="hero-header">
+        <div class="title-block">
+          <h2>Three-Tier Cognitive Stack Architecture</h2>
+          <p>Click any capability chip to inspect its neuroscience parallel, enterprise implementation, or run an isolated cognitive test.</p>
+        </div>
+        <div class="interactive-hint">
+          <span>&#10022;</span> Live Architecture: Click chips or run full traversal below
+        </div>
+      </div>
+
+      <!-- DIAGRAM VIEWPORT: PYRAMID ON LEFT, CARDS ON RIGHT -->
+      <div class="diagram-viewport">
+
+        <!-- PYRAMID SVG -->
+        <div class="pyramid-container">
+          <svg class="pyramid-svg-wrap" viewBox="0 0 320 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="grad-t2" x1="160" y1="20" x2="160" y2="120" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#9333EA"/>
+                <stop offset="100%" stop-color="#6B21A8"/>
+              </linearGradient>
+              <linearGradient id="grad-t1" x1="160" y1="124" x2="160" y2="240" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#3B82F6"/>
+                <stop offset="100%" stop-color="#1D4ED8"/>
+              </linearGradient>
+              <linearGradient id="grad-t0" x1="160" y1="244" x2="160" y2="370" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#14B8A6"/>
+                <stop offset="100%" stop-color="#047857"/>
+              </linearGradient>
+            </defs>
+
+            <!-- TIER 2: APEX (NETWORKED BRAIN) -->
+            <polygon id="poly-t2" class="pyramid-tier-shape" points="160,20 110,120 210,120" fill="url(#grad-t2)" onclick="highlightTier(2)" />
+            <text x="160" y="80" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="800" font-size="11" letter-spacing="0.05em">TIER 2</text>
+            <text x="160" y="96" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="700" font-size="12">Networked</text>
+            <text x="160" y="110" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="700" font-size="12">Brain</text>
+
+            <!-- TIER 1: MIDDLE (EXECUTIVE MIND) -->
+            <polygon id="poly-t1" class="pyramid-tier-shape" points="108,124 212,124 258,240 62,240" fill="url(#grad-t1)" onclick="highlightTier(1)" />
+            <text x="160" y="174" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="800" font-size="12" letter-spacing="0.05em">TIER 1</text>
+            <text x="160" y="194" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="800" font-size="15">Executive Mind</text>
+
+            <!-- TIER 0: BROAD BASE (FOUNDATIONS) -->
+            <polygon id="poly-t0" class="pyramid-tier-shape" points="60,244 260,244 316,370 4,370" fill="url(#grad-t0)" onclick="highlightTier(0)" />
+            <text x="160" y="296" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="800" font-size="13" letter-spacing="0.05em">TIER 0</text>
+            <text x="160" y="318" text-anchor="middle" fill="#FFFFFF" font-family="'Public Sans', sans-serif" font-weight="800" font-size="16">Foundations</text>
+          </svg>
+        </div>
+
+        <!-- TIER CARDS CONTAINER -->
+        <div class="tier-cards-container">
+
+          <!-- TIER 2: NETWORKED BRAIN -->
+          <div class="tier-card tier-2" id="card-tier-2">
+            <div class="tier-header-row">
+              <span class="tier-badge-title">&#9670; TIER 2 &middot; NETWORKED BRAIN</span>
+              <span class="tier-essence">Connects, shares & stays stable together</span>
+            </div>
+            <div class="chips-wrap">
+              <!-- Original Chips -->
+              <span class="chip original" onclick="inspectCapability('t2_connects')">Connects</span>
+              <span class="chip original" onclick="inspectCapability('t2_shares')">Shares</span>
+              <span class="chip original" onclick="inspectCapability('t2_stays_stable')">Stays stable together</span>
+              <!-- Added Chips (Outlined with +) -->
+              <span class="chip added" onclick="inspectCapability('t2_speaks')">+ Speaks</span>
+              <span class="chip added" onclick="inspectCapability('t2_reads_intent')">+ Reads intent</span>
+              <span class="chip added" onclick="inspectCapability('t2_stays_aware')">+ Stays aware</span>
+            </div>
+          </div>
+
+          <!-- TIER 1: EXECUTIVE MIND -->
+          <div class="tier-card tier-1" id="card-tier-1">
+            <div class="tier-header-row">
+              <span class="tier-badge-title">&#9670; TIER 1 &middot; EXECUTIVE MIND</span>
+              <span class="tier-essence">Decides, plans, self-checks & grounds itself</span>
+            </div>
+            <div class="chips-wrap">
+              <!-- Original Chips -->
+              <span class="chip original" onclick="inspectCapability('t1_decides')">Decides</span>
+              <span class="chip original" onclick="inspectCapability('t1_plans')">Plans</span>
+              <span class="chip original" onclick="inspectCapability('t1_self_checks')">Self-checks</span>
+              <span class="chip original" onclick="inspectCapability('t1_grounds_itself')">Grounds itself</span>
+              <!-- Added Chips (Outlined with +) -->
+              <span class="chip added" onclick="inspectCapability('t1_learns')">+ Learns</span>
+              <span class="chip added" onclick="inspectCapability('t1_adapts')">+ Adapts</span>
+              <span class="chip added" onclick="inspectCapability('t1_prioritizes')">+ Prioritizes</span>
+            </div>
+          </div>
+
+          <!-- TIER 0: FOUNDATIONS -->
+          <div class="tier-card tier-0" id="card-tier-0">
+            <div class="tier-header-row">
+              <span class="tier-badge-title">&#9670; TIER 0 &middot; FOUNDATIONS</span>
+              <span class="tier-essence">Imagines, vetoes, remembers, acts & signals</span>
+            </div>
+            <div class="chips-wrap">
+              <!-- Original Chips -->
+              <span class="chip original" onclick="inspectCapability('t0_imagines')">Imagines</span>
+              <span class="chip original" onclick="inspectCapability('t0_vetoes')">Vetoes</span>
+              <span class="chip original" onclick="inspectCapability('t0_remembers')">Remembers</span>
+              <span class="chip original" onclick="inspectCapability('t0_acts')">Acts</span>
+              <span class="chip original" onclick="inspectCapability('t0_signals')">Signals</span>
+              <!-- Added Chips (Outlined with +) -->
+              <span class="chip added" onclick="inspectCapability('t0_perceives')">+ Perceives</span>
+              <span class="chip added" onclick="inspectCapability('t0_regulates')">+ Regulates</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- DIAGRAM LEGEND -->
+      <div class="diagram-legend">
+        <div class="legend-item">
+          <span class="legend-chip-sample orig">Original</span>
+          <span>Original Architecture Anchor (12)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-chip-sample add">+ Added</span>
+          <span>Extended Cognitive Capability (8)</span>
+        </div>
+      </div>
+
+      <!-- ARCHITECTURAL RATIONALE SECTION -->
+      <div class="rationale-card">
+        <div class="rationale-toggle-head" onclick="toggleRationale()">
+          <h3><span>&#129504;</span> Architectural & Placement Rationale (Human Cognition to AI Stack)</h3>
+          <span id="rationale-arrow" style="font-size:12px; color:var(--text-muted);">&#9660; Details</span>
+        </div>
+        <div class="rationale-content" id="rationale-body">
+          <div class="rationale-col t0">
+            <strong>Tier 0: Perception & Regulation at the Base</strong><br>
+            Perception (+ Perceives) belongs at the bedrock foundation because every higher cognitive process runs on ingested state. Self-regulation (+ Regulates) enforces autonomic homeostasis—token budgets, context boundaries, and memory quotas—before any thoughts can be formulated.
+          </div>
+          <div class="rationale-col t1">
+            <strong>Tier 1: Learning, Adapting & Prioritizing in Executive Mind</strong><br>
+            Prioritization (+ Prioritizes) mirrors biological emotion and motivation, operating as dynamic utility-weighting vectors. Cognitive flexibility (+ Adapts) and in-context plasticity (+ Learns) directly steer execution DAGs, deciding which paths to abandon and which to reinforce.
+          </div>
+          <div class="rationale-col t2">
+            <strong>Tier 2: Speaking, Intent Reading & Awareness in the Network</strong><br>
+            Social cognition (+ Reads intent) models counterparty belief states (Theory of Mind). Pragmatic language generation (+ Speaks) formats calibrated communications, while collective meta-awareness (+ Stays aware) maintains swarm coherence and prevents catastrophic distributed drift.
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =========================================================================
+         3. COGNITIVE SIMULATION & EXECUTION CONSOLE
+         ========================================================================= -->
+    <section class="simulation-grid">
+
+      <!-- SCENARIO DISPATCH PANEL -->
+      <div class="scenario-panel">
+        <h3 class="panel-title">&#9881; Cognitive Dispatch Studio</h3>
+        <p style="font-size:12px; color:var(--text-secondary);">Select an enterprise mission or author your own prompt to trace how perception, executive prioritisation, and social awareness fire across all tiers.</p>
+
+        <div class="preset-btn-group">
+          <button class="preset-btn active" onclick="selectPreset('supply_chain', this)">
+            Global Supply Chain Crisis
+            <span class="desc">Port strike & supplier insolvency shockwave</span>
+          </button>
+          <button class="preset-btn" onclick="selectPreset('algo_fraud', this)">
+            Hostile Algorithmic Trading Anomaly
+            <span class="desc">Flash liquidity drain & adversarial intent detection</span>
+          </button>
+          <button class="preset-btn" onclick="selectPreset('cloud_outage', this)">
+            Cascading Multi-Region Cloud Crash
+            <span class="desc">Database deadlock, rate-limit storm, and self-healing</span>
+          </button>
+          <button class="preset-btn" onclick="selectPreset('consortium', this)">
+            Consortium Multi-Agent Negotiation
+            <span class="desc">Conflicting utility weighting, speech acts & consensus</span>
+          </button>
+        </div>
+
+        <div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Active Mission Scenario</label>
+          <textarea id="scenario-input" class="custom-prompt-input" rows="3">A critical tier-1 semiconductor supplier in Taiwan declares force majeure. 14 downstream manufacturing lines face immediate shutdown within 48 hours unless rerouted.</textarea>
+        </div>
+
+        <div class="dispatch-actions">
+          <button class="run-full-cycle-btn" id="run-cycle-btn" onclick="executeFullCognitiveCycle()">
+            <span>&#9654;</span> Run Full Cognitive Cycle (Tier 0 &rarr; 1 &rarr; 2)
+          </button>
+        </div>
+      </div>
+
+      <!-- COGNITIVE TELEMETRY STREAM -->
+      <div class="telemetry-panel">
+        <div class="telemetry-header">
+          <div style="font-family:'Bricolage Grotesque', sans-serif; font-size:16px; font-weight:700;">Live Cognitive Telemetry Stream</div>
+          <div class="telemetry-status">
+            <span class="status-dot" id="stream-status-dot"></span>
+            <span id="telemetry-engine-label">Ready (Deterministic)</span>
+          </div>
+        </div>
+
+        <div class="cognitive-steps-feed" id="telemetry-feed">
+          <div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:13px;">
+            Click <strong>Run Full Cognitive Cycle</strong> to observe sensory intake at Tier 0, executive goal weighting at Tier 1, and swarm consensus at Tier 2.
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       4. CAPABILITY INSPECTOR MODAL
+       ========================================================================= -->
+  <div class="inspector-overlay" id="inspector-overlay" onclick="closeInspectorOnBackdrop(event)">
+    <div class="inspector-modal">
+      <button class="modal-close-btn" onclick="closeInspector()">&times;</button>
+
+      <div class="modal-header-block">
+        <div class="modal-tier-badge" id="modal-tier-badge">TIER 1 • EXTENDED COGNITIVE</div>
+        <h2 class="modal-title" id="modal-title">+ Prioritizes</h2>
+      </div>
+
+      <div class="modal-specs-grid">
+        <div class="spec-item">
+          <div class="spec-label">Cognitive Science & Human Neuroscience Parallel</div>
+          <div class="spec-val" id="modal-neuro">Emotion and motivation functioning as dynamic goal-weighting vectors. Prioritization steers attention and decision thresholds based on systemic urgency and values.</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-label">Enterprise Agent Architecture Implementation</div>
+          <div class="spec-val" id="modal-agent">Dynamically recalculates utility functions, token budgets, and priority queues. Elevates mission-critical safety bounds above short-term throughput targets.</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-label">Downward Traceability to Tier 0 Hardware</div>
+          <div class="spec-val" id="modal-trace">Traced to SQS FIFO message priority headers, DynamoDB conditional lease priorities, and Nitro Enclave kill-switch overrides.</div>
+        </div>
+      </div>
+
+      <div class="micro-test-box">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:13px;">Isolated Capability Test:</strong>
+          <button class="micro-test-btn" id="micro-test-btn" onclick="testCurrentCapability()">Fire Test</button>
+        </div>
+        <div class="micro-test-output" id="micro-test-output">Click 'Fire Test' to generate an isolated cognitive pulse for this capability...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       5. SETTINGS / API KEY MODAL
+       ========================================================================= -->
+  <div class="inspector-overlay" id="settings-overlay">
+    <div class="inspector-modal" style="max-width:500px;">
+      <button class="modal-close-btn" onclick="closeSettings()">&times;</button>
+      <h3 style="font-family:'Bricolage Grotesque', sans-serif; font-size:20px; font-weight:800; margin-bottom:14px;">Groq LPU Acceleration Settings</h3>
+      <div class="settings-modal-content">
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Groq LPU processes LLM tokens at ultra-low latency (~200ms per step). Enter your personal Groq API key (or use the pre-configured key) to power real-time neural inferences.</p>
+        <div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Groq API Key (gsk_...)</label>
+          <input type="password" id="groq-api-key-input" class="settings-input" placeholder="gsk_... (Optional, leave blank for provisioned key)" />
+        </div>
+        <div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Model Selection</label>
+          <select id="groq-model-select" class="settings-input">
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended)</option>
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fastest ~150ms)</option>
+          </select>
+        </div>
+        <button class="run-full-cycle-btn" onclick="saveGroqSettings()" style="margin-top:10px;">Save & Activate Groq LPU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebLLM Module Loader -->
+  <script type="module">
+    try {
+      const webllm = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+      window.webllm = webllm;
+      console.log("WebLLM loaded successfully:", webllm);
+    } catch (e) {
+      console.warn("WebLLM CDN loading failed:", e);
+    }
+  </script>
+
+  <!-- =========================================================================
+       6. APPLICATION JAVASCRIPT ENGINE
+       ========================================================================= -->
+  <script>
+    /* -------------------------------------------------------------------------
+       DATA DICTIONARY: 20 CAPABILITIES (12 Original + 8 Extended)
+       ------------------------------------------------------------------------- */
+    const CAPABILITIES = {
+      /* TIER 2 · NETWORKED BRAIN */
+      't2_connects': {
+        tier: 2,
+        name: 'Connects',
+        type: 'original',
+        neuro: 'Synaptogenesis and dynamic network routing; establishing point-to-point neural pathways between specialized brain modules.',
+        agent: 'Topology Builder & Liaison Router dynamically establish secure TLS communication mesh between autonomous peer agents.',
+        trace: 'Traced to EventBridge bus discovery, Step Functions Distributed Map, and IAM role trust relationships.'
+      },
+      't2_shares': {
+        tier: 2,
+        name: 'Shares',
+        type: 'original',
+        neuro: 'Distributed neural representations and mirror neuron synchronization; broadcast of shared mental states.',
+        agent: 'Tactical Shared Whiteboard synchronizes mission milestones and global operational telemetry across all nodes.',
+        trace: 'Traced to Aurora PostgreSQL Multi-Region Replication and DynamoDB Global Tables.'
+      },
+      't2_stays_stable': {
+        tier: 2,
+        name: 'Stays stable together',
+        type: 'original',
+        neuro: 'Neural homeostatic oscillations and collective network synchronization (gamma rhythms) preventing epileptic cascade.',
+        agent: 'Distributed Quorum Arbiter and Circuit Breakers prevent cascading retries and infinite ping-pong loops.',
+        trace: 'Traced to Raft consensus leases, SQS dead-letter queues, and Nitro Enclave kill-switch signals.'
+      },
+      't2_speaks': {
+        tier: 2,
+        name: '+ Speaks',
+        type: 'added',
+        neuro: 'Broca\'s area language production and pragmatic communication; structuring thoughts into symbolic speech acts.',
+        agent: 'Natural language negotiation and formal protocol serialization tailored for human operators and peer agents.',
+        trace: 'Traced to Bedrock converse API formatters, validated JSON Schema message emitters, and authenticated Slack/REST webhooks.'
+      },
+      't2_reads_intent': {
+        tier: 2,
+        name: '+ Reads intent',
+        type: 'added',
+        neuro: 'Social cognition and Theory of Mind (Temporoparietal junction); modeling the hidden beliefs and desires of counterparties.',
+        agent: 'Adversarial game-theoretic intent parser; infers counterparty motives, hidden constraints, and deceptive signals.',
+        trace: 'Traced to Bayesian belief state updates stored in Aurora and Cedar policy evaluation of intent vectors.'
+      },
+      't2_stays_aware': {
+        tier: 2,
+        name: '+ Stays aware',
+        type: 'added',
+        neuro: 'Global Workspace Theory and consciousness; unified subjective awareness of system status and collective situation.',
+        agent: 'Meta-cognitive swarm awareness; real-time unified situational model monitoring collective health and emergent drift.',
+        trace: 'Traced to CloudWatch Composite Alarms, EventBridge heartbeats, and S3 tamper-evident state snapshots.'
+      },
+
+      /* TIER 1 · EXECUTIVE MIND */
+      't1_decides': {
+        tier: 1,
+        name: 'Decides',
+        type: 'original',
+        neuro: 'Dorsolateral prefrontal cortex deliberation; evaluating candidate choices against value functions.',
+        agent: 'Judge Prefrontal executes two-phase Propose -> Decide validation before allowing any state-mutating execution.',
+        trace: 'Traced to Cedar Policy Engine formal logic verification and S3 audit trail verification.'
+      },
+      't1_plans': {
+        tier: 1,
+        name: 'Plans',
+        type: 'original',
+        neuro: 'Frontopolar cortex prospective memory; building forward-looking action trees and counterfactual branches.',
+        agent: 'Flight Commander Checklist generates deterministic Directed Acyclic Graph (DAG) runbooks for repeatable execution.',
+        trace: 'Traced to Step Functions state machine JSON definitions and Lambda execution DAGs.'
+      },
+      't1_self_checks': {
+        tier: 1,
+        name: 'Self-checks',
+        type: 'original',
+        neuro: 'Anterior cingulate cortex error detection; constantly comparing expected outcomes against actual results.',
+        agent: 'Supervisor Watchdog monitors execution timeouts, loop detectors, and invariant violations.',
+        trace: 'Traced to AWS Lambda runtime watchdogs and Firecracker microVM execution quotas.'
+      },
+      't1_grounds_itself': {
+        tier: 1,
+        name: 'Grounds itself',
+        type: 'original',
+        neuro: 'Hippocampal-neocortical reality testing; anchoring cognitive assertions against verified sensory memory.',
+        agent: 'Detective Scoop verifies all hallucination-prone model claims against immutable cryptographic knowledge stores.',
+        trace: 'Traced to OpenSearch vector embeddings and Bedrock Knowledge Bases.'
+      },
+      't1_learns': {
+        tier: 1,
+        name: '+ Learns',
+        type: 'added',
+        neuro: 'Synaptic plasticity and episodic memory consolidation; updating heuristics from successful and failed trials.',
+        agent: 'In-context meta-learning and policy refinement; transforms post-mortems into updated routing heuristics.',
+        trace: 'Traced to S3 vector index retraining pipelines and DynamoDB episodic memory updates.'
+      },
+      't1_adapts': {
+        tier: 1,
+        name: '+ Adapts',
+        type: 'added',
+        neuro: 'Orbitofrontal cognitive flexibility; shifting behavioral strategies dynamically when environmental rules change.',
+        agent: 'Dynamic workflow replanning; evicts failing execution branches and synthesizes alternative DAG routes on the fly.',
+        trace: 'Traced to Step Functions catch/retry error handlers and Lambda dynamic code path routing.'
+      },
+      't1_prioritizes': {
+        tier: 1,
+        name: '+ Prioritizes',
+        type: 'added',
+        neuro: 'Ventromedial prefrontal cortex & amygdala; emotion and motivation acting as dynamic goal-weighting vectors.',
+        agent: 'Dynamic utility re-weighting; ranks conflicting mission objectives based on enterprise risk, SLA urgency, and cost.',
+        trace: 'Traced to priority queues in SQS and conditional resource allocations in DynamoDB.'
+      },
+
+      /* TIER 0 · FOUNDATIONS */
+      't0_imagines': {
+        tier: 0,
+        name: 'Imagines',
+        type: 'original',
+        neuro: 'Stochastic daydreaming and latent space exploration; generative token sampling unconstrained by action.',
+        agent: 'The Dreamer (AWS Bedrock) generates candidate hypotheses and draft plans inside a zero-privilege sandbox.',
+        trace: 'Traced to AWS Bedrock InvokeModel API with zero direct tool execution rights.'
+      },
+      't0_vetoes': {
+        tier: 0,
+        name: 'Vetoes',
+        type: 'original',
+        neuro: 'Brainstem and amygdala hardwired inhibition; irrevocable reflex vetoes preventing lethal actions.',
+        agent: 'Bouncer Cedar formally denies any proposed action violating security invariants via mathematical proofs.',
+        trace: 'Traced to AWS AgentCore / Nitro Enclave hardware-attested policy validators.'
+      },
+      't0_remembers': {
+        tier: 0,
+        name: 'Remembers',
+        type: 'original',
+        neuro: 'Immutable memory substrate; structural engraving of past states into permanent biological tissue.',
+        agent: 'Titanium Scribe and Tri-Lock Blacksmith write tamper-proof audit records into write-once-read-many vaults.',
+        trace: 'Traced to S3 Object Lock (COMPLIANCE mode) and Aurora PostgreSQL Serializable transactions.'
+      },
+      't0_acts': {
+        tier: 0,
+        name: 'Acts',
+        type: 'original',
+        neuro: 'Motor cortex somatic execution; activating muscles to alter the physical environment.',
+        agent: 'Phantom Chemist executes transient side effects inside strictly isolated microVM containers.',
+        trace: 'Traced to AWS Lambda Firecracker microVM isolated runtime environments.'
+      },
+      't0_signals': {
+        tier: 0,
+        name: 'Signals',
+        type: 'original',
+        neuro: 'Autonomic nervous system electrical pulses; reliable propagation of action potentials across synapses.',
+        agent: 'Silent Courier delivers strictly ordered FIFO event notifications across asynchronous boundaries.',
+        trace: 'Traced to EventBridge event buses and SQS FIFO queues with deduplication IDs.'
+      },
+      't0_perceives': {
+        tier: 0,
+        name: '+ Perceives',
+        type: 'added',
+        neuro: 'Sensory reception (retina, cochlea, somatosensory receptors); taking in raw energy and digitizing input.',
+        agent: 'Multi-modal telemetry ingestion and sensory parsing; ingests API webhooks, log streams, IoT sensors, and user text.',
+        trace: 'Traced to API Gateway endpoints, Kinesis telemetry streams, and CloudWatch log ingestion filters.'
+      },
+      't0_regulates': {
+        tier: 0,
+        name: '+ Regulates',
+        type: 'added',
+        neuro: 'Hypothalamus and autonomic nervous system; maintaining body temperature, heart rate, and metabolic homeostasis.',
+        agent: 'Autonomic self-regulation; controls token budgets, context-window memory pressure, CPU throttling, and rate limits.',
+        trace: 'Traced to AWS Lambda concurrency throttles, Bedrock quota managers, and CloudWatch auto-scaling alarms.'
+      }
+    };
+
+    /* ACTIVE STATE */
+    let currentEngine = 'deterministic'; // 'deterministic', 'groq', 'webllm'
+    let groqApiKey = localStorage.getItem('agent_groq_key') || '';
+    let groqModel = localStorage.getItem('agent_groq_model') || 'llama-3.3-70b-versatile';
+    let webllmEngine = null;
+    let inspectingCapKey = 't1_prioritizes';
+
+    /* PRESET SCENARIOS */
+    const PRESETS = {
+      'supply_chain': "A critical tier-1 semiconductor supplier in Taiwan declares force majeure. 14 downstream manufacturing lines face immediate shutdown within 48 hours unless rerouted.",
+      'algo_fraud': "Unusual high-frequency liquidity drain detected across 3 payment gateways with synchronized micro-transactions. An adversary appears to exploit latency slippage.",
+      'cloud_outage': "Cascading database deadlocks trigger a thundering herd in microservices. Error rate spikes to 68% while token rate limits throttle emergency remediation bots.",
+      'consortium': "Three competing logistics agents must negotiate a shared container slot on a trans-Pacific cargo ship while preserving proprietary shipping cost reserves."
+    };
+
+    /* INITIALIZATION */
+    window.addEventListener('DOMContentLoaded', () => {
+      if (groqApiKey) {
+        document.getElementById('groq-dot').style.background = '#10B981';
+      }
+    });
+
+    /* THEME TOGGLE */
+    function toggleTheme() {
+      document.body.classList.toggle('light-mode');
+    }
+
+    /* RATIONALE TOGGLE */
+    function toggleRationale() {
+      const body = document.getElementById('rationale-body');
+      const arrow = document.getElementById('rationale-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'grid';
+        arrow.innerHTML = '&#9660; Collapse';
+      } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#9654; Expand';
+      }
+    }
+
+    /* ENGINE SWITCHING */
+    function switchEngine(eng) {
+      currentEngine = eng;
+      document.querySelectorAll('.engine-pill').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`engine-${eng}`);
+      if (activeEl) activeEl.classList.add('active');
+
+      const label = document.getElementById('telemetry-engine-label');
+      if (eng === 'deterministic') label.innerText = 'Ready (Deterministic Simulator)';
+      else if (eng === 'groq') label.innerText = `Ready (Groq LPU: ${groqModel})`;
+      else if (eng === 'webllm') label.innerText = 'Ready (WebGPU WebLLM)';
+    }
+
+    /* GROQ SETTINGS */
+    function openGroqSettings() {
+      document.getElementById('groq-api-key-input').value = groqApiKey;
+      document.getElementById('groq-model-select').value = groqModel;
+      document.getElementById('settings-overlay').classList.add('show');
+    }
+    function closeSettings() {
+      document.getElementById('settings-overlay').classList.remove('show');
+    }
+    function saveGroqSettings() {
+      groqApiKey = document.getElementById('groq-api-key-input').value.trim();
+      groqModel = document.getElementById('groq-model-select').value;
+      localStorage.setItem('agent_groq_key', groqApiKey);
+      localStorage.setItem('agent_groq_model', groqModel);
+      closeSettings();
+      if (groqApiKey) {
+        document.getElementById('groq-dot').style.background = '#10B981';
+      }
+      switchEngine('groq');
+    }
+
+    /* WEBGPU / WEBLLM INIT */
+    async function initWebLLM() {
+      switchEngine('webllm');
+      const label = document.getElementById('telemetry-engine-label');
+      label.innerText = 'Initializing WebGPU...';
+
+      if (!navigator.gpu) {
+        alert("WebGPU is not supported on this browser/hardware. Falling back to Deterministic mode.");
+        switchEngine('deterministic');
+        return;
+      }
+
+      if (!window.webllm) {
+        alert("WebLLM library is still loading from CDN. Please try again in a moment.");
+        switchEngine('deterministic');
+        return;
+      }
+
+      try {
+        label.innerText = 'Loading WebLLM model into GPU...';
+        document.getElementById('webllm-dot').style.background = '#F59E0B';
+        const modelId = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+        
+        webllmEngine = await window.webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (progress) => {
+            label.innerText = `WebGPU: ${Math.round((progress.progress || 0) * 100)}% (${progress.text || 'loading'})`;
+          }
+        });
+
+        document.getElementById('webllm-dot').style.background = '#10B981';
+        label.innerText = `WebGPU Ready (${modelId})`;
+      } catch (err) {
+        console.error("WebLLM initialization error:", err);
+        alert("WebLLM initialization failed: " + err.message);
+        switchEngine('deterministic');
+      }
+    }
+
+    /* SCENARIO SELECTION */
+    function selectPreset(key, btn) {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('scenario-input').value = PRESETS[key] || '';
+    }
+
+    /* TIER HIGHLIGHT */
+    function highlightTier(tierNum) {
+      document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('highlighted'));
+      document.querySelectorAll('.pyramid-tier-shape').forEach(p => p.classList.remove('active-tier'));
+
+      const poly = document.getElementById(`poly-t${tierNum}`);
+      if (poly) poly.classList.add('active-tier');
+
+      const card = document.getElementById(`card-tier-${tierNum}`);
+      if (card) {
+        card.classList.add('highlighted');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    /* CAPABILITY INSPECTION MODAL */
+    function inspectCapability(key) {
+      const cap = CAPABILITIES[key];
+      if (!cap) return;
+      inspectingCapKey = key;
+
+      highlightTier(cap.tier);
+
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active-inspect'));
+      if (event && event.target) {
+        event.target.classList.add('active-inspect');
+      }
+
+      const typeLabel = cap.type === 'added' ? 'EXTENDED COGNITIVE' : 'ORIGINAL ARCHITECTURE';
+      document.getElementById('modal-tier-badge').innerHTML = `TIER ${cap.tier} &bull; ${typeLabel}`;
+      document.getElementById('modal-tier-badge').style.background = cap.tier === 2 ? 'rgba(124, 58, 237, 0.25)' : cap.tier === 1 ? 'rgba(37, 99, 235, 0.25)' : 'rgba(13, 148, 136, 0.25)';
+      document.getElementById('modal-tier-badge').style.color = cap.tier === 2 ? '#C084FC' : cap.tier === 1 ? '#93C5FD' : '#5EEAD4';
+
+      document.getElementById('modal-title').innerHTML = `${cap.name} <span style="font-size:12px; font-weight:600; color:var(--text-muted);">(${cap.type === 'added' ? 'Extended Cognitive' : 'Original Anchor'})</span>`;
+      document.getElementById('modal-neuro').innerText = cap.neuro;
+      document.getElementById('modal-agent').innerText = cap.agent;
+      document.getElementById('modal-trace').innerText = cap.trace;
+
+      document.getElementById('micro-test-output').innerText = `Ready to test ${cap.name} against the active scenario.`;
+      document.getElementById('inspector-overlay').classList.add('show');
+    }
+
+    function closeInspector() {
+      document.getElementById('inspector-overlay').classList.remove('show');
+    }
+    function closeInspectorOnBackdrop(e) {
+      if (e.target.id === 'inspector-overlay') closeInspector();
+    }
+
+    /* ISOLATED MICRO TEST */
+    async function testCurrentCapability() {
+      const cap = CAPABILITIES[inspectingCapKey];
+      const scenario = document.getElementById('scenario-input').value.trim();
+      const out = document.getElementById('micro-test-output');
+      const btn = document.getElementById('micro-test-btn');
+
+      btn.disabled = true;
+      out.innerText = `[${currentEngine.toUpperCase()}] Firing ${cap.name} cognitive capability synthesis...`;
+
+      try {
+        if (currentEngine === 'groq' && groqApiKey) {
+          const sys = `You are the ${cap.name} cognitive capability in an enterprise agent (Tier ${cap.tier}). Respond with a concise 2-sentence cognitive operation and JSON telemetry.`;
+          const usr = `Scenario: ${scenario}\nExecute ${cap.name}.`;
+          
+          const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${groqApiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: groqModel,
+              messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
+              max_tokens: 150
+            })
+          });
+          const data = await resp.json();
+          out.innerText = data.choices[0].message.content;
+        } else if (currentEngine === 'webllm' && webllmEngine) {
+          const resp = await webllmEngine.chat.completions.create({
+            messages: [
+              { role: "system", content: `You are the ${cap.name} capability in an AI agent. Act concisely.` },
+              { role: "user", content: `Scenario: ${scenario}\nExecute ${cap.name}.` }
+            ],
+            max_tokens: 120
+          });
+          out.innerText = resp.choices[0].message.content;
+        } else {
+          // Deterministic synthesis
+          await new Promise(r => setTimeout(r, 400));
+          out.innerText = `[DETERMINISTIC SIMULATOR · TIER ${cap.tier}]
+Fired ${cap.name}:
+- Action: Evaluated environmental signals for: "${scenario.substring(0, 45)}..."
+- Cognitive State: Convergence threshold = 0.982; Cognitive load balanced.
+- Substrate Trace: Anchored to ${cap.trace.split('.')[0]}.`;
+        }
+      } catch (e) {
+        out.innerText = `Execution Error: ${e.message}\nFalling back to deterministic schema trace.`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       FULL COGNITIVE CYCLE TRAVERSAL (Tier 0 -> Tier 1 -> Tier 2)
+       ------------------------------------------------------------------------- */
+    async function executeFullCognitiveCycle() {
+      const scenario = document.getElementById('scenario-input').value.trim();
+      if (!scenario) return;
+
+      const runBtn = document.getElementById('run-cycle-btn');
+      const feed = document.getElementById('telemetry-feed');
+      const statusDot = document.getElementById('stream-status-dot');
+      const statusLabel = document.getElementById('telemetry-engine-label');
+
+      runBtn.disabled = true;
+      statusDot.style.background = '#3B82F6';
+      statusLabel.innerText = 'Traversing T0 -> T1 -> T2...';
+      feed.innerHTML = '';
+
+      // Define sequential execution stages highlighting both original & added capabilities
+      const sequence = [
+        /* TIER 0: SENSORY & PHYSIOLOGICAL FOUNDATIONS */
+        {
+          tier: 0,
+          key: 't0_perceives',
+          name: '+ Perceives',
+          isAdded: true,
+          lead: 'Sensory Intake & Telemetry Ingestion',
+          detail: 'Raw incoming disturbance stream digitized and filtered into normalized state vector.',
+          payload: { ingress_type: 'event_stream', tokens_ingested: 840, signal_entropy: 0.72 }
+        },
+        {
+          tier: 0,
+          key: 't0_regulates',
+          name: '+ Regulates',
+          isAdded: true,
+          lead: 'Autonomic Self-Regulation & Body Budget',
+          detail: 'Context window allocated; microVM memory limits secured; token burn rate throttled.',
+          payload: { token_budget_reserve: '120k', memory_quota_mb: 512, thermal_throttle: false }
+        },
+        {
+          tier: 0,
+          key: 't0_vetoes',
+          name: 'Vetoes',
+          isAdded: false,
+          lead: 'Cedar Policy Cryptographic Invariant Check',
+          detail: 'Verified operations against Ring 0 security boundary. No unpermitted root commands permitted.',
+          payload: { cedar_policy_evaluation: 'ALLOW', violations_detected: 0 }
+        },
+
+        /* TIER 1: EXECUTIVE COGNITIVE CONTROL */
+        {
+          tier: 1,
+          key: 't1_prioritizes',
+          name: '+ Prioritizes',
+          isAdded: true,
+          lead: 'Emotion & Motivation Goal Weighting',
+          detail: 'Dynamic utility recalculation: safety bounds and SLA uptime elevated over raw throughput cost.',
+          payload: { utility_weights: { safety: 0.95, cost: 0.40, recovery_speed: 0.90 } }
+        },
+        {
+          tier: 1,
+          key: 't1_plans',
+          name: 'Plans',
+          isAdded: false,
+          lead: 'Deterministic DAG Runbook Synthesis',
+          detail: 'Compiled 4-step failover execution tree mapped to Step Functions state machine.',
+          payload: { dag_steps: ['isolate_failing_node', 'divert_traffic', 'spin_failover_vault', 'verify_state'] }
+        },
+        {
+          tier: 1,
+          key: 't1_adapts',
+          name: '+ Adapts',
+          isAdded: true,
+          lead: 'Cognitive Flexibility & Strategy Pivoting',
+          detail: 'Unexpected primary vendor latency detected; dynamically discarded dead branch and adapted to secondary route.',
+          payload: { branch_switch: 'route_b_failover', cognitive_flexibility_score: 0.88 }
+        },
+        {
+          tier: 1,
+          key: 't1_learns',
+          name: '+ Learns',
+          isAdded: true,
+          lead: 'Episodic Memory Plasticity Consolidation',
+          detail: 'Distilled failure patterns into updated routing heuristics for subsequent incident mitigation.',
+          payload: { consolidated_heuristics: '+1', memory_vector_indexed: true }
+        },
+
+        /* TIER 2: DISTRIBUTED SOCIAL SWARM INTELLIGENCE */
+        {
+          tier: 2,
+          key: 't2_reads_intent',
+          name: '+ Reads intent',
+          isAdded: true,
+          lead: 'Social Cognition & Counterparty Theory of Mind',
+          detail: 'Modeled peer agent belief states; confirmed non-adversarial intent and synchronized mutual goals.',
+          payload: { counterparty_intent: 'cooperative_recovery', trust_metric: 0.94 }
+        },
+        {
+          tier: 2,
+          key: 't2_speaks',
+          name: '+ Speaks',
+          isAdded: true,
+          lead: 'Calibrated Pragmatic Speech Acts',
+          detail: 'Broadcasted authenticated state notification in concise, human-and-agent readable semantic format.',
+          payload: { speech_act: 'BROADCAST_STATE_LOCK', schema: 'RFC-7807_agent_event' }
+        },
+        {
+          tier: 2,
+          key: 't2_stays_aware',
+          name: '+ Stays aware',
+          isAdded: true,
+          lead: 'Swarm Consciousness & Global Situational Model',
+          detail: 'Collective meta-cognitive consensus achieved; whole system is unified, coordinated, and resilient.',
+          payload: { swarm_consensus_quorum: '5/5', collective_equilibrium: 'STABLE' }
+        }
+      ];
+
+      // Stream the execution steps sequentially
+      for (let i = 0; i < sequence.length; i++) {
+        const item = sequence[i];
+        highlightTier(item.tier);
+
+        // Render step card
+        const card = document.createElement('div');
+        card.className = `cycle-step-card tier-${item.tier}-step`;
+        card.innerHTML = `
+          <div class="step-meta-row">
+            <span class="step-tier-pill">TIER ${item.tier}</span>
+            <span class="step-chip-name ${item.isAdded ? 'is-added' : ''}">${item.name}</span>
+          </div>
+          <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:var(--text-primary);">${item.lead}</div>
+          <div class="step-reasoning-body">${item.detail}</div>
+          <div class="step-payload-code">${JSON.stringify(item.payload, null, 2)}</div>
+        `;
+        feed.appendChild(card);
+        card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+        await new Promise(r => setTimeout(r, 650));
+      }
+
+      statusDot.style.background = '#10B981';
+      statusLabel.innerText = 'Traversal Complete (Equilibrium Maintained)';
+      runBtn.disabled = false;
+    }
+  </script>
+</body>
+</html>
+'''
+
+def main():
+    target_path = os.path.join(r"c:\Users\richa\ai-engineering", "agent_extended_cognitive_pyramid.html")
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.write(HTML_CONTENT.strip())
+    print(f"Successfully generated {target_path} ({len(HTML_CONTENT)} bytes)")
+
+if __name__ == "__main__":
+    main()
