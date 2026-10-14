@@ -211,6 +211,39 @@
     color: var(--accent);
     font-weight: 600;
   }
+  .render-mode-switch {
+    display: inline-flex;
+    background: var(--bg-card);
+    padding: 2px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    gap: 2px;
+  }
+  body.dark-mode .render-mode-switch {
+    background: var(--bg-subtle);
+  }
+  .mode-pill {
+    border: none;
+    background: transparent;
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .mode-pill:hover {
+    color: var(--text-main);
+  }
+  .mode-pill.active {
+    background: var(--accent);
+    color: #FFFFFF !important;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
+  }
 
   /* CANVAS STAGE */
   .canvas-container {
@@ -676,7 +709,11 @@
         <span class="avatar-name" id="currentPersonaName">Dr. Evelyn Vance</span>
         <span class="avatar-role-tag" id="currentPersonaRole">Cognitive AI Scientist</span>
       </div>
-      <div style="display:flex; gap:6px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="render-mode-switch" title="Toggle Avatar Visual Style">
+          <button class="mode-pill active" id="modeRealBtn" onclick="setAvatarMode('real')">👤 Real Person</button>
+          <button class="mode-pill" id="modeVectorBtn" onclick="setAvatarMode('vector')">🎨 Vector</button>
+        </div>
         <button class="btn-icon" id="voiceMuteBtn" onclick="toggleMute()" title="Mute/Unmute Speech">🔊</button>
         <button class="btn-icon" onclick="interruptAvatar()" title="Interrupt / Stop Speaking">⏹️</button>
       </div>
@@ -708,25 +745,25 @@
     <div class="persona-selector">
       <div class="selector-label" style="display:flex; justify-content:space-between; align-items:center;">
         <span>Select Human Avatar Persona &amp; Voice</span>
-        <span style="font-size:10.5px; color:var(--accent); font-weight:600;">Auto Voice &bull; Pitch Modulation</span>
+        <span style="font-size:10.5px; color:var(--accent); font-weight:600;">Photorealistic Studio &bull; Voice Sync</span>
       </div>
       <div class="persona-btn-row">
         <button class="persona-btn active" onclick="switchPersona('evelyn')" id="btn-persona-evelyn">
-          <span style="font-size:20px;">👩‍🔬</span>
+          <img src="avatar_evelyn_real.jpg" alt="Dr. Evelyn" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--accent); flex-shrink:0;">
           <div>
             <div style="font-weight:700;">Dr. Evelyn</div>
             <div style="font-size:10px; color:var(--text-muted)">Female Voice &bull; Pitch 1.05x</div>
           </div>
         </button>
         <button class="persona-btn" onclick="switchPersona('marcus')" id="btn-persona-marcus">
-          <span style="font-size:20px;">👨‍💻</span>
+          <img src="avatar_marcus_real.jpg" alt="Marcus" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--border); flex-shrink:0;">
           <div>
             <div style="font-weight:700;">Marcus</div>
             <div style="font-size:10px; color:var(--text-muted)">Male Baritone &bull; Pitch 0.82x</div>
           </div>
         </button>
         <button class="persona-btn" onclick="switchPersona('maya')" id="btn-persona-maya">
-          <span style="font-size:20px;">👩‍💼</span>
+          <img src="avatar_maya_real.jpg" alt="Maya" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--border); flex-shrink:0;">
           <div>
             <div style="font-weight:700;">Maya</div>
             <div style="font-size:10px; color:var(--text-muted)">Female Warm &bull; Pitch 1.22x</div>
@@ -753,7 +790,7 @@
     <!-- DIALOGUE STREAM -->
     <div class="dialogue-stream" id="dialogueStream">
       <div class="message-row avatar">
-        <div class="msg-avatar">👤</div>
+        <img src="avatar_evelyn_real.jpg" alt="Dr. Evelyn" id="welcomeAvatarIcon" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1.5px solid var(--accent); flex-shrink:0;">
         <div>
           <div class="message-bubble" id="welcomeBubble">
             Hello! I'm Dr. Evelyn Vance, your interactive AI avatar. I can listen to your voice in real time and answer your questions about cognitive neuroscience, multi-agent systems, or cloud architectures. Click the microphone or type below to begin!
@@ -901,6 +938,50 @@
   };
 
   let currentPersonaKey = 'evelyn';
+  let currentAvatarMode = 'real'; // 'real' for photorealistic studio person, 'vector' for stylized
+
+  // Real Person Photographic Assets with Speech & Blink Layers
+  const REAL_PORTRAITS = {
+    evelyn: {
+      baseImg: new Image(),
+      talkImg: new Image(),
+      blinkImg: new Image(),
+      cropCenterY: 450
+    },
+    marcus: {
+      baseImg: new Image(),
+      talkImg: new Image(),
+      blinkImg: new Image(),
+      cropCenterY: 430
+    },
+    maya: {
+      baseImg: new Image(),
+      talkImg: new Image(),
+      blinkImg: new Image(),
+      cropCenterY: 380
+    }
+  };
+
+  REAL_PORTRAITS.evelyn.baseImg.src = "avatar_evelyn_real.jpg";
+  REAL_PORTRAITS.evelyn.talkImg.src = "avatar_evelyn_talk.jpg";
+  REAL_PORTRAITS.evelyn.blinkImg.src = "avatar_evelyn_blink.jpg";
+
+  REAL_PORTRAITS.marcus.baseImg.src = "avatar_marcus_real.jpg";
+  REAL_PORTRAITS.marcus.talkImg.src = "avatar_marcus_talk.jpg";
+  REAL_PORTRAITS.marcus.blinkImg.src = "avatar_marcus_blink.jpg";
+
+  REAL_PORTRAITS.maya.baseImg.src = "avatar_maya_real.jpg";
+  REAL_PORTRAITS.maya.talkImg.src = "avatar_maya_talk.jpg";
+  REAL_PORTRAITS.maya.blinkImg.src = "avatar_maya_blink.jpg";
+
+  function setAvatarMode(mode) {
+    currentAvatarMode = mode;
+    const realBtn = document.getElementById("modeRealBtn");
+    const vecBtn = document.getElementById("modeVectorBtn");
+    if (realBtn) realBtn.classList.toggle("active", mode === 'real');
+    if (vecBtn) vecBtn.classList.toggle("active", mode === 'vector');
+    showToast(`Switched avatar to ${mode === 'real' ? 'Photorealistic Real Person Studio' : 'Stylized Vector Mode'}`);
+  }
 
   // Obfuscated working Groq fallback key
   const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
@@ -1045,7 +1126,7 @@
     }
   }
 
-  function drawAvatar() {
+  function drawVectorAvatar() {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     const persona = PERSONAS[currentPersonaKey];
 
@@ -1401,6 +1482,81 @@
     ctx.stroke();
 
     ctx.restore();
+  }
+
+  function drawPhotorealisticAvatar() {
+    const pData = REAL_PORTRAITS[currentPersonaKey];
+    if (!pData || !pData.baseImg.complete) {
+      drawVectorAvatar();
+      return;
+    }
+
+    const now = Date.now();
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // Natural human micro-motion & breathing physics
+    const breathY = Math.sin(now * 0.0016) * 3.5;
+    const breathScale = 1.0 + Math.sin(now * 0.0016) * 0.0025;
+    const gazeDriftX = headDriftX * 0.6;
+    const gazeDriftY = headDriftY * 0.5;
+
+    // Blinking physics
+    let blinkAlpha = 0;
+    if (isBlinking) {
+      blinkAlpha = Math.sin(blinkProgress * Math.PI);
+    }
+
+    // Speaking mouth articulation
+    let talkAlpha = isSpeaking ? Math.min(1.0, mouthOpen * 1.35) : 0;
+
+    // Canvas viewport framing
+    const scale = Math.max(canvasWidth / 1024, canvasHeight / 1024) * 1.04;
+    const drawW = 1024 * scale;
+    const drawH = 1024 * scale;
+    const drawX = (canvasWidth - drawW) / 2 + gazeDriftX;
+    const drawY = canvasHeight * 0.44 - pData.cropCenterY * scale + breathY + gazeDriftY;
+
+    ctx.save();
+    ctx.translate(canvasWidth / 2, canvasHeight / 2);
+    ctx.rotate(headTilt * 0.45);
+    ctx.scale(breathScale, breathScale);
+    ctx.translate(-canvasWidth / 2, -canvasHeight / 2);
+
+    // 1. Pristine Real Human Photograph
+    ctx.drawImage(pData.baseImg, drawX, drawY, drawW, drawH);
+
+    // 2. Real Human Speech & Lip-Sync (When Speaking)
+    if (talkAlpha > 0.02 && pData.talkImg.complete) {
+      ctx.save();
+      ctx.globalAlpha = talkAlpha;
+      ctx.drawImage(pData.talkImg, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    }
+
+    // 3. Natural Human Blink (Eyelid Flutter)
+    if (blinkAlpha > 0.02 && pData.blinkImg.complete) {
+      ctx.save();
+      ctx.globalAlpha = blinkAlpha;
+      ctx.drawImage(pData.blinkImg, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    }
+
+    // 4. Subtle Studio Vignette Overlay for Depth
+    const grad = ctx.createRadialGradient(canvasWidth / 2, canvasHeight / 2, canvasWidth * 0.35, canvasWidth / 2, canvasHeight / 2, canvasWidth * 0.75);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(1, "rgba(0,0,0,0.18)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    ctx.restore();
+  }
+
+  function drawAvatar() {
+    if (currentAvatarMode === 'real') {
+      drawPhotorealisticAvatar();
+    } else {
+      drawVectorAvatar();
+    }
   }
 
   function renderLoop() {
@@ -1764,11 +1920,13 @@
     const row = document.createElement("div");
     row.className = `message-row ${sender}`;
 
-    const icon = sender === 'user' ? '🧑' : (currentPersonaKey === 'marcus' ? '👨‍💻' : '👩‍🔬');
+    const iconHtml = sender === 'user'
+      ? `<div class="msg-avatar" style="background:#2563EB; color:#fff;">🧑</div>`
+      : `<img src="avatar_${currentPersonaKey}_real.jpg" alt="${currentPersonaKey}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1.5px solid var(--accent); flex-shrink:0;">`;
     const meta = latencyMs ? `<span>${latencyMs}ms</span> &bull; <span>${activeEngine.toUpperCase()}</span>` : `<span>Spoken Voice / Input</span>`;
 
     row.innerHTML = `
-      <div class="msg-avatar">${icon}</div>
+      ${iconHtml}
       <div>
         <div class="message-bubble">${escapeHtml(text)}</div>
         <div class="msg-meta">${meta}</div>
@@ -1808,9 +1966,17 @@
     currentPersonaKey = key;
     const persona = PERSONAS[key];
 
-    document.querySelectorAll(".persona-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".persona-btn").forEach(b => {
+      b.classList.remove("active");
+      const img = b.querySelector("img");
+      if (img) img.style.borderColor = "var(--border)";
+    });
     const activeBtn = document.getElementById(`btn-persona-${key}`);
-    if (activeBtn) activeBtn.classList.add("active");
+    if (activeBtn) {
+      activeBtn.classList.add("active");
+      const img = activeBtn.querySelector("img");
+      if (img) img.style.borderColor = "var(--accent)";
+    }
 
     document.getElementById("currentPersonaName").textContent = persona.name;
     document.getElementById("currentPersonaRole").textContent = persona.role;
