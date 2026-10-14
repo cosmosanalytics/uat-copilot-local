@@ -940,25 +940,37 @@
   let currentPersonaKey = 'evelyn';
   let currentAvatarMode = 'real'; // 'real' for photorealistic studio person, 'vector' for stylized
 
-  // Real Person Photographic Assets with Speech & Blink Layers
+  // Real Person Photographic Assets with Anatomical Landmark Calibration
   const REAL_PORTRAITS = {
     evelyn: {
       baseImg: new Image(),
       talkImg: new Image(),
       blinkImg: new Image(),
-      cropCenterY: 450
+      cropCenterY: 450,
+      mouthBox: { x: 445, y: 500, w: 130, h: 65 },
+      eyeBox: { x: 380, y: 330, w: 240, h: 60 },
+      eyeL: { x: 420, y: 360, rx: 36, ry: 20 },
+      eyeR: { x: 580, y: 360, rx: 36, ry: 20 }
     },
     marcus: {
       baseImg: new Image(),
       talkImg: new Image(),
       blinkImg: new Image(),
-      cropCenterY: 430
+      cropCenterY: 430,
+      mouthBox: { x: 440, y: 480, w: 130, h: 65 },
+      eyeBox: { x: 380, y: 310, w: 240, h: 55 },
+      eyeL: { x: 430, y: 335, rx: 34, ry: 18 },
+      eyeR: { x: 575, y: 335, rx: 34, ry: 18 }
     },
     maya: {
       baseImg: new Image(),
       talkImg: new Image(),
       blinkImg: new Image(),
-      cropCenterY: 380
+      cropCenterY: 380,
+      mouthBox: { x: 445, y: 400, w: 125, h: 60 },
+      eyeBox: { x: 390, y: 270, w: 230, h: 55 },
+      eyeL: { x: 440, y: 295, rx: 34, ry: 19 },
+      eyeR: { x: 565, y: 295, rx: 34, ry: 19 }
     }
   };
 
@@ -973,6 +985,12 @@
   REAL_PORTRAITS.maya.baseImg.src = "avatar_maya_real.jpg";
   REAL_PORTRAITS.maya.talkImg.src = "avatar_maya_talk.jpg";
   REAL_PORTRAITS.maya.blinkImg.src = "avatar_maya_blink.jpg";
+
+  // Speech & Syllable Timeline Synchronization
+  let wordStartTime = 0;
+  let wordSyllableDuration = 200;
+  let targetMouthOpen = 0;
+  let blinkStartTime = 0;
 
   function setAvatarMode(mode) {
     currentAvatarMode = mode;
@@ -1057,71 +1075,81 @@
   function updateAvatarPhysics() {
     const now = Date.now();
 
-    // 1. Natural Blinking (Smooth ease-in-out)
+    // 1. Natural Human Blinking (Fast, authentic 120ms flutter with zero ghosting)
     if (!isBlinking && now > nextBlinkTime) {
       isBlinking = true;
-      blinkProgress = 0;
+      blinkStartTime = now;
     }
     if (isBlinking) {
-      blinkProgress += 0.22;
-      if (blinkProgress >= 1) {
+      const elapsed = now - blinkStartTime;
+      const duration = 120; // 120ms total blink duration
+      if (elapsed < duration) {
+        const p = elapsed / duration;
+        blinkProgress = (p < 0.4) ? (p / 0.4) : (1.0 - (p - 0.4) / 0.6);
+      } else {
         isBlinking = false;
         blinkProgress = 0;
-        nextBlinkTime = now + 2400 + Math.random() * 3200;
+        nextBlinkTime = now + 3000 + Math.random() * 2600;
       }
     }
 
-    // 2. Micro-Saccades (Human Eye Jitter)
+    // 2. Micro-Saccades (Human Eye Saccadic Jitter)
     if (now > nextSaccadeTime) {
-      microGazeX = (Math.random() - 0.5) * 0.16;
-      microGazeY = (Math.random() - 0.5) * 0.10;
-      nextSaccadeTime = now + 1200 + Math.random() * 2200;
+      microGazeX = (Math.random() - 0.5) * 0.12;
+      microGazeY = (Math.random() - 0.5) * 0.08;
+      nextSaccadeTime = now + 1600 + Math.random() * 2400;
     }
 
-    // 3. Saccadic Eye Movement smoothing
-    currentLookX += (lookTargetX + microGazeX - currentLookX) * 0.14;
-    currentLookY += (lookTargetY + microGazeY - currentLookY) * 0.14;
+    // 3. Smooth Gaze Damping
+    currentLookX += (lookTargetX + microGazeX - currentLookX) * 0.12;
+    currentLookY += (lookTargetY + microGazeY - currentLookY) * 0.12;
 
-    // 4. Organic Breathing & Drift (Natural subtle figure-8 motion)
-    headDriftX = Math.sin(now * 0.0014) * 2.2;
-    headDriftY = Math.sin(now * 0.0024) * 3.5;
+    // 4. Subtle Organic Torso Rise (1.4px, anchored to bottom, no whole-canvas drift)
+    headDriftX = Math.sin(now * 0.0012) * 1.2;
+    headDriftY = Math.sin(now * 0.0018) * 1.5;
 
-    if (isListening) {
-      // Attentive tilt & curiosity
-      headTilt += (0.075 - headTilt) * 0.09;
-      browLift += (-3.5 - browLift) * 0.12;
-      // Periodic subtle listening nod
-      headDriftY += Math.sin(now * 0.0035) * 2.2;
-      smileFactor += (0.55 - smileFactor) * 0.08;
-      mouthOpen += (0 - mouthOpen) * 0.2;
-      mouthWidth = 1.02;
+    // 5. Speech Syllable Articulation Engine (Synchronized with speech events)
+    if (isSpeaking) {
+      // Natural speech head poise: subtle micro-nodding on syllables
+      headTilt += ((lookTargetX * 0.015 + Math.sin(now * 0.006) * 0.012) - headTilt) * 0.1;
+      browLift = Math.sin(now * 0.004) * 1.8;
+      smileFactor += (0.45 - smileFactor) * 0.08;
+
+      // Syllable-driven biological mouth envelope
+      const elapsed = now - wordStartTime;
+      if (elapsed < wordSyllableDuration) {
+        // Bell curve envelope for current syllable
+        const p = elapsed / wordSyllableDuration;
+        const envelope = Math.sin(p * Math.PI);
+        mouthOpen = targetMouthOpen * envelope;
+      } else {
+        // Inter-word pause / sentence pause: lips cleanly seal shut
+        mouthOpen += (0 - mouthOpen) * 0.35;
+        if (mouthOpen < 0.02) mouthOpen = 0;
+      }
+      mouthWidth = 1.0;
+    } else if (isListening) {
+      // Attentive listening curiosity tilt
+      headTilt += ((lookTargetX * 0.015 + 0.035) - headTilt) * 0.08;
+      browLift += (-2.0 - browLift) * 0.08;
+      smileFactor += (0.5 - smileFactor) * 0.06;
+      mouthOpen += (0 - mouthOpen) * 0.35;
+      if (mouthOpen < 0.02) mouthOpen = 0;
+      mouthWidth = 1.0;
     } else if (isThinking) {
-      // Contemplative tilt, looking upward-left
-      headTilt += (-0.06 - headTilt) * 0.07;
-      browLift += (2.5 - browLift) * 0.1;
-      lookTargetY = -0.35;
-      lookTargetX = 0.25;
-      smileFactor += (0.2 - smileFactor) * 0.08;
-      mouthOpen += (0.02 - mouthOpen) * 0.15;
-      mouthWidth = 0.94;
-    } else if (isSpeaking) {
-      // Expressive speech cadence & nodding
-      headTilt += (Math.sin(now * 0.007) * 0.045 - headTilt) * 0.12;
-      headDriftY += Math.abs(Math.sin(now * 0.008)) * 3;
-      browLift = Math.sin(now * 0.006) * 2.4;
-      smileFactor += (0.42 - smileFactor) * 0.08;
-
-      // Multi-frequency phoneme visemes (vowels + consonants)
-      const ph1 = Math.sin(now * 0.015);
-      const ph2 = Math.cos(now * 0.024);
-      mouthOpen = 0.18 + Math.abs(ph1) * 0.48 + Math.abs(ph2) * 0.22;
-      mouthWidth = 0.92 + ph1 * 0.22;
+      // Contemplative cognitive gaze
+      headTilt += ((lookTargetX * 0.015 - 0.03) - headTilt) * 0.06;
+      browLift += (2.0 - browLift) * 0.08;
+      smileFactor += (0.25 - smileFactor) * 0.06;
+      mouthOpen = 0;
+      mouthWidth = 0.96;
     } else {
-      // Idle state
-      headTilt += (0 - headTilt) * 0.06;
-      browLift += (0 - browLift) * 0.08;
+      // Relaxed idle resting state
+      headTilt += ((lookTargetX * 0.015) - headTilt) * 0.06;
+      browLift += (0 - browLift) * 0.06;
       smileFactor += (0.4 - smileFactor) * 0.06;
-      mouthOpen += (0 - mouthOpen) * 0.15;
+      mouthOpen += (0 - mouthOpen) * 0.35;
+      if (mouthOpen < 0.01) mouthOpen = 0;
       mouthWidth = 1.0;
     }
   }
@@ -1494,59 +1522,66 @@
     const now = Date.now();
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    // Natural human micro-motion & breathing physics
-    const breathY = Math.sin(now * 0.0016) * 3.5;
-    const breathScale = 1.0 + Math.sin(now * 0.0016) * 0.0025;
-    const gazeDriftX = headDriftX * 0.6;
-    const gazeDriftY = headDriftY * 0.5;
-
-    // Blinking physics
-    let blinkAlpha = 0;
-    if (isBlinking) {
-      blinkAlpha = Math.sin(blinkProgress * Math.PI);
-    }
-
-    // Speaking mouth articulation
-    let talkAlpha = isSpeaking ? Math.min(1.0, mouthOpen * 1.35) : 0;
-
-    // Canvas viewport framing
-    const scale = Math.max(canvasWidth / 1024, canvasHeight / 1024) * 1.04;
+    // 1. Stable framing (solidly fills canvas, background firmly anchored)
+    const scale = Math.max(canvasWidth / 1024, canvasHeight / 1024) * 1.05;
     const drawW = 1024 * scale;
     const drawH = 1024 * scale;
-    const drawX = (canvasWidth - drawW) / 2 + gazeDriftX;
-    const drawY = canvasHeight * 0.44 - pData.cropCenterY * scale + breathY + gazeDriftY;
+    const drawX = (canvasWidth - drawW) / 2;
+    const drawY = canvasHeight * 0.44 - pData.cropCenterY * scale;
+
+    // 2. Natural Torso Breathing (gentle 1.4px vertical rise, anchored to neck/base)
+    const breathY = Math.sin(now * 0.0016) * 1.4 * scale;
 
     ctx.save();
-    ctx.translate(canvasWidth / 2, canvasHeight / 2);
-    ctx.rotate(headTilt * 0.45);
-    ctx.scale(breathScale, breathScale);
-    ctx.translate(-canvasWidth / 2, -canvasHeight / 2);
+    // Neck Anchor Point for natural biological poise (no whole-canvas sliding)
+    ctx.translate(canvasWidth / 2, canvasHeight * 0.92);
+    ctx.rotate(headTilt);
+    ctx.translate(-canvasWidth / 2, -canvasHeight * 0.92);
 
-    // 1. Pristine Real Human Photograph
-    ctx.drawImage(pData.baseImg, drawX, drawY, drawW, drawH);
+    // 3. Pristine High-Resolution Real Person Base Portrait (100% Opaque, Crisp)
+    ctx.drawImage(pData.baseImg, drawX, drawY + breathY, drawW, drawH);
 
-    // 2. Real Human Speech & Lip-Sync (When Speaking)
-    if (talkAlpha > 0.02 && pData.talkImg.complete) {
+    const toCX = (px) => drawX + px * scale;
+    const toCY = (py) => drawY + breathY + py * scale;
+
+    // 4. Speech Articulation (OPAQUE MOUTH REPLACEMENT - ZERO GHOSTING)
+    if (isSpeaking && mouthOpen > 0.06 && pData.talkImg.complete) {
+      const mb = pData.mouthBox;
+      const dx = toCX(mb.x);
+      const dy = toCY(mb.y);
+      const dw = mb.w * scale;
+      const dh = mb.h * scale;
+
       ctx.save();
-      ctx.globalAlpha = talkAlpha;
-      ctx.drawImage(pData.talkImg, drawX, drawY, drawW, drawH);
+      // Opaque feather mask around mouth only
+      ctx.beginPath();
+      ctx.ellipse(dx + dw / 2, dy + dh / 2, dw * 0.48, dh * 0.45, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Draw OPAQUE mouth from talk image (NO semi-transparency!)
+      ctx.drawImage(pData.talkImg, mb.x, mb.y, mb.w, mb.h, dx, dy, dw, dh);
       ctx.restore();
     }
 
-    // 3. Natural Human Blink (Eyelid Flutter)
-    if (blinkAlpha > 0.02 && pData.blinkImg.complete) {
+    // 5. Natural Human Eyelid Flutter (OPAQUE EYE REPLACEMENT - ZERO DOUBLE EYES)
+    if (isBlinking && blinkProgress > 0.35 && pData.blinkImg.complete) {
+      const eb = pData.eyeBox;
+      const dx = toCX(eb.x);
+      const dy = toCY(eb.y);
+      const dw = eb.w * scale;
+      const dh = eb.h * scale;
+
       ctx.save();
-      ctx.globalAlpha = blinkAlpha;
-      ctx.drawImage(pData.blinkImg, drawX, drawY, drawW, drawH);
+      // Opaque clip over eye apertures
+      ctx.beginPath();
+      ctx.ellipse(toCX(pData.eyeL.x), toCY(pData.eyeL.y), pData.eyeL.rx * scale, pData.eyeL.ry * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(toCX(pData.eyeR.x), toCY(pData.eyeR.y), pData.eyeR.rx * scale, pData.eyeR.ry * scale, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Draw OPAQUE closed eyelid (NO semi-transparency!)
+      ctx.drawImage(pData.blinkImg, eb.x, eb.y, eb.w, eb.h, dx, dy, dw, dh);
       ctx.restore();
     }
-
-    // 4. Subtle Studio Vignette Overlay for Depth
-    const grad = ctx.createRadialGradient(canvasWidth / 2, canvasHeight / 2, canvasWidth * 0.35, canvasWidth / 2, canvasHeight / 2, canvasWidth * 0.75);
-    grad.addColorStop(0, "rgba(0,0,0,0)");
-    grad.addColorStop(1, "rgba(0,0,0,0.18)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     ctx.restore();
   }
@@ -1769,13 +1804,17 @@
     };
 
     currentUtterance.onboundary = (e) => {
-      // Viseme pulse on word boundaries
-      mouthOpen = 0.55 + Math.random() * 0.4;
+      // Dynamic syllable impulse on actual spoken words
+      wordStartTime = Date.now();
+      wordSyllableDuration = 180 + Math.random() * 70; // 180-250ms natural syllable duration
+      targetMouthOpen = 0.85 + Math.random() * 0.15;
       animateAudioBars(true);
     };
 
     currentUtterance.onend = () => {
       isSpeaking = false;
+      mouthOpen = 0;
+      targetMouthOpen = 0;
       document.getElementById("avatarStatusText").textContent = "Attentive • Ready";
       document.getElementById("statusPulseDot").className = "pulse-dot";
       animateAudioBars(false);
@@ -1783,6 +1822,8 @@
 
     currentUtterance.onerror = () => {
       isSpeaking = false;
+      mouthOpen = 0;
+      targetMouthOpen = 0;
       document.getElementById("avatarStatusText").textContent = "Attentive • Ready";
       document.getElementById("statusPulseDot").className = "pulse-dot";
       animateAudioBars(false);
@@ -1794,6 +1835,8 @@
   function interruptAvatar() {
     if (synth) synth.cancel();
     isSpeaking = false;
+    mouthOpen = 0;
+    targetMouthOpen = 0;
     document.getElementById("avatarStatusText").textContent = "Interrupted • Ready";
     document.getElementById("statusPulseDot").className = "pulse-dot";
     animateAudioBars(false);
