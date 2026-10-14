@@ -797,7 +797,7 @@
       <div class="engine-badge-wrap">
         <span style="font-size:12.5px; font-weight:700;">Inference Engine:</span>
         <select class="engine-select" id="engineSelect" onchange="switchEngine(this.value)">
-          <option value="groq" selected>Groq LPU (Llama 3.3 70B &bull; ~500 tok/s)</option>
+          <option value="groq" selected>Groq LPU (GPT-OSS 120B &bull; ~500 tok/s)</option>
           <option value="webgpu">WebGPU WebLLM (Llama-3.2-1B On-Device)</option>
           <option value="sim">Fast Simulated Reasoning (Zero Latency)</option>
         </select>
@@ -856,9 +856,9 @@
     <div class="field-group">
       <label>Groq Model</label>
       <select id="groqModelSelect" class="field-input">
-        <option value="llama-3.3-70b-versatile" selected>llama-3.3-70b-versatile (Fastest &amp; Smartest)</option>
-        <option value="qwen-2.5-32b">qwen-2.5-32b (Groq LPU)</option>
-        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Sub-100ms)</option>
+        <option value="openai/gpt-oss-120b" selected>openai/gpt-oss-120b (Deep Knowledge &amp; Universal QA)</option>
+        <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ultra-Fast &bull; Sub-500ms)</option>
+        <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Qwen Architecture)</option>
       </select>
     </div>
     <div class="field-group">
@@ -1320,7 +1320,7 @@
   const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
 
   let customGroqKey = localStorage.getItem("custom_groq_key") || "";
-  let selectedGroqModel = "llama-3.3-70b-versatile";
+  let selectedGroqModel = "openai/gpt-oss-120b";
   let activeEngine = "groq"; // 'groq', 'webgpu', 'sim'
   let webllmEngine = null;
   let isWebllmLoading = false;
@@ -2227,70 +2227,102 @@
 
   async function callGroqInference(promptText, persona) {
     const key = customGroqKey || PROVISIONED_GROQ_KEY;
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: selectedGroqModel,
-        messages: [
-          { role: "system", content: persona.systemPrompt },
-          { role: "user", content: promptText }
-        ],
-        temperature: 0.7,
-        max_tokens: 180
-      })
-    });
+    const candidateModels = [
+      selectedGroqModel,
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ];
+    const modelsToTry = [...new Set(candidateModels.filter(Boolean))];
 
-    if (!res.ok) {
-      throw new Error(`Groq HTTP ${res.status}: ${await res.text()}`);
+    let lastError = null;
+    for (const model of modelsToTry) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              {
+                role: "system",
+                content: `${persona.systemPrompt} You must directly answer the user's question with substantive, accurate information. Keep the tone conversational and spoken, around 2 to 3 concise sentences.`
+              },
+              { role: "user", content: promptText }
+            ],
+            temperature: 0.7,
+            max_tokens: 180
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            const content = data.choices[0].message.content.trim();
+            if (content) return content;
+          }
+        } else {
+          const errText = await res.text();
+          lastError = new Error(`Groq HTTP ${res.status} (${model}): ${errText}`);
+          console.warn(`Model ${model} failed, trying next candidate:`, lastError);
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`Network error with model ${model}, trying next candidate:`, err);
+      }
     }
-
-    const data = await res.json();
-    return data.choices[0].message.content.trim();
-  }
-
-  async function callWebGpuInference(promptText, persona) {
-    if (!window.webllm) {
-      showToast("WebLLM library not ready, falling back to simulated inference.");
-      return getSimulatedReasoning(promptText, persona);
-    }
-
-    if (!webllmEngine) {
-      showToast("Initializing in-browser WebGPU model (first run may take a moment)...");
-      webllmEngine = new window.webllm.MLCEngine();
-      await webllmEngine.reload("Llama-3.2-1B-Instruct-q4f16_1-MLC");
-    }
-
-    const reply = await webllmEngine.chat.completions.create({
-      messages: [
-        { role: "system", content: persona.systemPrompt },
-        { role: "user", content: promptText }
-      ],
-      temperature: 0.7,
-      max_tokens: 150
-    });
-
-    return reply.choices[0].message.content.trim();
+    throw lastError || new Error("All Groq models failed");
   }
 
   function getSimulatedReasoning(prompt, persona) {
-    const p = prompt.toLowerCase();
-    if (p.includes("hippocampus") || p.includes("rag") || p.includes("memory")) {
-      return `The biological hippocampus acts like a high-speed pointer index, just like vector embeddings in RAG! It binds cortical sensory fragments into a single cohesive episode without re-training the entire neocortex.`;
+    const p = prompt.toLowerCase().trim();
+
+    // 1. Greetings & Identity
+    if (p.includes("hello") || p.includes("hi") || p.includes("hey") || p.includes("who are you")) {
+      return `Hello! I'm ${persona.name}, serving as your ${persona.role}. I'm here to explore ideas, solve architectural challenges, and talk through whatever is on your mind.`;
     }
-    if (p.includes("pillars") || p.includes("cognitive") || p.includes("system")) {
-      return `An enterprise autonomous brain requires 6 distinct pillars: Perceive & Attend, Remember, Think & Decide, Learn & Feel, Act & Regulate, and Connect & Aware. When coordinated over an EventBridge bus, they deliver resilient agency!`;
+    // 2. Capabilities
+    if (p.includes("what can you do") || p.includes("help") || p.includes("capabilities")) {
+      return `I can converse in real time, analyze complex AI architectures, answer questions across science, cloud engineering, and leadership strategy, all while synchronizing 3D facial expressions and spoken audio.`;
     }
-    if (p.includes("predictive") || p.includes("coding")) {
-      return `Predictive coding posited that the brain only transmits prediction errors up the hierarchy, discarding redundant sensory noise. In AI, this saves up to 90% of token compute by suppressing expected background telemetry!`;
+    // 3. Cognitive Neuroscience & Memory
+    if (p.includes("hippocampus") || p.includes("rag") || p.includes("memory") || p.includes("retrieval")) {
+      return `The biological hippocampus functions as a rapid spatial and episodic pointer index, remarkably analogous to dense vector embeddings in RAG. It binds neocortical sensory representations into a coherent memory without having to re-train the underlying neural weights.`;
     }
-    if (p.includes("war room") || p.includes("executive") || p.includes("decision")) {
-      return `An executive war room succeeds when you assign explicit dialectic roles: an Optimistic Deal Champion, a Forensic Skeptic, and an Objective Arbitrator. This prevents groupthink and stress-tests risk boundaries.`;
+    // 4. Autonomous Pillars & Multi-Agent Swarms
+    if (p.includes("pillar") || p.includes("swarm") || p.includes("multi-agent") || p.includes("agentic")) {
+      return `An enterprise cognitive agent architecture is anchored on 6 pillars: Perceive & Attend, Remember, Think & Decide, Learn & Feel, Act & Regulate, and Connect & Aware. Coordinated via an EventBridge event bus, they enable deterministic guardrails alongside generative flexibility.`;
     }
-    return `That's a profound question! From my perspective as ${persona.role}, balancing hierarchical reasoning with feedback control is the key to building autonomous intelligence that remains aligned and robust.`;
+    // 5. Predictive Coding & Latency
+    if (p.includes("predictive") || p.includes("entropy") || p.includes("latency") || p.includes("token")) {
+      return `Predictive coding demonstrates that biological brains only propagate prediction error signals upward through cortical hierarchies. In digital AI pipelines, filtering predictable telemetry before LLM invocation cuts computational token burn by up to 90%.`;
+    }
+    // 6. Strategy & Decision War Rooms
+    if (p.includes("war room") || p.includes("executive") || p.includes("decision") || p.includes("tradeoff")) {
+      return `High-stakes war rooms thrive on structured dialectic tension: pairing an Optimistic Champion against an Objective Forensic Skeptic, arbitrated by an independent Decision Governor to eradicate confirmation bias.`;
+    }
+    // 7. General Knowledge / Facts / How-to
+    if (p.includes("france") || p.includes("capital")) {
+      return `The capital of France is Paris, renowned worldwide as a global center for art, fashion, gastronomy, and culture along the river Seine.`;
+    }
+    if (p.includes("weather") || p.includes("today")) {
+      return `While I operate in your browser environment without a live local thermometer, I'm fully primed to discuss atmospheric thermodynamics, climate models, or whatever topic you'd like!`;
+    }
+    if (p.includes("quantum")) {
+      return `Quantum computing leverages qubits in states of superposition and entanglement, enabling quantum interference to explore exponential solution spaces in polynomial time for specific algorithms.`;
+    }
+
+    // Dynamic substantive response based on persona lens
+    if (persona.gender === "male") {
+      return `Regarding "${prompt}": In production cloud systems and distributed engineering, the most resilient strategy is to decouple the state, implement idempotent retries, and measure p99 latency under real traffic.`;
+    } else if (currentPersonaKey === 'maya') {
+      return `Looking at "${prompt}": The critical leadership insight is aligning stakeholder incentives with transparent feedback loops so your team operates with clarity rather than ambiguity.`;
+    } else {
+      return `Regarding "${prompt}": When we analyze this from a cognitive systems perspective, the core challenge is balancing hierarchical model priors against real-time sensory evidence.`;
+    }
   }
 
   // =========================================================================
