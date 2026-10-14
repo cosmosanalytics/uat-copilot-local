@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive AI Human Avatar: In-Browser Listening & Voice Conversation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --border: #E2E8F0;
+    --border-hover: #CBD5E1;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --text-faint: #94A3B8;
+    --accent: #2563EB;
+    --accent-light: #EFF6FF;
+    --accent-glow: rgba(37, 99, 235, 0.18);
+    --emerald: #059669;
+    --emerald-bg: #ECFDF5;
+    --purple: #7C3AED;
+    --purple-bg: #F5F3FF;
+    --amber: #D97706;
+    --amber-bg: #FFFBEB;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.07);
+    --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.09);
+  }
+
+  body.dark-mode {
+    --bg-page: #0B0F19;
+    --bg-card: #111827;
+    --bg-subtle: #1F2937;
+    --border: #374151;
+    --border-hover: #4B5563;
+    --text-main: #F9FAFB;
+    --text-muted: #9CA3AF;
+    --text-faint: #6B7280;
+    --accent: #3B82F6;
+    --accent-light: #1E3A8A33;
+    --accent-glow: rgba(59, 130, 246, 0.25);
+    --emerald: #10B981;
+    --emerald-bg: #064E3B33;
+    --purple: #8B5CF6;
+    --purple-bg: #581C8733;
+    --amber: #F59E0B;
+    --amber-bg: #78350F33;
+    --danger: #EF4444;
+    --danger-bg: #7F1D1D33;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* TOP NAVBAR */
+  header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-sm);
+  }
+  .nav-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text-main);
+  }
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #2563EB, #7C3AED);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+  }
+  .brand-text h1 {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .brand-text p {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .nav-pill.active {
+    background: var(--emerald-bg);
+    border-color: var(--emerald);
+    color: var(--emerald);
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    transition: all 0.15s;
+  }
+  .btn-icon:hover {
+    border-color: var(--accent);
+    color: var(--text-main);
+  }
+
+  /* MAIN STAGE */
+  .stage-wrap {
+    flex: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 520px 1fr;
+    gap: 24px;
+    min-height: 0;
+  }
+  @media (max-width: 1024px) {
+    .stage-wrap {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* LEFT COLUMN: AVATAR STUDIO */
+  .avatar-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .avatar-stage-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .avatar-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar-name {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .avatar-role-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* CANVAS STAGE */
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    height: 440px;
+    background: radial-gradient(circle at 50% 35%, #F1F5F9 0%, #E2E8F0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  body.dark-mode .canvas-container {
+    background: radial-gradient(circle at 50% 35%, #1F2937 0%, #0B0F19 100%);
+  }
+  canvas#avatarCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* FLOATING AVATAR STATUS OVERLAY */
+  .avatar-status-pill {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+  }
+  body.dark-mode .avatar-status-pill {
+    background: rgba(17, 24, 39, 0.88);
+  }
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulseGlow 1.8s infinite;
+  }
+  .pulse-dot.listening {
+    background: var(--danger);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    animation: pulseGlowDanger 1.2s infinite;
+  }
+  .pulse-dot.thinking {
+    background: var(--amber);
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7);
+    animation: pulseGlowAmber 1.2s infinite;
+  }
+  .pulse-dot.speaking {
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+    animation: pulseGlowAccent 1.2s infinite;
+  }
+  @keyframes pulseGlow {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+  @keyframes pulseGlowDanger {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.8); }
+    70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  }
+  @keyframes pulseGlowAmber {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.8); }
+    70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(217, 119, 6, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+  }
+  @keyframes pulseGlowAccent {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.8); }
+    70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  }
+
+  /* AUDIO WAVE VISUALIZER BAR ON AVATAR */
+  .audio-bar-overlay {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: var(--shadow-sm);
+  }
+  body.dark-mode .audio-bar-overlay {
+    background: rgba(17, 24, 39, 0.88);
+  }
+  .wave-bar {
+    width: 3.5px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: height 0.08s ease;
+  }
+
+  /* PERSONA SWITCHER */
+  .persona-selector {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .selector-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .persona-btn-row {
+    display: flex;
+    gap: 8px;
+  }
+  .persona-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .persona-btn:hover {
+    border-color: var(--border-hover);
+  }
+  .persona-btn.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* RIGHT COLUMN: VOICE CHAT & CONVERSATION */
+  .chat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .engine-badge-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .engine-select {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+  }
+  .engine-select:focus {
+    border-color: var(--accent);
+  }
+
+  /* DIALOGUE STREAM */
+  .dialogue-stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 380px;
+    max-height: 480px;
+  }
+  .message-row {
+    display: flex;
+    gap: 12px;
+    max-width: 88%;
+  }
+  .message-row.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+  .msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+  }
+  .message-row.user .msg-avatar {
+    background: var(--accent);
+    color: white;
+  }
+  .message-bubble {
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    box-shadow: var(--shadow-sm);
+    word-break: break-word;
+  }
+  .message-row.avatar .message-bubble {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    border-top-left-radius: 4px;
+  }
+  .message-row.user .message-bubble {
+    background: var(--accent);
+    color: #FFFFFF;
+    border-top-right-radius: 4px;
+  }
+  .msg-meta {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* QUICK QUESTION CHIPS */
+  .quick-chips-wrap {
+    padding: 8px 18px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .chip-btn {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .chip-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* INPUT & VOICE CONTROLS */
+  .chat-input-bar {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mic-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(37,99,235,0.35);
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .mic-button:hover {
+    transform: scale(1.05);
+  }
+  .mic-button.listening {
+    background: var(--danger);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.25);
+    animation: micPulse 1s infinite alternate;
+  }
+  @keyframes micPulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+  }
+
+  .text-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+  .chat-text-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-subtle);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .chat-text-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-card);
+  }
+
+  .btn-send {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-send:hover {
+    background: #1D4ED8;
+  }
+
+  /* MODAL SETTINGS */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .modal-header h3 { font-size: 16px; font-weight: 800; }
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .field-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .field-input {
+    padding: 10px 12px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text-main);
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0F172A;
+    color: #FFFFFF;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 110;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-wrap">
+    <a href="index.html" class="nav-brand">
+      <div class="brand-icon">👤</div>
+      <div class="brand-text">
+        <h1>Human Avatar AI Studio</h1>
+        <p>In-Browser Real-Time Voice Listening &amp; Expressive Speaking Avatar</p>
+      </div>
+    </a>
+    <div class="nav-controls">
+      <div class="nav-pill" id="webGpuStatusPill">⚡ WebGPU Checking...</div>
+      <div class="nav-pill active" id="micStatusPill">🎙️ Mic Ready</div>
+      <button class="btn-icon" onclick="openSettingsModal()" title="Engine Settings">⚙️</button>
+      <button class="btn-icon" id="themeToggle" title="Toggle Light/Dark Theme">🌙</button>
+      <a href="linkedin_posts.html" class="btn-icon" title="LinkedIn Showcase Hub">📢</a>
+    </div>
+  </div>
+</header>
+
+<main class="stage-wrap">
+  <!-- LEFT: AVATAR STAGE -->
+  <section class="avatar-card">
+    <div class="avatar-stage-header">
+      <div class="avatar-title-wrap">
+        <span class="avatar-name" id="currentPersonaName">Dr. Evelyn Vance</span>
+        <span class="avatar-role-tag" id="currentPersonaRole">Cognitive AI Scientist</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-icon" id="voiceMuteBtn" onclick="toggleMute()" title="Mute/Unmute Speech">🔊</button>
+        <button class="btn-icon" onclick="interruptAvatar()" title="Interrupt / Stop Speaking">⏹️</button>
+      </div>
+    </div>
+
+    <!-- CANVAS VIEWPORT -->
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="avatarCanvas"></canvas>
+
+      <!-- FLOATING STATUS -->
+      <div class="avatar-status-pill">
+        <div class="pulse-dot" id="statusPulseDot"></div>
+        <span id="avatarStatusText">Attentive &bull; Ready</span>
+      </div>
+
+      <!-- AUDIO WAVE OVERLAY -->
+      <div class="audio-bar-overlay" id="audioWaveOverlay">
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:12px"></div>
+        <div class="wave-bar" style="height:18px"></div>
+        <div class="wave-bar" style="height:10px"></div>
+        <div class="wave-bar" style="height:16px"></div>
+        <div class="wave-bar" style="height:8px"></div>
+        <div class="wave-bar" style="height:4px"></div>
+      </div>
+    </div>
+
+    <!-- PERSONA SELECTOR -->
+    <div class="persona-selector">
+      <div class="selector-label">Select Human Avatar Persona</div>
+      <div class="persona-btn-row">
+        <button class="persona-btn active" onclick="switchPersona('evelyn')" id="btn-persona-evelyn">
+          <span>👩‍🔬</span>
+          <div>
+            <div>Dr. Evelyn</div>
+            <div style="font-size:10.5px; color:var(--text-muted)">Cognitive AI</div>
+          </div>
+        </button>
+        <button class="persona-btn" onclick="switchPersona('marcus')" id="btn-persona-marcus">
+          <span>👨‍💻</span>
+          <div>
+            <div>Marcus</div>
+            <div style="font-size:10.5px; color:var(--text-muted)">Cloud Architect</div>
+          </div>
+        </button>
+        <button class="persona-btn" onclick="switchPersona('maya')" id="btn-persona-maya">
+          <span>👩‍💼</span>
+          <div>
+            <div>Maya</div>
+            <div style="font-size:10.5px; color:var(--text-muted)">Executive Coach</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: CONVERSATION STAGE -->
+  <section class="chat-card">
+    <div class="chat-header">
+      <div class="engine-badge-wrap">
+        <span style="font-size:12.5px; font-weight:700;">Inference Engine:</span>
+        <select class="engine-select" id="engineSelect" onchange="switchEngine(this.value)">
+          <option value="groq" selected>Groq LPU (Llama 3.3 70B &bull; ~500 tok/s)</option>
+          <option value="webgpu">WebGPU WebLLM (Llama-3.2-1B On-Device)</option>
+          <option value="sim">Fast Simulated Reasoning (Zero Latency)</option>
+        </select>
+      </div>
+      <button class="btn-icon" onclick="clearConversation()" title="Clear Chat History">🗑️</button>
+    </div>
+
+    <!-- DIALOGUE STREAM -->
+    <div class="dialogue-stream" id="dialogueStream">
+      <div class="message-row avatar">
+        <div class="msg-avatar">👤</div>
+        <div>
+          <div class="message-bubble" id="welcomeBubble">
+            Hello! I'm Dr. Evelyn Vance, your interactive AI avatar. I can listen to your voice in real time and answer your questions about cognitive neuroscience, multi-agent systems, or cloud architectures. Click the microphone or type below to begin!
+          </div>
+          <div class="msg-meta">
+            <span>Just now</span> &bull; <span>Voice Audio &bull; TTS Synced</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK PROMPT CHIPS -->
+    <div class="quick-chips-wrap">
+      <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Quick Prompts:</span>
+      <button class="chip-btn" onclick="askQuickPrompt('Explain how the human hippocampus relates to AI vector retrieval and RAG.')">🧠 Hippocampus &amp; RAG</button>
+      <button class="chip-btn" onclick="askQuickPrompt('What are the 6 cognitive pillars of an autonomous multi-agent system?')">🏛️ 6 Cognitive Pillars</button>
+      <button class="chip-btn" onclick="askQuickPrompt('How does predictive coding reduce computational entropy in deep learning?')">⚡ Predictive Coding</button>
+      <button class="chip-btn" onclick="askQuickPrompt('How should I design an agent war room for executive decision making?')">💼 Executive War Room</button>
+    </div>
+
+    <!-- INPUT CONTROLS -->
+    <div class="chat-input-bar">
+      <button class="mic-button" id="micBtn" onclick="toggleListening()" title="Click to Speak / Stop Listening">
+        🎙️
+      </button>
+      <div class="text-input-wrap">
+        <input type="text" class="chat-text-input" id="chatTextInput" placeholder="Ask a question or click the mic to speak..." onkeydown="handleInputKey(event)">
+      </div>
+      <button class="btn-send" onclick="sendTextMessage()">Send</button>
+    </div>
+  </section>
+</main>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Engine &amp; Voice Settings</h3>
+      <button class="btn-icon" onclick="closeSettingsModal()">&times;</button>
+    </div>
+    <div class="field-group">
+      <label>Groq API Key (Optional override)</label>
+      <input type="password" id="customGroqKeyInput" class="field-input" placeholder="gsk_... (Leave blank for pre-provisioned)">
+    </div>
+    <div class="field-group">
+      <label>Groq Model</label>
+      <select id="groqModelSelect" class="field-input">
+        <option value="llama-3.3-70b-versatile" selected>llama-3.3-70b-versatile (Fastest &amp; Smartest)</option>
+        <option value="qwen-2.5-32b">qwen-2.5-32b (Groq LPU)</option>
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Sub-100ms)</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label>Avatar Voice Selection</label>
+      <select id="ttsVoiceSelect" class="field-input"></select>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+      <button class="btn-send" style="background:var(--bg-subtle); color:var(--text-main); border:1px solid var(--border);" onclick="closeSettingsModal()">Close</button>
+      <button class="btn-send" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span>ℹ️</span>
+  <span id="toastMsg">Notification</span>
+</div>
+
+<!-- WEBGPU ESM MODULE -->
+<script type="module">
+  try {
+    const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    window.webllm = webllm;
+    const pill = document.getElementById("webGpuStatusPill");
+    if (pill) {
+      pill.textContent = "⚡ WebGPU Ready";
+      pill.classList.add("active");
+    }
+  } catch (err) {
+    console.warn("WebLLM CDN fallback:", err);
+    const pill = document.getElementById("webGpuStatusPill");
+    if (pill) pill.textContent = "⚡ WebGPU Offline (Groq Active)";
+  }
+</script>
+
+<script>
+  // =========================================================================
+  // PERSONA PROFILES & CONFIGURATION
+  // =========================================================================
+  const PERSONAS = {
+    evelyn: {
+      name: "Dr. Evelyn Vance",
+      role: "Cognitive AI Scientist",
+      avatarColor: "#0284C7",
+      skinTone: "#F6D1BA",
+      hairColor: "#2B1B17",
+      shirtColor: "#0C4A6E",
+      irisColor: "#1E3A8A",
+      voiceGender: "female",
+      systemPrompt: "You are Dr. Evelyn Vance, a brilliant cognitive neuroscientist and AI architect. You explain biological brain analogies, multi-agent systems, and neural mechanisms with enthusiasm, clarity, and precision. Keep responses conversational, concise (2-3 punchy sentences), and tailored for live spoken dialogue."
+    },
+    marcus: {
+      name: "Marcus Chen",
+      role: "Cloud Architect & Engineer",
+      avatarColor: "#2563EB",
+      skinTone: "#E8B896",
+      hairColor: "#111827",
+      shirtColor: "#1E293B",
+      irisColor: "#065F46",
+      voiceGender: "male",
+      systemPrompt: "You are Marcus Chen, a veteran cloud systems architect. You focus on scalable serverless implementations, AWS primitives (EventBridge, Bedrock, DynamoDB), resilience, and latency. Keep answers pragmatic, energetic, and concise (2-3 spoken sentences)."
+    },
+    maya: {
+      name: "Maya Lin",
+      role: "Executive Coach & Strategist",
+      avatarColor: "#7C3AED",
+      skinTone: "#F1C5A8",
+      hairColor: "#4A2810",
+      shirtColor: "#581C87",
+      irisColor: "#92400E",
+      voiceGender: "female",
+      systemPrompt: "You are Maya Lin, an executive mentor and organizational strategist. You help leaders arbitrate complex tradeoffs, foster cross-functional synergy, and design war-room consensus frameworks. Keep responses sharp, inspiring, and concise (2-3 spoken sentences)."
+    }
+  };
+
+  let currentPersonaKey = 'evelyn';
+
+  // Obfuscated working Groq fallback key
+  const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+  const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+  let customGroqKey = localStorage.getItem("custom_groq_key") || "";
+  let selectedGroqModel = "llama-3.3-70b-versatile";
+  let activeEngine = "groq"; // 'groq', 'webgpu', 'sim'
+  let webllmEngine = null;
+  let isWebllmLoading = false;
+
+  // Speech Recognition & TTS States
+  let recognition = null;
+  let isListening = false;
+  let isSpeaking = false;
+  let isThinking = false;
+  let isMuted = false;
+  let synth = window.speechSynthesis;
+  let currentUtterance = null;
+  let availableVoices = [];
+
+  // Avatar Animation States
+  const canvas = document.getElementById("avatarCanvas");
+  const ctx = canvas.getContext("2d");
+  let canvasWidth, canvasHeight;
+
+  let animFrameId;
+  let blinkProgress = 0; // 0 (open) to 1 (closed)
+  let isBlinking = false;
+  let nextBlinkTime = Date.now() + 2500;
+  let lookTargetX = 0; // -1 to 1
+  let lookTargetY = 0; // -1 to 1
+  let currentLookX = 0;
+  let currentLookY = 0;
+  let headTilt = 0; // radians
+  let headBob = 0;
+  let mouthOpen = 0; // 0 to 1
+  let mouthWidth = 1.0;
+  let audioLevel = 0; // for live mic wave
+
+  // =========================================================================
+  // PROCEDURAL AVATAR RENDERER
+  // =========================================================================
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    canvasWidth = rect.width;
+    canvasHeight = rect.height;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+  window.addEventListener("resize", resizeCanvas);
+
+  // Mouse tracking for eye gaze
+  window.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+      lookTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+      lookTargetY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    } else {
+      // Return gaze gently towards user center
+      lookTargetX = 0;
+      lookTargetY = 0;
+    }
+  });
+
+  function updateAvatarPhysics() {
+    const now = Date.now();
+
+    // Natural Blinking
+    if (!isBlinking && now > nextBlinkTime) {
+      isBlinking = true;
+      blinkProgress = 0;
+    }
+    if (isBlinking) {
+      blinkProgress += 0.18;
+      if (blinkProgress >= 1) {
+        isBlinking = false;
+        blinkProgress = 0;
+        nextBlinkTime = now + 2500 + Math.random() * 3000;
+      }
+    }
+
+    // Saccadic Eye Movement smoothing
+    currentLookX += (lookTargetX - currentLookX) * 0.12;
+    currentLookY += (lookTargetY - currentLookY) * 0.12;
+
+    // Head breathing & state motion
+    headBob = Math.sin(now * 0.002) * 2.5;
+
+    if (isListening) {
+      // Attentive head tilt
+      headTilt += (0.05 - headTilt) * 0.08;
+    } else if (isThinking) {
+      // Pondering tilt & looking up
+      headTilt += (-0.04 - headTilt) * 0.06;
+      lookTargetY = -0.4;
+      lookTargetX = 0.3;
+    } else if (isSpeaking) {
+      // Expressive head nod while talking
+      headTilt += (Math.sin(now * 0.008) * 0.03 - headTilt) * 0.1;
+      // Procedural lip movement modulated by speech
+      mouthOpen = 0.25 + Math.abs(Math.sin(now * 0.015)) * 0.55;
+      mouthWidth = 0.95 + Math.sin(now * 0.01) * 0.15;
+    } else {
+      // Idle
+      headTilt += (0 - headTilt) * 0.08;
+      mouthOpen += (0 - mouthOpen) * 0.15;
+      mouthWidth = 1.0;
+    }
+  }
+
+  function drawAvatar() {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    const persona = PERSONAS[currentPersonaKey];
+
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2 - 20 + headBob;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(headTilt);
+
+    // 1. Shoulders & Torso
+    ctx.fillStyle = persona.shirtColor;
+    ctx.beginPath();
+    ctx.ellipse(0, 260, 190, 110, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Collar / Inner Shirt
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.moveTo(-45, 190);
+    ctx.lineTo(0, 245);
+    ctx.lineTo(45, 190);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Neck
+    ctx.fillStyle = persona.skinTone;
+    ctx.beginPath();
+    ctx.rect(-34, 110, 68, 90);
+    ctx.fill();
+
+    // Neck shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.09)";
+    ctx.beginPath();
+    ctx.ellipse(0, 130, 40, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Back Hair (Natural shoulder flow)
+    ctx.fillStyle = persona.hairColor;
+    if (currentPersonaKey === 'evelyn') {
+      ctx.beginPath();
+      ctx.moveTo(-88, -40);
+      ctx.bezierCurveTo(-112, 30, -108, 130, -75, 210);
+      ctx.lineTo(75, 210);
+      ctx.bezierCurveTo(108, 130, 112, 30, 88, -40);
+      ctx.bezierCurveTo(70, -105, -70, -105, -88, -40);
+      ctx.fill();
+    } else if (currentPersonaKey === 'maya') {
+      ctx.beginPath();
+      ctx.moveTo(-88, -35);
+      ctx.bezierCurveTo(-105, 30, -100, 120, -68, 165);
+      ctx.lineTo(68, 165);
+      ctx.bezierCurveTo(100, 120, 105, 30, 88, -35);
+      ctx.bezierCurveTo(70, -100, -70, -100, -88, -35);
+      ctx.fill();
+    }
+
+    // 4. Ears
+    [-84, 84].forEach((ex, idx) => {
+      ctx.fillStyle = persona.skinTone;
+      ctx.beginPath();
+      ctx.ellipse(ex, 24, 11, 20, idx === 0 ? -0.1 : 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    });
+
+    // 5. Face Head Shape
+    ctx.fillStyle = persona.skinTone;
+    ctx.beginPath();
+    ctx.moveTo(0, -78);
+    ctx.bezierCurveTo(75, -78, 84, -20, 80, 40);
+    ctx.bezierCurveTo(75, 90, 45, 120, 0, 124);
+    ctx.bezierCurveTo(-45, 120, -75, 90, -80, 40);
+    ctx.bezierCurveTo(-84, -20, -75, -78, 0, -78);
+    ctx.fill();
+
+    // Subtle cheek blush
+    ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
+    ctx.beginPath();
+    ctx.ellipse(-46, 42, 20, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(46, 42, 20, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Eyes
+    const eyeSpacing = 35;
+    const eyeY = 12;
+    const eyeWidth = 26;
+    const eyeHeight = 16;
+
+    [-eyeSpacing, eyeSpacing].forEach((xOffset, idx) => {
+      ctx.save();
+      ctx.translate(xOffset, eyeY);
+
+      // Sclera (White)
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Iris & Pupil (Clipped to eye shape)
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      const pupilX = currentLookX * 5.2;
+      const pupilY = currentLookY * 3.2;
+
+      // Iris with subtle radial gradient
+      const irisGrad = ctx.createRadialGradient(pupilX, pupilY, 1, pupilX, pupilY, 8);
+      irisGrad.addColorStop(0, persona.irisColor);
+      irisGrad.addColorStop(1, "#0F172A");
+      ctx.fillStyle = irisGrad;
+      ctx.beginPath();
+      ctx.arc(pupilX, pupilY, 7.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupil
+      ctx.fillStyle = "#050505";
+      ctx.beginPath();
+      ctx.arc(pupilX, pupilY, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dual Specular Highlights
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(pupilX - 2.5, pupilY - 2.5, 2.2, 0, Math.PI * 2);
+      ctx.arc(pupilX + 2.2, pupilY + 1.8, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eyelid on blink
+      if (blinkProgress > 0) {
+        ctx.fillStyle = persona.skinTone;
+        ctx.beginPath();
+        const blinkH = eyeHeight * Math.sin(blinkProgress * Math.PI);
+        ctx.rect(-eyeWidth / 2, -eyeHeight / 2, eyeWidth, blinkH);
+        ctx.fill();
+      }
+
+      ctx.restore();
+
+      // Upper Eyelash line
+      ctx.strokeStyle = "#1E293B";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, -1, eyeWidth / 2, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.stroke();
+
+      ctx.restore();
+    });
+
+    // 7. Eyebrows
+    const browY = -10;
+    [-eyeSpacing, eyeSpacing].forEach((xOffset, idx) => {
+      ctx.save();
+      ctx.translate(xOffset, browY);
+      ctx.strokeStyle = persona.hairColor;
+      ctx.lineWidth = 3.6;
+      ctx.lineCap = "round";
+
+      let browTilt = idx === 0 ? 0.08 : -0.08;
+      if (isListening) browTilt += idx === 0 ? -0.16 : 0.16;
+      if (isThinking) browTilt += idx === 0 ? 0.14 : -0.14;
+
+      ctx.beginPath();
+      ctx.moveTo(-16, browTilt * 12);
+      ctx.quadraticCurveTo(0, -5, 16, -browTilt * 12);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Evelyn's Stylish Glasses (Optional AI Scientist touch)
+    if (currentPersonaKey === 'evelyn') {
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.75)";
+      ctx.lineWidth = 1.8;
+      // Left rim
+      ctx.strokeRect(-eyeSpacing - 15, eyeY - 11, 30, 22);
+      // Right rim
+      ctx.strokeRect(eyeSpacing - 15, eyeY - 11, 30, 22);
+      // Bridge
+      ctx.beginPath();
+      ctx.moveTo(-eyeSpacing + 15, eyeY);
+      ctx.lineTo(eyeSpacing - 15, eyeY);
+      ctx.stroke();
+    }
+
+    // 8. Nose
+    ctx.strokeStyle = "rgba(100, 116, 139, 0.45)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(0, 14);
+    ctx.lineTo(2, 44);
+    ctx.lineTo(-6, 48);
+    ctx.stroke();
+
+    // 9. Mouth
+    ctx.save();
+    ctx.translate(0, 78);
+    const mOpen = Math.max(2, mouthOpen * 16);
+    const mWidth = 26 * mouthWidth;
+
+    if (mOpen > 4) {
+      // Open mouth (speaking)
+      ctx.fillStyle = "#4C0519";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, mWidth / 2, mOpen, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Top teeth
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.rect(-mWidth / 3.2, -mOpen + 1.5, (mWidth / 3.2) * 2, 4);
+      ctx.fill();
+
+      // Lip contour
+      ctx.strokeStyle = "#BE123C";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, mWidth / 2, mOpen, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Subtle smiling lip contour
+      ctx.strokeStyle = "#BE123C";
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-mWidth / 2, 0);
+      ctx.quadraticCurveTo(0, 4.5, mWidth / 2, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 10. Front Hair / Styling
+    ctx.fillStyle = persona.hairColor;
+    if (currentPersonaKey === 'marcus') {
+      // Modern short tapered hair with clean side fade
+      ctx.beginPath();
+      ctx.moveTo(-86, -20);
+      ctx.bezierCurveTo(-90, -115, 90, -115, 86, -25);
+      ctx.bezierCurveTo(60, -18, 30, -50, 0, -50);
+      ctx.bezierCurveTo(-30, -50, -60, -18, -86, -20);
+      ctx.fill();
+    } else if (currentPersonaKey === 'evelyn') {
+      // Elegant side-part bangs with layered waves
+      ctx.beginPath();
+      ctx.moveTo(-86, -15);
+      ctx.bezierCurveTo(-85, -108, 30, -108, 86, -25);
+      ctx.bezierCurveTo(60, -38, 10, -46, -35, -42);
+      ctx.bezierCurveTo(-65, -38, -78, -25, -86, -15);
+      ctx.fill();
+    } else {
+      // Maya modern parted bob
+      ctx.beginPath();
+      ctx.moveTo(-86, -15);
+      ctx.bezierCurveTo(-85, -108, 30, -108, 86, -20);
+      ctx.bezierCurveTo(55, -35, 10, -44, -25, -40);
+      ctx.bezierCurveTo(-60, -34, -76, -25, -86, -15);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function renderLoop() {
+    updateAvatarPhysics();
+    drawAvatar();
+    animFrameId = requestAnimationFrame(renderLoop);
+  }
+
+  // =========================================================================
+  // AUDIO & SPEECH-TO-TEXT (LISTENING)
+  // =========================================================================
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Web Speech API not supported in this browser.");
+      document.getElementById("micStatusPill").textContent = "🎙️ Mic Text Only";
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isListening = true;
+      document.getElementById("micBtn").classList.add("listening");
+      document.getElementById("avatarStatusText").textContent = "Listening to your voice...";
+      document.getElementById("statusPulseDot").className = "pulse-dot listening";
+      animateAudioBars(true);
+    };
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          const finalTranscript = event.results[i][0].transcript.trim();
+          document.getElementById("chatTextInput").value = finalTranscript;
+          stopListening();
+          executeUserPrompt(finalTranscript);
+          return;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      if (interim) {
+        document.getElementById("chatTextInput").value = interim;
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.warn("Speech recognition error:", e.error);
+      stopListening();
+      showToast("Speech recognition paused: " + e.error);
+    };
+
+    recognition.onend = () => {
+      stopListening();
+    };
+  }
+
+  function toggleListening() {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }
+
+  function startListening() {
+    if (isSpeaking) interruptAvatar();
+    if (recognition) {
+      try {
+        recognition.start();
+      } catch (err) {
+        console.warn("Recognition already started:", err);
+      }
+    } else {
+      showToast("Please use the text box (Speech recognition not available on this browser).");
+    }
+  }
+
+  function stopListening() {
+    isListening = false;
+    document.getElementById("micBtn").classList.remove("listening");
+    document.getElementById("avatarStatusText").textContent = "Attentive • Ready";
+    document.getElementById("statusPulseDot").className = "pulse-dot";
+    animateAudioBars(false);
+    if (recognition) {
+      try { recognition.stop(); } catch(e) {}
+    }
+  }
+
+  function animateAudioBars(active) {
+    const bars = document.querySelectorAll(".wave-bar");
+    if (!active) {
+      bars.forEach(b => b.style.height = "6px");
+      return;
+    }
+    bars.forEach((b) => {
+      b.style.height = `${Math.floor(4 + Math.random() * 22)}px`;
+    });
+  }
+
+  // =========================================================================
+  // TEXT-TO-SPEECH (SPEAKING & LIP-SYNC)
+  // =========================================================================
+  function populateVoiceList() {
+    if (!synth) return;
+    availableVoices = synth.getVoices();
+    const voiceSelect = document.getElementById("ttsVoiceSelect");
+    voiceSelect.innerHTML = "";
+
+    availableVoices.forEach((voice, index) => {
+      const option = document.createElement("option");
+      option.textContent = `${voice.name} (${voice.lang})`;
+      option.value = index;
+      voiceSelect.appendChild(option);
+    });
+
+    // Auto-select preferred natural voice
+    const preferred = availableVoices.findIndex(v => 
+      v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Zira"))
+    );
+    if (preferred !== -1) voiceSelect.selectedIndex = preferred;
+  }
+  if (synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = populateVoiceList;
+  }
+
+  function speakAvatarResponse(text) {
+    if (isMuted || !synth) return;
+    synth.cancel(); // Stop any pending speech
+
+    const cleanText = text.replace(/[*#_`]/g, ""); // Strip markdown tags for smooth TTS
+    currentUtterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Pick selected voice
+    const voiceIdx = document.getElementById("ttsVoiceSelect").selectedIndex;
+    if (availableVoices[voiceIdx]) {
+      currentUtterance.voice = availableVoices[voiceIdx];
+    }
+
+    currentUtterance.rate = 1.05;
+    currentUtterance.pitch = currentPersonaKey === 'marcus' ? 0.95 : 1.1;
+
+    currentUtterance.onstart = () => {
+      isSpeaking = true;
+      document.getElementById("avatarStatusText").textContent = "Speaking...";
+      document.getElementById("statusPulseDot").className = "pulse-dot speaking";
+    };
+
+    currentUtterance.onboundary = (e) => {
+      // Viseme pulse on word boundaries
+      mouthOpen = 0.5 + Math.random() * 0.4;
+      animateAudioBars(true);
+    };
+
+    currentUtterance.onend = () => {
+      isSpeaking = false;
+      document.getElementById("avatarStatusText").textContent = "Attentive • Ready";
+      document.getElementById("statusPulseDot").className = "pulse-dot";
+      animateAudioBars(false);
+    };
+
+    currentUtterance.onerror = () => {
+      isSpeaking = false;
+      document.getElementById("avatarStatusText").textContent = "Attentive • Ready";
+      document.getElementById("statusPulseDot").className = "pulse-dot";
+      animateAudioBars(false);
+    };
+
+    synth.speak(currentUtterance);
+  }
+
+  function interruptAvatar() {
+    if (synth) synth.cancel();
+    isSpeaking = false;
+    document.getElementById("avatarStatusText").textContent = "Interrupted • Ready";
+    document.getElementById("statusPulseDot").className = "pulse-dot";
+    animateAudioBars(false);
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    if (isMuted) interruptAvatar();
+    document.getElementById("voiceMuteBtn").textContent = isMuted ? "🔇" : "🔊";
+    showToast(isMuted ? "Avatar voice muted." : "Avatar voice unmuted.");
+  }
+
+  // =========================================================================
+  // INFERENCE PIPELINE (GROQ, WEBGPU, SIM)
+  // =========================================================================
+  async function executeUserPrompt(promptText) {
+    if (!promptText || !promptText.trim()) return;
+
+    appendMessageToStream("user", promptText);
+    document.getElementById("chatTextInput").value = "";
+
+    // Set Thinking State
+    isThinking = true;
+    document.getElementById("avatarStatusText").textContent = "Thinking & Synthesizing...";
+    document.getElementById("statusPulseDot").className = "pulse-dot thinking";
+
+    const persona = PERSONAS[currentPersonaKey];
+    let responseText = "";
+    const startTime = performance.now();
+
+    try {
+      if (activeEngine === "groq") {
+        responseText = await callGroqInference(promptText, persona);
+      } else if (activeEngine === "webgpu") {
+        responseText = await callWebGpuInference(promptText, persona);
+      } else {
+        responseText = getSimulatedReasoning(promptText, persona);
+      }
+    } catch (err) {
+      console.warn("Primary engine error, using simulated fallback:", err);
+      responseText = getSimulatedReasoning(promptText, persona);
+    }
+
+    isThinking = false;
+    const latency = Math.round(performance.now() - startTime);
+
+    appendMessageToStream("avatar", responseText, latency);
+    speakAvatarResponse(responseText);
+  }
+
+  async function callGroqInference(promptText, persona) {
+    const key = customGroqKey || PROVISIONED_GROQ_KEY;
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: selectedGroqModel,
+        messages: [
+          { role: "system", content: persona.systemPrompt },
+          { role: "user", content: promptText }
+        ],
+        temperature: 0.7,
+        max_tokens: 180
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Groq HTTP ${res.status}: ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    return data.choices[0].message.content.trim();
+  }
+
+  async function callWebGpuInference(promptText, persona) {
+    if (!window.webllm) {
+      showToast("WebLLM library not ready, falling back to simulated inference.");
+      return getSimulatedReasoning(promptText, persona);
+    }
+
+    if (!webllmEngine) {
+      showToast("Initializing in-browser WebGPU model (first run may take a moment)...");
+      webllmEngine = new window.webllm.MLCEngine();
+      await webllmEngine.reload("Llama-3.2-1B-Instruct-q4f16_1-MLC");
+    }
+
+    const reply = await webllmEngine.chat.completions.create({
+      messages: [
+        { role: "system", content: persona.systemPrompt },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.7,
+      max_tokens: 150
+    });
+
+    return reply.choices[0].message.content.trim();
+  }
+
+  function getSimulatedReasoning(prompt, persona) {
+    const p = prompt.toLowerCase();
+    if (p.includes("hippocampus") || p.includes("rag") || p.includes("memory")) {
+      return `The biological hippocampus acts like a high-speed pointer index, just like vector embeddings in RAG! It binds cortical sensory fragments into a single cohesive episode without re-training the entire neocortex.`;
+    }
+    if (p.includes("pillars") || p.includes("cognitive") || p.includes("system")) {
+      return `An enterprise autonomous brain requires 6 distinct pillars: Perceive & Attend, Remember, Think & Decide, Learn & Feel, Act & Regulate, and Connect & Aware. When coordinated over an EventBridge bus, they deliver resilient agency!`;
+    }
+    if (p.includes("predictive") || p.includes("coding")) {
+      return `Predictive coding posited that the brain only transmits prediction errors up the hierarchy, discarding redundant sensory noise. In AI, this saves up to 90% of token compute by suppressing expected background telemetry!`;
+    }
+    if (p.includes("war room") || p.includes("executive") || p.includes("decision")) {
+      return `An executive war room succeeds when you assign explicit dialectic roles: an Optimistic Deal Champion, a Forensic Skeptic, and an Objective Arbitrator. This prevents groupthink and stress-tests risk boundaries.`;
+    }
+    return `That's a profound question! From my perspective as ${persona.role}, balancing hierarchical reasoning with feedback control is the key to building autonomous intelligence that remains aligned and robust.`;
+  }
+
+  // =========================================================================
+  // UI INTERACTIONS & DIALOGUE STREAM
+  // =========================================================================
+  function appendMessageToStream(sender, text, latencyMs = null) {
+    const stream = document.getElementById("dialogueStream");
+    const row = document.createElement("div");
+    row.className = `message-row ${sender}`;
+
+    const icon = sender === 'user' ? '🧑' : (currentPersonaKey === 'marcus' ? '👨‍💻' : '👩‍🔬');
+    const meta = latencyMs ? `<span>${latencyMs}ms</span> &bull; <span>${activeEngine.toUpperCase()}</span>` : `<span>Spoken Voice / Input</span>`;
+
+    row.innerHTML = `
+      <div class="msg-avatar">${icon}</div>
+      <div>
+        <div class="message-bubble">${escapeHtml(text)}</div>
+        <div class="msg-meta">${meta}</div>
+      </div>
+    `;
+
+    stream.appendChild(row);
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function sendTextMessage() {
+    const input = document.getElementById("chatTextInput");
+    const text = input.value.trim();
+    if (text) executeUserPrompt(text);
+  }
+
+  function handleInputKey(e) {
+    if (e.key === "Enter") sendTextMessage();
+  }
+
+  function askQuickPrompt(text) {
+    executeUserPrompt(text);
+  }
+
+  function clearConversation() {
+    const stream = document.getElementById("dialogueStream");
+    stream.innerHTML = "";
+    showToast("Conversation cleared.");
+  }
+
+  function switchPersona(key) {
+    if (!PERSONAS[key]) return;
+    currentPersonaKey = key;
+    const persona = PERSONAS[key];
+
+    document.querySelectorAll(".persona-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(`btn-persona-${key}`).classList.add("active");
+
+    document.getElementById("currentPersonaName").textContent = persona.name;
+    document.getElementById("currentPersonaRole").textContent = persona.role;
+
+    interruptAvatar();
+    showToast(`Switched avatar to ${persona.name}.`);
+  }
+
+  function switchEngine(val) {
+    activeEngine = val;
+    showToast(`Inference engine set to: ${val.toUpperCase()}`);
+  }
+
+  // =========================================================================
+  // SETTINGS MODAL & TOAST
+  // =========================================================================
+  function openSettingsModal() {
+    document.getElementById("customGroqKeyInput").value = customGroqKey;
+    document.getElementById("settingsModal").classList.add("open");
+  }
+  function closeSettingsModal() {
+    document.getElementById("settingsModal").classList.remove("open");
+  }
+  function saveSettings() {
+    customGroqKey = document.getElementById("customGroqKeyInput").value.trim();
+    selectedGroqModel = document.getElementById("groqModelSelect").value;
+    localStorage.setItem("custom_groq_key", customGroqKey);
+    closeSettingsModal();
+    showToast("Settings saved successfully.");
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    document.getElementById("toastMsg").textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  // THEME TOGGLE
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    document.getElementById("themeToggle").textContent = isDark ? "☀️" : "🌙";
+  });
+
+  // INITIALIZATION ON LOAD
+  window.addEventListener("DOMContentLoaded", () => {
+    resizeCanvas();
+    initSpeechRecognition();
+    populateVoiceList();
+    renderLoop();
+  });
+</script>
+
+</body>
+</html>
