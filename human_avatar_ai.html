@@ -706,27 +706,30 @@
 
     <!-- PERSONA SELECTOR -->
     <div class="persona-selector">
-      <div class="selector-label">Select Human Avatar Persona</div>
+      <div class="selector-label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Select Human Avatar Persona &amp; Voice</span>
+        <span style="font-size:10.5px; color:var(--accent); font-weight:600;">Auto Voice &bull; Pitch Modulation</span>
+      </div>
       <div class="persona-btn-row">
         <button class="persona-btn active" onclick="switchPersona('evelyn')" id="btn-persona-evelyn">
-          <span>👩‍🔬</span>
+          <span style="font-size:20px;">👩‍🔬</span>
           <div>
-            <div>Dr. Evelyn</div>
-            <div style="font-size:10.5px; color:var(--text-muted)">Cognitive AI</div>
+            <div style="font-weight:700;">Dr. Evelyn</div>
+            <div style="font-size:10px; color:var(--text-muted)">Female Voice &bull; Pitch 1.05x</div>
           </div>
         </button>
         <button class="persona-btn" onclick="switchPersona('marcus')" id="btn-persona-marcus">
-          <span>👨‍💻</span>
+          <span style="font-size:20px;">👨‍💻</span>
           <div>
-            <div>Marcus</div>
-            <div style="font-size:10.5px; color:var(--text-muted)">Cloud Architect</div>
+            <div style="font-weight:700;">Marcus</div>
+            <div style="font-size:10px; color:var(--text-muted)">Male Baritone &bull; Pitch 0.82x</div>
           </div>
         </button>
         <button class="persona-btn" onclick="switchPersona('maya')" id="btn-persona-maya">
-          <span>👩‍💼</span>
+          <span style="font-size:20px;">👩‍💼</span>
           <div>
-            <div>Maya</div>
-            <div style="font-size:10.5px; color:var(--text-muted)">Executive Coach</div>
+            <div style="font-weight:700;">Maya</div>
+            <div style="font-size:10px; color:var(--text-muted)">Female Warm &bull; Pitch 1.22x</div>
           </div>
         </button>
       </div>
@@ -840,38 +843,59 @@
   // =========================================================================
   // PERSONA PROFILES & CONFIGURATION
   // =========================================================================
+  // =========================================================================
+  // PERSONA PROFILES & VOICE CONFIGURATION
+  // =========================================================================
   const PERSONAS = {
     evelyn: {
       name: "Dr. Evelyn Vance",
       role: "Cognitive AI Scientist",
+      gender: "female",
+      preferredVoices: ["Microsoft Jenny", "Jenny", "Samantha", "Google US English", "Zira", "Victoria", "Karen", "female"],
+      pitch: 1.05,
+      rate: 1.03,
       avatarColor: "#0284C7",
       skinTone: "#F6D1BA",
       hairColor: "#2B1B17",
+      hairHighlight: "rgba(255, 210, 180, 0.25)",
       shirtColor: "#0C4A6E",
+      collarColor: "#FFFFFF",
       irisColor: "#1E3A8A",
-      voiceGender: "female",
+      greeting: "Hello! I'm Dr. Evelyn Vance. Ready to explore cognitive brain architectures and neural models with me?",
       systemPrompt: "You are Dr. Evelyn Vance, a brilliant cognitive neuroscientist and AI architect. You explain biological brain analogies, multi-agent systems, and neural mechanisms with enthusiasm, clarity, and precision. Keep responses conversational, concise (2-3 punchy sentences), and tailored for live spoken dialogue."
     },
     marcus: {
       name: "Marcus Chen",
       role: "Cloud Architect & Engineer",
+      gender: "male",
+      preferredVoices: ["Microsoft Guy", "Guy", "Microsoft David", "David", "Google UK English Male", "Google US English", "Daniel", "Alex", "Fred", "male"],
+      pitch: 0.82, // Deep masculine baritone pitch
+      rate: 1.06,
       avatarColor: "#2563EB",
       skinTone: "#E8B896",
       hairColor: "#111827",
+      hairHighlight: "rgba(148, 163, 184, 0.32)",
       shirtColor: "#1E293B",
+      collarColor: "#F1F5F9",
       irisColor: "#065F46",
-      voiceGender: "male",
+      greeting: "Hey there! Marcus Chen here. Let's architect some high-performance cloud systems on AWS!",
       systemPrompt: "You are Marcus Chen, a veteran cloud systems architect. You focus on scalable serverless implementations, AWS primitives (EventBridge, Bedrock, DynamoDB), resilience, and latency. Keep answers pragmatic, energetic, and concise (2-3 spoken sentences)."
     },
     maya: {
       name: "Maya Lin",
       role: "Executive Coach & Strategist",
+      gender: "female",
+      preferredVoices: ["Microsoft Michelle", "Michelle", "Microsoft Aria", "Aria", "Fiona", "Moira", "Google UK English Female", "female"],
+      pitch: 1.22, // Warm, energetic executive coach tone
+      rate: 1.0,
       avatarColor: "#7C3AED",
       skinTone: "#F1C5A8",
-      hairColor: "#4A2810",
+      hairColor: "#3F2010",
+      hairHighlight: "rgba(251, 191, 36, 0.28)",
       shirtColor: "#581C87",
+      collarColor: "#FAF5FF",
       irisColor: "#92400E",
-      voiceGender: "female",
+      greeting: "Welcome! I'm Maya Lin. What strategic leadership challenge shall we unpack today?",
       systemPrompt: "You are Maya Lin, an executive mentor and organizational strategist. You help leaders arbitrate complex tradeoffs, foster cross-functional synergy, and design war-room consensus frameworks. Keep responses sharp, inspiring, and concise (2-3 spoken sentences)."
     }
   };
@@ -898,7 +922,7 @@
   let currentUtterance = null;
   let availableVoices = [];
 
-  // Avatar Animation States
+  // Avatar Animation Physics & Micro-Dynamics
   const canvas = document.getElementById("avatarCanvas");
   const ctx = canvas.getContext("2d");
   let canvasWidth, canvasHeight;
@@ -906,16 +930,23 @@
   let animFrameId;
   let blinkProgress = 0; // 0 (open) to 1 (closed)
   let isBlinking = false;
-  let nextBlinkTime = Date.now() + 2500;
+  let nextBlinkTime = Date.now() + 2200;
+
+  // Natural human micro-saccades & breathing
+  let nextSaccadeTime = Date.now() + 1500;
+  let microGazeX = 0;
+  let microGazeY = 0;
   let lookTargetX = 0; // -1 to 1
   let lookTargetY = 0; // -1 to 1
   let currentLookX = 0;
   let currentLookY = 0;
   let headTilt = 0; // radians
-  let headBob = 0;
+  let headDriftX = 0;
+  let headDriftY = 0;
+  let browLift = 0;
+  let smileFactor = 0.4;
   let mouthOpen = 0; // 0 to 1
   let mouthWidth = 1.0;
-  let audioLevel = 0; // for live mic wave
 
   // =========================================================================
   // PROCEDURAL AVATAR RENDERER
@@ -934,10 +965,9 @@
   window.addEventListener("mousemove", (e) => {
     const rect = canvas.getBoundingClientRect();
     if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-      lookTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-      lookTargetY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+      lookTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 1.8;
+      lookTargetY = ((e.clientY - rect.top) / rect.height - 0.5) * 1.8;
     } else {
-      // Return gaze gently towards user center
       lookTargetX = 0;
       lookTargetY = 0;
     }
@@ -946,44 +976,70 @@
   function updateAvatarPhysics() {
     const now = Date.now();
 
-    // Natural Blinking
+    // 1. Natural Blinking (Smooth ease-in-out)
     if (!isBlinking && now > nextBlinkTime) {
       isBlinking = true;
       blinkProgress = 0;
     }
     if (isBlinking) {
-      blinkProgress += 0.18;
+      blinkProgress += 0.22;
       if (blinkProgress >= 1) {
         isBlinking = false;
         blinkProgress = 0;
-        nextBlinkTime = now + 2500 + Math.random() * 3000;
+        nextBlinkTime = now + 2400 + Math.random() * 3200;
       }
     }
 
-    // Saccadic Eye Movement smoothing
-    currentLookX += (lookTargetX - currentLookX) * 0.12;
-    currentLookY += (lookTargetY - currentLookY) * 0.12;
+    // 2. Micro-Saccades (Human Eye Jitter)
+    if (now > nextSaccadeTime) {
+      microGazeX = (Math.random() - 0.5) * 0.16;
+      microGazeY = (Math.random() - 0.5) * 0.10;
+      nextSaccadeTime = now + 1200 + Math.random() * 2200;
+    }
 
-    // Head breathing & state motion
-    headBob = Math.sin(now * 0.002) * 2.5;
+    // 3. Saccadic Eye Movement smoothing
+    currentLookX += (lookTargetX + microGazeX - currentLookX) * 0.14;
+    currentLookY += (lookTargetY + microGazeY - currentLookY) * 0.14;
+
+    // 4. Organic Breathing & Drift (Natural subtle figure-8 motion)
+    headDriftX = Math.sin(now * 0.0014) * 2.2;
+    headDriftY = Math.sin(now * 0.0024) * 3.5;
 
     if (isListening) {
-      // Attentive head tilt
-      headTilt += (0.05 - headTilt) * 0.08;
+      // Attentive tilt & curiosity
+      headTilt += (0.075 - headTilt) * 0.09;
+      browLift += (-3.5 - browLift) * 0.12;
+      // Periodic subtle listening nod
+      headDriftY += Math.sin(now * 0.0035) * 2.2;
+      smileFactor += (0.55 - smileFactor) * 0.08;
+      mouthOpen += (0 - mouthOpen) * 0.2;
+      mouthWidth = 1.02;
     } else if (isThinking) {
-      // Pondering tilt & looking up
-      headTilt += (-0.04 - headTilt) * 0.06;
-      lookTargetY = -0.4;
-      lookTargetX = 0.3;
+      // Contemplative tilt, looking upward-left
+      headTilt += (-0.06 - headTilt) * 0.07;
+      browLift += (2.5 - browLift) * 0.1;
+      lookTargetY = -0.35;
+      lookTargetX = 0.25;
+      smileFactor += (0.2 - smileFactor) * 0.08;
+      mouthOpen += (0.02 - mouthOpen) * 0.15;
+      mouthWidth = 0.94;
     } else if (isSpeaking) {
-      // Expressive head nod while talking
-      headTilt += (Math.sin(now * 0.008) * 0.03 - headTilt) * 0.1;
-      // Procedural lip movement modulated by speech
-      mouthOpen = 0.25 + Math.abs(Math.sin(now * 0.015)) * 0.55;
-      mouthWidth = 0.95 + Math.sin(now * 0.01) * 0.15;
+      // Expressive speech cadence & nodding
+      headTilt += (Math.sin(now * 0.007) * 0.045 - headTilt) * 0.12;
+      headDriftY += Math.abs(Math.sin(now * 0.008)) * 3;
+      browLift = Math.sin(now * 0.006) * 2.4;
+      smileFactor += (0.42 - smileFactor) * 0.08;
+
+      // Multi-frequency phoneme visemes (vowels + consonants)
+      const ph1 = Math.sin(now * 0.015);
+      const ph2 = Math.cos(now * 0.024);
+      mouthOpen = 0.18 + Math.abs(ph1) * 0.48 + Math.abs(ph2) * 0.22;
+      mouthWidth = 0.92 + ph1 * 0.22;
     } else {
-      // Idle
-      headTilt += (0 - headTilt) * 0.08;
+      // Idle state
+      headTilt += (0 - headTilt) * 0.06;
+      browLift += (0 - browLift) * 0.08;
+      smileFactor += (0.4 - smileFactor) * 0.06;
       mouthOpen += (0 - mouthOpen) * 0.15;
       mouthWidth = 1.0;
     }
@@ -993,27 +1049,58 @@
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     const persona = PERSONAS[currentPersonaKey];
 
-    const cx = canvasWidth / 2;
-    const cy = canvasHeight / 2 - 20 + headBob;
+    const cx = canvasWidth / 2 + headDriftX;
+    const cy = canvasHeight / 2 - 20 + headDriftY;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(headTilt);
 
-    // 1. Shoulders & Torso
+    // 1. Shoulders & Torso (with natural breathing elevation)
+    const torsoBreath = headDriftY * 0.45;
     ctx.fillStyle = persona.shirtColor;
     ctx.beginPath();
-    ctx.ellipse(0, 260, 190, 110, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 260 + torsoBreath, 195, 115, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Collar / Inner Shirt
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = persona.collarColor || "#FFFFFF";
     ctx.beginPath();
-    ctx.moveTo(-45, 190);
-    ctx.lineTo(0, 245);
-    ctx.lineTo(45, 190);
+    ctx.moveTo(-45, 190 + torsoBreath);
+    ctx.lineTo(0, 245 + torsoBreath);
+    ctx.lineTo(45, 190 + torsoBreath);
     ctx.closePath();
     ctx.fill();
+
+    // Blazer Lapel Lines / Attire Accent
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.18)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-45, 190 + torsoBreath);
+    ctx.lineTo(-75, 275 + torsoBreath);
+    ctx.moveTo(45, 190 + torsoBreath);
+    ctx.lineTo(75, 275 + torsoBreath);
+    ctx.stroke();
+
+    // Persona accessory
+    if (currentPersonaKey === 'maya') {
+      // Gold/Pearl Pendant
+      ctx.strokeStyle = "#D97706";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 215 + torsoBreath, 12, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+      ctx.fillStyle = "#F59E0B";
+      ctx.beginPath();
+      ctx.arc(0, 228 + torsoBreath, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (currentPersonaKey === 'marcus') {
+      // Lapel pin
+      ctx.fillStyle = "#2563EB";
+      ctx.beginPath();
+      ctx.arc(-55, 225 + torsoBreath, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // 2. Neck
     ctx.fillStyle = persona.skinTone;
@@ -1021,10 +1108,10 @@
     ctx.rect(-34, 110, 68, 90);
     ctx.fill();
 
-    // Neck shadow
-    ctx.fillStyle = "rgba(0, 0, 0, 0.09)";
+    // Neck shadow & collarbone contour
+    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
     ctx.beginPath();
-    ctx.ellipse(0, 130, 40, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 130, 42, 16, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // 3. Back Hair (Natural shoulder flow)
@@ -1032,29 +1119,35 @@
     if (currentPersonaKey === 'evelyn') {
       ctx.beginPath();
       ctx.moveTo(-88, -40);
-      ctx.bezierCurveTo(-112, 30, -108, 130, -75, 210);
-      ctx.lineTo(75, 210);
-      ctx.bezierCurveTo(108, 130, 112, 30, 88, -40);
+      ctx.bezierCurveTo(-114, 30, -110, 130, -78, 215);
+      ctx.lineTo(78, 215);
+      ctx.bezierCurveTo(110, 130, 114, 30, 88, -40);
       ctx.bezierCurveTo(70, -105, -70, -105, -88, -40);
       ctx.fill();
     } else if (currentPersonaKey === 'maya') {
       ctx.beginPath();
       ctx.moveTo(-88, -35);
-      ctx.bezierCurveTo(-105, 30, -100, 120, -68, 165);
-      ctx.lineTo(68, 165);
-      ctx.bezierCurveTo(100, 120, 105, 30, 88, -35);
+      ctx.bezierCurveTo(-108, 30, -102, 120, -70, 170);
+      ctx.lineTo(70, 170);
+      ctx.bezierCurveTo(102, 120, 108, 30, 88, -35);
       ctx.bezierCurveTo(70, -100, -70, -100, -88, -35);
       ctx.fill();
     }
 
-    // 4. Ears
+    // 4. Ears with inner antihelix fold
     [-84, 84].forEach((ex, idx) => {
       ctx.fillStyle = persona.skinTone;
       ctx.beginPath();
       ctx.ellipse(ex, 24, 11, 20, idx === 0 ? -0.1 : 0.1, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx.strokeStyle = "rgba(0,0,0,0.14)";
       ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Inner ear shadow
+      ctx.strokeStyle = "rgba(180, 83, 9, 0.22)";
+      ctx.beginPath();
+      ctx.arc(ex + (idx === 0 ? 3 : -3), 22, 6, 0, Math.PI * 2);
       ctx.stroke();
     });
 
@@ -1068,14 +1161,14 @@
     ctx.bezierCurveTo(-84, -20, -75, -78, 0, -78);
     ctx.fill();
 
-    // Subtle cheek blush
+    // Subtle cheek blush & cheekbone highlight
     ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
     ctx.beginPath();
     ctx.ellipse(-46, 42, 20, 12, 0, 0, Math.PI * 2);
     ctx.ellipse(46, 42, 20, 12, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 6. Eyes
+    // 6. Eyes with Limbal Ring & Micro-Dynamics
     const eyeSpacing = 35;
     const eyeY = 12;
     const eyeWidth = 26;
@@ -1090,7 +1183,7 @@
       ctx.beginPath();
       ctx.ellipse(0, 0, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx.strokeStyle = "rgba(0,0,0,0.14)";
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -1103,27 +1196,40 @@
       const pupilX = currentLookX * 5.2;
       const pupilY = currentLookY * 3.2;
 
-      // Iris with subtle radial gradient
-      const irisGrad = ctx.createRadialGradient(pupilX, pupilY, 1, pupilX, pupilY, 8);
+      // Dark Limbal Ring (Outer Iris border)
+      ctx.strokeStyle = "rgba(10, 15, 30, 0.75)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(pupilX, pupilY, 8.2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Iris with rich radial gradient
+      const irisGrad = ctx.createRadialGradient(pupilX, pupilY, 1, pupilX, pupilY, 8.2);
       irisGrad.addColorStop(0, persona.irisColor);
-      irisGrad.addColorStop(1, "#0F172A");
+      irisGrad.addColorStop(0.65, persona.irisColor);
+      irisGrad.addColorStop(1, "#080D1A");
       ctx.fillStyle = irisGrad;
       ctx.beginPath();
-      ctx.arc(pupilX, pupilY, 7.8, 0, Math.PI * 2);
+      ctx.arc(pupilX, pupilY, 8.0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pupil
+      // Pupil with dynamic dilation
+      const pRadius = (isListening || isSpeaking) ? 4.8 : 3.8;
       ctx.fillStyle = "#050505";
       ctx.beginPath();
-      ctx.arc(pupilX, pupilY, 4.2, 0, Math.PI * 2);
+      ctx.arc(pupilX, pupilY, pRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Dual Specular Highlights
       ctx.fillStyle = "#FFFFFF";
       ctx.beginPath();
-      ctx.arc(pupilX - 2.5, pupilY - 2.5, 2.2, 0, Math.PI * 2);
-      ctx.arc(pupilX + 2.2, pupilY + 1.8, 1.2, 0, Math.PI * 2);
+      ctx.arc(pupilX - 2.6, pupilY - 2.6, 2.3, 0, Math.PI * 2);
+      ctx.arc(pupilX + 2.3, pupilY + 1.8, 1.2, 0, Math.PI * 2);
       ctx.fill();
+
+      // Soft upper eyelid shadow across sclera
+      ctx.fillStyle = "rgba(15, 23, 42, 0.12)";
+      ctx.fillRect(-eyeWidth / 2, -eyeHeight / 2, eyeWidth, 4);
 
       // Eyelid on blink
       if (blinkProgress > 0) {
@@ -1138,16 +1244,23 @@
 
       // Upper Eyelash line
       ctx.strokeStyle = "#1E293B";
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.arc(0, -1, eyeWidth / 2, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.stroke();
+
+      // Soft eyelid crease above eye
+      ctx.strokeStyle = "rgba(100, 116, 139, 0.28)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(0, -8, eyeWidth / 2.2, Math.PI * 1.15, Math.PI * 1.85);
       ctx.stroke();
 
       ctx.restore();
     });
 
-    // 7. Eyebrows
-    const browY = -10;
+    // 7. Eyebrows with browLift micro-dynamics
+    const browY = -10 + browLift;
     [-eyeSpacing, eyeSpacing].forEach((xOffset, idx) => {
       ctx.save();
       ctx.translate(xOffset, browY);
@@ -1157,7 +1270,7 @@
 
       let browTilt = idx === 0 ? 0.08 : -0.08;
       if (isListening) browTilt += idx === 0 ? -0.16 : 0.16;
-      if (isThinking) browTilt += idx === 0 ? 0.14 : -0.14;
+      if (isThinking) browTilt += idx === 0 ? 0.15 : -0.15;
 
       ctx.beginPath();
       ctx.moveTo(-16, browTilt * 12);
@@ -1166,9 +1279,9 @@
       ctx.restore();
     });
 
-    // Evelyn's Stylish Glasses (Optional AI Scientist touch)
+    // Evelyn's Stylish Glasses
     if (currentPersonaKey === 'evelyn') {
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.75)";
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.78)";
       ctx.lineWidth = 1.8;
       // Left rim
       ctx.strokeRect(-eyeSpacing - 15, eyeY - 11, 30, 22);
@@ -1179,10 +1292,19 @@
       ctx.moveTo(-eyeSpacing + 15, eyeY);
       ctx.lineTo(eyeSpacing - 15, eyeY);
       ctx.stroke();
+      // Specular lens glare
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-eyeSpacing + 6, eyeY - 8);
+      ctx.lineTo(-eyeSpacing - 6, eyeY + 6);
+      ctx.moveTo(eyeSpacing + 6, eyeY - 8);
+      ctx.lineTo(eyeSpacing - 6, eyeY + 6);
+      ctx.stroke();
     }
 
-    // 8. Nose
-    ctx.strokeStyle = "rgba(100, 116, 139, 0.45)";
+    // 8. Nose Bridge & Contour
+    ctx.strokeStyle = "rgba(100, 116, 139, 0.42)";
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(0, 14);
@@ -1190,7 +1312,7 @@
     ctx.lineTo(-6, 48);
     ctx.stroke();
 
-    // 9. Mouth
+    // 9. Mouth with Dynamic Lip-Sync & Lip Gloss
     ctx.save();
     ctx.translate(0, 78);
     const mOpen = Math.max(2, mouthOpen * 16);
@@ -1198,15 +1320,21 @@
 
     if (mOpen > 4) {
       // Open mouth (speaking)
-      ctx.fillStyle = "#4C0519";
+      ctx.fillStyle = "#3B0713"; // Deep oral cavity
       ctx.beginPath();
       ctx.ellipse(0, 0, mWidth / 2, mOpen, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Top teeth
-      ctx.fillStyle = "#FFFFFF";
+      ctx.fillStyle = "#F8FAFC";
       ctx.beginPath();
-      ctx.rect(-mWidth / 3.2, -mOpen + 1.5, (mWidth / 3.2) * 2, 4);
+      ctx.rect(-mWidth / 3.2, -mOpen + 1.5, (mWidth / 3.2) * 2, 4.5);
+      ctx.fill();
+
+      // Tongue hint
+      ctx.fillStyle = "#E11D48";
+      ctx.beginPath();
+      ctx.ellipse(0, mOpen - 2.5, mWidth / 4, 3.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Lip contour
@@ -1216,18 +1344,27 @@
       ctx.ellipse(0, 0, mWidth / 2, mOpen, 0, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      // Subtle smiling lip contour
+      // Subtle smiling lip contour with smileFactor
+      const smileCurvature = 3 + smileFactor * 4;
       ctx.strokeStyle = "#BE123C";
       ctx.lineWidth = 2.6;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(-mWidth / 2, 0);
-      ctx.quadraticCurveTo(0, 4.5, mWidth / 2, 0);
+      ctx.quadraticCurveTo(0, smileCurvature, mWidth / 2, 0);
+      ctx.stroke();
+
+      // Lip gloss highlight on lower lip
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-mWidth / 4, smileCurvature * 0.7);
+      ctx.quadraticCurveTo(0, smileCurvature * 0.9, mWidth / 4, smileCurvature * 0.7);
       ctx.stroke();
     }
     ctx.restore();
 
-    // 10. Front Hair / Styling
+    // 10. Front Hair / Styling & Specular Sheen
     ctx.fillStyle = persona.hairColor;
     if (currentPersonaKey === 'marcus') {
       // Modern short tapered hair with clean side fade
@@ -1254,6 +1391,14 @@
       ctx.bezierCurveTo(-60, -34, -76, -25, -86, -15);
       ctx.fill();
     }
+
+    // Hair Specular Sheen Ribbon
+    ctx.strokeStyle = persona.hairHighlight || "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-45, -62);
+    ctx.quadraticCurveTo(0, -74, 45, -62);
+    ctx.stroke();
 
     ctx.restore();
   }
@@ -1361,12 +1506,69 @@
   }
 
   // =========================================================================
-  // TEXT-TO-SPEECH (SPEAKING & LIP-SYNC)
+  // TEXT-TO-SPEECH (SPEAKING & LIP-SYNC WITH DYNAMIC VOICE SWITCHING)
   // =========================================================================
+  function getVoiceForPersona(persona) {
+    if (!synth) return null;
+    if (!availableVoices || availableVoices.length === 0) {
+      availableVoices = synth.getVoices();
+    }
+    if (!availableVoices || availableVoices.length === 0) return null;
+
+    // 1. Try matching preferred voice names for this persona
+    if (persona.preferredVoices) {
+      for (const pref of persona.preferredVoices) {
+        const found = availableVoices.find(v => 
+          v.name.toLowerCase().includes(pref.toLowerCase())
+        );
+        if (found) return found;
+      }
+    }
+
+    // 2. Gender heuristic
+    if (persona.gender === "male") {
+      const maleVoice = availableVoices.find(v => 
+        v.lang.startsWith("en") && 
+        (v.name.toLowerCase().includes("david") || v.name.toLowerCase().includes("guy") || 
+         v.name.toLowerCase().includes("mark") || v.name.toLowerCase().includes("daniel") || 
+         v.name.toLowerCase().includes("george") || v.name.toLowerCase().includes("alex") || 
+         v.name.toLowerCase().includes("fred") || v.name.toLowerCase().includes("male"))
+      );
+      if (maleVoice) return maleVoice;
+    } else {
+      const femaleVoice = availableVoices.find(v => 
+        v.lang.startsWith("en") && 
+        (v.name.toLowerCase().includes("zira") || v.name.toLowerCase().includes("jenny") || 
+         v.name.toLowerCase().includes("samantha") || v.name.toLowerCase().includes("aria") || 
+         v.name.toLowerCase().includes("karen") || v.name.toLowerCase().includes("victoria") || 
+         v.name.toLowerCase().includes("female"))
+      );
+      if (femaleVoice) return femaleVoice;
+    }
+
+    // 3. Fallback to English voice
+    const enVoice = availableVoices.find(v => v.lang.startsWith("en"));
+    return enVoice || availableVoices[0];
+  }
+
+  function applyPersonaVoice(key) {
+    const persona = PERSONAS[key];
+    if (!persona) return;
+    const voice = getVoiceForPersona(persona);
+    if (voice) {
+      const voiceSelect = document.getElementById("ttsVoiceSelect");
+      const idx = availableVoices.indexOf(voice);
+      if (idx !== -1 && voiceSelect) {
+        voiceSelect.selectedIndex = idx;
+      }
+    }
+  }
+
   function populateVoiceList() {
     if (!synth) return;
     availableVoices = synth.getVoices();
     const voiceSelect = document.getElementById("ttsVoiceSelect");
+    if (!voiceSelect) return;
     voiceSelect.innerHTML = "";
 
     availableVoices.forEach((voice, index) => {
@@ -1376,12 +1578,10 @@
       voiceSelect.appendChild(option);
     });
 
-    // Auto-select preferred natural voice
-    const preferred = availableVoices.findIndex(v => 
-      v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Zira"))
-    );
-    if (preferred !== -1) voiceSelect.selectedIndex = preferred;
+    // Auto-select preferred voice for current persona
+    applyPersonaVoice(currentPersonaKey);
   }
+
   if (synth.onvoiceschanged !== undefined) {
     synth.onvoiceschanged = populateVoiceList;
   }
@@ -1393,24 +1593,28 @@
     const cleanText = text.replace(/[*#_`]/g, ""); // Strip markdown tags for smooth TTS
     currentUtterance = new SpeechSynthesisUtterance(cleanText);
 
-    // Pick selected voice
-    const voiceIdx = document.getElementById("ttsVoiceSelect").selectedIndex;
-    if (availableVoices[voiceIdx]) {
-      currentUtterance.voice = availableVoices[voiceIdx];
+    const persona = PERSONAS[currentPersonaKey];
+    const voice = getVoiceForPersona(persona);
+    if (voice) {
+      currentUtterance.voice = voice;
+      const voiceSelect = document.getElementById("ttsVoiceSelect");
+      const idx = availableVoices.indexOf(voice);
+      if (idx !== -1 && voiceSelect) voiceSelect.selectedIndex = idx;
     }
 
-    currentUtterance.rate = 1.05;
-    currentUtterance.pitch = currentPersonaKey === 'marcus' ? 0.95 : 1.1;
+    // Distinct pitch & rate guarantees voice difference even if platform only has 1 system voice!
+    currentUtterance.rate = persona.rate || 1.04;
+    currentUtterance.pitch = persona.pitch || 1.0;
 
     currentUtterance.onstart = () => {
       isSpeaking = true;
-      document.getElementById("avatarStatusText").textContent = "Speaking...";
+      document.getElementById("avatarStatusText").textContent = `Speaking (${persona.name})...`;
       document.getElementById("statusPulseDot").className = "pulse-dot speaking";
     };
 
     currentUtterance.onboundary = (e) => {
       // Viseme pulse on word boundaries
-      mouthOpen = 0.5 + Math.random() * 0.4;
+      mouthOpen = 0.55 + Math.random() * 0.4;
       animateAudioBars(true);
     };
 
@@ -1599,19 +1803,30 @@
     showToast("Conversation cleared.");
   }
 
-  function switchPersona(key) {
+  function switchPersona(key, speakGreeting = true) {
     if (!PERSONAS[key]) return;
     currentPersonaKey = key;
     const persona = PERSONAS[key];
 
     document.querySelectorAll(".persona-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById(`btn-persona-${key}`).classList.add("active");
+    const activeBtn = document.getElementById(`btn-persona-${key}`);
+    if (activeBtn) activeBtn.classList.add("active");
 
     document.getElementById("currentPersonaName").textContent = persona.name;
     document.getElementById("currentPersonaRole").textContent = persona.role;
 
+    // Apply & select the persona's customized voice profile
+    applyPersonaVoice(key);
+
     interruptAvatar();
-    showToast(`Switched avatar to ${persona.name}.`);
+    showToast(`Switched to ${persona.name} (${persona.gender === 'male' ? 'Male Voice' : 'Female Voice'} • Pitch ${persona.pitch}x)`);
+
+    if (speakGreeting) {
+      setTimeout(() => {
+        appendMessageToStream("avatar", persona.greeting);
+        speakAvatarResponse(persona.greeting);
+      }, 250);
+    }
   }
 
   function switchEngine(val) {
