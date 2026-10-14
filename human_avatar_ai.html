@@ -7,7 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <style>
+  @keyframes avatarSpin { 100% { transform: rotate(360deg); } }
   :root {
     --bg-page: #F8FAFC;
     --bg-card: #FFFFFF;
@@ -711,7 +720,8 @@
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div class="render-mode-switch" title="Toggle Avatar Visual Style">
-          <button class="mode-pill active" id="modeRealBtn" onclick="setAvatarMode('real')">👤 Real Person</button>
+          <button class="mode-pill active" id="mode3dBtn" onclick="setAvatarMode('3d')">🤖 3D Human</button>
+          <button class="mode-pill" id="modeRealBtn" onclick="setAvatarMode('real')">👤 2D Photo</button>
           <button class="mode-pill" id="modeVectorBtn" onclick="setAvatarMode('vector')">🎨 Vector</button>
         </div>
         <button class="btn-icon" id="voiceMuteBtn" onclick="toggleMute()" title="Mute/Unmute Speech">🔊</button>
@@ -721,7 +731,15 @@
 
     <!-- CANVAS VIEWPORT -->
     <div class="canvas-container" id="canvasContainer">
-      <canvas id="avatarCanvas"></canvas>
+      <div id="webglContainer" style="position:absolute; inset:0; width:100%; height:100%; display:block;"></div>
+      <canvas id="avatarCanvas" style="position:absolute; inset:0; width:100%; height:100%; display:none;"></canvas>
+
+      <!-- 3D DIGITAL HUMAN LOADER OVERLAY -->
+      <div id="avatar3dLoading" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 40%, rgba(30, 41, 59, 0.95), rgba(11, 15, 25, 0.98)); color:#F8FAFC; z-index:10; transition:opacity 0.4s ease; pointer-events:none;">
+        <div style="font-size:32px; animation:avatarSpin 1.6s linear infinite; margin-bottom:12px;">⚡</div>
+        <div style="font-weight:700; font-size:14px; letter-spacing:0.02em;">Loading 3D Digital Human...</div>
+        <div style="font-size:11.5px; color:#94A3B8; margin-top:4px;">52 Apple ARKit Blendshapes &bull; WebGL Studio Lighting</div>
+      </div>
 
       <!-- FLOATING STATUS -->
       <div class="avatar-status-pill">
@@ -938,7 +956,280 @@
   };
 
   let currentPersonaKey = 'evelyn';
-  let currentAvatarMode = 'real'; // 'real' for photorealistic studio person, 'vector' for stylized
+  let currentAvatarMode = '3d'; // '3d' (default 3D Digital Human), 'real' (2D photo), 'vector'
+
+  // Three.js 3D Digital Human Engine State
+  let threeScene = null;
+  let threeCamera = null;
+  let threeRenderer = null;
+  let threeHeadGroup = null;
+  let threeFaceMesh = null;
+  let threeMorphDict = {};
+  let isThreeInitialized = false;
+  let isThreeLoading = false;
+  let threeClock = null;
+  let threeKeyLight = null;
+  let threeFillLight = null;
+  let threeRimLight = null;
+
+  function set3DMorph(name, val) {
+    if (threeFaceMesh && threeMorphDict && threeMorphDict[name] !== undefined) {
+      threeFaceMesh.morphTargetInfluences[threeMorphDict[name]] = Math.max(0, Math.min(1, val));
+    }
+  }
+
+  function apply3DPersonaLighting(key) {
+    if (!threeKeyLight || !threeFillLight || !threeRimLight) return;
+    if (key === 'marcus') {
+      threeKeyLight.color.setHex(0xffffff);
+      threeKeyLight.intensity = 2.9;
+      threeFillLight.color.setHex(0x64748b);
+      threeRimLight.color.setHex(0x38bdf8);
+    } else if (key === 'maya') {
+      threeKeyLight.color.setHex(0xfff1e6);
+      threeKeyLight.intensity = 2.8;
+      threeFillLight.color.setHex(0xd8b4fe);
+      threeRimLight.color.setHex(0xfbcfe8);
+    } else {
+      threeKeyLight.color.setHex(0xfff8ee);
+      threeKeyLight.intensity = 2.7;
+      threeFillLight.color.setHex(0x88bbff);
+      threeRimLight.color.setHex(0xa5b4fc);
+    }
+  }
+
+  async function init3DAvatar() {
+    if (isThreeInitialized || isThreeLoading) return;
+    isThreeLoading = true;
+    const loadingEl = document.getElementById("avatar3dLoading");
+    if (loadingEl) {
+      loadingEl.style.display = "flex";
+      loadingEl.style.opacity = "1";
+    }
+
+    try {
+      const THREE = await import('three');
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
+      const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+
+      const container = document.getElementById("webglContainer");
+      const width = container.clientWidth || 440;
+      const height = container.clientHeight || 440;
+
+      threeScene = new THREE.Scene();
+      threeCamera = new THREE.PerspectiveCamera(40, width / height, 0.01, 1000);
+      threeClock = new THREE.Clock();
+
+      threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+      threeRenderer.setSize(width, height);
+      threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+      threeRenderer.toneMappingExposure = 1.25;
+      container.innerHTML = "";
+      container.appendChild(threeRenderer.domElement);
+
+      const ktx2Loader = new KTX2Loader()
+        .setTranscoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/')
+        .detectSupport(threeRenderer);
+
+      // Studio 3-point lighting setup
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.4);
+      threeScene.add(hemiLight);
+
+      threeKeyLight = new THREE.DirectionalLight(0xfff8ee, 2.7);
+      threeKeyLight.position.set(2, 3, 3);
+      threeScene.add(threeKeyLight);
+
+      threeFillLight = new THREE.DirectionalLight(0x88bbff, 1.4);
+      threeFillLight.position.set(-3, 1, 2);
+      threeScene.add(threeFillLight);
+
+      threeRimLight = new THREE.DirectionalLight(0xa5b4fc, 2.2);
+      threeRimLight.position.set(0, 3, -3);
+      threeScene.add(threeRimLight);
+
+      apply3DPersonaLighting(currentPersonaKey);
+
+      const loader = new GLTFLoader();
+      loader.setKTX2Loader(ktx2Loader);
+      loader.setMeshoptDecoder(MeshoptDecoder);
+
+      loader.load('facecap.glb', (gltf) => {
+        threeHeadGroup = gltf.scene;
+        threeScene.add(threeHeadGroup);
+
+        // Auto-center and fit camera to bounding box
+        const box = new THREE.Box3().setFromObject(threeHeadGroup);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        // Center model at origin
+        threeHeadGroup.position.x = -center.x;
+        threeHeadGroup.position.y = -center.y - 0.04;
+        threeHeadGroup.position.z = -center.z;
+
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = threeCamera.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+        threeCamera.position.set(0, 0, cameraZ * 1.38);
+        threeCamera.lookAt(0, 0, 0);
+
+        threeHeadGroup.traverse((child) => {
+          if (child.isMesh && child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0) {
+            threeFaceMesh = child;
+            threeMorphDict = child.morphTargetDictionary;
+            console.log('3D Morph targets loaded on mesh:', child.name, Object.keys(threeMorphDict).length);
+          }
+        });
+
+        // Expose to window for accessibility & testing
+        window.threeScene = threeScene;
+        window.threeCamera = threeCamera;
+        window.threeFaceMesh = threeFaceMesh;
+        window.threeMorphDict = threeMorphDict;
+        window.threeRenderer = threeRenderer;
+        window.set3DMorph = set3DMorph;
+        window.setAvatarMode = setAvatarMode;
+        window.switchPersona = switchPersona;
+        window.setSpeakingState = (speaking) => {
+          isSpeaking = speaking;
+          if (speaking) {
+            speechStartTime = Date.now();
+            mouthOpen = 0.55;
+          } else {
+            mouthOpen = 0;
+          }
+        };
+
+        isThreeInitialized = true;
+        window.isThreeInitialized = true;
+        isThreeLoading = false;
+        if (loadingEl) {
+          loadingEl.style.opacity = "0";
+          setTimeout(() => { if (loadingEl) loadingEl.style.display = "none"; }, 400);
+        }
+        showToast("3D Digital Human ready with 52 Apple ARKit blendshapes!");
+      }, undefined, (err) => {
+        console.error("GLTF load error:", err);
+        isThreeLoading = false;
+        if (loadingEl) loadingEl.style.display = "none";
+        setAvatarMode('real');
+      });
+
+    } catch (err) {
+      console.error("Failed to initialize Three.js 3D avatar:", err);
+      isThreeLoading = false;
+      if (loadingEl) loadingEl.style.display = "none";
+      setAvatarMode('real');
+    }
+  }
+
+  function update3DAvatar() {
+    if (!isThreeInitialized || !threeHeadGroup || !threeRenderer) return;
+
+    const t = threeClock.getElapsedTime();
+
+    // 1. SPEECH ARTICULATION (52 Apple ARKit Blendshapes)
+    if (isSpeaking) {
+      const speechTime = (Date.now() - speechStartTime) * 0.001;
+      // Vibrant biological syllable rhythm (~4 Hz syllable beat + phrase breathing)
+      const syl = (Math.sin(speechTime * 15) + 1) * 0.5; // 0 to 1
+      const word = (Math.sin(speechTime * 6.5) + 1) * 0.5; // 0 to 1
+      const breath = Math.sin(speechTime * 2.2);
+
+      let jawTarget = 0;
+      if (breath > -0.7) {
+        jawTarget = 0.16 + (syl * 0.55 + word * 0.45) * 0.46; // Continuously active between 0.16 and 0.62
+      } else {
+        jawTarget = 0.08; // brief natural clause pause
+      }
+      set3DMorph('jawOpen', Math.min(0.72, jawTarget));
+      set3DMorph('mouthLowerDown_L', jawTarget * 0.45);
+      set3DMorph('mouthLowerDown_R', jawTarget * 0.45);
+
+      // Organic phonetic shape variation (vowel phoneme cycles: O, U, A, E)
+      const vowelCycle = Math.sin(speechTime * 9);
+      set3DMorph('mouthFunnel', Math.max(0, vowelCycle * 0.38));
+      set3DMorph('mouthPucker', Math.max(0, -vowelCycle * 0.28));
+
+      // Dynamic speaking smile & expression
+      const smileAmt = 0.15 + Math.sin(speechTime * 3.0) * 0.12;
+      set3DMorph('mouthSmile_L', smileAmt);
+      set3DMorph('mouthSmile_R', smileAmt);
+
+      // Expressive brow articulation during speech
+      set3DMorph('browInnerUp', 0.18 + Math.max(0, Math.sin(speechTime * 3.8) * 0.3));
+      set3DMorph('browOuterUp_L', Math.max(0, Math.sin(speechTime * 4.0) * 0.22));
+      set3DMorph('browOuterUp_R', Math.max(0, Math.sin(speechTime * 4.0) * 0.22));
+    } else {
+      set3DMorph('jawOpen', 0);
+      set3DMorph('mouthLowerDown_L', 0);
+      set3DMorph('mouthLowerDown_R', 0);
+      set3DMorph('mouthFunnel', 0);
+      set3DMorph('mouthPucker', 0);
+
+      if (isListening) {
+        set3DMorph('mouthSmile_L', 0.28);
+        set3DMorph('mouthSmile_R', 0.28);
+        set3DMorph('browInnerUp', 0.18);
+        set3DMorph('browOuterUp_L', 0.12);
+        set3DMorph('browOuterUp_R', 0.12);
+      } else if (isThinking) {
+        set3DMorph('mouthSmile_L', 0.05);
+        set3DMorph('mouthSmile_R', 0.05);
+        set3DMorph('browDown_L', 0.25);
+        set3DMorph('browDown_R', 0.25);
+        set3DMorph('browInnerUp', 0.35);
+      } else {
+        set3DMorph('mouthSmile_L', 0.18);
+        set3DMorph('mouthSmile_R', 0.18);
+        set3DMorph('browInnerUp', 0.05);
+        set3DMorph('browDown_L', 0);
+        set3DMorph('browDown_R', 0);
+        set3DMorph('browOuterUp_L', 0);
+        set3DMorph('browOuterUp_R', 0);
+      }
+    }
+
+    // 2. NATURAL EYE BLINKING (180ms Bell-curve Flutter with ARKit morphs)
+    set3DMorph('eyeBlink_L', blinkProgress);
+    set3DMorph('eyeBlink_R', blinkProgress);
+
+    // 3. EYE GAZE TRACKING (Mapped to ARKit eyeLook morphs)
+    const gazeX = Math.max(-1, Math.min(1, currentLookX));
+    const gazeY = Math.max(-1, Math.min(1, currentLookY));
+
+    // Horizontal gaze
+    set3DMorph('eyeLookOut_L', Math.max(0, gazeX * 0.7));
+    set3DMorph('eyeLookIn_R', Math.max(0, gazeX * 0.7));
+    set3DMorph('eyeLookIn_L', Math.max(0, -gazeX * 0.7));
+    set3DMorph('eyeLookOut_R', Math.max(0, -gazeX * 0.7));
+
+    // Vertical gaze
+    set3DMorph('eyeLookUp_L', Math.max(0, -gazeY * 0.55));
+    set3DMorph('eyeLookUp_R', Math.max(0, -gazeY * 0.55));
+    set3DMorph('eyeLookDown_L', Math.max(0, gazeY * 0.55));
+    set3DMorph('eyeLookDown_R', Math.max(0, gazeY * 0.55));
+
+    // 4. TRUE 3D HEAD ROTATION & PARALLAX
+    const targetRotY = gazeX * 0.24 + Math.sin(t * 1.1) * 0.025;
+    let targetRotX = -gazeY * 0.14 + Math.sin(t * 0.8) * 0.02;
+
+    if (isSpeaking) {
+      targetRotX += Math.sin((t - speechStartTime * 0.001) * 6.5) * 0.025;
+    } else if (isListening) {
+      targetRotY += 0.035;
+    }
+
+    threeHeadGroup.rotation.y += (targetRotY - threeHeadGroup.rotation.y) * 0.08;
+    threeHeadGroup.rotation.x += (targetRotX - threeHeadGroup.rotation.x) * 0.08;
+
+    // Gentle torso breathing oscillation in 3D
+    threeHeadGroup.position.y += ((-0.015 + Math.sin(t * 1.8) * 0.005) - threeHeadGroup.position.y) * 0.05;
+
+    threeRenderer.render(threeScene, threeCamera);
+  }
 
   // Real Person Photographic Assets with Anatomical Landmark Calibration
   const REAL_PORTRAITS = {
@@ -996,11 +1287,32 @@
 
   function setAvatarMode(mode) {
     currentAvatarMode = mode;
+    const btn3d = document.getElementById("mode3dBtn");
     const realBtn = document.getElementById("modeRealBtn");
     const vecBtn = document.getElementById("modeVectorBtn");
+    const webglContainer = document.getElementById("webglContainer");
+    const avatarCanvas = document.getElementById("avatarCanvas");
+
+    if (btn3d) btn3d.classList.toggle("active", mode === '3d');
     if (realBtn) realBtn.classList.toggle("active", mode === 'real');
     if (vecBtn) vecBtn.classList.toggle("active", mode === 'vector');
-    showToast(`Switched avatar to ${mode === 'real' ? 'Photorealistic Real Person Studio' : 'Stylized Vector Mode'}`);
+
+    if (mode === '3d') {
+      if (webglContainer) webglContainer.style.display = 'block';
+      if (avatarCanvas) avatarCanvas.style.display = 'none';
+      if (!isThreeInitialized && !isThreeLoading) {
+        init3DAvatar();
+      }
+      showToast("Switched to 🤖 3D Digital Human (52 ARKit Blendshapes)");
+    } else if (mode === 'real') {
+      if (webglContainer) webglContainer.style.display = 'none';
+      if (avatarCanvas) avatarCanvas.style.display = 'block';
+      showToast("Switched to 👤 2D Photorealistic Studio Portrait");
+    } else {
+      if (webglContainer) webglContainer.style.display = 'none';
+      if (avatarCanvas) avatarCanvas.style.display = 'block';
+      showToast("Switched to 🎨 Stylized Vector Mode");
+    }
   }
 
   // Obfuscated working Groq fallback key
@@ -1053,18 +1365,28 @@
   // PROCEDURAL AVATAR RENDERER
   // =========================================================================
   function resizeCanvas() {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
+    const container = document.getElementById("canvasContainer");
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
     canvasWidth = rect.width;
     canvasHeight = rect.height;
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    if (threeRenderer && threeCamera) {
+      threeCamera.aspect = rect.width / rect.height;
+      threeCamera.updateProjectionMatrix();
+      threeRenderer.setSize(rect.width, rect.height);
+    }
   }
   window.addEventListener("resize", resizeCanvas);
 
-  // Mouse tracking for eye gaze
+  // Mouse tracking for eye gaze & 3D head parallax
   window.addEventListener("mousemove", (e) => {
-    const rect = canvas.getBoundingClientRect();
+    const container = document.getElementById("canvasContainer");
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
     if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
       lookTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 1.8;
       lookTargetY = ((e.clientY - rect.top) / rect.height - 0.5) * 1.8;
@@ -1607,7 +1929,11 @@
 
   function renderLoop() {
     updateAvatarPhysics();
-    drawAvatar();
+    if (currentAvatarMode === '3d') {
+      update3DAvatar();
+    } else {
+      drawAvatar();
+    }
     animFrameId = requestAnimationFrame(renderLoop);
   }
 
@@ -2039,6 +2365,9 @@
     // Apply & select the persona's customized voice profile
     applyPersonaVoice(key);
 
+    // Apply 3D cinematic lighting profile for persona
+    apply3DPersonaLighting(key);
+
     interruptAvatar();
     showToast(`Switched to ${persona.name} (${persona.gender === 'male' ? 'Male Voice' : 'Female Voice'} • Pitch ${persona.pitch}x)`);
 
@@ -2092,6 +2421,7 @@
     resizeCanvas();
     initSpeechRecognition();
     populateVoiceList();
+    init3DAvatar();
     renderLoop();
   });
 </script>
