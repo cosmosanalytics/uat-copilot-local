@@ -922,7 +922,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         🏢 <span>Level 3: Company</span>
       </button>
       <button class="level-tab l2" id="tabL2" onclick="switchLevel(2)">
-        🏭 <span>Level 2: S&OP Org</span>
+        🏭 <span>Level 2: Org</span>
       </button>
       <button class="level-tab l1" id="tabL1" onclick="switchLevel(1)">
         🧠 <span>Level 1: Mind</span>
@@ -945,12 +945,12 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     </div>
   </header>
 
-  <!-- Sub-Navbar: Interactive Breadcrumb & Telemetry Strip (Org level always is S&OP) -->
+  <!-- Sub-Navbar: Interactive Breadcrumb & Telemetry Strip (Selected at Company level) -->
   <div class="kpi-bar">
     <div class="breadcrumb-trail" id="breadcrumbTrail">
       <span class="crumb active" id="crumbL3" onclick="switchLevel(3)">🏢 Company Value Stream</span>
       <span class="crumb-sep" id="crumbSep1" style="display:none;">➔</span>
-      <span class="crumb" id="crumbL2" style="display:none;" onclick="switchLevel(2)">🏭 S&OP Organization</span>
+      <span class="crumb" id="crumbL2" style="display:none;" onclick="switchLevel(2)">🏭 Organization</span>
       <span class="crumb-sep" id="crumbSep2" style="display:none;">➔</span>
       <span class="crumb" id="crumbL1" style="display:none;" onclick="switchLevel(1)">🧠 Worker Mind</span>
     </div>
@@ -1121,12 +1121,11 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       },
       {
         id: "sop", code: "ORG-02", name: "S&OP Planning Engine",
-        role: "Consensus Orchestrator (Level 2 Org)",
+        role: "Cross-Functional Consensus Orchestrator",
         desc: "11-stage stage-gate reconciliation balancing commercial demand with operational supply constraints.",
         artifact: "Executive Signed Consensus Plan ($28.4M Locked)",
         metrics: { planVal: "$28.4M", fillRate: "94.7%" },
         workers: ["Statistical Forecaster", "Commercial Consensus Lead", "Capacity Allocator", "Executive Arbiter"],
-        isCore: true,
         x: 340, y: 120
       },
       {
@@ -1626,9 +1625,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         { name: "Finance & Treasury", tier: "L3", icon: "💰", desc: "General ledger reconciliation, cash flow, and financial period close." }
       ],
       level2: [
-        { name: "Demand Pod Workers (STG 1-5)", tier: "L2", icon: "📈", desc: "Baseline forecasting, commercial consensus overlay, DC allocation, and net sales order consumption." },
-        { name: "Supply Pod Workers (STG 6-9)", tier: "L2", icon: "⚙️", desc: "Dependent demand BOM explosion, production firming, rough-cut capacity (RCCP), and safety stock buffering." },
-        { name: "Control Pod Arbiters (STG 10-11)", tier: "L2", icon: "⚖️", desc: "Executive cross-functional arbitration, consensus signoff, and real-time SLA/KPI telemetry." }
+        { name: "Commercial & Demand Pod", tier: "L2", icon: "📈", desc: "Lead intake, forecasting, consensus overlay, CPQ pricing, and order net consumption." },
+        { name: "Operations & Supply Pod", tier: "L2", icon: "⚙️", desc: "MRP explosion, works order firming, rough-cut capacity (RCCP), and safety stock buffering." },
+        { name: "Execution & Governance Pod", tier: "L2", icon: "⚖️", desc: "MES plant robotics, WMS logistics routing, 3-way match, and executive signoff arbitration." }
       ],
       level1: [
         { name: "Internal Persona Unit", tier: "L1", icon: "👤", desc: "Distinct cognitive reasoning perspective (Quant, Skeptic, Compliance)." },
@@ -1780,7 +1779,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
 
     /* =========================================================================
-       3. 3-TIER HIERARCHY SWITCHING (ORG LEVEL ALWAYS IS S&OP)
+       3. 3-TIER HIERARCHY SWITCHING (SELECTED VISUALLY AT COMPANY LEVEL)
        ========================================================================= */
     function switchLevel(lvl) {
       currentLevel = lvl;
@@ -1789,8 +1788,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       document.getElementById("tabL1").classList.toggle("active", lvl === 1);
 
       const whLabel = document.getElementById("whContextLabel");
-      activeOrgType = "sop"; // Organization Level is ALWAYS S&OP!
-      const orgInfo = ALL_ORGS["sop"];
+      const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
 
       // Update interactive breadcrumb trail
       const cL3 = document.getElementById("crumbL3");
@@ -1807,28 +1805,29 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         sep2.style.display = "none";
 
         whLabel.innerHTML = "Showing: <strong>Level 3 Enterprise Organizations</strong>";
-        selectedNodeId = "sop";
+        selectedNodeId = activeOrgType;
         showToast("Level 3: Company Value Stream");
       } else if (lvl === 2) {
         cL3.className = "crumb";
         cL2.style.display = "flex";
         cL2.className = "crumb active";
-        cL2.innerHTML = `🏭 S&OP Organization (11 Workers)`;
+        cL2.innerHTML = `🏭 ${orgInfo.name} (${orgInfo.modules.length} Workers)`;
         cL1.style.display = "none";
         sep1.style.display = "inline";
         sep2.style.display = "none";
 
-        whLabel.innerHTML = "Showing: <strong>Level 2 S&OP Organization (11-Step Flow)</strong>";
-        if (!selectedNodeId || !selectedNodeId.startsWith("sop_")) {
-          selectedNodeId = "sop_1";
+        whLabel.innerHTML = `Showing: <strong>Level 2 ${orgInfo.name} Workers (${orgInfo.modules.length} Roles)</strong>`;
+        const hasWorker = orgInfo.modules.some(m => m.id === selectedNodeId);
+        if (!hasWorker) {
+          selectedNodeId = orgInfo.modules[0].id;
         }
-        showToast("Level 2: S&OP Process Flow");
+        showToast(`Level 2: ${orgInfo.name}`);
       } else {
         const currentWorker = findWorkerById(selectedNodeId);
         cL3.className = "crumb";
         cL2.style.display = "flex";
         cL2.className = "crumb";
-        cL2.innerHTML = `🏭 S&OP Organization`;
+        cL2.innerHTML = `🏭 ${orgInfo.name}`;
         cL1.style.display = "flex";
         cL1.className = "crumb active";
         cL1.innerHTML = `🧠 ${currentWorker.name} Mind`;
@@ -1848,7 +1847,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
     // Direct entry from clicking or double-clicking an organization node at Company Level!
     function openOrganizationFromCompany(orgId) {
-      activeOrgType = "sop";
+      if (orgId in ALL_ORGS) {
+        activeOrgType = orgId;
+      }
       switchLevel(2);
       closeAllDrawers();
     }
@@ -1856,32 +1857,36 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
     function drillDownFromInspector() {
       if (currentLevel === 3) {
-        // Open S&OP Organization (Level 2)
-        switchLevel(2);
+        // Open the selected organization's Level 2 workflow
+        openOrganizationFromCompany(selectedNodeId);
       } else if (currentLevel === 2) {
         // Open the selected worker's Level 1 cognitive mind
         switchLevel(1);
       } else {
-        // Return to Level 2 S&OP Organization
+        // Return to Level 2 Organization
         switchLevel(2);
       }
       closeAllDrawers();
     }
 
     function findWorkerById(id) {
-      const sopModules = ALL_ORGS["sop"].modules;
-      const found = sopModules.find(m => m.id === id);
-      if (found) return found;
+      const activeModules = (ALL_ORGS[activeOrgType] || ALL_ORGS["sop"]).modules;
+      const foundInActive = activeModules.find(m => m.id === id);
+      if (foundInActive) return foundInActive;
+
       for (const orgKey in ALL_ORGS) {
-        const f = ALL_ORGS[orgKey].modules.find(m => m.id === id);
-        if (f) return f;
+        const found = ALL_ORGS[orgKey].modules.find(m => m.id === id);
+        if (found) {
+          activeOrgType = orgKey;
+          return found;
+        }
       }
-      return sopModules[0];
+      return activeModules[0];
     }
 
     function getActiveNodes() {
       if (currentLevel === 3) return COMPANY_ORGS;
-      if (currentLevel === 2) return ALL_ORGS["sop"].modules;
+      if (currentLevel === 2) return (ALL_ORGS[activeOrgType] || ALL_ORGS["sop"]).modules;
 
       // Level 1: Worker Mind
       const currentWorker = findWorkerById(selectedNodeId);
@@ -1925,15 +1930,13 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       nodes.forEach(n => {
         const el = document.createElement("div");
         const isL3 = currentLevel === 3;
-        const isSop = n.id === "sop";
-        el.className = `canvas-node ${isL3 && isSop ? "core-org" : ""} ${n.id === selectedNodeId ? "selected" : ""}`;
+        el.className = `canvas-node ${n.id === selectedNodeId ? "selected" : ""}`;
         el.id = `node_${n.id}`;
         el.style.left = `${n.x}px`;
         el.style.top = `${n.y}px`;
 
         let badgeClass = "badge-org";
-        if (isL3 && isSop) badgeClass = "badge-core-org";
-        else if (currentLevel === 2) badgeClass = "badge-worker";
+        if (currentLevel === 2) badgeClass = "badge-worker";
         else if (currentLevel === 1) badgeClass = "badge-cognition";
 
         const mKeys = Object.keys(n.metrics || {});
@@ -1943,10 +1946,10 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           <div class="node-port out"></div>
           <div class="node-bar">
             <div class="node-title-wrap">
-              <span>${isL3 ? (isSop ? "⭐" : "🏢") : currentLevel === 2 ? "⚙️" : "🧠"}</span>
+              <span>${isL3 ? "🏢" : currentLevel === 2 ? "⚙️" : "🧠"}</span>
               <span>${n.name}</span>
             </div>
-            <span class="node-badge-pill ${badgeClass}">${isL3 && isSop ? "Level 2 Org" : n.code}</span>
+            <span class="node-badge-pill ${badgeClass}">${n.code}</span>
           </div>
           <div class="node-content">
             <div class="node-role-label">${n.role}</div>
@@ -1960,21 +1963,21 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           </div>
           <div class="node-foot">
             <span style="font-size:0.62rem; color:var(--text-dim); font-family:var(--font-mono);">
-              ${isL3 ? (isSop ? "Automated Org" : "Enterprise Org") : currentLevel === 2 ? `Tier ${n.tier}` : "Cognitive Unit"}
+              ${isL3 ? "Organization" : currentLevel === 2 ? `Tier ${n.tier}` : "Cognitive Unit"}
             </span>
-            <button class="btn-drill ${isL3 && isSop ? "hud-action-btn accent" : ""}" onclick="event.stopPropagation(); ${
+            <button class="btn-drill" onclick="event.stopPropagation(); ${
               isL3 
-                ? (isSop ? "switchLevel(2);" : `selectNode('${n.id}'); openInspector();`)
+                ? `openOrganizationFromCompany('${n.id}');` 
                 : currentLevel === 2 
                   ? `selectNode('${n.id}'); switchLevel(1);` 
                   : `switchLevel(2);`
             }">
               ${
                 isL3 
-                  ? (isSop ? "🔍 Open S&OP Flow" : "📋 Inspect Role")
+                  ? "🔍 Open Org Flow" 
                   : currentLevel === 2 
                     ? "🧠 View Mind" 
-                    : "⬅ Back to S&OP"
+                    : "⬅ Back to Org"
               }
             </button>
           </div>
@@ -1982,14 +1985,16 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
         // Click to select node
         el.addEventListener("click", () => {
+          if (currentLevel === 3 && n.id in ALL_ORGS) {
+            activeOrgType = n.id;
+          }
           selectNode(n.id);
         });
 
         // Double-click to directly drill down
         el.addEventListener("dblclick", () => {
           if (currentLevel === 3) {
-            // Level 2 is always S&OP!
-            switchLevel(2);
+            openOrganizationFromCompany(n.id);
           } else if (currentLevel === 2) {
             selectNode(n.id);
             switchLevel(1);
@@ -2021,8 +2026,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         wires = COMPANY_WIRES;
         activeNodesList = COMPANY_ORGS;
       } else if (currentLevel === 2) {
-        wires = ALL_ORGS["sop"].wires;
-        activeNodesList = ALL_ORGS["sop"].modules;
+        const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
+        wires = orgInfo.wires;
+        activeNodesList = orgInfo.modules;
       }
 
       if (currentLevel >= 2) {
@@ -2147,11 +2153,12 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       // Update Drill button text
       const drillBtn = document.getElementById("btnInspectDrill");
       if (currentLevel === 3) {
-        drillBtn.textContent = n.id === "sop" ? "🔍 Open S&OP Process Flow (Level 2)" : "🏭 View S&OP Organization (Level 2)";
+        drillBtn.textContent = `🔍 Open ${n.name} (Level 2)`;
       } else if (currentLevel === 2) {
         drillBtn.textContent = `🧠 View ${n.name} Mind (Level 1)`;
       } else {
-        drillBtn.textContent = "⬅ Back to S&OP Organization (Level 2)";
+        const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
+        drillBtn.textContent = `⬅ Back to ${orgInfo.name} (Level 2)`;
       }
     }
 
