@@ -777,7 +777,7 @@
           <img src="avatar_marcus_real.jpg" alt="Marcus" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--border); flex-shrink:0;">
           <div>
             <div style="font-weight:700;">Marcus</div>
-            <div style="font-size:10px; color:var(--text-muted)">Male Baritone &bull; Pitch 0.82x</div>
+            <div style="font-size:10px; color:var(--text-muted)">Male Baritone &bull; Pitch 0.70x</div>
           </div>
         </button>
         <button class="persona-btn" onclick="switchPersona('maya')" id="btn-persona-maya">
@@ -787,6 +787,14 @@
             <div style="font-size:10px; color:var(--text-muted)">Female Warm &bull; Pitch 1.22x</div>
           </div>
         </button>
+      </div>
+
+      <!-- LIVE VOICE SELECTOR & AUDIT -->
+      <div class="voice-picker-row" style="margin-top:10px; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.28); padding:7px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+        <span style="font-size:11px; font-weight:700; color:var(--text-muted); white-space:nowrap;">🎙️ Active Voice:</span>
+        <select id="stageVoiceSelect" onchange="onStageVoiceChange(this.value)" style="flex:1; min-width:0; background:rgba(15,23,42,0.92); color:#F8FAFC; border:1px solid rgba(255,255,255,0.15); border-radius:6px; font-size:11px; padding:4px 8px; cursor:pointer;">
+        </select>
+        <button onclick="testPersonaVoice()" style="background:var(--accent); color:white; border:none; border-radius:6px; font-size:11px; font-weight:600; padding:4px 10px; cursor:pointer; white-space:nowrap;" title="Test Persona Voice Audio">🔊 Test</button>
       </div>
     </div>
   </section>
@@ -923,9 +931,9 @@
       name: "Marcus Chen",
       role: "Cloud Architect & Engineer",
       gender: "male",
-      preferredVoices: ["Microsoft David", "David", "Microsoft Mark", "Mark", "Microsoft Guy", "Guy", "Google UK English Male", "Daniel", "Alex", "Fred", "George", "Oliver", "Kangkang"],
-      pitch: 0.78, // Deep masculine baritone pitch
-      rate: 1.05,
+      preferredVoices: ["Microsoft David", "David", "Microsoft Mark", "Mark", "Microsoft Guy", "Guy", "Google UK English Male", "Google US English Male", "Daniel", "Alex", "Fred", "George", "Oliver", "Kangkang", "Ryan", "Christopher", "Eric", "James", "Richard", "male"],
+      pitch: 0.70, // Deep authentic masculine baritone pitch
+      rate: 1.02,
       avatarColor: "#2563EB",
       skinTone: "#E8B896",
       hairColor: "#111827",
@@ -1302,22 +1310,17 @@
     set3DMorph('eyeLookDown_L', Math.max(0, gazeY * 0.55));
     set3DMorph('eyeLookDown_R', Math.max(0, gazeY * 0.55));
 
-    // 4. TRUE 3D HEAD ROTATION & PARALLAX
-    const targetRotY = gazeX * 0.24 + Math.sin(t * 1.1) * 0.025;
-    let targetRotX = -gazeY * 0.14 + Math.sin(t * 0.8) * 0.02;
-
-    if (isSpeaking) {
-      targetRotX += Math.sin((t - speechStartTime * 0.001) * 6.5) * 0.025;
-    } else if (isListening) {
-      targetRotY += 0.035;
-    }
+    // 4. STEADY 3D POSTURE (Zero autonomous swaying or bobbing back and forth)
+    // Head subtly turns only when following user gaze, perfectly steady and calm
+    const targetRotY = gazeX * 0.10;
+    const targetRotX = -gazeY * 0.06;
 
     threeHeadGroup.rotation.y += (targetRotY - threeHeadGroup.rotation.y) * 0.08;
     threeHeadGroup.rotation.x += (targetRotX - threeHeadGroup.rotation.x) * 0.08;
 
-    // Gentle torso breathing oscillation in 3D
+    // Grounded body position: strictly zero vertical bobbing or drift
     const baseY = threeHeadGroup.userData.baseY || 0;
-    threeHeadGroup.position.y += ((baseY + Math.sin(t * 1.8) * 0.003) - threeHeadGroup.position.y) * 0.05;
+    threeHeadGroup.position.y = baseY;
 
     threeRenderer.render(threeScene, threeCamera);
   }
@@ -1521,58 +1524,43 @@
     currentLookX += (lookTargetX + microGazeX - currentLookX) * 0.12;
     currentLookY += (lookTargetY + microGazeY - currentLookY) * 0.12;
 
-    // 4. Clearly Visible Natural Torso Breathing (5.5px smooth elevation)
-    headDriftY = Math.sin(now * 0.002) * 5.5;
-    headDriftX = Math.sin(now * 0.001) * 3.5;
+    // 4. Grounded, Steady Posture (Strictly zero swaying back and forth or drifting)
+    headDriftY = 0;
+    headDriftX = 0;
+    headTilt = 0;
+    headNodY = 0;
 
-    // 5. Speech Articulation Engine (Lively & Continuous Speech Sync)
+    // 5. Speech Articulation Engine (Pure facial lip-sync & expression, NO whole-body swaying)
     if (isSpeaking) {
       const speechTime = (now - speechStartTime) * 0.001;
-      // Multi-frequency biological phoneme generator (~4.5 Hz syllable beat + phrase breathing)
       const syl = Math.sin(speechTime * 25);
       const word = Math.sin(speechTime * 10);
       const breathPause = Math.sin(speechTime * 3.2);
 
       let targetAperture = 0;
       if (breathPause > -0.7) {
-        // Active speaking: mouth cycles open/closed rhythmically
         targetAperture = Math.max(0, syl * 0.65 + word * 0.35 + 0.3);
       } else {
-        // Natural breath pause between phrases
         targetAperture = 0;
       }
       mouthOpen += (targetAperture - mouthOpen) * 0.32;
-
-      // Active speech head nodding & gesture (clearly visible!)
-      headTilt = (lookTargetX * 0.02) + Math.sin(speechTime * 5.5) * 0.028;
-      headNodY = Math.abs(Math.sin(speechTime * 7.5)) * 4.5;
-      browLift = Math.sin(speechTime * 4) * 2.5;
+      browLift = Math.sin(speechTime * 4) * 1.5;
       smileFactor += (0.45 - smileFactor) * 0.08;
       mouthWidth = 1.0;
     } else if (isListening) {
-      // Attentive listening curiosity tilt + gentle nodding
-      headTilt += ((lookTargetX * 0.02 + 0.04) - headTilt) * 0.08;
-      browLift += (-2.0 - browLift) * 0.08;
+      browLift += (-1.5 - browLift) * 0.08;
       smileFactor += (0.55 - smileFactor) * 0.06;
-      headNodY = Math.sin(now * 0.0035) * 3.0; // gentle listening nod
       mouthOpen += (0 - mouthOpen) * 0.35;
       if (mouthOpen < 0.02) mouthOpen = 0;
       mouthWidth = 1.0;
     } else if (isThinking) {
-      // Contemplative cognitive gaze
-      headTilt += ((lookTargetX * 0.02 - 0.035) - headTilt) * 0.06;
-      browLift += (2.2 - browLift) * 0.08;
+      browLift += (2.0 - browLift) * 0.08;
       smileFactor += (0.25 - smileFactor) * 0.06;
-      headNodY = 0;
       mouthOpen = 0;
       mouthWidth = 0.96;
     } else {
-      // Relaxed idle resting state: gentle ambient sway & living presence
-      const ambientTilt = Math.sin(now * 0.0012) * 0.016; // ±0.9 degree natural sway
-      headTilt += ((lookTargetX * 0.02 + ambientTilt) - headTilt) * 0.06;
       browLift += (0 - browLift) * 0.06;
       smileFactor += (0.4 - smileFactor) * 0.06;
-      headNodY = 0;
       mouthOpen += (0 - mouthOpen) * 0.35;
       if (mouthOpen < 0.01) mouthOpen = 0;
       mouthWidth = 1.0;
@@ -2129,51 +2117,101 @@
   // =========================================================================
   // TEXT-TO-SPEECH (SPEAKING & LIP-SYNC WITH DYNAMIC VOICE SWITCHING)
   // =========================================================================
+  const userSelectedVoices = {
+    marcus: null,
+    evelyn: null,
+    maya: null
+  };
+
+  const FEMALE_VOICE_NAMES = [
+    "female", "woman", "girl", "lady", "zira", "jenny", "samantha", "aria",
+    "victoria", "karen", "hazel", "susan", "catherine", "michelle", "fiona",
+    "huihui", "yaoyao", "moira", "tessa", "veena", "monica", "paulina",
+    "clara", "helena", "laura", "lucia", "maria", "marta", "elena", "carmen",
+    "ana", "rosa", "eva", "ines", "sofia", "sara", "alva", "astrid", "maja",
+    "nora", "linnea", "wilma", "klara", "ebba", "agnes", "ida", "ellen",
+    "alicia", "elsa", "olivia", "alma", "selma", "leonie", "hanna", "mia",
+    "emilia", "lina", "marie", "sophie", "anna", "emma", "julie", "lea",
+    "manon", "camille", "chloe", "louise", "sarah", "zoe", "alice", "lucie",
+    "jeanne", "juliette", "lola", "amelie", "charlotte", "celeste", "margaux",
+    "pauline", "adeline", "clementine", "elise", "justine", "marine", "nadege",
+    "noemie", "audrey", "claire", "helene", "mathilde", "melanie", "morgane",
+    "romane", "solene", "valentine", "virginie", "wendy", "yvonne", "zoey",
+    "ava", "isabella", "harper", "evelyn", "abigail", "emily", "elizabeth",
+    "mila", "ella", "avery", "camila", "scarlett", "madison", "luna",
+    "grace", "penelope", "layla", "riley", "lily", "eleanor", "hannah",
+    "lillian", "addison", "aubrey", "ellie", "stella", "natalie", "leah",
+    "violet", "aurora", "savannah", "brooklyn", "bella", "skylar", "lucy",
+    "paisley", "everly", "caroline", "nova", "genesis", "kennedy", "maya",
+    "willow", "kinsley", "naomi", "aaliyah", "ariana", "allison", "gabriella",
+    "madelyn", "cora", "ruby", "serenity", "autumn", "hailey", "gianna",
+    "valentina", "isla", "eliana", "quinn", "nevaeh", "ivy", "sadie", "piper",
+    "lydia", "alexa", "josephine", "emery", "julia", "delilah", "arianna",
+    "vivian", "kaylee", "brielle", "madeline", "peyton", "rylee", "hadley",
+    "mackenzie", "reagan", "adalaide", "adalyn", "jade", "katherine", "isabelle",
+    "natalia", "faith", "rose", "ashley", "khloe", "brianna", "bailey",
+    "alexandra", "norah", "kayla", "sydney", "lauren", "destiny", "morgan",
+    "vanessa", "kylie", "jocelyn", "paige", "mariah", "marley", "mary",
+    "brooke", "lilah", "miriam"
+  ];
+
+  const MALE_VOICE_NAMES = [
+    "male", "guy", "man", "boy", "david", "mark", "daniel", "george", "alex",
+    "fred", "oliver", "kangkang", "james", "richard", "christopher", "ryan",
+    "steffan", "eric", "brian", "andrew", "jason", "tony", "davis", "roger",
+    "arthur", "aaron", "gordon", "nathan", "tom", "lee", "thomas", "evan",
+    "stephen", "paul", "matthew", "john", "michael", "william", "logan",
+    "benjamin", "lucas", "henry", "alexander", "mason", "ethan", "jacob",
+    "jackson", "sebastian", "jack", "aiden", "owen", "samuel", "joseph",
+    "levi", "mateusz", "pawel", "jakub", "yunxi", "yunjian", "wayne", "ralph",
+    "bruce", "albert", "rishi"
+  ];
+
   function isExplicitMaleVoice(v) {
     if (!v || !v.name) return false;
     const n = (v.name + " " + (v.voiceURI || "")).toLowerCase();
-    // Exclude female names and markers
-    if (n.includes("female") || n.includes("woman") || n.includes("zira") || 
-        n.includes("jenny") || n.includes("samantha") || n.includes("aria") || 
-        n.includes("victoria") || n.includes("karen") || n.includes("hazel") || 
-        n.includes("susan") || n.includes("catherine") || n.includes("michelle") || 
-        n.includes("fiona") || n.includes("huihui") || n.includes("yaoyao")) {
-      return false;
+    for (const f of FEMALE_VOICE_NAMES) {
+      if (new RegExp(`\\b${f}\\b`, "i").test(n)) return false;
     }
-    return n.includes("david") || n.includes("mark") || n.includes("guy") || 
-           n.includes("daniel") || n.includes("george") || n.includes("alex") || 
-           n.includes("fred") || n.includes("oliver") || n.includes("kangkang") || 
-           n.includes("james") || n.includes("richard") || (n.includes("male") && !n.includes("female"));
+    for (const m of MALE_VOICE_NAMES) {
+      if (new RegExp(`\\b${m}\\b`, "i").test(n)) return true;
+    }
+    return false;
   }
 
   function isExplicitFemaleVoice(v) {
     if (!v || !v.name) return false;
     const n = (v.name + " " + (v.voiceURI || "")).toLowerCase();
-    if (n.includes("david") || n.includes("mark") || n.includes("guy") || n.includes("daniel") || n.includes("kangkang")) {
-      return false;
+    for (const m of MALE_VOICE_NAMES) {
+      if (new RegExp(`\\b${m}\\b`, "i").test(n)) return false;
     }
-    return n.includes("female") || n.includes("woman") || n.includes("zira") || 
-           n.includes("jenny") || n.includes("samantha") || n.includes("aria") || 
-           n.includes("michelle") || n.includes("fiona") || n.includes("victoria") || 
-           n.includes("karen") || n.includes("huihui") || n.includes("yaoyao");
+    for (const f of FEMALE_VOICE_NAMES) {
+      if (new RegExp(`\\b${f}\\b`, "i").test(n)) return true;
+    }
+    return false;
   }
 
   function getVoiceForPersona(persona) {
     if (!synth) return null;
-    if (!availableVoices || availableVoices.length === 0) {
-      availableVoices = synth.getVoices();
-    }
-    if (!availableVoices || availableVoices.length === 0) return null;
+    let voices = synth.getVoices();
+    if (!voices || voices.length === 0) voices = availableVoices;
+    if (!voices || voices.length === 0) return null;
 
+    const personaKey = Object.keys(PERSONAS).find(k => PERSONAS[k] === persona) || currentPersonaKey;
     const isMale = persona.gender === "male";
 
-    // 1. Try matching preferred voice names for this persona
+    // 1. User manual override for this persona
+    if (userSelectedVoices[personaKey]) {
+      const manual = voices.find(v => v.name === userSelectedVoices[personaKey]);
+      if (manual) return manual;
+    }
+
+    // 2. Persona preferred voices
     if (persona.preferredVoices) {
       for (const pref of persona.preferredVoices) {
-        const found = availableVoices.find(v => {
-          const matchName = v.name.toLowerCase().includes(pref.toLowerCase());
-          if (!matchName) return false;
-          if (isMale && !isExplicitMaleVoice(v)) return false;
+        const found = voices.find(v => {
+          if (!v.name.toLowerCase().includes(pref.toLowerCase())) return false;
+          if (isMale && isExplicitFemaleVoice(v)) return false;
           if (!isMale && isExplicitMaleVoice(v)) return false;
           return true;
         });
@@ -2181,56 +2219,101 @@
       }
     }
 
-    // 2. Strict gender heuristic
+    // 3. Strict gender matching
     if (isMale) {
-      const maleVoice = availableVoices.find(v => v.lang.startsWith("en") && isExplicitMaleVoice(v));
-      if (maleVoice) return maleVoice;
-      const anyMaleVoice = availableVoices.find(v => isExplicitMaleVoice(v));
-      if (anyMaleVoice) return anyMaleVoice;
+      // Must be male
+      const maleEn = voices.find(v => v.lang.startsWith("en") && isExplicitMaleVoice(v));
+      if (maleEn) return maleEn;
+      const anyMale = voices.find(v => isExplicitMaleVoice(v));
+      if (anyMale) return anyMale;
+      // If no explicit male, find English non-female
+      const nonFemaleEn = voices.find(v => v.lang.startsWith("en") && !isExplicitFemaleVoice(v));
+      if (nonFemaleEn) return nonFemaleEn;
+      const anyNonFemale = voices.find(v => !isExplicitFemaleVoice(v));
+      if (anyNonFemale) return anyNonFemale;
     } else {
-      const femaleVoice = availableVoices.find(v => v.lang.startsWith("en") && isExplicitFemaleVoice(v));
-      if (femaleVoice) return femaleVoice;
-      const anyFemaleVoice = availableVoices.find(v => isExplicitFemaleVoice(v));
-      if (anyFemaleVoice) return anyFemaleVoice;
+      const femaleEn = voices.find(v => v.lang.startsWith("en") && isExplicitFemaleVoice(v));
+      if (femaleEn) return femaleEn;
+      const anyFemale = voices.find(v => isExplicitFemaleVoice(v));
+      if (anyFemale) return anyFemale;
+      const nonMaleEn = voices.find(v => v.lang.startsWith("en") && !isExplicitMaleVoice(v));
+      if (nonMaleEn) return nonMaleEn;
     }
 
-    // 3. Fallback to English voice
-    const enVoice = availableVoices.find(v => v.lang.startsWith("en"));
-    return enVoice || availableVoices[0];
+    return voices.find(v => v.lang.startsWith("en")) || voices[0];
+  }
+
+  function syncVoiceDropdowns(voice) {
+    if (!voice || !availableVoices || availableVoices.length === 0) return;
+    const idx = availableVoices.indexOf(voice);
+    if (idx === -1) return;
+    const stageSelect = document.getElementById("stageVoiceSelect");
+    const modalSelect = document.getElementById("ttsVoiceSelect");
+    if (stageSelect) stageSelect.value = idx;
+    if (modalSelect) modalSelect.value = idx;
   }
 
   function applyPersonaVoice(key) {
     const persona = PERSONAS[key];
     if (!persona) return;
+    if (!availableVoices || availableVoices.length === 0) {
+      if (synth) availableVoices = synth.getVoices();
+    }
     const voice = getVoiceForPersona(persona);
     if (voice) {
-      const voiceSelect = document.getElementById("ttsVoiceSelect");
-      const idx = availableVoices.indexOf(voice);
-      if (idx !== -1 && voiceSelect) {
-        voiceSelect.selectedIndex = idx;
-      }
+      syncVoiceDropdowns(voice);
     }
   }
+
+  function onStageVoiceChange(idx) {
+    idx = parseInt(idx, 10);
+    const v = availableVoices[idx];
+    if (!v) return;
+    userSelectedVoices[currentPersonaKey] = v.name;
+    syncVoiceDropdowns(v);
+    showToast(`Voice set to: ${v.name}`);
+  }
+
+  function testPersonaVoice() {
+    const persona = PERSONAS[currentPersonaKey];
+    const testLines = {
+      marcus: "Hey there! Marcus Chen here. Cloud systems architecture is solid and operational.",
+      evelyn: "Hello! Dr. Evelyn Vance here. Neural architectures are calibrated and ready.",
+      maya: "Hi everyone! Maya Lin here. Ready to align our executive strategy."
+    };
+    speakAvatarResponse(testLines[currentPersonaKey] || persona.greeting);
+  }
+
+  window.onStageVoiceChange = onStageVoiceChange;
+  window.testPersonaVoice = testPersonaVoice;
 
   function populateVoiceList() {
     if (!synth) return;
     availableVoices = synth.getVoices();
-    const voiceSelect = document.getElementById("ttsVoiceSelect");
-    if (!voiceSelect) return;
-    voiceSelect.innerHTML = "";
+    if (!availableVoices || availableVoices.length === 0) return;
 
-    availableVoices.forEach((voice, index) => {
-      const option = document.createElement("option");
-      option.textContent = `${voice.name} (${voice.lang})`;
-      option.value = index;
-      voiceSelect.appendChild(option);
+    const stageSelect = document.getElementById("stageVoiceSelect");
+    const modalSelect = document.getElementById("ttsVoiceSelect");
+
+    [stageSelect, modalSelect].forEach(select => {
+      if (!select) return;
+      select.innerHTML = "";
+      availableVoices.forEach((voice, index) => {
+        const option = document.createElement("option");
+        let genderTag = "";
+        if (isExplicitMaleVoice(voice)) genderTag = " [Male]";
+        else if (isExplicitFemaleVoice(voice)) genderTag = " [Female]";
+        option.textContent = `${voice.name}${genderTag} (${voice.lang})`;
+        option.value = index;
+        select.appendChild(option);
+      });
     });
 
     // Auto-select preferred voice for current persona
     applyPersonaVoice(currentPersonaKey);
   }
 
-  if (synth.onvoiceschanged !== undefined) {
+  if (synth && synth.onvoiceschanged !== undefined) {
     synth.onvoiceschanged = populateVoiceList;
   }
 
@@ -2245,14 +2328,12 @@
     const voice = getVoiceForPersona(persona);
     if (voice) {
       currentUtterance.voice = voice;
-      const voiceSelect = document.getElementById("ttsVoiceSelect");
-      const idx = availableVoices.indexOf(voice);
-      if (idx !== -1 && voiceSelect) voiceSelect.selectedIndex = idx;
+      syncVoiceDropdowns(voice);
     }
 
-    // Distinct pitch & rate guarantees voice difference even if platform only has 1 system voice!
-    currentUtterance.rate = persona.rate || 1.04;
-    currentUtterance.pitch = persona.pitch || 1.0;
+    // Force authentic deep masculine pitch for Marcus (0.70)
+    currentUtterance.rate = persona.rate || 1.0;
+    currentUtterance.pitch = (persona.gender === "male") ? 0.70 : (persona.pitch || 1.05);
 
     currentUtterance.onstart = () => {
       isSpeaking = true;
@@ -2576,6 +2657,8 @@
     resizeCanvas();
     initSpeechRecognition();
     populateVoiceList();
+    setTimeout(populateVoiceList, 250);
+    setTimeout(populateVoiceList, 750);
     init3DAvatar();
     renderLoop();
   });
