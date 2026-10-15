@@ -2,17 +2,14 @@
 """
 build_enterprise_ai_factory_canvas.py
 Builds the standalone 'enterprise_ai_factory_canvas.html':
-- Level 3: Company Level Process (6 Organizations: CRM, S&OP, ERP, MES, WMS, Finance)
-- Level 2: Organization Level Process (Fully linked for ALL 6 Organizations!):
-  * CRM: 4 Commercial Workers
-  * S&OP: 11 Planning Stages
-  * ERP: 8 Core Transactional Modules
-  * MES: 5 Shop Floor Production Stations
-  * WMS: 5 Warehouse & Logistics Steps
-  * Finance: 5 Financial & Treasury Desks
-- Level 1: Mind Level Process (Every single worker across all 6 orgs has their own cognitive mind with Personas, Core Mind, and Cognitive Skills)
-Powered by WebLLM/WebGPU + Groq LPU (~500 tok/s) + Deterministic Assembly Compiler.
-Mobile-first responsive layout, touch gestures, and auto-fit canvas view.
+- Natural Company-level organization selection (NO dropdown selector needed! Organizations are selected directly on the Company canvas).
+- Level 3: Company Level Process (6 Organizations: CRM, S&OP, ERP, MES, WMS, Finance).
+  * Double-clicking or clicking "🔍 Open Org Flow" on ANY organization node drills down directly into that organization's Level 2 workflow.
+- Level 2: Organization Level Process (Workers as Nodes for ALL 6 Organizations).
+- Level 1: Mind Level Process (Cognitive Personas & Skills for EVERY worker).
+- Interactive breadcrumb trail in the sub-navbar allowing one-click return to Company or Org level.
+- Powered by WebLLM/WebGPU + Groq LPU (~500 tok/s) + Deterministic Assembly Compiler.
+- Mobile-first responsive layout, touch gestures, and auto-fit canvas view.
 """
 
 import sys
@@ -222,7 +219,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       cursor: pointer;
     }
 
-    /* Sub-Navbar: Enterprise Telemetry Strip */
+    /* Sub-Navbar: Breadcrumb Trail & Telemetry Strip */
     .kpi-bar {
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
@@ -239,6 +236,44 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       scrollbar-width: none;
     }
     .kpi-bar::-webkit-scrollbar { display: none; }
+
+    /* Interactive Breadcrumb Trail (Replaces dropdown) */
+    .breadcrumb-trail {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .crumb {
+      cursor: pointer;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .crumb:hover {
+      color: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .crumb.active {
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.12);
+      border-color: var(--accent-blue);
+    }
+
+    .crumb-sep {
+      color: var(--text-dim);
+      font-size: 0.65rem;
+    }
 
     .kpi-items {
       display: flex;
@@ -268,18 +303,6 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     .kpi-val.green { color: var(--accent-emerald); }
     .kpi-val.amber { color: var(--accent-amber); }
     .kpi-val.purple { color: var(--accent-purple); }
-
-    .org-view-selector {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--accent-cyan);
-      font-weight: 600;
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-      outline: none;
-      cursor: pointer;
-    }
 
     /* Main App Layout */
     .app-body {
@@ -469,10 +492,10 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-md);
       pointer-events: auto;
-      cursor: default;
+      cursor: pointer;
       display: flex;
       flex-direction: column;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
     }
 
     .canvas-node:hover {
@@ -912,21 +935,17 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     </div>
   </header>
 
-  <!-- Sub-Navbar: Enterprise Telemetry Strip -->
+  <!-- Sub-Navbar: Interactive Breadcrumb & Telemetry Strip (NO dropdown needed!) -->
   <div class="kpi-bar">
-    <div class="kpi-items">
-      <div class="kpi-pill">
-        <span class="kpi-lbl">Active Org (L2):</span>
-        <select class="org-view-selector" id="orgSelector" onchange="switchOrganizationView(this.value)">
-          <option value="crm">CRM & Commercial (4 Workers)</option>
-          <option value="sop" selected>S&OP Planning Swarm (11 Steps)</option>
-          <option value="erp">ERP Core Transactions (8 Modules)</option>
-          <option value="mes">MES Shop Floor (5 Stations)</option>
-          <option value="wms">WMS & Logistics (5 Steps)</option>
-          <option value="fin">Finance & Treasury (5 Desks)</option>
-        </select>
-      </div>
+    <div class="breadcrumb-trail" id="breadcrumbTrail">
+      <span class="crumb active" id="crumbL3" onclick="switchLevel(3)">🏢 Company</span>
+      <span class="crumb-sep" id="crumbSep1" style="display:none;">➔</span>
+      <span class="crumb" id="crumbL2" style="display:none;" onclick="switchLevel(2)">🏭 Org Flow</span>
+      <span class="crumb-sep" id="crumbSep2" style="display:none;">➔</span>
+      <span class="crumb" id="crumbL1" style="display:none;" onclick="switchLevel(1)">🧠 Worker Mind</span>
+    </div>
 
+    <div class="kpi-items">
       <div class="kpi-pill">
         <span class="kpi-lbl">Company Rev:</span>
         <span class="kpi-val cyan" id="kpiRevVal">$124.8M AOP</span>
@@ -946,10 +965,6 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         <span class="kpi-lbl">MES SLA:</span>
         <span class="kpi-val purple" id="kpiSlaVal">96.8% Yield</span>
       </div>
-    </div>
-
-    <div style="font-size:0.68rem; color:var(--accent-cyan); font-weight:600;" id="breadcrumbPill">
-      🏢 Level 3: Enterprise Company Value Stream
     </div>
   </div>
 
@@ -990,7 +1005,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           </button>
           
           <div style="font-size:0.65rem; color:var(--text-dim); line-height:1.4; margin-top:6px;">
-            Hierarchical Fractal Engine: Company (Orgs) ➔ Org (Workers) ➔ Mind (Cognitive Skills & Personas).
+            Select an organization directly on the Company canvas (CRM, S&OP, ERP, MES, WMS, Finance) to explore its worker workflow.
           </div>
         </div>
       </div>
@@ -1079,7 +1094,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     const GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
 
     let currentLevel = 3;       // 3: Company, 2: Organization, 1: Mind
-    let activeOrgType = "sop";  // 'crm', 'sop', 'erp', 'mes', 'wms', 'fin'
+    let activeOrgType = "sop";  // Selected organization at Company Level
     let selectedNodeId = "sop"; // Selected item in current canvas
     let activeEngine = "groq";
 
@@ -1698,7 +1713,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       renderWarehouse();
       selectNode("sop");
       autoFitView();
-      logEvent("Enterprise AI Factory online across Company, All 6 Organizations, and Mind.", "ok");
+      logEvent("Enterprise AI Factory online: Organizations selected visually at Company Level.", "ok");
     }
 
     function applyTransform() {
@@ -1754,7 +1769,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
 
     /* =========================================================================
-       3. 3-TIER HIERARCHY SWITCHING ACROSS ALL 6 ORGS
+       3. 3-TIER HIERARCHY SWITCHING (SELECTED VISUALLY AT COMPANY LEVEL)
        ========================================================================= */
     function switchLevel(lvl) {
       currentLevel = lvl;
@@ -1762,24 +1777,50 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       document.getElementById("tabL2").classList.toggle("active", lvl === 2);
       document.getElementById("tabL1").classList.toggle("active", lvl === 1);
 
-      const pill = document.getElementById("breadcrumbPill");
       const whLabel = document.getElementById("whContextLabel");
-      const orgInfo = ALL_ORGS[activeOrgType];
+      const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
+
+      // Update interactive breadcrumb trail
+      const cL3 = document.getElementById("crumbL3");
+      const cL2 = document.getElementById("crumbL2");
+      const cL1 = document.getElementById("crumbL1");
+      const sep1 = document.getElementById("crumbSep1");
+      const sep2 = document.getElementById("crumbSep2");
 
       if (lvl === 3) {
-        pill.textContent = "🏢 Level 3: Enterprise Company Value Stream";
-        whLabel.innerHTML = "Showing: <strong>Level 3 Organizations</strong>";
+        cL3.className = "crumb active";
+        cL2.style.display = "none";
+        cL1.style.display = "none";
+        sep1.style.display = "none";
+        sep2.style.display = "none";
+
+        whLabel.innerHTML = "Showing: <strong>Level 3 Enterprise Organizations</strong>";
         selectedNodeId = activeOrgType;
         showToast("Level 3: Company Value Stream");
       } else if (lvl === 2) {
-        pill.textContent = `🏭 Level 2: ${orgInfo.name} (${orgInfo.modules.length} Workers)`;
+        cL3.className = "crumb";
+        cL2.style.display = "flex";
+        cL2.className = "crumb active";
+        cL2.innerHTML = `🏭 ${orgInfo.name}`;
+        cL1.style.display = "none";
+        sep1.style.display = "inline";
+        sep2.style.display = "none";
+
         whLabel.innerHTML = `Showing: <strong>Level 2 ${orgInfo.name} Workers</strong>`;
         selectedNodeId = orgInfo.modules[0].id;
-        document.getElementById("orgSelector").value = activeOrgType;
         showToast(`Level 2: ${orgInfo.name}`);
       } else {
         const currentWorker = findWorkerById(selectedNodeId);
-        pill.textContent = `🧠 Level 1: ${currentWorker.name} (${currentWorker.role})`;
+        cL3.className = "crumb";
+        cL2.style.display = "flex";
+        cL2.className = "crumb";
+        cL2.innerHTML = `🏭 ${orgInfo.name}`;
+        cL1.style.display = "flex";
+        cL1.className = "crumb active";
+        cL1.innerHTML = `🧠 ${currentWorker.name}`;
+        sep1.style.display = "inline";
+        sep2.style.display = "inline";
+
         whLabel.innerHTML = "Showing: <strong>Level 1 Cognitive Skills & Personas</strong>";
         selectedNodeId = "core";
         showToast(`Level 1: ${currentWorker.name} Mind`);
@@ -1791,32 +1832,25 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       autoFitView();
     }
 
-    function switchOrganizationView(orgVal) {
-      activeOrgType = orgVal;
-      const orgInfo = ALL_ORGS[orgVal];
-      if (currentLevel === 2) {
-        selectedNodeId = orgInfo.modules[0].id;
-        document.getElementById("breadcrumbPill").textContent = `🏭 Level 2: ${orgInfo.name} (${orgInfo.modules.length} Workers)`;
-        document.getElementById("whContextLabel").innerHTML = `Showing: <strong>Level 2 ${orgInfo.name} Workers</strong>`;
-        renderCurrentCanvas();
-        renderWarehouse();
-        selectNode(selectedNodeId);
-        autoFitView();
+    // Direct entry from clicking or double-clicking an organization node at Company Level!
+    function openOrganizationFromCompany(orgId) {
+      if (orgId in ALL_ORGS) {
+        activeOrgType = orgId;
       }
-      showToast(`Selected: ${orgInfo.name}`);
+      switchLevel(2);
+      closeAllDrawers();
     }
+    const switchOrganizationView = openOrganizationFromCompany;
 
     function drillDownFromInspector() {
       if (currentLevel === 3) {
-        // From Level 3 -> Open the selected organization's Level 2 workflow!
-        activeOrgType = selectedNodeId in ALL_ORGS ? selectedNodeId : "sop";
-        document.getElementById("orgSelector").value = activeOrgType;
-        switchLevel(2);
+        // Open the selected organization's Level 2 workflow
+        openOrganizationFromCompany(selectedNodeId);
       } else if (currentLevel === 2) {
-        // From Level 2 -> Open the selected worker's Level 1 cognitive mind!
+        // Open the selected worker's Level 1 cognitive mind
         switchLevel(1);
       } else {
-        // From Level 1 -> Return to Level 2 Organization!
+        // Return to Level 2 Organization
         switchLevel(2);
       }
       closeAllDrawers();
@@ -1832,7 +1866,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
     function getActiveNodes() {
       if (currentLevel === 3) return COMPANY_ORGS;
-      if (currentLevel === 2) return ALL_ORGS[activeOrgType].modules;
+      if (currentLevel === 2) return (ALL_ORGS[activeOrgType] || ALL_ORGS["sop"]).modules;
 
       // Level 1: Worker Mind
       const currentWorker = findWorkerById(selectedNodeId);
@@ -1910,14 +1944,25 @@ HTML_CONTENT = r'''<!DOCTYPE html>
             <span style="font-size:0.62rem; color:var(--text-dim); font-family:var(--font-mono);">
               ${currentLevel === 3 ? "Organization" : currentLevel === 2 ? `Tier ${n.tier}` : "Cognitive Unit"}
             </span>
-            <button class="btn-drill" onclick="event.stopPropagation(); selectNode('${n.id}'); drillDownFromInspector()">
-              ${currentLevel === 3 ? "🔍 View Org" : currentLevel === 2 ? "🧠 View Mind" : "⬅ Back to Org"}
+            <button class="btn-drill" onclick="event.stopPropagation(); ${currentLevel === 3 ? `openOrganizationFromCompany('${n.id}')` : currentLevel === 2 ? `selectNode('${n.id}'); switchLevel(1);` : `switchLevel(2);`}">
+              ${currentLevel === 3 ? "🔍 Open Org Flow" : currentLevel === 2 ? "🧠 View Mind" : "⬅ Back to Org"}
             </button>
           </div>
         `;
 
+        // Click to select node
         el.addEventListener("click", () => {
           selectNode(n.id);
+        });
+
+        // Double-click to directly drill down
+        el.addEventListener("dblclick", () => {
+          if (currentLevel === 3) {
+            openOrganizationFromCompany(n.id);
+          } else if (currentLevel === 2) {
+            selectNode(n.id);
+            switchLevel(1);
+          }
         });
 
         // Mouse drag
@@ -1945,8 +1990,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         wires = COMPANY_WIRES;
         activeNodesList = COMPANY_ORGS;
       } else if (currentLevel === 2) {
-        wires = ALL_ORGS[activeOrgType].wires;
-        activeNodesList = ALL_ORGS[activeOrgType].modules;
+        const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
+        wires = orgInfo.wires;
+        activeNodesList = orgInfo.modules;
       }
 
       if (currentLevel >= 2) {
@@ -2070,7 +2116,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
       // Update Drill button text
       const drillBtn = document.getElementById("btnInspectDrill");
-      drillBtn.textContent = currentLevel === 3 ? "🔍 View Organization (Level 2)" : currentLevel === 2 ? "🧠 View Worker Mind (Level 1)" : "⬅ Back to Organization (Level 2)";
+      drillBtn.textContent = currentLevel === 3 ? `🔍 Open ${n.name} (Level 2)` : currentLevel === 2 ? `🧠 View ${n.name} Mind (Level 1)` : "⬅ Back to Organization (Level 2)";
     }
 
     /* =========================================================================
@@ -2386,4 +2432,4 @@ Return JSON:
 with open("enterprise_ai_factory_canvas.html", "w", encoding="utf-8") as f:
     f.write(HTML_CONTENT)
 
-print(f"Successfully generated all-6-organizations 'enterprise_ai_factory_canvas.html' ({len(HTML_CONTENT)} bytes)!")
+print(f"Successfully generated clean visual organization selection 'enterprise_ai_factory_canvas.html' ({len(HTML_CONTENT)} bytes)!")
