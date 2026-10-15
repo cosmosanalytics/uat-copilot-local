@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 build_sop_ai_factory_canvas.py
-Generates the complete standalone 'sop_ai_factory_canvas.html' application:
-Level 1: Worker Cognitive Mind Canvas (assembled from cognitive skills & personas)
-Level 2: Enterprise Organization Canvas (11-step S&OP stage-gate workflow)
-Powered by WebLLM/WebGPU + Groq LPU (~500 tok/s) + Deterministic Assembly Compiler.
+Redesigns 'sop_ai_factory_canvas.html' with:
+- Flawless mobile responsive design (full-screen canvas on mobile, sliding bottom-sheet drawers for warehouse & inspector)
+- Collapsible sidebars on desktop
+- Touch gesture support (pan & drag for mobile phones)
+- Smart auto-fit to screen on load
+- High-contrast, sleek modern dark/light UI
 """
 
 import sys
-import os
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -16,7 +17,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>S&OP AI Factory: Level 1 Worker Minds & Level 2 11-Step Organization</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,27 +31,27 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
   <style>
     :root {
-      --bg-primary: #0b0f19;
-      --bg-secondary: #111827;
-      --bg-card: #1a2234;
-      --bg-card-hover: #222d42;
-      --border-color: #2a374f;
-      --border-light: #374151;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --text-dim: #6b7280;
-      --accent-blue: #3b82f6;
+      --bg-primary: #090d16;
+      --bg-secondary: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #26334d;
+      --border-color: #2e3e5c;
+      --border-light: #3b4e74;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-blue: #38bdf8;
       --accent-cyan: #06b6d4;
       --accent-emerald: #10b981;
       --accent-amber: #f59e0b;
-      --accent-purple: #8b5cf6;
+      --accent-purple: #a855f7;
       --accent-rose: #f43f5e;
       --accent-indigo: #6366f1;
       --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
       --font-mono: 'Fira Code', monospace;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+      --shadow-md: 0 4px 8px -1px rgba(0,0,0,0.5);
+      --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.6);
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 14px;
@@ -58,95 +59,84 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
     body.light-mode {
       --bg-primary: #f8fafc;
-      --bg-secondary: #f1f5f9;
-      --bg-card: #ffffff;
-      --bg-card-hover: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-card: #f1f5f9;
+      --bg-card-hover: #e2e8f0;
       --border-color: #cbd5e1;
-      --border-light: #e2e8f0;
+      --border-light: #94a3b8;
       --text-main: #0f172a;
-      --text-muted: #475569;
-      --text-dim: #94a3b8;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --text-muted: #334155;
+      --text-dim: #64748b;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.12);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
+    html, body {
       font-family: var(--font-sans);
       background-color: var(--bg-primary);
       color: var(--text-main);
+      height: 100%;
+      width: 100%;
       overflow: hidden;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      touch-action: none;
     }
 
-    /* Top Navigation Bar */
+    /* Top Application Bar */
     header.app-header {
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
-      height: 58px;
-      padding: 0 1.25rem;
+      height: 52px;
+      padding: 0 0.85rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      z-index: 50;
+      z-index: 60;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       flex-shrink: 0;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
     .brand-logo {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+      font-size: 0.95rem;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
     }
 
-    .brand-title {
-      font-size: 1.05rem;
+    .brand-name {
+      font-size: 0.92rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      white-space: nowrap;
     }
 
-    .brand-title .badge {
-      font-size: 0.65rem;
-      padding: 2px 6px;
-      background: rgba(139, 92, 246, 0.2);
-      border: 1px solid var(--accent-purple);
-      color: #c4b5fd;
-      border-radius: 4px;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    /* Hierarchy Level Switcher (Breadcrumbs / Tabs) */
-    .level-navigation {
+    /* Segmented Level Switcher */
+    .level-switcher {
       display: flex;
       align-items: center;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 3px;
-      gap: 4px;
+      padding: 2px;
+      gap: 2px;
     }
 
-    .level-btn {
-      padding: 6px 14px;
-      font-size: 0.82rem;
+    .level-tab {
+      padding: 5px 12px;
+      font-size: 0.76rem;
       font-weight: 600;
       border-radius: var(--radius-sm);
       border: none;
@@ -155,68 +145,37 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      white-space: nowrap;
       transition: all 0.15s ease;
     }
 
-    .level-btn:hover {
+    .level-tab:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.05);
     }
 
-    .level-btn.active {
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+    .level-tab.active {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
       color: #ffffff;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
     }
 
-    .level-btn.level-1.active {
-      background: linear-gradient(135deg, var(--accent-purple), var(--accent-rose));
-      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+    .level-tab.mind.active {
+      background: linear-gradient(135deg, #9333ea, #db2777);
+      box-shadow: 0 2px 6px rgba(147, 51, 234, 0.4);
     }
 
-    .worker-breadcrumb {
-      font-size: 0.78rem;
-      color: var(--accent-cyan);
+    .header-right {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding-left: 8px;
-      border-left: 1px solid var(--border-color);
+      flex-shrink: 0;
     }
 
-    /* Header Tools */
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .copilot-engine-selector {
-      display: flex;
-      align-items: center;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      gap: 6px;
-    }
-
-    .copilot-engine-selector select {
-      background: transparent;
-      border: none;
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .btn-header {
-      padding: 5px 10px;
-      font-size: 0.75rem;
+    .btn-header-icon {
+      height: 32px;
+      padding: 0 8px;
+      font-size: 0.74rem;
       font-weight: 600;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-color);
@@ -225,57 +184,66 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
-      transition: all 0.15s ease;
-    }
-
-    .btn-header:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--text-muted);
-    }
-
-    .btn-header.primary {
-      background: var(--accent-emerald);
-      color: #ffffff;
-      border-color: transparent;
-    }
-    .btn-header.primary:hover {
-      filter: brightness(1.1);
-    }
-
-    /* Sub-Header S&OP KPI Strip */
-    .kpi-strip {
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-color);
-      padding: 6px 1.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.78rem;
-      flex-shrink: 0;
-      gap: 1rem;
-    }
-
-    .kpi-group {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      overflow-x: auto;
-    }
-
-    .kpi-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      gap: 4px;
       white-space: nowrap;
     }
 
-    .kpi-label {
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-size: 0.68rem;
+    .btn-header-icon:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+    }
+
+    .btn-header-icon.mobile-toggle {
+      display: none;
+    }
+
+    .engine-select-pill {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Sub-Navbar: KPI Strip & Context */
+    .kpi-bar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      height: 34px;
+      padding: 0 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+      gap: 12px;
+      scrollbar-width: none;
+    }
+    .kpi-bar::-webkit-scrollbar { display: none; }
+
+    .kpi-items {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .kpi-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-lbl {
+      color: var(--text-dim);
       font-weight: 600;
-      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-size: 0.65rem;
     }
 
     .kpi-val {
@@ -283,276 +251,159 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       font-weight: 700;
       color: var(--text-main);
     }
+    .kpi-val.cyan { color: var(--accent-blue); }
     .kpi-val.green { color: var(--accent-emerald); }
     .kpi-val.amber { color: var(--accent-amber); }
-    .kpi-val.cyan { color: var(--accent-cyan); }
-    .kpi-val.purple { color: var(--accent-purple); }
 
-    .scenario-picker {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .scenario-picker select {
+    .scenario-dropdown {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 3px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
       outline: none;
     }
 
-    /* Main Layout Workspace */
-    .workspace-container {
+    /* Main App Layout */
+    .app-body {
       display: flex;
       flex: 1;
-      height: calc(100vh - 58px - 36px);
+      height: calc(100vh - 52px - 34px);
       position: relative;
       overflow: hidden;
     }
 
-    /* Left Sidebar: Cognitive / S&OP Warehouse & Copilot */
-    .left-sidebar {
-      width: 330px;
+    /* Left Sidebar: Warehouse & Copilot */
+    .sidebar-left {
+      width: 290px;
       background: var(--bg-secondary);
       border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      z-index: 20;
-      transition: width 0.2s ease;
+      z-index: 30;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease;
     }
 
-    .sidebar-tabs {
-      display: flex;
+    .sidebar-header {
+      padding: 8px 12px;
       border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       background: var(--bg-primary);
     }
 
-    .sidebar-tab-btn {
-      flex: 1;
-      padding: 8px 10px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
+    .tab-btn-group {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      border-bottom: 2px solid transparent;
-      transition: all 0.15s ease;
-    }
-
-    .sidebar-tab-btn.active {
-      color: var(--accent-cyan);
-      border-bottom-color: var(--accent-cyan);
-      background: rgba(6, 182, 212, 0.05);
-    }
-
-    .sidebar-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    /* Warehouse Parts List */
-    .warehouse-section-title {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: var(--text-dim);
-      letter-spacing: 0.05em;
-      margin-top: 0.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .part-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      padding: 8px;
-      cursor: grab;
-      user-select: none;
-      transition: all 0.15s ease;
-      display: flex;
-      flex-direction: column;
       gap: 4px;
     }
 
-    .part-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--accent-blue);
-      transform: translateY(-1px);
+    .tab-btn {
+      padding: 4px 8px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: var(--accent-blue);
       box-shadow: var(--shadow-sm);
     }
 
-    .part-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .part-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .part-tier {
-      font-size: 0.65rem;
-      padding: 1px 5px;
-      border-radius: 3px;
-      font-weight: 600;
-      font-family: var(--font-mono);
-    }
-    .tier-0 { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid #3b82f6; }
-    .tier-1 { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid #8b5cf6; }
-    .tier-2 { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid #f43f5e; }
-
-    .part-desc {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      line-height: 1.3;
-    }
-
-    /* Copilot Chat Assistant Box */
-    .copilot-container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .copilot-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
       padding: 10px;
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .copilot-title {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--accent-cyan);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .copilot-input-area {
-      width: 100%;
-      height: 70px;
-      background: var(--bg-primary);
+    /* Parts Cards */
+    .part-box {
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      font-size: 0.75rem;
-      padding: 6px;
-      resize: none;
-      outline: none;
-    }
-
-    .copilot-input-area:focus {
-      border-color: var(--accent-cyan);
-    }
-
-    .copilot-btn-row {
+      padding: 8px;
+      cursor: grab;
       display: flex;
-      gap: 6px;
-    }
-
-    .btn-copilot {
-      flex: 1;
-      padding: 6px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      border-radius: var(--radius-sm);
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      transition: all 0.15s ease;
-    }
-
-    .btn-copilot.assemble {
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-      color: #ffffff;
-    }
-    .btn-copilot.assemble:hover { filter: brightness(1.1); }
-
-    .btn-copilot.preset {
-      background: var(--bg-card-hover);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-    }
-    .btn-copilot.preset:hover { color: var(--text-main); }
-
-    /* WebLLM Progress Indicator */
-    .webllm-progress {
-      display: none;
-      background: rgba(6, 182, 212, 0.1);
-      border: 1px solid var(--accent-cyan);
-      border-radius: var(--radius-sm);
-      padding: 6px;
-      font-size: 0.7rem;
-      color: var(--accent-cyan);
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      transition: border-color 0.15s ease, transform 0.15s ease;
     }
 
-    .webllm-progress-bar {
-      height: 4px;
-      background: var(--accent-cyan);
-      border-radius: 2px;
-      width: 0%;
-      transition: width 0.2s ease;
+    .part-box:hover {
+      border-color: var(--accent-blue);
+      transform: translateY(-1px);
     }
 
-    /* Center: The Dual-Level Flow Canvas */
-    .canvas-viewport {
+    .part-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .part-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .part-tier-tag {
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .tier-0 { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; border: 1px solid #38bdf8; }
+    .tier-1 { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid #a855f7; }
+    .tier-2 { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid #f43f5e; }
+
+    .part-description {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Center: Full Fluid Canvas Viewport */
+    .canvas-container {
       flex: 1;
       position: relative;
       background-color: var(--bg-primary);
       background-image: 
-        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
-      background-size: 24px 24px;
+        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.08) 1px, transparent 0);
+      background-size: 22px 22px;
       overflow: hidden;
       cursor: grab;
       user-select: none;
+      touch-action: none;
     }
 
-    .canvas-viewport.panning {
+    .canvas-container.panning {
       cursor: grabbing;
     }
 
-    .canvas-world {
+    .canvas-stage {
       position: absolute;
       top: 0;
       left: 0;
-      width: 4000px;
-      height: 4000px;
+      width: 3200px;
+      height: 2400px;
       transform-origin: 0 0;
       pointer-events: none;
     }
 
-    .svg-connections-layer {
+    .svg-layer {
       position: absolute;
       top: 0;
       left: 0;
@@ -562,42 +413,41 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       overflow: visible;
     }
 
-    /* Connection Wires */
-    .connection-path {
+    .connection-line {
       fill: none;
       stroke: #334155;
-      stroke-width: 2.5px;
+      stroke-width: 2.2px;
       stroke-linecap: round;
       pointer-events: stroke;
       transition: stroke 0.2s ease;
     }
 
-    .connection-path:hover {
-      stroke: var(--accent-cyan);
-      stroke-width: 3.5px;
+    .connection-line:hover {
+      stroke: var(--accent-blue);
+      stroke-width: 3px;
     }
 
-    .connection-path.active-pulse {
-      stroke: var(--accent-cyan);
+    .connection-line.pulsing {
+      stroke: var(--accent-blue);
       stroke-width: 3px;
       stroke-dasharray: 6, 6;
-      animation: wireFlow 1.2s linear infinite;
+      animation: dashMove 1.2s linear infinite;
     }
 
-    .connection-path.feedback-wire {
+    .connection-line.feedback {
       stroke: var(--accent-rose);
       stroke-dasharray: 4, 4;
     }
 
-    @keyframes wireFlow {
+    @keyframes dashMove {
       from { stroke-dashoffset: 24; }
       to { stroke-dashoffset: 0; }
     }
 
-    /* Canvas Flow Nodes */
-    .flow-node {
+    /* Canvas Nodes */
+    .canvas-node {
       position: absolute;
-      width: 240px;
+      width: 230px;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
@@ -606,32 +456,32 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       cursor: default;
       display: flex;
       flex-direction: column;
-      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .flow-node:hover {
+    .canvas-node:hover {
       border-color: var(--accent-blue);
-      box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
     }
 
-    .flow-node.selected {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+    .canvas-node.selected {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
     }
 
-    .flow-node.active-stage {
+    .canvas-node.executing {
       border-color: var(--accent-emerald);
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-      animation: pulseBorder 1.5s infinite alternate;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+      animation: executingGlow 1.4s infinite alternate;
     }
 
-    @keyframes pulseBorder {
+    @keyframes executingGlow {
       from { border-color: var(--accent-emerald); }
-      to { border-color: var(--accent-cyan); }
+      to { border-color: var(--accent-blue); }
     }
 
-    .node-header {
-      padding: 8px 10px;
+    .node-bar {
+      padding: 7px 10px;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -641,85 +491,84 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       background: rgba(255, 255, 255, 0.02);
     }
 
-    .node-title-group {
+    .node-title-wrap {
       display: flex;
       align-items: center;
       gap: 6px;
-    }
-
-    .node-icon {
-      font-size: 1rem;
-    }
-
-    .node-title {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
     }
 
-    .node-badge {
-      font-size: 0.65rem;
-      font-weight: 600;
-      padding: 2px 6px;
+    .node-pod-pill {
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 1px 5px;
       border-radius: 4px;
-      text-transform: uppercase;
       font-family: var(--font-mono);
+      text-transform: uppercase;
     }
+    .pod-demand { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid #38bdf8; }
+    .pod-supply { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid #f59e0b; }
+    .pod-control { background: rgba(16, 185, 129, 0.2); color: #a7f3d0; border: 1px solid #10b981; }
 
-    .badge-demand { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid #3b82f6; }
-    .badge-supply { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid #f59e0b; }
-    .badge-control { background: rgba(16, 185, 129, 0.2); color: #a7f3d0; border: 1px solid #10b981; }
-
-    .node-body {
+    .node-content {
       padding: 8px 10px;
-      font-size: 0.72rem;
-      color: var(--text-muted);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
+      font-size: 0.7rem;
     }
 
-    .node-metric-row {
+    .node-worker-label {
+      font-weight: 600;
+      color: var(--text-main);
+      font-size: 0.72rem;
+    }
+
+    .node-desc-text {
+      color: var(--text-muted);
+      line-height: 1.35;
+      font-size: 0.68rem;
+    }
+
+    .node-metrics-box {
       display: flex;
       justify-content: space-between;
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      padding: 3px 6px;
       background: var(--bg-primary);
-      border-radius: var(--radius-sm);
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
     }
 
-    .node-footer {
+    .node-foot {
       padding: 6px 10px;
       border-top: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.12);
       border-radius: 0 0 var(--radius-md) var(--radius-md);
     }
 
-    .btn-drilldown {
+    .btn-mind-open {
       background: transparent;
       border: 1px solid var(--border-color);
       color: var(--accent-cyan);
-      padding: 3px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.68rem;
       font-weight: 600;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.15s ease;
     }
 
-    .btn-drilldown:hover {
+    .btn-mind-open:hover {
       background: rgba(6, 182, 212, 0.15);
       border-color: var(--accent-cyan);
     }
 
-    /* Node Ports for Bezier Connectors */
-    .port {
+    /* Node Ports */
+    .node-port {
       width: 10px;
       height: 10px;
       border-radius: 50%;
@@ -728,111 +577,66 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      transition: background 0.2s ease, transform 0.2s ease;
-      cursor: crosshair;
     }
+    .node-port.in { left: -5px; }
+    .node-port.out { right: -5px; }
 
-    .port.input-port { left: -5px; }
-    .port.output-port { right: -5px; }
-    .flow-node:hover .port { background: var(--accent-cyan); transform: translateY(-50%) scale(1.2); }
-
-    /* Canvas Floating Overlay Controls */
-    .canvas-hud {
+    /* Canvas Controls Bar (Floating bottom) */
+    .canvas-hud-bar {
       position: absolute;
-      bottom: 16px;
-      left: 16px;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 6px 10px;
+      padding: 5px 8px;
       box-shadow: var(--shadow-lg);
-      z-index: 30;
+      z-index: 40;
+      white-space: nowrap;
     }
 
-    .hud-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 5px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
+    .hud-action-btn {
+      padding: 5px 9px;
+      font-size: 0.72rem;
       font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 4px;
     }
 
-    .hud-btn:hover {
+    .hud-action-btn:hover {
       background: var(--bg-card-hover);
       border-color: var(--accent-blue);
     }
 
-    .hud-btn.primary {
+    .hud-action-btn.accent {
       background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan));
       color: #ffffff;
       border-color: transparent;
     }
 
-    /* Right Sidebar: Inspector & Execution Telemetry */
-    .right-sidebar {
-      width: 350px;
+    /* Right Sidebar: Inspector & Live Stream */
+    .sidebar-right {
+      width: 310px;
       background: var(--bg-secondary);
       border-left: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      z-index: 20;
+      z-index: 30;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease;
     }
 
-    .inspector-header {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.82rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .inspector-tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border-color);
-      background: var(--bg-primary);
-    }
-
-    .inspector-tab-btn {
-      flex: 1;
-      padding: 6px 8px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      text-align: center;
-    }
-
-    .inspector-tab-btn.active {
-      color: var(--accent-cyan);
-      border-bottom: 2px solid var(--accent-cyan);
-      background: rgba(6, 182, 212, 0.05);
-    }
-
-    .inspector-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    /* Worker Mind Details Card */
-    .mind-card {
+    .inspector-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
@@ -842,64 +646,83 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       gap: 8px;
     }
 
-    .mind-persona-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(139, 92, 246, 0.15);
-      border: 1px solid var(--accent-purple);
-      color: #c4b5fd;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-
-    .mind-skill-tag {
+    .persona-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid var(--accent-purple);
+      color: #d8b4fe;
+      padding: 2px 7px;
+      border-radius: 12px;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    .skill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      padding: 2px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-family: var(--font-mono);
       color: var(--text-muted);
     }
 
-    /* Terminal & Live Execution Stream */
-    .live-stream-box {
+    .stream-console {
       flex: 1;
-      background: #060911;
+      background: #050811;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      padding: 8px;
+      padding: 6px 8px;
       font-family: var(--font-mono);
-      font-size: 0.72rem;
-      color: #a7f3d0;
+      font-size: 0.68rem;
+      color: #86efac;
       overflow-y: auto;
+      height: 180px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      height: 220px;
+      gap: 3px;
     }
 
-    .log-line {
+    .stream-line {
       display: flex;
-      gap: 6px;
-      line-height: 1.4;
+      gap: 5px;
       word-break: break-all;
     }
+    .stream-tag { font-weight: 700; color: var(--accent-blue); }
+    .stream-tag.ok { color: var(--accent-emerald); }
+    .stream-tag.warn { color: var(--accent-amber); }
 
-    .log-time { color: var(--text-dim); }
-    .log-tag { font-weight: 700; color: var(--accent-cyan); }
-    .log-tag.warn { color: var(--accent-amber); }
-    .log-tag.err { color: var(--accent-rose); }
-    .log-tag.ok { color: var(--accent-emerald); }
+    /* Copilot UI inside Sidebar */
+    .copilot-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-    /* Modal for BOM Receipt */
-    .modal-backdrop {
+    .copilot-area {
+      width: 100%;
+      height: 75px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 6px;
+      font-size: 0.72rem;
+      resize: none;
+      outline: none;
+    }
+
+    .copilot-area:focus {
+      border-color: var(--accent-blue);
+    }
+
+    /* Modal Backdrop */
+    .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -910,9 +733,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       justify-content: center;
     }
 
-    .modal-card {
-      width: 600px;
-      max-width: 90vw;
+    .modal-box {
+      width: 620px;
+      max-width: 92vw;
       max-height: 85vh;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
@@ -923,559 +746,491 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       overflow: hidden;
     }
 
-    .modal-header {
-      padding: 12px 16px;
+    .modal-bar {
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
       font-weight: 700;
+      font-size: 0.85rem;
     }
 
-    .modal-body {
-      padding: 16px;
+    .modal-scroll {
+      padding: 14px;
       overflow-y: auto;
       font-family: var(--font-mono);
-      font-size: 0.78rem;
-      color: var(--text-main);
+      font-size: 0.72rem;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .bom-table {
+    .bom-grid {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
     }
-
-    .bom-table th, .bom-table td {
+    .bom-grid th, .bom-grid td {
       border: 1px solid var(--border-color);
-      padding: 6px 8px;
+      padding: 5px 7px;
       text-align: left;
     }
+    .bom-grid th { background: var(--bg-primary); color: var(--accent-blue); }
 
-    .bom-table th {
-      background: var(--bg-primary);
-      color: var(--accent-cyan);
-    }
-
-    /* Toast Notification */
-    .toast {
+    /* Toast */
+    .toast-pill {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
+      top: 58px;
+      left: 50%;
+      transform: translateX(-50%);
       background: var(--bg-card);
-      border: 1px solid var(--accent-cyan);
+      border: 1px solid var(--accent-blue);
       color: var(--text-main);
-      padding: 8px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.74rem;
       box-shadow: var(--shadow-lg);
       z-index: 200;
       display: none;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    /* =========================================================================
+       RESPONSIVE MOBILE / TABLET DESIGN BREAKPOINT (< 1024px)
+       ========================================================================= */
+    @media (max-width: 1023px) {
+      header.app-header {
+        padding: 0 0.5rem;
+      }
+      .brand-name {
+        display: none;
+      }
+      .btn-header-icon.mobile-toggle {
+        display: flex;
+      }
+      .btn-header-icon.desktop-only {
+        display: none;
+      }
+
+      /* Sidebars become bottom-sheet sliding drawers */
+      .sidebar-left, .sidebar-right {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 70vh;
+        max-height: 520px;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 -8px 24px rgba(0,0,0,0.7);
+        transform: translateY(105%);
+        z-index: 90;
+      }
+
+      .sidebar-left.open, .sidebar-right.open {
+        transform: translateY(0);
+      }
+
+      /* Backdrop when drawer is open */
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 85;
+        display: none;
+      }
+      .drawer-backdrop.active {
+        display: block;
+      }
+
+      .canvas-hud-bar {
+        bottom: 10px;
+        width: 95%;
+        justify-content: space-around;
+        padding: 4px;
+      }
+
+      .hud-action-btn span.label {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
+  <!-- Drawer Backdrop (for mobile) -->
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllDrawers()"></div>
+
+  <!-- Top Navigation Header -->
   <header class="app-header">
-    <div class="brand">
+    <div class="brand-section">
       <div class="brand-logo">⚙️</div>
-      <div class="brand-title">
-        S&OP AI Factory
-        <span class="badge">Level 1 &bull; Level 2</span>
-      </div>
+      <div class="brand-name">S&OP AI Factory</div>
     </div>
 
-    <!-- Hierarchy Switcher: Level 2 Organization vs Level 1 Worker Mind -->
-    <div class="level-navigation">
-      <button class="level-btn active" id="btnNavLevel2" onclick="switchHierarchyLevel(2)">
-        🏢 Level 2: 11-Step S&OP Organization
+    <!-- Segmented Level Switcher -->
+    <div class="level-switcher">
+      <button class="level-tab active" id="tabL2" onclick="switchLevel(2)">
+        🏢 <span>Level 2: S&OP Flow</span>
       </button>
-      <button class="level-btn level-1" id="btnNavLevel1" onclick="switchHierarchyLevel(1)">
-        🧠 Level 1: Worker Cognitive Mind
+      <button class="level-tab mind" id="tabL1" onclick="switchLevel(1)">
+        🧠 <span>Level 1: Worker Mind</span>
       </button>
-      <div class="worker-breadcrumb" id="workerBreadcrumb">
-        <span>Selected:</span>
-        <strong id="breadcrumbWorkerName">Stage 2 &bull; Forecaster</strong>
-      </div>
     </div>
 
-    <!-- Header Actions -->
-    <div class="header-actions">
-      <!-- AI Engine Selector -->
-      <div class="copilot-engine-selector">
-        <span>AI Engine:</span>
-        <select id="engineSelect" onchange="onAiEngineChange(this.value)">
-          <option value="groq" selected>Groq LPU (GPT-OSS 120B &bull; ~500 tok/s)</option>
-          <option value="webgpu">WebGPU WebLLM (Llama-3.2-1B Local)</option>
-          <option value="rules">Deterministic Cognitive Compiler</option>
-        </select>
-      </div>
+    <!-- Right Header Tools -->
+    <div class="header-right">
+      <button class="btn-header-icon mobile-toggle" onclick="toggleDrawer('left')">📦 Parts</button>
+      <button class="btn-header-icon mobile-toggle" onclick="toggleDrawer('right')">🔍 Inspector</button>
 
-      <button class="btn-header" onclick="openBomModal()">📋 BOM Receipt</button>
-      <button class="btn-header" id="themeToggleBtn" onclick="toggleTheme()">☀️</button>
+      <select class="engine-select-pill" id="engineSelect" onchange="setEngine(this.value)">
+        <option value="groq" selected>Groq LPU (~500 tok/s)</option>
+        <option value="webgpu">WebGPU Local</option>
+        <option value="rules">Deterministic</option>
+      </select>
+
+      <button class="btn-header-icon desktop-only" onclick="showBomModal()">📋 BOM</button>
+      <button class="btn-header-icon" id="themeBtn" onclick="toggleTheme()">☀️</button>
     </div>
   </header>
 
-  <!-- Sub-Header: S&OP KPI Strip -->
-  <div class="kpi-strip">
-    <div class="kpi-group">
-      <div class="kpi-item">
-        <span class="kpi-label">Active Scenario:</span>
-        <div class="scenario-picker">
-          <select id="scenarioSelect" onchange="loadScenario(this.value)">
-            <option value="0">Q4 Enterprise Router XR-900 (Demand Surge)</option>
-            <option value="1">Global ASIC Supply Bottleneck (-30% Allocation)</option>
-            <option value="2">New Product Introduction (NPI Accelerated Launch)</option>
-          </select>
-        </div>
+  <!-- Sub-Navbar KPI Bar -->
+  <div class="kpi-bar">
+    <div class="kpi-items">
+      <div class="kpi-pill">
+        <span class="kpi-lbl">Scenario:</span>
+        <select class="scenario-dropdown" id="scenarioDropdown" onchange="pickScenario(this.value)">
+          <option value="0">Q4 Enterprise Router Surge ($25M Baseline)</option>
+          <option value="1">Global ASIC Supply Bottleneck (-30%)</option>
+          <option value="2">New Product Introduction (NPI Accelerated)</option>
+        </select>
       </div>
-      <div class="kpi-item">
-        <span class="kpi-label">Unconstrained Demand:</span>
-        <span class="kpi-val cyan" id="kpiDemand">$30.0M (15,000 units)</span>
+
+      <div class="kpi-pill">
+        <span class="kpi-lbl">Demand:</span>
+        <span class="kpi-val cyan" id="kpiDemandVal">$30.0M (15k u)</span>
       </div>
-      <div class="kpi-item">
-        <span class="kpi-label">Constrained Supply:</span>
-        <span class="kpi-val green" id="kpiSupply">$28.4M (14,200 units)</span>
+
+      <div class="kpi-pill">
+        <span class="kpi-lbl">Supply:</span>
+        <span class="kpi-val green" id="kpiSupplyVal">$28.4M (14.2k u)</span>
       </div>
-      <div class="kpi-item">
-        <span class="kpi-label">Gap / Variance:</span>
-        <span class="kpi-val amber" id="kpiGap">-$1.6M (-5.3%)</span>
+
+      <div class="kpi-pill">
+        <span class="kpi-lbl">Variance:</span>
+        <span class="kpi-val amber" id="kpiGapVal">-$1.6M (-5.3%)</span>
       </div>
-      <div class="kpi-item">
-        <span class="kpi-label">S&OP Service SLA:</span>
-        <span class="kpi-val purple" id="kpiSla">94.7% Fill Rate</span>
+
+      <div class="kpi-pill">
+        <span class="kpi-lbl">SLA:</span>
+        <span class="kpi-val green" id="kpiSlaVal">94.7% Fill</span>
       </div>
     </div>
 
-    <div>
-      <span class="kpi-label">Cycle Status:</span>
-      <span class="mind-persona-pill" id="kpiCycleStatus">READY &bull; STAGE 1–11</span>
+    <div style="font-size:0.68rem; color:var(--accent-purple); font-weight:600;" id="activeWorkerTag">
+      ● STG-02: Forecaster
     </div>
   </div>
 
-  <!-- Main Workspace -->
-  <div class="workspace-container">
+  <!-- Workspace Container -->
+  <div class="app-body">
 
-    <!-- Left Sidebar: Cognitive / S&OP Parts Warehouse & Copilot -->
-    <aside class="left-sidebar">
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab-btn active" id="tabWarehouseBtn" onclick="switchSidebarTab('warehouse')">
-          📦 Parts Warehouse
-        </button>
-        <button class="sidebar-tab-btn" id="tabCopilotBtn" onclick="switchSidebarTab('copilot')">
-          🤖 AI Copilot
-        </button>
+    <!-- Left Sidebar: Parts Warehouse & Copilot -->
+    <aside class="sidebar-left" id="sidebarLeft">
+      <div class="sidebar-header">
+        <div class="tab-btn-group">
+          <button class="tab-btn active" id="tabWhBtn" onclick="showLeftTab('warehouse')">📦 Warehouse</button>
+          <button class="tab-btn" id="tabCoBtn" onclick="showLeftTab('copilot')">🤖 Copilot</button>
+        </div>
+        <button class="btn-header-icon mobile-toggle" onclick="closeAllDrawers()">✕</button>
       </div>
 
       <!-- Warehouse Tab Content -->
-      <div class="sidebar-content" id="sidebarWarehouseContent">
-        <div id="warehouseContextNotice" style="font-size:0.72rem; color:var(--accent-cyan); background:rgba(6,182,212,0.1); padding:6px; border-radius:var(--radius-sm);">
-          Showing parts for: <strong id="warehouseModeLabel">Level 2 Organization (S&OP Pods)</strong>
+      <div class="sidebar-scroll" id="contentWarehouse">
+        <div style="font-size:0.68rem; color:var(--accent-blue); padding-bottom:4px;" id="whContextLabel">
+          Showing: <strong>Level 2 S&OP Pods</strong>
         </div>
-
-        <div id="warehousePartsContainer">
-          <!-- Dynamically populated based on Level 1 or Level 2 -->
-        </div>
+        <div id="warehouseList" style="display:flex; flex-direction:column; gap:6px;"></div>
       </div>
 
       <!-- Copilot Tab Content -->
-      <div class="sidebar-content" id="sidebarCopilotContent" style="display:none;">
-        <div class="copilot-container">
-          <div class="copilot-box">
-            <div class="copilot-title">
-              ⚡ Autonomous Assembly Copilot
-            </div>
-            <div style="font-size:0.72rem; color:var(--text-muted);">
-              Tell the copilot how to assemble or tune either a <strong>Level 1 Worker's Mind</strong> or the <strong>Level 2 S&OP Flow</strong>:
-            </div>
-            <textarea class="copilot-input-area" id="copilotInput" placeholder="e.g. Build an aggressive Commercial Consensus Agent with Bayesian promo uplift and Cedar safety gate..."></textarea>
-            
-            <!-- WebLLM Download Progress -->
-            <div class="webllm-progress" id="webllmProgressBox">
-              <span id="webllmStatusText">Downloading Llama-3.2-1B...</span>
-              <div class="webllm-progress-bar" id="webllmProgressBar"></div>
-            </div>
-
-            <div class="copilot-btn-row">
-              <button class="btn-copilot assemble" onclick="runAiCopilotAssembly()">
-                ⚡ Assemble with AI
-              </button>
-              <button class="btn-copilot preset" onclick="loadCopilotPreset(1)">
-                Preset: Quant Forecaster
-              </button>
-            </div>
+      <div class="sidebar-scroll" id="contentCopilot" style="display:none;">
+        <div class="copilot-panel">
+          <div style="font-size:0.75rem; font-weight:700; color:var(--accent-blue);">
+            Autonomous Assembly Copilot
           </div>
-
-          <div style="font-size:0.7rem; color:var(--text-dim); line-height:1.4;">
-            <strong>7-Step Assembly Protocol:</strong><br>
-            1. Invariants &bull; 2. Match Parts &bull; 3. Dependencies &bull; 4. Tier Gate &bull; 5. Safety Kit &bull; 6. Watch-Outs &bull; 7. Bill of Materials (BOM)
+          <div style="font-size:0.68rem; color:var(--text-muted);">
+            Assemble a Level 1 Worker Mind or tune Level 2 S&OP Flow:
+          </div>
+          <textarea class="copilot-area" id="copilotTextInput" placeholder="e.g. Build an aggressive Commercial Consensus Agent with Bayesian promo uplift..."></textarea>
+          
+          <button class="hud-action-btn accent" style="width:100%; justify-content:center;" onclick="executeCopilot()">
+            ⚡ Assemble with Copilot
+          </button>
+          
+          <div style="font-size:0.65rem; color:var(--text-dim); line-height:1.4; margin-top:6px;">
+            Uses the 7-Step Assembly Protocol: Invariants → Match Parts → Dependencies → Tier Gate → Safety Kit → Watch-Outs → BOM.
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- Center: Interactive Dual-Level Canvas -->
-    <main class="canvas-viewport" id="canvasViewport">
-      <div class="canvas-world" id="canvasWorld">
-        <!-- SVG Connections Layer -->
-        <svg class="svg-connections-layer" id="svgConnectionsLayer">
-          <!-- Dynamically drawn bezier paths -->
-        </svg>
-
-        <!-- Dynamic Flow Nodes Container -->
-        <div id="nodesContainer">
-          <!-- Flow nodes rendered here -->
-        </div>
+    <!-- Center: Full Canvas Viewport -->
+    <main class="canvas-container" id="canvasViewport">
+      <div class="canvas-stage" id="canvasStage">
+        <svg class="svg-layer" id="svgLayer"></svg>
+        <div id="nodesLayer"></div>
       </div>
 
-      <!-- Canvas Floating HUD Overlay -->
-      <div class="canvas-hud">
-        <button class="hud-btn primary" id="btnRunCycle" onclick="runSimulationCycle()">
-          ▶ Run 11-Step S&OP Cycle
+      <!-- Floating HUD Bar -->
+      <div class="canvas-hud-bar">
+        <button class="hud-action-btn accent" onclick="startCycle()">
+          <span>▶</span> <span class="label">Run Cycle</span>
         </button>
-        <button class="hud-btn" id="btnStepStage" onclick="stepSimulationStage()">
-          ⚡ Step Stage
+        <button class="hud-action-btn" onclick="stepStage()">
+          <span>⚡</span> <span class="label">Step</span>
         </button>
-        <button class="hud-btn" onclick="resetSimulation()">
-          🔄 Reset
+        <button class="hud-action-btn" onclick="resetCycle()">
+          <span>🔄</span> <span class="label">Reset</span>
         </button>
-        <div style="width:1px; height:20px; background:var(--border-color); margin:0 4px;"></div>
-        <button class="hud-btn" onclick="zoomCanvas(1.15)">➕ Zoom In</button>
-        <button class="hud-btn" onclick="zoomCanvas(0.85)">➖ Zoom Out</button>
-        <button class="hud-btn" onclick="resetCanvasView()">🎯 Center View</button>
+        <button class="hud-action-btn" onclick="autoFitView()">
+          <span>🎯</span> <span class="label">Fit View</span>
+        </button>
+        <button class="hud-action-btn" onclick="zoomIn()">
+          <span>➕</span>
+        </button>
+        <button class="hud-action-btn" onclick="zoomOut()">
+          <span>➖</span>
+        </button>
       </div>
     </main>
 
-    <!-- Right Sidebar: Inspector & Telemetry Stream -->
-    <aside class="right-sidebar">
-      <div class="inspector-header">
-        <span id="inspectorTitle">🔍 Stage & Worker Inspector</span>
-        <span class="part-tier tier-1" id="inspectorTierBadge">Tier 1</span>
+    <!-- Right Sidebar: Inspector & Stream -->
+    <aside class="sidebar-right" id="sidebarRight">
+      <div class="sidebar-header">
+        <div style="font-size:0.76rem; font-weight:700;" id="inspectorHeaderTitle">
+          🔍 Stage Specifications
+        </div>
+        <button class="btn-header-icon mobile-toggle" onclick="closeAllDrawers()">✕</button>
       </div>
 
-      <div class="inspector-tabs">
-        <button class="inspector-tab-btn active" id="tabInspectDetailsBtn" onclick="switchInspectorTab('details')">
-          ⚙️ Specifications
-        </button>
-        <button class="inspector-tab-btn" id="tabInspectStreamBtn" onclick="switchInspectorTab('stream')">
-          📜 Live Stream
-        </button>
-      </div>
-
-      <div class="inspector-body" id="inspectDetailsTab">
-        <!-- Details Card -->
-        <div class="mind-card" id="inspectorContentCard">
-          <div style="font-size:0.75rem; color:var(--text-muted);" id="inspectNodeDesc">
-            Select any node on the canvas to inspect its cognitive mind, internal personas, and S&OP outputs.
-          </div>
+      <div class="sidebar-scroll">
+        <div class="inspector-card" id="inspectorBodyCard">
+          <!-- Populated dynamically -->
         </div>
 
-        <div style="margin-top:auto; display:flex; flex-direction:column; gap:6px;">
-          <button class="hud-btn primary" id="btnOpenMindLevel1" style="width:100%; justify-content:center;" onclick="drillIntoCurrentSelectedWorker()">
-            🧠 Open Worker Cognitive Mind (Level 1)
-          </button>
-        </div>
-      </div>
-
-      <div class="inspector-body" id="inspectStreamTab" style="display:none;">
-        <div class="live-stream-box" id="liveStreamLogs">
-          <!-- Live events logged here -->
-        </div>
-        <button class="hud-btn" onclick="clearStreamLogs()" style="align-self:flex-end;">
-          🧹 Clear Logs
+        <button class="hud-action-btn accent" id="btnInspectDrill" style="margin-top:6px; justify-content:center;" onclick="drillIntoCurrentSelected()">
+          🧠 Open Worker Cognitive Mind (Level 1)
         </button>
+
+        <div style="font-size:0.72rem; font-weight:700; color:var(--accent-blue); margin-top:8px;">
+          Live Execution Stream:
+        </div>
+        <div class="stream-console" id="streamLogBox"></div>
       </div>
     </aside>
 
   </div>
 
-  <!-- BOM Receipt Modal -->
-  <div class="modal-backdrop" id="bomModal" onclick="closeBomModal(event)">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <span>📜 AI Factory Bill of Materials (BOM)</span>
-        <button class="btn-header" onclick="closeBomModal()">✕</button>
+  <!-- BOM Modal -->
+  <div class="modal-overlay" id="bomModal" onclick="hideBomModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-bar">
+        <span>📜 S&OP System Bill of Materials (BOM)</span>
+        <button class="btn-header-icon" onclick="hideBomModal()">✕</button>
       </div>
-      <div class="modal-body" id="bomModalBody">
-        <!-- Rendered BOM Tables -->
-      </div>
+      <div class="modal-scroll" id="bomContentScroll"></div>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div class="toast" id="toastBox">
-    <span id="toastIcon">ℹ️</span>
-    <span id="toastMsg">Notification message</span>
+  <!-- Toast Pill -->
+  <div class="toast-pill" id="toastPill">
+    <span id="toastIcon">⚡</span>
+    <span id="toastText">Message</span>
   </div>
 
-  <!-- Application Logic -->
+  <!-- App Script -->
   <script>
     /* =========================================================================
-       1. DATA STRUCTURES: 11-STAGE S&OP SPECIFICATION & WORKER COGNITIVE MINDS
+       1. DATA & MODELS
        ========================================================================= */
-
-    // Obfuscated Groq Key (openai/gpt-oss-120b, ~500 tok/s)
     const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
     const GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
 
-    let currentHierarchyLevel = 2; // 2 = S&OP Organization, 1 = Worker Mind
-    let activeAiEngine = "groq";   // 'groq', 'webgpu', 'rules'
-    let webllmEngine = null;
-    let selectedNodeId = 2;        // Default to Stage 2: Forecaster
+    let currentLevel = 2; // 2: S&OP Org, 1: Worker Mind
+    let selectedId = 2;   // Default: Stage 2
+    let activeEngine = "groq";
 
-    // S&OP 11-Stage Definition
     const SOP_STAGES = [
       {
-        id: 1,
-        code: "STG-01",
-        pod: "demand",
-        name: "Data Aggregation",
-        workerTitle: "Data Cleansing & Harmonizer Agent",
-        desc: "Ingests 24-month historical sales, cleans POS outliers, and aggregates SKU baselines.",
-        artifact: "Cleaned POS Baseline Dataset (12,500 units)",
-        status: "READY",
-        metrics: { baseline: "$25.0M", units: "12,500", confidence: "99.1%" },
-        personas: ["ETL Data Engineer", "Outlier Detector", "Data Custodian"],
-        cognitiveSkills: ["ElastiCache Buffer", "DynamoDB Storage", "Bayesian Outlier Filter", "Circuit Breaker"],
-        tier: 1,
-        x: 50, y: 120
+        id: 1, code: "STG-01", pod: "demand", name: "Data Aggregation",
+        worker: "Data Cleansing Agent", desc: "Cleans historical POS records and SKU baselines.",
+        artifact: "Clean POS Baseline Dataset (12,500 units)",
+        metrics: { baseline: "$25.0M", units: "12.5k" },
+        personas: ["ETL Data Engineer", "Outlier Detector"],
+        skills: ["ElastiCache Buffer", "DynamoDB Storage", "Circuit Breaker"],
+        tier: 1, x: 40, y: 100
       },
       {
-        id: 2,
-        code: "STG-02",
-        pod: "demand",
-        name: "Statistical Forecast",
-        workerTitle: "Statistical Forecasting Specialist Agent",
-        desc: "Blends ARIMA, Prophet, and Transformer models with seasonality and trend regression.",
+        id: 2, code: "STG-02", pod: "demand", name: "Statistical Forecast",
+        worker: "Statistical Forecaster Agent", desc: "ARIMA, Prophet & Transformer blend with trend regression.",
         artifact: "Baseline Statistical Demand Forecast",
-        status: "READY",
-        metrics: { baseline: "$25.0M", units: "12,500", confidence: "94.5%" },
+        metrics: { baseline: "$25.0M", confidence: "94.5%" },
         personas: ["Quantitative Forecaster", "Market Skeptic", "Volatility Analyst"],
-        cognitiveSkills: ["ToyBedrock Sampling", "Working Memory (ElastiCache)", "Self-Reflection Loop", "Cedar Policy Gate"],
-        tier: 2,
-        x: 340, y: 120
+        skills: ["ToyBedrock Sampling", "Working Memory", "Self-Reflection Loop"],
+        tier: 2, x: 310, y: 100
       },
       {
-        id: 3,
-        code: "STG-03",
-        pod: "demand",
-        name: "Commercial Consensus",
-        workerTitle: "Commercial Demand Shaping Agent",
-        desc: "Reviews marketing campaigns, sales incentives, and channel promo uplifts.",
-        artifact: "Approved Consensus Uplift (+2,500 units, +$5.0M)",
-        status: "READY",
-        metrics: { baseline: "$30.0M", units: "15,000", confidence: "91.0%" },
-        personas: ["VP of Commercial Sales", "Field Marketing Lead", "Financial Controller"],
-        cognitiveSkills: ["Dialectical Debate Engine", "Quorum Voting", "Working Memory", "WAF & Budget Guard"],
-        tier: 2,
-        x: 630, y: 120
+        id: 3, code: "STG-03", pod: "demand", name: "Commercial Consensus",
+        worker: "Commercial Demand Agent", desc: "Marketing campaigns & promotional uplift approval.",
+        artifact: "Approved Consensus Uplift (+2.5k units, +$5.0M)",
+        metrics: { consensus: "$30.0M", uplift: "+$5.0M" },
+        personas: ["VP Commercial Sales", "Field Marketing Lead"],
+        skills: ["Dialectical Debate", "Quorum Voting", "WAF Guard"],
+        tier: 2, x: 580, y: 100
       },
       {
-        id: 4,
-        code: "STG-04",
-        pod: "demand",
-        name: "Disaggregation",
-        workerTitle: "DC & Regional Allocation Agent",
-        desc: "Splits consolidated consensus demand across 6 regional Distribution Centers.",
+        id: 4, code: "STG-04", pod: "demand", name: "Disaggregation",
+        worker: "DC Allocation Agent", desc: "Splits demand across 6 regional fulfillment centers.",
         artifact: "Regional DC Fulfillment Allocation Plan",
-        status: "READY",
-        metrics: { baseline: "$30.0M", units: "15,000", confidence: "97.3%" },
-        personas: ["Regional Network Planner", "Lead Time Optimizer"],
-        cognitiveSkills: ["Step Functions Sequence", "DynamoDB Partition Key", "Softmax Temperature Dial"],
-        tier: 1,
-        x: 920, y: 120
+        metrics: { allocation: "6 DCs", volume: "15.0k" },
+        personas: ["Network Planner", "Lead Time Optimizer"],
+        skills: ["Step Functions Sequence", "DynamoDB Partition"],
+        tier: 1, x: 850, y: 100
       },
       {
-        id: 5,
-        code: "STG-05",
-        pod: "demand",
-        name: "Order Consumption",
-        workerTitle: "Net Order Consumption Agent",
-        desc: "Nets actual booked sales orders against forecast using forward/backward consumption rules.",
+        id: 5, code: "STG-05", pod: "demand", name: "Order Consumption",
+        worker: "Net Order Consumption Agent", desc: "Nets actual booked sales orders against forecast.",
         artifact: "Net Open Demand Requirement (14,200 net)",
-        status: "READY",
-        metrics: { baseline: "$28.4M", units: "14,200", confidence: "98.4%" },
+        metrics: { netDemand: "14.2k", value: "$28.4M" },
         personas: ["Order Fulfillment Lead", "Backlog Auditor"],
-        cognitiveSkills: ["SQS Priority Queue", "CAS Lock Mutex", "Circuit Breaker"],
-        tier: 1,
-        x: 1210, y: 120
+        skills: ["SQS Priority Queue", "CAS Lock Mutex"],
+        tier: 1, x: 1120, y: 100
       },
       {
-        id: 6,
-        code: "STG-06",
-        pod: "supply",
-        name: "Dependent Demand",
-        workerTitle: "Bill of Materials (BOM) Explosion Agent",
-        desc: "Explodes net finished goods into 84 sub-assemblies and 4 critical ASIC chipsets.",
+        id: 6, code: "STG-06", pod: "supply", name: "Dependent Demand",
+        worker: "BOM Explosion Agent", desc: "Explodes net demand into 84 assemblies & 4 ASIC chips.",
         artifact: "Multi-Tier Component Requirement Matrix",
-        status: "READY",
-        metrics: { baseline: "$18.2M", units: "84 BOM items", confidence: "99.8%" },
-        personas: ["BOM Industrial Engineer", "Semiconductor Specialist"],
-        cognitiveSkills: ["Step Functions Retry", "DynamoDB Relational Map", "Tool Sandbox"],
-        tier: 1,
-        x: 1210, y: 380
+        metrics: { bomItems: "84 parts", asics: "4 critical" },
+        personas: ["Industrial Engineer", "Semiconductor Specialist"],
+        skills: ["Step Functions Retry", "Relational Map"],
+        tier: 1, x: 1120, y: 340
       },
       {
-        id: 7,
-        code: "STG-07",
-        pod: "supply",
-        name: "Production Firming",
-        workerTitle: "Master Production Scheduling (MPS) Agent",
-        desc: "Converts requirements into firmed manufacturing shop-floor production work orders.",
+        id: 7, code: "STG-07", pod: "supply", name: "Production Firming",
+        worker: "Master Production Scheduler", desc: "Locks EMS manufacturing shop-floor production orders.",
         artifact: "Firmed EMS Manufacturing Work Orders",
-        status: "READY",
-        metrics: { baseline: "$28.4M", units: "14,200 orders", confidence: "96.2%" },
+        metrics: { firmedOrders: "14.2k", load: "96.2%" },
         personas: ["Plant Operations Director", "Shop Floor Scheduler"],
-        cognitiveSkills: ["SQS Priority Worker", "CAS State Mutex", "Working Memory"],
-        tier: 1,
-        x: 920, y: 380
+        skills: ["SQS Priority Worker", "Working Memory"],
+        tier: 1, x: 850, y: 340
       },
       {
-        id: 8,
-        code: "STG-08",
-        pod: "supply",
-        name: "Capacity Allocation",
-        workerTitle: "Rough-Cut Capacity Planning (RCCP) Agent",
-        desc: "Pools SMT lines, machine hours, and test benches to calculate line utilization.",
-        artifact: "Line Utilization Schedule (Lines 1–4 @ 94% load)",
-        status: "READY",
-        metrics: { baseline: "94% Load", units: "4 Lines", confidence: "93.8%" },
-        personas: ["Capacity Optimization Engineer", "Maintenance Specialist", "Labor Planner"],
-        cognitiveSkills: ["ToyBedrock Softmax", "Dialectical Debate", "Circuit Breaker 3-Strike"],
-        tier: 2,
-        x: 630, y: 380
+        id: 8, code: "STG-08", pod: "supply", name: "Capacity Allocation",
+        worker: "Rough-Cut Capacity Agent", desc: "Pools SMT lines and labor to evaluate bottlenecks.",
+        artifact: "Line Utilization Schedule (Lines 1-4 @ 94%)",
+        metrics: { smtLines: "4 pooled", load: "94% max" },
+        personas: ["Capacity Optimization Engineer", "Labor Planner"],
+        skills: ["Softmax Temperature", "Circuit Breaker"],
+        tier: 2, x: 580, y: 340
       },
       {
-        id: 9,
-        code: "STG-09",
-        pod: "supply",
-        name: "Buffer Inventory",
-        workerTitle: "Dynamic DDMRP Safety Stock Agent",
-        desc: "Sets decoupled inventory buffers and safety stock to absorb demand/supply variability.",
+        id: 9, code: "STG-09", pod: "supply", name: "Buffer Inventory",
+        worker: "Dynamic DDMRP Safety Agent", desc: "Sets decoupled inventory buffers & safety stock.",
         artifact: "Safety Stock Matrix (+2,400 reserve units)",
-        status: "READY",
-        metrics: { baseline: "$4.8M", units: "2,400 reserve", confidence: "96.0%" },
-        personas: ["Inventory Policy Lead", "Working Capital Analyst"],
-        cognitiveSkills: ["Working Memory", "DynamoDB Ledger", "WAF & Budget Guard"],
-        tier: 1,
-        x: 340, y: 380
+        metrics: { reserveStock: "2.4k u", value: "$4.8M" },
+        personas: ["Inventory Policy Lead", "Working Capital Lead"],
+        skills: ["Working Memory", "DynamoDB Ledger"],
+        tier: 1, x: 310, y: 340
       },
       {
-        id: 10,
-        code: "STG-10",
-        pod: "control",
-        name: "SLA Telemetry",
-        workerTitle: "Variance & Telemetry Sentinel Agent",
-        desc: "Monitors operational variances, cedar policy violations, and forecast bias thresholds.",
-        artifact: "Telemetry Audit Certificate (Variance: +3.2% within 5.0% tolerance)",
-        status: "READY",
-        metrics: { baseline: "+3.2% Var", units: "Pass", confidence: "99.9%" },
+        id: 10, code: "STG-10", pod: "control", name: "SLA Telemetry",
+        worker: "Variance Sentinel Agent", desc: "Monitors operational variances and Cedar policy limits.",
+        artifact: "Telemetry Certificate (+3.2% within 5.0% tolerance)",
+        metrics: { variance: "+3.2%", status: "Nominal" },
         personas: ["Operational Sentinel", "Compliance Officer"],
-        cognitiveSkills: ["Cedar Policy Guard", "Hop Limiter", "Circuit Breaker"],
-        tier: 1,
-        x: 340, y: 640
+        skills: ["Cedar Policy Guard", "Hop Limiter"],
+        tier: 1, x: 310, y: 560
       },
       {
-        id: 11,
-        code: "STG-11",
-        pod: "control",
-        name: "Executive S&OP",
-        workerTitle: "Executive S&OP Arbiter & Governance Agent",
-        desc: "Executes financial P&L reconciliation, resolves supply-demand gaps, and locks plan to ERP.",
-        artifact: "Executive Signed Consensus Operating Plan (P&L $28.4M Approved)",
-        status: "READY",
-        metrics: { baseline: "$28.4M", units: "Approved", confidence: "100.0%" },
-        personas: ["Executive S&OP Chairman", "Chief Supply Chain Officer", "CFO Representative"],
-        cognitiveSkills: ["Byzantine Quorum Voting", "Dialectical Debate", "Step Functions Commit", "Cedar Policy Gate"],
-        tier: 2,
-        x: 780, y: 640
+        id: 11, code: "STG-11", pod: "control", name: "Executive S&OP",
+        worker: "Executive S&OP Arbiter", desc: "Final P&L reconciliation and consensus lock to ERP.",
+        artifact: "Executive Signed Operating Plan ($28.4M Approved)",
+        metrics: { approvedPL: "$28.4M", status: "Signed" },
+        personas: ["S&OP Chair", "Chief Supply Chain Officer", "CFO Lead"],
+        skills: ["Byzantine Quorum", "Dialectical Debate", "Commit Lock"],
+        tier: 2, x: 700, y: 560
       }
     ];
 
-    // S&OP Inter-Stage Connections
-    const SOP_CONNECTIONS = [
-      { from: 1, to: 2, label: "POS Baseline" },
-      { from: 2, to: 3, label: "Stat Forecast" },
-      { from: 3, to: 4, label: "Consensus Plan" },
-      { from: 4, to: 5, label: "DC Split" },
-      { from: 5, to: 6, label: "Net Demand" },
-      { from: 6, to: 7, label: "BOM Explosion" },
-      { from: 7, to: 8, label: "Works Orders" },
-      { from: 8, to: 9, label: "Load Schedule" },
-      { from: 9, to: 10, label: "Buffer Policy" },
-      { from: 10, to: 11, label: "Telemetry Audit" },
-      // Feedback loop from Capacity Check back to Consensus if constrained
-      { from: 8, to: 3, label: "Capacity Feedback (RCCP)", feedback: true }
+    const SOP_WIRES = [
+      { from: 1, to: 2 }, { from: 2, to: 3 }, { from: 3, to: 4 }, { from: 4, to: 5 },
+      { from: 5, to: 6 }, { from: 6, to: 7 }, { from: 7, to: 8 }, { from: 8, to: 9 },
+      { from: 9, to: 10 }, { from: 10, to: 11 },
+      { from: 8, to: 3, feedback: true } // Capacity bottleneck feedback
     ];
 
-    // Warehouse Catalog
-    const WAREHOUSE_PARTS = {
+    const WAREHOUSE_ITEMS = {
       level2: [
-        { id: "pod_demand", name: "Demand Pod (Stages 1–5)", tier: 2, icon: "📊", desc: "End-to-end commercial demand generation, statistical smoothing, and sales consensus." },
-        { id: "pod_supply", name: "Supply Pod (Stages 6–9)", tier: 2, icon: "🏭", desc: "BOM explosion, rough-cut capacity planning, plant scheduling, and DDMRP buffers." },
-        { id: "pod_control", name: "Executive Control Pod (10–11)", tier: 2, icon: "⚖️", desc: "Real-time SLA variance monitoring, Cedar policy validation, and executive P&L sign-off." }
+        { name: "Demand Pod (Stages 1–5)", tier: 2, icon: "📊", desc: "Commercial demand generation, statistical smoothing, and sales consensus." },
+        { name: "Supply Pod (Stages 6–9)", tier: 2, icon: "🏭", desc: "BOM explosion, rough-cut capacity planning, plant scheduling, and DDMRP buffers." },
+        { name: "Executive Control Pod (10–11)", tier: 2, icon: "⚖️", desc: "Real-time SLA telemetry, Cedar validation, and executive P&L sign-off." }
       ],
       level1: [
-        { id: "cog_persona", name: "Cognitive Persona Unit", tier: 1, icon: "👤", desc: "An internal debate persona with specialized reasoning perspective (e.g. Quant, Skeptic)." },
-        { id: "cog_memory", name: "Working Memory (ElastiCache)", tier: 0, icon: "⚡", desc: "Fast ephemeral context scratchpad with decay and sliding window recall." },
-        { id: "cog_store", name: "Episodic Store (DynamoDB)", tier: 0, icon: "🗄️", desc: "Persistent historical record store with TTL and conditional ACID writes." },
-        { id: "cog_debate", name: "Dialectical Debate Engine", tier: 2, icon: "💬", desc: "Forces multi-agent internal peer debate and synthesis before finalizing decisions." },
-        { id: "cog_circuit", name: "Circuit Breaker (3-Strike)", tier: 1, icon: "🛡️", desc: "Trips open after 3 consecutive errors; enters 60s cooldown to protect LLM budgets." },
-        { id: "cog_quorum", name: "Byzantine Quorum Voting", tier: 2, icon: "🗳️", desc: "Requires 2/3 agreement across personas to authorize financial or supply plan commits." },
-        { id: "cog_softmax", name: "Softmax Temperature Dial", tier: 0, icon: "🎛️", desc: "Calibrated sampling temperature (0.0 to 1.5) for deterministic vs exploratory outputs." }
+        { name: "Cognitive Persona Unit", tier: 1, icon: "👤", desc: "An internal debate persona with specialized perspective (Quant, Skeptic)." },
+        { name: "Working Memory (ElastiCache)", tier: 0, icon: "⚡", desc: "Fast ephemeral context scratchpad with decay and sliding window." },
+        { name: "Episodic Store (DynamoDB)", tier: 0, icon: "🗄️", desc: "Persistent historical record store with TTL and conditional ACID writes." },
+        { name: "Dialectical Debate Engine", tier: 2, icon: "💬", desc: "Forces multi-agent internal peer debate and synthesis before finalizing decisions." },
+        { name: "Circuit Breaker (3-Strike)", tier: 1, icon: "🛡️", desc: "Trips open after 3 consecutive errors; enters 60s cooldown to protect budgets." },
+        { name: "Byzantine Quorum Voting", tier: 2, icon: "🗳️", desc: "Requires 2/3 agreement across personas to authorize financial/supply commits." }
       ]
     };
 
     /* =========================================================================
-       2. CANVAS ENGINE: PAN, ZOOM & INTERACTIVE BEZIER CONNECTORS
+       2. CANVAS PAN, ZOOM & TOUCH ENGINE
        ========================================================================= */
-
-    let canvasScale = 0.85;
-    let canvasPanX = 60;
-    let canvasPanY = 40;
+    let scale = 0.8;
+    let panX = 40;
+    let panY = 30;
     let isPanning = false;
-    let startPanX = 0, startPanY = 0;
-    let draggedNode = null;
-    let dragOffsetX = 0, dragOffsetY = 0;
+    let startX = 0, startY = 0;
+    let dragNodeInfo = null;
 
     const viewport = document.getElementById("canvasViewport");
-    const world = document.getElementById("canvasWorld");
-    const svgLayer = document.getElementById("svgConnectionsLayer");
-    const nodesContainer = document.getElementById("nodesContainer");
+    const stage = document.getElementById("canvasStage");
+    const svgLayer = document.getElementById("svgLayer");
+    const nodesLayer = document.getElementById("nodesLayer");
 
-    function initCanvas() {
-      applyCanvasTransform();
+    function initCanvasEngine() {
+      applyTransform();
 
-      // Pan listeners
+      // Mouse pan
       viewport.addEventListener("mousedown", (e) => {
-        if (e.target === viewport || e.target === svgLayer || e.target.classList.contains("canvas-world")) {
+        if (e.target === viewport || e.target === svgLayer || e.target === stage) {
           isPanning = true;
           viewport.classList.add("panning");
-          startPanX = e.clientX - canvasPanX;
-          startPanY = e.clientY - canvasPanY;
+          startX = e.clientX - panX;
+          startY = e.clientY - panY;
         }
       });
 
       window.addEventListener("mousemove", (e) => {
         if (isPanning) {
-          canvasPanX = e.clientX - startPanX;
-          canvasPanY = e.clientY - startPanY;
-          applyCanvasTransform();
-        } else if (draggedNode) {
-          const worldCoords = screenToWorld(e.clientX, e.clientY);
-          const currentStage = getCurrentCanvasNodes().find(n => n.id === draggedNode.nodeId);
-          if (currentStage) {
-            currentStage.x = Math.max(20, worldCoords.x - dragOffsetX);
-            currentStage.y = Math.max(20, worldCoords.y - dragOffsetY);
-            draggedNode.element.style.left = `${currentStage.x}px`;
-            draggedNode.element.style.top = `${currentStage.y}px`;
-            renderConnections();
+          panX = e.clientX - startX;
+          panY = e.clientY - startY;
+          applyTransform();
+        } else if (dragNodeInfo) {
+          const world = screenToWorld(e.clientX, e.clientY);
+          const n = getActiveNodes().find(node => node.id === dragNodeInfo.id);
+          if (n) {
+            n.x = Math.max(10, world.x - dragNodeInfo.offsetX);
+            n.y = Math.max(10, world.y - dragNodeInfo.offsetY);
+            dragNodeInfo.el.style.left = `${n.x}px`;
+            dragNodeInfo.el.style.top = `${n.y}px`;
+            renderWires();
           }
         }
       });
@@ -1483,141 +1238,157 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       window.addEventListener("mouseup", () => {
         isPanning = false;
         viewport.classList.remove("panning");
-        draggedNode = null;
+        dragNodeInfo = null;
       });
 
+      // Wheel zoom
       viewport.addEventListener("wheel", (e) => {
         e.preventDefault();
-        const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-        zoomCanvas(zoomFactor, e.clientX, e.clientY);
+        const factor = e.deltaY < 0 ? 1.08 : 0.92;
+        zoomAt(factor, e.clientX, e.clientY);
       }, { passive: false });
 
-      renderCanvas();
-      renderWarehouseCatalog();
-      selectNode(2); // Select Forecaster by default
-      logStream("S&OP AI Factory initialized with 11 stage-gate workers.", "ok");
+      // Touch pan & drag support for mobile
+      let touchStartX = 0, touchStartY = 0;
+      viewport.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          const t = e.touches[0];
+          touchStartX = t.clientX - panX;
+          touchStartY = t.clientY - panY;
+          isPanning = true;
+        }
+      }, { passive: true });
+
+      viewport.addEventListener("touchmove", (e) => {
+        if (isPanning && e.touches.length === 1) {
+          const t = e.touches[0];
+          panX = t.clientX - touchStartX;
+          panY = t.clientY - touchStartY;
+          applyTransform();
+        }
+      }, { passive: true });
+
+      viewport.addEventListener("touchend", () => {
+        isPanning = false;
+      });
+
+      renderCurrentCanvas();
+      renderWarehouse();
+      selectStage(2);
+      autoFitView();
+      logEvent("S&OP AI Factory initialized across Level 1 & Level 2.", "ok");
     }
 
-    function applyCanvasTransform() {
-      world.style.transform = `translate(${canvasPanX}px, ${canvasPanY}px) scale(${canvasScale})`;
+    function applyTransform() {
+      stage.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
     }
 
-    function screenToWorld(screenX, screenY) {
+    function screenToWorld(sx, sy) {
       const rect = viewport.getBoundingClientRect();
       return {
-        x: (screenX - rect.left - canvasPanX) / canvasScale,
-        y: (screenY - rect.top - canvasPanY) / canvasScale
+        x: (sx - rect.left - panX) / scale,
+        y: (sy - rect.top - panY) / scale
       };
     }
 
-    function zoomCanvas(factor, clientX, clientY) {
-      const newScale = Math.min(Math.max(0.4, canvasScale * factor), 2.0);
-      if (clientX !== undefined && clientY !== undefined) {
+    function zoomAt(factor, cx, cy) {
+      const newScale = Math.min(Math.max(0.35, scale * factor), 2.0);
+      if (cx !== undefined && cy !== undefined) {
         const rect = viewport.getBoundingClientRect();
-        const mouseX = clientX - rect.left;
-        const mouseY = clientY - rect.top;
-        canvasPanX = mouseX - (mouseX - canvasPanX) * (newScale / canvasScale);
-        canvasPanY = mouseY - (mouseY - canvasPanY) * (newScale / canvasScale);
+        const mx = cx - rect.left;
+        const my = cy - rect.top;
+        panX = mx - (mx - panX) * (newScale / scale);
+        panY = my - (my - panY) * (newScale / scale);
       }
-      canvasScale = newScale;
-      applyCanvasTransform();
+      scale = newScale;
+      applyTransform();
     }
 
-    function resetCanvasView() {
-      canvasScale = 0.85;
-      canvasPanX = 60;
-      canvasPanY = 40;
-      applyCanvasTransform();
+    function zoomIn() { zoomAt(1.15, viewport.clientWidth / 2, viewport.clientHeight / 2); }
+    function zoomOut() { zoomAt(0.85, viewport.clientWidth / 2, viewport.clientHeight / 2); }
+
+    function autoFitView() {
+      const nodes = getActiveNodes();
+      if (!nodes.length) return;
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      nodes.forEach(n => {
+        minX = Math.min(minX, n.x);
+        maxX = Math.max(maxX, n.x + 240);
+        minY = Math.min(minY, n.y);
+        maxY = Math.max(maxY, n.y + 150);
+      });
+
+      const pad = 40;
+      const w = maxX - minX + pad * 2;
+      const h = maxY - minY + pad * 2;
+      const vw = viewport.clientWidth || 800;
+      const vh = viewport.clientHeight || 600;
+
+      scale = Math.min(Math.max(0.35, Math.min(vw / w, vh / h)), 1.2);
+      panX = (vw - w * scale) / 2 - (minX - pad) * scale;
+      panY = (vh - h * scale) / 2 - (minY - pad) * scale;
+      applyTransform();
     }
 
     /* =========================================================================
-       3. HIERARCHY SWITCHING: LEVEL 2 (ORGANIZATION) vs LEVEL 1 (WORKER MIND)
+       3. LEVEL SWITCHING: LEVEL 2 (ORG) vs LEVEL 1 (MIND)
        ========================================================================= */
+    function switchLevel(lvl) {
+      currentLevel = lvl;
+      document.getElementById("tabL2").classList.toggle("active", lvl === 2);
+      document.getElementById("tabL1").classList.toggle("active", lvl === 1);
 
-    function switchHierarchyLevel(level) {
-      currentHierarchyLevel = level;
-      
-      const btn2 = document.getElementById("btnNavLevel2");
-      const btn1 = document.getElementById("btnNavLevel1");
-      const warehouseLabel = document.getElementById("warehouseModeLabel");
-      const breadcrumb = document.getElementById("workerBreadcrumb");
+      const stageObj = SOP_STAGES.find(s => s.id === selectedId) || SOP_STAGES[1];
+      document.getElementById("whContextLabel").innerHTML = lvl === 2 ? 
+        "Showing: <strong>Level 2 S&OP Pods</strong>" : 
+        `Showing: <strong>Level 1 Mind (${stageObj.name})</strong>`;
 
-      if (level === 2) {
-        btn2.classList.add("active");
-        btn1.classList.remove("active");
-        warehouseLabel.textContent = "Level 2 Organization (S&OP Pods)";
-        breadcrumb.style.display = "flex";
-        showToast("Switched to Level 2: 11-Step Enterprise S&OP Organization");
-      } else {
-        btn1.classList.add("active");
-        btn2.classList.remove("active");
-        const selectedStage = SOP_STAGES.find(s => s.id === selectedNodeId) || SOP_STAGES[1];
-        warehouseLabel.textContent = `Level 1 Worker Mind (${selectedStage.name})`;
-        showToast(`Drilled down into Worker Mind: ${selectedStage.name}`);
-      }
-
-      renderCanvas();
-      renderWarehouseCatalog();
+      renderCurrentCanvas();
+      renderWarehouse();
+      autoFitView();
+      showToast(lvl === 2 ? "Level 2: 11-Step S&OP Organization" : `Level 1: Worker Mind (${stageObj.name})`);
     }
 
-    function drillIntoCurrentSelectedWorker() {
-      switchHierarchyLevel(1);
+    function drillIntoCurrentSelected() {
+      switchLevel(1);
+      closeAllDrawers();
     }
 
-    function getCurrentCanvasNodes() {
-      if (currentHierarchyLevel === 2) {
-        return SOP_STAGES;
-      } else {
-        // Level 1: Generate nodes representing the selected worker's internal cognitive mind!
-        const selectedStage = SOP_STAGES.find(s => s.id === selectedNodeId) || SOP_STAGES[1];
-        return buildWorkerMindNodes(selectedStage);
-      }
-    }
+    function getActiveNodes() {
+      if (currentLevel === 2) return SOP_STAGES;
 
-    // Build the internal cognitive mind nodes for Level 1
-    function buildWorkerMindNodes(stage) {
+      const stageObj = SOP_STAGES.find(s => s.id === selectedId) || SOP_STAGES[1];
       const nodes = [];
-      
-      // 1. Role Master Core Node (center)
+
+      // Core Mind Node
       nodes.push({
-        id: "core",
-        name: stage.name + " Core Mind",
-        code: "MIND-CORE",
-        pod: stage.pod,
-        workerTitle: stage.workerTitle,
-        desc: "Coordinates intra-personal personas and resolves cognitive debate into official stage artifact.",
-        metrics: { mode: "Dialectical Synthesis", temperature: "0.2" },
-        tier: stage.tier,
-        x: 480, y: 220
+        id: "core", code: "CORE", name: `${stageObj.name} Mind`,
+        worker: stageObj.worker, desc: "Coordinates internal personas and produces final artifact.",
+        pod: stageObj.pod, tier: stageObj.tier,
+        metrics: { mode: "Dialectical", temp: "0.2" },
+        x: 440, y: 160
       });
 
-      // 2. Persona Nodes (left side)
-      stage.personas.forEach((p, idx) => {
+      // Personas
+      stageObj.personas.forEach((p, idx) => {
         nodes.push({
-          id: `persona_${idx}`,
-          name: p,
-          code: `PERS-${idx+1}`,
-          pod: "demand",
-          workerTitle: "Internal Persona",
-          desc: `Evaluates domain data from the perspective of ${p}.`,
-          metrics: { weight: `${(100 / stage.personas.length).toFixed(0)}%`, bias: "Checked" },
-          tier: 1,
-          x: 100, y: 80 + idx * 160
+          id: `p_${idx}`, code: `PERS-${idx+1}`, name: p,
+          worker: "Internal Persona", desc: `Reasoning perspective of ${p}.`,
+          pod: "demand", tier: 1,
+          metrics: { role: "Debate", bias: "Checked" },
+          x: 80, y: 60 + idx * 130
         });
       });
 
-      // 3. Cognitive Skill Nodes (right side)
-      stage.cognitiveSkills.forEach((s, idx) => {
+      // Cognitive Skills
+      stageObj.skills.forEach((s, idx) => {
         nodes.push({
-          id: `skill_${idx}`,
-          name: s,
-          code: `SKILL-${idx+1}`,
-          pod: "supply",
-          workerTitle: "Cognitive Skill Module",
-          desc: `Operational capability: provides state, computation, or safety guardrails.`,
+          id: `s_${idx}`, code: `SKL-${idx+1}`, name: s,
+          worker: "Cognitive Primitive", desc: "Operational memory, tool execution or safety gate.",
+          pod: "supply", tier: 0,
           metrics: { latency: "1.2ms", status: "Armed" },
-          tier: 0,
-          x: 880, y: 70 + idx * 130
+          x: 780, y: 50 + idx * 110
         });
       });
 
@@ -1625,128 +1396,123 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
 
     /* =========================================================================
-       4. RENDERING CANVAS NODES & CONNECTIONS
+       4. RENDERING CANVAS NODES & WIRES
        ========================================================================= */
+    function renderCurrentCanvas() {
+      nodesLayer.innerHTML = "";
+      const nodes = getActiveNodes();
 
-    function renderCanvas() {
-      nodesContainer.innerHTML = "";
-      const nodes = getCurrentCanvasNodes();
-
-      nodes.forEach(node => {
+      nodes.forEach(n => {
         const el = document.createElement("div");
-        el.className = `flow-node ${node.id === selectedNodeId ? "selected" : ""}`;
-        el.id = `flowNode_${node.id}`;
-        el.style.left = `${node.x}px`;
-        el.style.top = `${node.y}px`;
+        el.className = `canvas-node ${n.id === selectedId ? "selected" : ""}`;
+        el.id = `node_${n.id}`;
+        el.style.left = `${n.x}px`;
+        el.style.top = `${n.y}px`;
 
-        let podClass = "badge-demand";
-        if (node.pod === "supply") podClass = "badge-supply";
-        if (node.pod === "control") podClass = "badge-control";
+        let podClass = "pod-demand";
+        if (n.pod === "supply") podClass = "pod-supply";
+        if (n.pod === "control") podClass = "pod-control";
+
+        const mKeys = Object.keys(n.metrics || {});
 
         el.innerHTML = `
-          <div class="port input-port"></div>
-          <div class="port output-port"></div>
-          <div class="node-header">
-            <div class="node-title-group">
-              <span class="node-icon">${currentHierarchyLevel === 2 ? "📦" : "🧠"}</span>
-              <span class="node-title">${node.name}</span>
+          <div class="node-port in"></div>
+          <div class="node-port out"></div>
+          <div class="node-bar">
+            <div class="node-title-wrap">
+              <span>${currentLevel === 2 ? "📦" : "🧠"}</span>
+              <span>${n.name}</span>
             </div>
-            <span class="node-badge ${podClass}">${node.code}</span>
+            <span class="node-pod-pill ${podClass}">${n.code}</span>
           </div>
-          <div class="node-body">
-            <div style="font-weight:600; color:var(--text-main); font-size:0.75rem;">${node.workerTitle}</div>
-            <div style="line-height:1.3; font-size:0.7rem; color:var(--text-muted);">${node.desc}</div>
-            <div class="node-metric-row">
-              <span style="color:var(--text-dim);">${Object.keys(node.metrics)[0]}:</span>
-              <span style="color:var(--accent-cyan);">${Object.values(node.metrics)[0]}</span>
-              <span style="color:var(--text-dim);">${Object.keys(node.metrics)[1]}:</span>
-              <span style="color:var(--accent-emerald);">${Object.values(node.metrics)[1]}</span>
+          <div class="node-content">
+            <div class="node-worker-label">${n.worker}</div>
+            <div class="node-desc-text">${n.desc}</div>
+            <div class="node-metrics-box">
+              <span style="color:var(--text-dim);">${mKeys[0] || "Val"}:</span>
+              <span style="color:var(--accent-blue);">${n.metrics[mKeys[0]] || ""}</span>
+              <span style="color:var(--text-dim);">${mKeys[1] || "Status"}:</span>
+              <span style="color:var(--accent-emerald);">${n.metrics[mKeys[1]] || ""}</span>
             </div>
           </div>
-          <div class="node-footer">
-            <span style="font-size:0.65rem; color:var(--text-dim); font-family:var(--font-mono);">Tier ${node.tier}</span>
-            ${currentHierarchyLevel === 2 ? 
-              `<button class="btn-drilldown" onclick="event.stopPropagation(); selectNode(${node.id}); drillIntoCurrentSelectedWorker()">🔍 Mind</button>` : 
-              `<span style="font-size:0.68rem; color:var(--accent-purple);">Intra-Mind</span>`}
+          <div class="node-foot">
+            <span style="font-size:0.62rem; color:var(--text-dim); font-family:var(--font-mono);">Tier ${n.tier}</span>
+            ${currentLevel === 2 ? 
+              `<button class="btn-mind-open" onclick="event.stopPropagation(); selectStage(${n.id}); drillIntoCurrentSelected()">🔍 Mind</button>` :
+              `<span style="font-size:0.65rem; color:var(--accent-purple);">Intra-Mind</span>`
+            }
           </div>
         `;
 
-        // Click to select
         el.addEventListener("click", () => {
-          if (currentHierarchyLevel === 2) {
-            selectNode(node.id);
-          }
+          if (currentLevel === 2) selectStage(n.id);
         });
 
-        // Drag node listener
-        const header = el.querySelector(".node-header");
+        // Mouse drag
+        const header = el.querySelector(".node-bar");
         header.addEventListener("mousedown", (e) => {
           e.stopPropagation();
-          draggedNode = { nodeId: node.id, element: el };
-          const worldCoords = screenToWorld(e.clientX, e.clientY);
-          dragOffsetX = worldCoords.x - node.x;
-          dragOffsetY = worldCoords.y - node.y;
+          dragNodeInfo = { id: n.id, el: el };
+          const w = screenToWorld(e.clientX, e.clientY);
+          dragNodeInfo.offsetX = w.x - n.x;
+          dragNodeInfo.offsetY = w.y - n.y;
         });
 
-        nodesContainer.appendChild(el);
+        nodesLayer.appendChild(el);
       });
 
-      renderConnections();
+      renderWires();
     }
 
-    function renderConnections() {
+    function renderWires() {
       svgLayer.innerHTML = "";
-      if (currentHierarchyLevel === 2) {
+      if (currentLevel === 2) {
         // Draw Level 2 S&OP Connections
-        SOP_CONNECTIONS.forEach(conn => {
-          const fromNode = SOP_STAGES.find(s => s.id === conn.from);
-          const toNode = SOP_STAGES.find(s => s.id === conn.to);
+        SOP_WIRES.forEach(w => {
+          const fromNode = SOP_STAGES.find(s => s.id === w.from);
+          const toNode = SOP_STAGES.find(s => s.id === w.to);
           if (!fromNode || !toNode) return;
 
-          const fromEl = document.getElementById(`flowNode_${conn.from}`);
-          const toEl = document.getElementById(`flowNode_${conn.to}`);
-          if (!fromEl || !toEl) return;
+          const fEl = document.getElementById(`node_${w.from}`);
+          const tEl = document.getElementById(`node_${w.to}`);
+          if (!fEl || !tEl) return;
 
-          const fromX = fromNode.x + fromEl.offsetWidth;
-          const fromY = fromNode.y + fromEl.offsetHeight / 2;
-          const toX = toNode.x;
-          const toY = toNode.y + toEl.offsetHeight / 2;
+          const x1 = fromNode.x + fEl.offsetWidth;
+          const y1 = fromNode.y + fEl.offsetHeight / 2;
+          const x2 = toNode.x;
+          const y2 = toNode.y + tEl.offsetHeight / 2;
 
-          const pathStr = createBezierPath(fromX, fromY, toX, toY, conn.feedback);
+          const pathStr = makeBezier(x1, y1, x2, y2, w.feedback);
           const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
           path.setAttribute("d", pathStr);
-          path.setAttribute("class", `connection-path ${conn.feedback ? "feedback-wire" : ""}`);
-          path.id = `wire_${conn.from}_${conn.to}`;
+          path.setAttribute("class", `connection-line ${w.feedback ? "feedback" : ""}`);
+          path.id = `wire_${w.from}_${w.to}`;
           svgLayer.appendChild(path);
         });
       } else {
-        // Draw Level 1 Internal Mind Connections: Personas -> Core -> Skills
-        const nodes = getCurrentCanvasNodes();
-        const coreNode = nodes.find(n => n.id === "core");
-        if (!coreNode) return;
-
-        const coreEl = document.getElementById("flowNode_core");
-        if (!coreEl) return;
+        // Level 1: Personas -> Core -> Skills
+        const nodes = getActiveNodes();
+        const core = nodes.find(n => n.id === "core");
+        const cEl = document.getElementById("node_core");
+        if (!core || !cEl) return;
 
         nodes.forEach(n => {
-          if (n.id.startsWith("persona_")) {
-            // Persona to Core
-            const pEl = document.getElementById(`flowNode_${n.id}`);
+          if (n.id.startsWith("p_")) {
+            const pEl = document.getElementById(`node_${n.id}`);
             if (pEl) {
-              const pathStr = createBezierPath(n.x + pEl.offsetWidth, n.y + pEl.offsetHeight / 2, coreNode.x, coreNode.y + coreEl.offsetHeight / 2, false);
+              const pStr = makeBezier(n.x + pEl.offsetWidth, n.y + pEl.offsetHeight / 2, core.x, core.y + cEl.offsetHeight / 2, false);
               const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-              path.setAttribute("d", pathStr);
-              path.setAttribute("class", "connection-path active-pulse");
+              path.setAttribute("d", pStr);
+              path.setAttribute("class", "connection-line pulsing");
               svgLayer.appendChild(path);
             }
-          } else if (n.id.startsWith("skill_")) {
-            // Core to Skill
-            const sEl = document.getElementById(`flowNode_${n.id}`);
+          } else if (n.id.startsWith("s_")) {
+            const sEl = document.getElementById(`node_${n.id}`);
             if (sEl) {
-              const pathStr = createBezierPath(coreNode.x + coreEl.offsetWidth, coreNode.y + coreEl.offsetHeight / 2, n.x, n.y + sEl.offsetHeight / 2, false);
+              const pStr = makeBezier(core.x + cEl.offsetWidth, core.y + cEl.offsetHeight / 2, n.x, n.y + sEl.offsetHeight / 2, false);
               const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-              path.setAttribute("d", pathStr);
-              path.setAttribute("class", "connection-path");
+              path.setAttribute("d", pStr);
+              path.setAttribute("class", "connection-line");
               svgLayer.appendChild(path);
             }
           }
@@ -1754,171 +1520,109 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       }
     }
 
-    function createBezierPath(x1, y1, x2, y2, isFeedback) {
+    function makeBezier(x1, y1, x2, y2, isFeedback) {
       if (isFeedback) {
-        // Arching feedback wire
-        const midY = Math.min(y1, y2) - 80;
-        return `M ${x1} ${y1} C ${x1 + 60} ${midY}, ${x2 - 60} ${midY}, ${x2} ${y2}`;
+        const topY = Math.min(y1, y2) - 90;
+        return `M ${x1} ${y1} C ${x1 + 60} ${topY}, ${x2 - 60} ${topY}, ${x2} ${y2}`;
       }
-      const dx = Math.abs(x2 - x1) * 0.55;
+      const dx = Math.abs(x2 - x1) * 0.5;
       return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
     }
 
     /* =========================================================================
-       5. NODE SELECTION & INSPECTOR
+       5. STAGE SELECTION & INSPECTOR
        ========================================================================= */
+    function selectStage(id) {
+      selectedId = id;
+      const s = SOP_STAGES.find(item => item.id === id);
+      if (!s) return;
 
-    function selectNode(id) {
-      selectedNodeId = id;
-      const stage = SOP_STAGES.find(s => s.id === id);
-      if (!stage) return;
+      document.querySelectorAll(".canvas-node").forEach(n => n.classList.remove("selected"));
+      const el = document.getElementById(`node_${id}`);
+      if (el) el.classList.add("selected");
 
-      // Update selection styling on nodes
-      document.querySelectorAll(".flow-node").forEach(n => n.classList.remove("selected"));
-      const selectedEl = document.getElementById(`flowNode_${id}`);
-      if (selectedEl) selectedEl.classList.add("selected");
+      document.getElementById("activeWorkerTag").textContent = `● ${s.code}: ${s.name}`;
+      document.getElementById("inspectorHeaderTitle").textContent = `${s.code}: ${s.name}`;
 
-      // Update breadcrumb
-      document.getElementById("breadcrumbWorkerName").textContent = `${stage.code} • ${stage.name}`;
-
-      // Update Inspector Panel
-      document.getElementById("inspectorTitle").textContent = `${stage.code}: ${stage.name}`;
-      document.getElementById("inspectorTierBadge").textContent = `Tier ${stage.tier}`;
-      document.getElementById("inspectorTierBadge").className = `part-tier tier-${stage.tier}`;
-
-      const card = document.getElementById("inspectorContentCard");
+      const card = document.getElementById("inspectorBodyCard");
       card.innerHTML = `
-        <div style="font-size:0.75rem; font-weight:700; color:var(--text-main);">${stage.workerTitle}</div>
-        <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.4;">${stage.desc}</div>
+        <div style="font-size:0.78rem; font-weight:700; color:var(--text-main);">${s.worker}</div>
+        <div style="font-size:0.7rem; color:var(--text-muted); line-height:1.4;">${s.desc}</div>
         
-        <div style="font-size:0.7rem; font-weight:700; color:var(--accent-cyan); text-transform:uppercase; margin-top:4px;">
-          Primary S&OP Output Artifact:
+        <div style="font-size:0.68rem; font-weight:700; color:var(--accent-blue); text-transform:uppercase; margin-top:3px;">
+          Primary Output Artifact:
         </div>
-        <div style="font-size:0.72rem; font-family:var(--font-mono); background:var(--bg-primary); padding:6px; border-radius:4px; border:1px solid var(--border-color);">
-          📄 ${stage.artifact}
-        </div>
-
-        <div style="font-size:0.7rem; font-weight:700; color:var(--accent-purple); text-transform:uppercase; margin-top:4px;">
-          Intra-Mind Personas (${stage.personas.length}):
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:4px;">
-          ${stage.personas.map(p => `<span class="mind-persona-pill">👤 ${p}</span>`).join("")}
+        <div style="font-size:0.7rem; font-family:var(--font-mono); background:var(--bg-primary); padding:5px 7px; border-radius:4px; border:1px solid var(--border-color);">
+          📄 ${s.artifact}
         </div>
 
-        <div style="font-size:0.7rem; font-weight:700; color:var(--accent-amber); text-transform:uppercase; margin-top:4px;">
-          Assembled Cognitive Skills (${stage.cognitiveSkills.length}):
+        <div style="font-size:0.68rem; font-weight:700; color:var(--accent-purple); text-transform:uppercase; margin-top:3px;">
+          Intra-Mind Personas (${s.personas.length}):
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:4px;">
-          ${stage.cognitiveSkills.map(s => `<span class="mind-skill-tag">⚡ ${s}</span>`).join("")}
+          ${s.personas.map(p => `<span class="persona-badge">👤 ${p}</span>`).join("")}
+        </div>
+
+        <div style="font-size:0.68rem; font-weight:700; color:var(--accent-amber); text-transform:uppercase; margin-top:3px;">
+          Assembled Skills (${s.skills.length}):
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+          ${s.skills.map(k => `<span class="skill-badge">⚡ ${k}</span>`).join("")}
         </div>
       `;
     }
 
     /* =========================================================================
-       6. WAREHOUSE CATALOG RENDERING
+       6. WAREHOUSE CATALOG & COPILOT
        ========================================================================= */
+    function renderWarehouse() {
+      const list = document.getElementById("warehouseList");
+      list.innerHTML = "";
+      const items = currentLevel === 2 ? WAREHOUSE_ITEMS.level2 : WAREHOUSE_ITEMS.level1;
 
-    function renderWarehouseCatalog() {
-      const container = document.getElementById("warehousePartsContainer");
-      container.innerHTML = "";
-
-      const parts = currentHierarchyLevel === 2 ? WAREHOUSE_PARTS.level2 : WAREHOUSE_PARTS.level1;
-
-      parts.forEach(part => {
-        const card = document.createElement("div");
-        card.className = "part-card";
-        card.innerHTML = `
-          <div class="part-header">
-            <span class="part-title">${part.icon} ${part.name}</span>
-            <span class="part-tier tier-${part.tier}">Tier ${part.tier}</span>
+      items.forEach(it => {
+        const d = document.createElement("div");
+        d.className = "part-box";
+        d.innerHTML = `
+          <div class="part-head">
+            <span class="part-name">${it.icon} ${it.name}</span>
+            <span class="part-tier-tag tier-${it.tier}">Tier ${it.tier}</span>
           </div>
-          <div class="part-desc">${part.desc}</div>
+          <div class="part-description">${it.desc}</div>
         `;
-        container.appendChild(card);
+        list.appendChild(d);
       });
     }
 
-    /* =========================================================================
-       7. AI COPILOT: GROQ LPU + WEBGPU WEBLM + DETERMINISTIC COMPILER
-       ========================================================================= */
-
-    function switchSidebarTab(tab) {
-      const isWarehouse = tab === "warehouse";
-      document.getElementById("tabWarehouseBtn").classList.toggle("active", isWarehouse);
-      document.getElementById("tabCopilotBtn").classList.toggle("active", !isWarehouse);
-      document.getElementById("sidebarWarehouseContent").style.display = isWarehouse ? "flex" : "none";
-      document.getElementById("sidebarCopilotContent").style.display = !isWarehouse ? "flex" : "none";
+    function showLeftTab(tab) {
+      document.getElementById("tabWhBtn").classList.toggle("active", tab === "warehouse");
+      document.getElementById("tabCoBtn").classList.toggle("active", tab === "copilot");
+      document.getElementById("contentWarehouse").style.display = tab === "warehouse" ? "flex" : "none";
+      document.getElementById("contentCopilot").style.display = tab === "copilot" ? "flex" : "none";
     }
 
-    function switchInspectorTab(tab) {
-      const isDetails = tab === "details";
-      document.getElementById("tabInspectDetailsBtn").classList.toggle("active", isDetails);
-      document.getElementById("tabInspectStreamBtn").classList.toggle("active", !isDetails);
-      document.getElementById("inspectDetailsTab").style.display = isDetails ? "flex" : "none";
-      document.getElementById("inspectStreamTab").style.display = !isDetails ? "flex" : "none";
-    }
-
-    function onAiEngineChange(val) {
-      activeAiEngine = val;
-      showToast(`AI Engine set to: ${val.toUpperCase()}`);
-      if (val === "webgpu" && !webllmEngine) {
-        initWebLlmEngine();
-      }
-    }
-
-    async function initWebLlmEngine() {
-      if (!window.webllm) {
-        showToast("WebLLM library not loaded", true);
-        return;
-      }
-      const progressBox = document.getElementById("webllmProgressBox");
-      const progressBar = document.getElementById("webllmProgressBar");
-      const statusText = document.getElementById("webllmStatusText");
-      progressBox.style.display = "flex";
-
-      try {
-        statusText.textContent = "Initializing WebGPU & downloading Llama-3.2-1B...";
-        webllmEngine = await window.webllm.CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
-          initProgressCallback: (report) => {
-            statusText.textContent = report.text;
-            progressBar.style.width = `${Math.min(100, Math.floor((report.progress || 0) * 100))}%`;
-          }
-        });
-        statusText.textContent = "WebGPU Model Ready on device!";
-        showToast("WebGPU Model Loaded & Armed!");
-      } catch (err) {
-        console.error("WebLLM error:", err);
-        statusText.textContent = "WebGPU not supported on this browser. Falling back to Groq/Deterministic.";
-        showToast("WebGPU unavailable; using Groq/Deterministic", true);
-      }
-    }
-
-    async function runAiCopilotAssembly() {
-      const input = document.getElementById("copilotInput").value.trim();
-      if (!input) {
-        showToast("Please enter an assembly prompt or select a preset.", true);
+    async function executeCopilot() {
+      const txt = document.getElementById("copilotTextInput").value.trim();
+      if (!txt) {
+        showToast("Enter a requirement or prompt for Copilot.");
         return;
       }
 
-      showToast("🤖 AI Copilot assembling cognitive architecture...");
-      logStream(`[AI COPILOT] Parsing order: "${input}"`, "ok");
+      showToast("🤖 AI Copilot assembling architecture...");
+      logEvent(`[COPILOT] Processing requirement: "${txt}"`, "ok");
 
-      const systemPrompt = `You are the S&OP AI Factory Chief Architect.
-The user wants to configure either a Level 1 Worker Mind (personas & cognitive skills) or a Level 2 S&OP Organization.
-Return a JSON object:
+      const sysPrompt = `You are the S&OP AI Factory Chief Architect.
+Given a prompt, assemble a Level 1 Worker Mind or tune Level 2 S&OP.
+Return JSON:
 {
-  "targetLevel": 1 | 2,
-  "summary": string,
   "personas": [string],
-  "cognitiveSkills": [string],
-  "tier": 1 | 2,
-  "rationale": string
+  "skills": [string],
+  "tier": 1 | 2
 }`;
 
       try {
-        let resultJson = null;
-
-        if (activeAiEngine === "groq") {
+        let resJson = null;
+        if (activeEngine === "groq") {
           const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -1928,276 +1632,247 @@ Return a JSON object:
             body: JSON.stringify({
               model: "openai/gpt-oss-120b",
               messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: input }
+                { role: "system", content: sysPrompt },
+                { role: "user", content: txt }
               ],
               temperature: 0.2,
-              max_tokens: 500,
+              max_tokens: 350,
               response_format: { type: "json_object" }
             })
           });
           if (resp.ok) {
             const data = await resp.json();
-            resultJson = JSON.parse(data.choices[0].message.content);
+            resJson = JSON.parse(data.choices[0].message.content);
           }
-        } else if (activeAiEngine === "webgpu" && webllmEngine) {
-          const resp = await webllmEngine.chat.completions.create({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: input }
-            ],
-            temperature: 0.2,
-            max_tokens: 400
-          });
-          const raw = resp.choices[0].message.content;
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (match) resultJson = JSON.parse(match[0]);
         }
 
-        // Fallback: Deterministic Compiler
-        if (!resultJson) {
-          resultJson = {
-            targetLevel: 1,
-            summary: "Assembled Custom Cognitive Worker Mind",
-            personas: ["Quantitative Specialist", "Empirical Auditor", "Risk Arbiter"],
-            cognitiveSkills: ["ElastiCache Memory", "DynamoDB Store", "Dialectical Debate", "Circuit Breaker"],
-            tier: 2,
-            rationale: "Matched high reliability requirements with 3-persona dialectical debate and automated circuit breaker."
+        if (!resJson) {
+          resJson = {
+            personas: ["Quantitative Forecaster", "Empirical Auditor", "Risk Arbiter"],
+            skills: ["ElastiCache Memory", "DynamoDB Store", "Dialectical Debate", "Circuit Breaker"],
+            tier: 2
           };
         }
 
-        // Apply assembly to selected stage
-        const stage = SOP_STAGES.find(s => s.id === selectedNodeId) || SOP_STAGES[1];
-        if (resultJson.personas && resultJson.personas.length > 0) {
-          stage.personas = resultJson.personas;
-        }
-        if (resultJson.cognitiveSkills && resultJson.cognitiveSkills.length > 0) {
-          stage.cognitiveSkills = resultJson.cognitiveSkills;
-        }
-        stage.tier = resultJson.tier || stage.tier;
+        const stageObj = SOP_STAGES.find(s => s.id === selectedId) || SOP_STAGES[1];
+        if (resJson.personas) stageObj.personas = resJson.personas;
+        if (resJson.skills) stageObj.skills = resJson.skills;
+        if (resJson.tier) stageObj.tier = resJson.tier;
 
-        selectNode(stage.id);
-        renderCanvas();
-        showToast(`Worker Mind for '${stage.name}' assembled successfully!`);
-        logStream(`[AI COPILOT] Assembled ${stage.name} with ${stage.personas.length} personas and ${stage.cognitiveSkills.length} skills.`, "ok");
+        selectStage(stageObj.id);
+        renderCurrentCanvas();
+        showToast(`Assembled '${stageObj.name}' with ${stageObj.personas.length} personas!`);
+        logEvent(`[COPILOT] Successfully compiled ${stageObj.name}.`, "ok");
+        closeAllDrawers();
 
-      } catch (err) {
-        console.error("Copilot error:", err);
-        showToast("Error during copilot assembly; applied deterministic fallback.", true);
-      }
-    }
-
-    function loadCopilotPreset(presetNum) {
-      if (presetNum === 1) {
-        document.getElementById("copilotInput").value = "Assemble high-precision Statistical Forecaster with Bayesian Outlier Filter, Quantitative Persona, and Cedar Policy Gate.";
+      } catch (e) {
+        console.error(e);
+        showToast("Copilot fallback applied.");
       }
     }
 
     /* =========================================================================
-       8. SIMULATION: 11-STAGE END-TO-END S&OP CYCLE
+       7. SIMULATION CYCLE & STEPPING
        ========================================================================= */
+    let simIdx = 0;
+    let isRunning = false;
 
-    let currentSimStepIndex = 0;
-    let isSimulating = false;
-
-    async function runSimulationCycle() {
-      if (isSimulating) return;
-      isSimulating = true;
-      currentSimStepIndex = 0;
+    async function startCycle() {
+      if (isRunning) return;
+      isRunning = true;
+      simIdx = 0;
       resetSimulationVisuals();
-      logStream("Starting complete 11-Stage S&OP Operating Cycle...", "ok");
+      logEvent("Starting complete 11-Stage S&OP Operating Cycle...", "ok");
 
       for (let i = 0; i < SOP_STAGES.length; i++) {
-        await executeStage(i);
-        await new Promise(r => setTimeout(r, 900));
+        await executeStep(i);
+        await new Promise(r => setTimeout(r, 850));
       }
 
-      isSimulating = false;
-      document.getElementById("kpiCycleStatus").textContent = "CYCLE COMPLETE • PLAN LOCKED";
-      document.getElementById("kpiCycleStatus").style.borderColor = "var(--accent-emerald)";
-      document.getElementById("kpiCycleStatus").style.color = "var(--accent-emerald)";
-      logStream("🏁 11-Stage S&OP Cycle executed and locked to ERP successfully!", "ok");
-      showToast("S&OP Cycle Complete: $28.4M Plan Locked to ERP!");
+      isRunning = false;
+      logEvent("🏁 11-Stage S&OP Cycle complete: $28.4M Plan Locked to ERP!", "ok");
+      showToast("Cycle Complete: $28.4M Plan Locked to ERP!");
     }
 
-    async function stepSimulationStage() {
-      if (currentSimStepIndex >= SOP_STAGES.length) {
-        currentSimStepIndex = 0;
+    async function stepStage() {
+      if (simIdx >= SOP_STAGES.length) {
+        simIdx = 0;
         resetSimulationVisuals();
       }
-      await executeStage(currentSimStepIndex);
-      currentSimStepIndex++;
+      await executeStep(simIdx);
+      simIdx++;
     }
 
-    async function executeStage(index) {
-      const stage = SOP_STAGES[index];
-      selectNode(stage.id);
+    async function executeStep(idx) {
+      const s = SOP_STAGES[idx];
+      selectStage(s.id);
 
-      // Visual pulse on active node
-      document.querySelectorAll(".flow-node").forEach(n => n.classList.remove("active-stage"));
-      const el = document.getElementById(`flowNode_${stage.id}`);
-      if (el) el.classList.add("active-stage");
+      document.querySelectorAll(".canvas-node").forEach(n => n.classList.remove("executing"));
+      const el = document.getElementById(`node_${s.id}`);
+      if (el) el.classList.add("executing");
 
-      // Active pulse on wire
-      if (index > 0) {
-        const prev = SOP_STAGES[index - 1];
-        const wire = document.getElementById(`wire_${prev.id}_${stage.id}`);
-        if (wire) wire.classList.add("active-pulse");
+      if (idx > 0) {
+        const prev = SOP_STAGES[idx - 1];
+        const wire = document.getElementById(`wire_${prev.id}_${s.id}`);
+        if (wire) wire.classList.add("pulsing");
       }
 
-      // Log artifact emission
-      logStream(`[${stage.code}] ${stage.name}: Personas reached consensus on artifact:`, "ok");
-      logStream(`    ↳ ${stage.artifact}`, "cyan");
+      logEvent(`[${s.code}] ${s.name}: ${s.artifact}`, "ok");
 
-      // Update KPI banner if reaching stage 3 (Demand Consensus) or stage 8 (Supply Constrained)
-      if (stage.id === 3) {
-        document.getElementById("kpiDemand").textContent = "$30.0M (15,000 units)";
-        logStream("    ↳ Commercial consensus approved +$5.0M promo uplift.", "ok");
-      } else if (stage.id === 8) {
-        document.getElementById("kpiSupply").textContent = "$28.4M (14,200 units)";
-        document.getElementById("kpiGap").textContent = "-$1.6M (-5.3%)";
-        logStream("    ↳ SMT Line 1-4 capacity locked at 94% load (14,200 max throughput).", "warn");
-      } else if (stage.id === 11) {
-        document.getElementById("kpiSla").textContent = "94.7% Fill Rate (Approved)";
-        logStream("    ↳ Executive Committee signed off on $28.4M operating plan.", "ok");
+      if (s.id === 3) {
+        document.getElementById("kpiDemandVal").textContent = "$30.0M (15k u)";
+      } else if (s.id === 8) {
+        document.getElementById("kpiSupplyVal").textContent = "$28.4M (14.2k u)";
+        document.getElementById("kpiGapVal").textContent = "-$1.6M (-5.3%)";
+      } else if (s.id === 11) {
+        document.getElementById("kpiSlaVal").textContent = "94.7% Fill (Signed)";
       }
     }
 
-    function resetSimulation() {
-      currentSimStepIndex = 0;
-      isSimulating = false;
+    function resetCycle() {
+      simIdx = 0;
+      isRunning = false;
       resetSimulationVisuals();
-      logStream("S&OP Cycle reset to initial state.", "ok");
+      logEvent("S&OP Cycle reset to initial state.", "ok");
       showToast("Cycle Reset");
     }
 
     function resetSimulationVisuals() {
-      document.querySelectorAll(".flow-node").forEach(n => n.classList.remove("active-stage"));
-      document.querySelectorAll(".connection-path").forEach(w => w.classList.remove("active-pulse"));
-      document.getElementById("kpiCycleStatus").textContent = "READY • STAGES 1–11";
-      document.getElementById("kpiCycleStatus").style.borderColor = "var(--accent-purple)";
-      document.getElementById("kpiCycleStatus").style.color = "#c4b5fd";
+      document.querySelectorAll(".canvas-node").forEach(n => n.classList.remove("executing"));
+      document.querySelectorAll(".connection-line").forEach(w => w.classList.remove("pulsing"));
     }
 
-    function loadScenario(val) {
+    function pickScenario(val) {
       if (val === "0") {
-        document.getElementById("kpiDemand").textContent = "$30.0M (15,000 units)";
-        document.getElementById("kpiSupply").textContent = "$28.4M (14,200 units)";
-        document.getElementById("kpiGap").textContent = "-$1.6M (-5.3%)";
-        logStream("Loaded Scenario 0: Enterprise Router Demand Surge (+20% Uplift).", "ok");
+        document.getElementById("kpiDemandVal").textContent = "$30.0M (15k u)";
+        document.getElementById("kpiSupplyVal").textContent = "$28.4M (14.2k u)";
+        document.getElementById("kpiGapVal").textContent = "-$1.6M (-5.3%)";
+        logEvent("Loaded Scenario 0: Enterprise Router Demand Surge (+20%).", "ok");
       } else if (val === "1") {
-        document.getElementById("kpiDemand").textContent = "$30.0M (15,000 units)";
-        document.getElementById("kpiSupply").textContent = "$21.0M (10,500 units)";
-        document.getElementById("kpiGap").textContent = "-$9.0M (-30.0%)";
-        logStream("Loaded Scenario 1: Severe ASIC Shortage (-30% allocation cap).", "warn");
+        document.getElementById("kpiDemandVal").textContent = "$30.0M (15k u)";
+        document.getElementById("kpiSupplyVal").textContent = "$21.0M (10.5k u)";
+        document.getElementById("kpiGapVal").textContent = "-$9.0M (-30%)";
+        logEvent("Loaded Scenario 1: Severe ASIC Shortage (-30% Cap).", "warn");
       } else {
-        document.getElementById("kpiDemand").textContent = "$36.0M (18,000 units)";
-        document.getElementById("kpiSupply").textContent = "$34.2M (17,100 units)";
-        document.getElementById("kpiGap").textContent = "-$1.8M (-5.0%)";
-        logStream("Loaded Scenario 2: Accelerated New Product Introduction (NPI).", "ok");
+        document.getElementById("kpiDemandVal").textContent = "$36.0M (18k u)";
+        document.getElementById("kpiSupplyVal").textContent = "$34.2M (17.1k u)";
+        document.getElementById("kpiGapVal").textContent = "-$1.8M (-5%)";
+        logEvent("Loaded Scenario 2: Accelerated NPI Launch.", "ok");
       }
-      showToast("Scenario Telemetry Loaded");
+      showToast("Scenario Telemetry Updated");
     }
 
     /* =========================================================================
-       9. BOM RECEIPT MODAL
+       8. MOBILE DRAWERS & MODALS
        ========================================================================= */
+    function toggleDrawer(side) {
+      const left = document.getElementById("sidebarLeft");
+      const right = document.getElementById("sidebarRight");
+      const backdrop = document.getElementById("drawerBackdrop");
 
-    function openBomModal() {
+      if (side === "left") {
+        const isOpen = left.classList.contains("open");
+        closeAllDrawers();
+        if (!isOpen) {
+          left.classList.add("open");
+          backdrop.classList.add("active");
+        }
+      } else {
+        const isOpen = right.classList.contains("open");
+        closeAllDrawers();
+        if (!isOpen) {
+          right.classList.add("open");
+          backdrop.classList.add("active");
+        }
+      }
+    }
+
+    function closeAllDrawers() {
+      document.getElementById("sidebarLeft").classList.remove("open");
+      document.getElementById("sidebarRight").classList.remove("open");
+      document.getElementById("drawerBackdrop").classList.remove("active");
+    }
+
+    function showBomModal() {
       const modal = document.getElementById("bomModal");
-      const body = document.getElementById("bomModalBody");
-
-      let totalSkills = 0;
-      let totalPersonas = 0;
-      SOP_STAGES.forEach(s => {
-        totalSkills += s.cognitiveSkills.length;
-        totalPersonas += s.personas.length;
-      });
+      const body = document.getElementById("bomContentScroll");
 
       body.innerHTML = `
-        <div style="font-size:0.9rem; font-weight:700; color:var(--accent-cyan);">
-          S&OP ENTERPRISE AGENTIC SYSTEM BILL OF MATERIALS (BOM)
+        <div style="font-weight:700; color:var(--accent-blue); font-size:0.85rem;">
+          S&OP ENTERPRISE MULTI-LEVEL BILL OF MATERIALS
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); border-bottom:1px solid var(--border-color); padding-bottom:6px;">
-          <span>Architecture: Fractal Multi-Level S&OP Swarm</span>
-          <span>Total Stages: 11 | Total Personas: ${totalPersonas} | Cognitive Skills: ${totalSkills}</span>
+        <div style="font-size:0.7rem; color:var(--text-muted);">
+          Total Stages: 11 | Certified under 7-Step Autonomous Assembly Protocol
         </div>
-
-        <table class="bom-table">
+        <table class="bom-grid">
           <thead>
             <tr>
               <th>Stage</th>
               <th>Worker Role</th>
               <th>Tier</th>
-              <th>Internal Personas</th>
-              <th>Cognitive Skills & Infrastructure</th>
+              <th>Personas</th>
+              <th>Cognitive Skills</th>
             </tr>
           </thead>
           <tbody>
             ${SOP_STAGES.map(s => `
               <tr>
                 <td><strong>${s.code}</strong></td>
-                <td>${s.workerTitle}</td>
-                <td><span class="part-tier tier-${s.tier}">Tier ${s.tier}</span></td>
+                <td>${s.worker}</td>
+                <td><span class="part-tier-tag tier-${s.tier}">Tier ${s.tier}</span></td>
                 <td>${s.personas.join(", ")}</td>
-                <td>${s.cognitiveSkills.join(", ")}</td>
+                <td>${s.skills.join(", ")}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-
-        <div style="font-size:0.7rem; color:var(--text-dim); line-height:1.4;">
-          * Receipt certified under the 7-Step Autonomous Assembly Protocol. All 11 workers are compiled with local fallbacks, DynamoDB persistence, and Cedar policy gates.
-        </div>
       `;
-
       modal.style.display = "flex";
     }
 
-    function closeBomModal(e) {
+    function hideBomModal(e) {
       if (e) e.stopPropagation();
       document.getElementById("bomModal").style.display = "none";
     }
 
     /* =========================================================================
-       10. UTILITIES, LOGGING & THEME
+       9. UTILITIES
        ========================================================================= */
-
-    function logStream(msg, tag = "info") {
-      const container = document.getElementById("liveStreamLogs");
-      const time = new Date().toLocaleTimeString();
+    function logEvent(msg, tag = "info") {
+      const box = document.getElementById("streamLogBox");
+      const t = new Date().toLocaleTimeString();
       const div = document.createElement("div");
-      div.className = "log-line";
-      div.innerHTML = `
-        <span class="log-time">[${time}]</span>
-        <span class="log-tag ${tag}">${tag.toUpperCase()}</span>
-        <span>${msg}</span>
-      `;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
+      div.className = "stream-line";
+      div.innerHTML = `<span style="color:var(--text-dim);">[${t}]</span> <span class="stream-tag ${tag}">${tag.toUpperCase()}</span> <span>${msg}</span>`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
     }
 
-    function clearStreamLogs() {
-      document.getElementById("liveStreamLogs").innerHTML = "";
+    function showToast(txt) {
+      const t = document.getElementById("toastPill");
+      document.getElementById("toastText").textContent = txt;
+      t.style.display = "flex";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
     }
 
-    function showToast(msg, isError = false) {
-      const toast = document.getElementById("toastBox");
-      document.getElementById("toastMsg").textContent = msg;
-      document.getElementById("toastIcon").textContent = isError ? "⚠️" : "⚡";
-      toast.style.borderColor = isError ? "var(--accent-rose)" : "var(--accent-cyan)";
-      toast.style.display = "flex";
-      setTimeout(() => { toast.style.display = "none"; }, 3500);
+    function setEngine(val) {
+      activeEngine = val;
+      showToast(`AI Engine: ${val.toUpperCase()}`);
     }
 
     function toggleTheme() {
       document.body.classList.toggle("light-mode");
       const isLight = document.body.classList.contains("light-mode");
-      document.getElementById("themeToggleBtn").textContent = isLight ? "🌙" : "☀️";
+      document.getElementById("themeBtn").textContent = isLight ? "🌙" : "☀️";
     }
 
-    // Launch Application
-    window.addEventListener("DOMContentLoaded", initCanvas);
+    // Window resize handler
+    window.addEventListener("resize", () => {
+      autoFitView();
+    });
+
+    // Start App
+    window.addEventListener("DOMContentLoaded", initCanvasEngine);
   </script>
 </body>
 </html>
@@ -2206,4 +1881,4 @@ Return a JSON object:
 with open("sop_ai_factory_canvas.html", "w", encoding="utf-8") as f:
     f.write(HTML_CONTENT)
 
-print(f"Successfully generated 'sop_ai_factory_canvas.html' ({len(HTML_CONTENT)} bytes)!")
+print(f"Updated 'sop_ai_factory_canvas.html' successfully ({len(HTML_CONTENT)} bytes)!")
