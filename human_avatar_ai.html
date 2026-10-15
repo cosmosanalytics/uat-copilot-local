@@ -959,23 +959,78 @@
   let currentAvatarMode = '3d'; // '3d' (default 3D Digital Human), 'real' (2D photo), 'vector'
 
   // Three.js 3D Digital Human Engine State
+  let THREE = null;
   let threeScene = null;
   let threeCamera = null;
   let threeRenderer = null;
   let threeHeadGroup = null;
-  let threeFaceMesh = null;
-  let threeMorphDict = {};
-  let isThreeInitialized = false;
-  let isThreeLoading = false;
   let threeClock = null;
   let threeKeyLight = null;
   let threeFillLight = null;
   let threeRimLight = null;
+  let threeGLTFLoader = null;
+  let isThreeInitialized = false;
+  let isThreeLoading = false;
+
+  const PERSONA_3D_MODELS = {
+    evelyn: {
+      url: 'models/evelyn.glb',
+      camY: 1.58,
+      camZ: 0.72
+    },
+    marcus: {
+      url: 'models/marcus.glb',
+      camY: 1.58,
+      camZ: 0.64
+    },
+    maya: {
+      url: 'models/maya.glb',
+      camY: 1.50,
+      camZ: 0.65
+    }
+  };
+
+  const loaded3DModels = {};
+  let current3DKey = null;
+
+  const SHAPE_ALIASES = {
+    'eyeBlink_L': ['eyeBlinkLeft', 'eyeBlink_L', 'eyesClosed'],
+    'eyeBlink_R': ['eyeBlinkRight', 'eyeBlink_R', 'eyesClosed'],
+    'mouthSmile_L': ['mouthSmileLeft', 'mouthSmile_L', 'mouthSmile'],
+    'mouthSmile_R': ['mouthSmileRight', 'mouthSmile_R', 'mouthSmile'],
+    'browDown_L': ['browDownLeft', 'browDown_L'],
+    'browDown_R': ['browDownRight', 'browDown_R'],
+    'browOuterUp_L': ['browOuterUpLeft', 'browOuterUp_L', 'browOuterUpRight'],
+    'browOuterUp_R': ['browOuterUpRight', 'browOuterUp_R', 'browOuterUpLeft'],
+    'browInnerUp': ['browInnerUp'],
+    'mouthLowerDown_L': ['mouthLowerDownLeft', 'mouthLowerDown_L'],
+    'mouthLowerDown_R': ['mouthLowerDownRight', 'mouthLowerDown_R'],
+    'eyeLookIn_L': ['eyeLookInLeft', 'eyeLookIn_L'],
+    'eyeLookOut_L': ['eyeLookOutLeft', 'eyeLookOut_L'],
+    'eyeLookIn_R': ['eyeLookInRight', 'eyeLookIn_R'],
+    'eyeLookOut_R': ['eyeLookOutRight', 'eyeLookOut_R'],
+    'eyeLookUp_L': ['eyeLookUpLeft', 'eyeLookUp_L', 'eyesLookUp'],
+    'eyeLookUp_R': ['eyeLookUpRight', 'eyeLookUp_R', 'eyesLookUp'],
+    'eyeLookDown_L': ['eyeLookDownLeft', 'eyeLookDown_L', 'eyesLookDown'],
+    'eyeLookDown_R': ['eyeLookDownRight', 'eyeLookDown_R', 'eyesLookDown'],
+    'jawOpen': ['jawOpen', 'mouthOpen', 'viseme_aa']
+  };
 
   function set3DMorph(name, val) {
-    if (threeFaceMesh && threeMorphDict && threeMorphDict[name] !== undefined) {
-      threeFaceMesh.morphTargetInfluences[threeMorphDict[name]] = Math.max(0, Math.min(1, val));
-    }
+    if (!threeHeadGroup) return;
+    const candidates = SHAPE_ALIASES[name] || [name];
+    const clamped = Math.max(0, Math.min(1, val));
+    threeHeadGroup.traverse(child => {
+      if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+        for (const cand of candidates) {
+          const idx = child.morphTargetDictionary[cand];
+          if (idx !== undefined) {
+            child.morphTargetInfluences[idx] = clamped;
+            break;
+          }
+        }
+      }
+    });
   }
 
   function apply3DPersonaLighting(key) {
@@ -998,6 +1053,62 @@
     }
   }
 
+  function loadPersona3DModel(key, onComplete) {
+    if (!threeScene || !threeGLTFLoader) return;
+    const cfg = PERSONA_3D_MODELS[key] || PERSONA_3D_MODELS.evelyn;
+
+    // Hide any other active 3D models
+    Object.keys(loaded3DModels).forEach(k => {
+      if (loaded3DModels[k]) loaded3DModels[k].visible = (k === key);
+    });
+
+    current3DKey = key;
+
+    const alignCamera = (model) => {
+      let headBone = null;
+      model.traverse(c => {
+        if (c.name.toLowerCase() === 'head' && !headBone) headBone = c;
+      });
+      const headPos = headBone ? headBone.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, cfg.camY, 0);
+      threeCamera.position.set(0, headPos.y + 0.02, cfg.camZ);
+      threeCamera.lookAt(0, headPos.y, 0);
+    };
+
+    if (loaded3DModels[key]) {
+      threeHeadGroup = loaded3DModels[key];
+      threeHeadGroup.visible = true;
+      alignCamera(threeHeadGroup);
+      apply3DPersonaLighting(key);
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const loadingEl = document.getElementById("avatar3dLoading");
+    if (loadingEl) {
+      loadingEl.style.display = "flex";
+      loadingEl.style.opacity = "1";
+    }
+
+    threeGLTFLoader.load(cfg.url, (gltf) => {
+      const model = gltf.scene;
+      model.userData.baseY = model.position.y || 0;
+      loaded3DModels[key] = model;
+      threeScene.add(model);
+      threeHeadGroup = model;
+      alignCamera(model);
+      apply3DPersonaLighting(key);
+
+      if (loadingEl) {
+        loadingEl.style.opacity = "0";
+        setTimeout(() => { if (loadingEl) loadingEl.style.display = "none"; }, 350);
+      }
+      if (onComplete) onComplete();
+    }, undefined, (err) => {
+      console.warn(`Failed to load 3D model for ${key}:`, err);
+      if (loadingEl) loadingEl.style.display = "none";
+    });
+  }
+
   async function init3DAvatar() {
     if (isThreeInitialized || isThreeLoading) return;
     isThreeLoading = true;
@@ -1008,7 +1119,7 @@
     }
 
     try {
-      const THREE = await import('three');
+      THREE = await import('three');
       const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
       const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
       const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
@@ -1049,49 +1160,21 @@
       threeRimLight.position.set(0, 3, -3);
       threeScene.add(threeRimLight);
 
-      apply3DPersonaLighting(currentPersonaKey);
+      threeGLTFLoader = new GLTFLoader();
+      threeGLTFLoader.setKTX2Loader(ktx2Loader);
+      threeGLTFLoader.setMeshoptDecoder(MeshoptDecoder);
 
-      const loader = new GLTFLoader();
-      loader.setKTX2Loader(ktx2Loader);
-      loader.setMeshoptDecoder(MeshoptDecoder);
-
-      loader.load('facecap.glb', (gltf) => {
-        threeHeadGroup = gltf.scene;
-        threeScene.add(threeHeadGroup);
-
-        // Auto-center and fit camera to bounding box
-        const box = new THREE.Box3().setFromObject(threeHeadGroup);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-
-        // Center model at origin
-        threeHeadGroup.position.x = -center.x;
-        threeHeadGroup.position.y = -center.y - 0.04;
-        threeHeadGroup.position.z = -center.z;
-
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fov = threeCamera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-        threeCamera.position.set(0, 0, cameraZ * 1.38);
-        threeCamera.lookAt(0, 0, 0);
-
-        threeHeadGroup.traverse((child) => {
-          if (child.isMesh && child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0) {
-            threeFaceMesh = child;
-            threeMorphDict = child.morphTargetDictionary;
-            console.log('3D Morph targets loaded on mesh:', child.name, Object.keys(threeMorphDict).length);
-          }
-        });
-
-        // Expose to window for accessibility & testing
+      loadPersona3DModel(currentPersonaKey, () => {
+        isThreeInitialized = true;
+        window.isThreeInitialized = true;
+        isThreeLoading = false;
         window.threeScene = threeScene;
         window.threeCamera = threeCamera;
-        window.threeFaceMesh = threeFaceMesh;
-        window.threeMorphDict = threeMorphDict;
         window.threeRenderer = threeRenderer;
         window.set3DMorph = set3DMorph;
         window.setAvatarMode = setAvatarMode;
         window.switchPersona = switchPersona;
+        window.loadPersona3DModel = loadPersona3DModel;
         window.setSpeakingState = (speaking) => {
           isSpeaking = speaking;
           if (speaking) {
@@ -1101,20 +1184,7 @@
             mouthOpen = 0;
           }
         };
-
-        isThreeInitialized = true;
-        window.isThreeInitialized = true;
-        isThreeLoading = false;
-        if (loadingEl) {
-          loadingEl.style.opacity = "0";
-          setTimeout(() => { if (loadingEl) loadingEl.style.display = "none"; }, 400);
-        }
-        showToast("3D Digital Human ready with 52 Apple ARKit blendshapes!");
-      }, undefined, (err) => {
-        console.error("GLTF load error:", err);
-        isThreeLoading = false;
-        if (loadingEl) loadingEl.style.display = "none";
-        setAvatarMode('real');
+        showToast("3D Digital Human ready with distinct persona identities & ARKit blendshapes!");
       });
 
     } catch (err) {
@@ -1152,6 +1222,8 @@
       const vowelCycle = Math.sin(speechTime * 9);
       set3DMorph('mouthFunnel', Math.max(0, vowelCycle * 0.38));
       set3DMorph('mouthPucker', Math.max(0, -vowelCycle * 0.28));
+      set3DMorph('viseme_O', Math.max(0, vowelCycle * 0.42));
+      set3DMorph('viseme_E', Math.max(0, Math.cos(speechTime * 11) * 0.35));
 
       // Dynamic speaking smile & expression
       const smileAmt = 0.15 + Math.sin(speechTime * 3.0) * 0.12;
@@ -1168,6 +1240,8 @@
       set3DMorph('mouthLowerDown_R', 0);
       set3DMorph('mouthFunnel', 0);
       set3DMorph('mouthPucker', 0);
+      set3DMorph('viseme_O', 0);
+      set3DMorph('viseme_E', 0);
 
       if (isListening) {
         set3DMorph('mouthSmile_L', 0.28);
@@ -1226,7 +1300,8 @@
     threeHeadGroup.rotation.x += (targetRotX - threeHeadGroup.rotation.x) * 0.08;
 
     // Gentle torso breathing oscillation in 3D
-    threeHeadGroup.position.y += ((-0.015 + Math.sin(t * 1.8) * 0.005) - threeHeadGroup.position.y) * 0.05;
+    const baseY = threeHeadGroup.userData.baseY || 0;
+    threeHeadGroup.position.y += ((baseY + Math.sin(t * 1.8) * 0.003) - threeHeadGroup.position.y) * 0.05;
 
     threeRenderer.render(threeScene, threeCamera);
   }
@@ -1302,8 +1377,10 @@
       if (avatarCanvas) avatarCanvas.style.display = 'none';
       if (!isThreeInitialized && !isThreeLoading) {
         init3DAvatar();
+      } else if (isThreeInitialized) {
+        loadPersona3DModel(currentPersonaKey);
       }
-      showToast("Switched to 🤖 3D Digital Human (52 ARKit Blendshapes)");
+      showToast("Switched to 🤖 3D Digital Human (ARKit Blendshapes)");
     } else if (mode === 'real') {
       if (webglContainer) webglContainer.style.display = 'none';
       if (avatarCanvas) avatarCanvas.style.display = 'block';
@@ -2397,8 +2474,11 @@
     // Apply & select the persona's customized voice profile
     applyPersonaVoice(key);
 
-    // Apply 3D cinematic lighting profile for persona
+    // Apply 3D cinematic lighting profile and load distinct persona 3D model
     apply3DPersonaLighting(key);
+    if (isThreeInitialized) {
+      loadPersona3DModel(key);
+    }
 
     interruptAvatar();
     showToast(`Switched to ${persona.name} (${persona.gender === 'male' ? 'Male Voice' : 'Female Voice'} • Pitch ${persona.pitch}x)`);
