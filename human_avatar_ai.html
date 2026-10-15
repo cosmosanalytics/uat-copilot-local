@@ -923,9 +923,9 @@
       name: "Marcus Chen",
       role: "Cloud Architect & Engineer",
       gender: "male",
-      preferredVoices: ["Microsoft Guy", "Guy", "Microsoft David", "David", "Google UK English Male", "Google US English", "Daniel", "Alex", "Fred", "male"],
-      pitch: 0.82, // Deep masculine baritone pitch
-      rate: 1.06,
+      preferredVoices: ["Microsoft David", "David", "Microsoft Mark", "Mark", "Microsoft Guy", "Guy", "Google UK English Male", "Daniel", "Alex", "Fred", "George", "Oliver", "Kangkang"],
+      pitch: 0.78, // Deep masculine baritone pitch
+      rate: 1.05,
       avatarColor: "#2563EB",
       skinTone: "#E8B896",
       hairColor: "#111827",
@@ -981,12 +981,12 @@
     marcus: {
       url: 'models/marcus.glb',
       camY: 1.58,
-      camZ: 0.64
+      camZ: 0.56
     },
     maya: {
       url: 'models/maya.glb',
-      camY: 1.50,
-      camZ: 0.65
+      camY: 1.48,
+      camZ: 0.56
     }
   };
 
@@ -1053,6 +1053,20 @@
     }
   }
 
+  function posePersonaArms(model, key) {
+    model.traverse(c => {
+      if (c.isBone) {
+        if (key === 'marcus') {
+          if (c.name === 'LeftArm') { c.rotation.x = 1.35; c.rotation.z = -0.10; }
+          if (c.name === 'RightArm') { c.rotation.x = 1.35; c.rotation.z = 0.10; }
+        } else if (key === 'maya') {
+          if (c.name === 'LeftArm') { c.rotation.x = 1.35; c.rotation.z = -0.15; }
+          if (c.name === 'RightArm') { c.rotation.x = 1.35; c.rotation.z = 0.15; }
+        }
+      }
+    });
+  }
+
   function loadPersona3DModel(key, onComplete) {
     if (!threeScene || !threeGLTFLoader) return;
     const cfg = PERSONA_3D_MODELS[key] || PERSONA_3D_MODELS.evelyn;
@@ -1077,6 +1091,7 @@
     if (loaded3DModels[key]) {
       threeHeadGroup = loaded3DModels[key];
       threeHeadGroup.visible = true;
+      posePersonaArms(threeHeadGroup, key);
       alignCamera(threeHeadGroup);
       apply3DPersonaLighting(key);
       if (onComplete) onComplete();
@@ -1092,6 +1107,7 @@
     threeGLTFLoader.load(cfg.url, (gltf) => {
       const model = gltf.scene;
       model.userData.baseY = model.position.y || 0;
+      posePersonaArms(model, key);
       loaded3DModels[key] = model;
       threeScene.add(model);
       threeHeadGroup = model;
@@ -2113,6 +2129,35 @@
   // =========================================================================
   // TEXT-TO-SPEECH (SPEAKING & LIP-SYNC WITH DYNAMIC VOICE SWITCHING)
   // =========================================================================
+  function isExplicitMaleVoice(v) {
+    if (!v || !v.name) return false;
+    const n = (v.name + " " + (v.voiceURI || "")).toLowerCase();
+    // Exclude female names and markers
+    if (n.includes("female") || n.includes("woman") || n.includes("zira") || 
+        n.includes("jenny") || n.includes("samantha") || n.includes("aria") || 
+        n.includes("victoria") || n.includes("karen") || n.includes("hazel") || 
+        n.includes("susan") || n.includes("catherine") || n.includes("michelle") || 
+        n.includes("fiona") || n.includes("huihui") || n.includes("yaoyao")) {
+      return false;
+    }
+    return n.includes("david") || n.includes("mark") || n.includes("guy") || 
+           n.includes("daniel") || n.includes("george") || n.includes("alex") || 
+           n.includes("fred") || n.includes("oliver") || n.includes("kangkang") || 
+           n.includes("james") || n.includes("richard") || (n.includes("male") && !n.includes("female"));
+  }
+
+  function isExplicitFemaleVoice(v) {
+    if (!v || !v.name) return false;
+    const n = (v.name + " " + (v.voiceURI || "")).toLowerCase();
+    if (n.includes("david") || n.includes("mark") || n.includes("guy") || n.includes("daniel") || n.includes("kangkang")) {
+      return false;
+    }
+    return n.includes("female") || n.includes("woman") || n.includes("zira") || 
+           n.includes("jenny") || n.includes("samantha") || n.includes("aria") || 
+           n.includes("michelle") || n.includes("fiona") || n.includes("victoria") || 
+           n.includes("karen") || n.includes("huihui") || n.includes("yaoyao");
+  }
+
   function getVoiceForPersona(persona) {
     if (!synth) return null;
     if (!availableVoices || availableVoices.length === 0) {
@@ -2120,35 +2165,33 @@
     }
     if (!availableVoices || availableVoices.length === 0) return null;
 
+    const isMale = persona.gender === "male";
+
     // 1. Try matching preferred voice names for this persona
     if (persona.preferredVoices) {
       for (const pref of persona.preferredVoices) {
-        const found = availableVoices.find(v => 
-          v.name.toLowerCase().includes(pref.toLowerCase())
-        );
+        const found = availableVoices.find(v => {
+          const matchName = v.name.toLowerCase().includes(pref.toLowerCase());
+          if (!matchName) return false;
+          if (isMale && !isExplicitMaleVoice(v)) return false;
+          if (!isMale && isExplicitMaleVoice(v)) return false;
+          return true;
+        });
         if (found) return found;
       }
     }
 
-    // 2. Gender heuristic
-    if (persona.gender === "male") {
-      const maleVoice = availableVoices.find(v => 
-        v.lang.startsWith("en") && 
-        (v.name.toLowerCase().includes("david") || v.name.toLowerCase().includes("guy") || 
-         v.name.toLowerCase().includes("mark") || v.name.toLowerCase().includes("daniel") || 
-         v.name.toLowerCase().includes("george") || v.name.toLowerCase().includes("alex") || 
-         v.name.toLowerCase().includes("fred") || v.name.toLowerCase().includes("male"))
-      );
+    // 2. Strict gender heuristic
+    if (isMale) {
+      const maleVoice = availableVoices.find(v => v.lang.startsWith("en") && isExplicitMaleVoice(v));
       if (maleVoice) return maleVoice;
+      const anyMaleVoice = availableVoices.find(v => isExplicitMaleVoice(v));
+      if (anyMaleVoice) return anyMaleVoice;
     } else {
-      const femaleVoice = availableVoices.find(v => 
-        v.lang.startsWith("en") && 
-        (v.name.toLowerCase().includes("zira") || v.name.toLowerCase().includes("jenny") || 
-         v.name.toLowerCase().includes("samantha") || v.name.toLowerCase().includes("aria") || 
-         v.name.toLowerCase().includes("karen") || v.name.toLowerCase().includes("victoria") || 
-         v.name.toLowerCase().includes("female"))
-      );
+      const femaleVoice = availableVoices.find(v => v.lang.startsWith("en") && isExplicitFemaleVoice(v));
       if (femaleVoice) return femaleVoice;
+      const anyFemaleVoice = availableVoices.find(v => isExplicitFemaleVoice(v));
+      if (anyFemaleVoice) return anyFemaleVoice;
     }
 
     // 3. Fallback to English voice
