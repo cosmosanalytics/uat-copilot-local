@@ -157,6 +157,12 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       color: var(--text-main);
     }
 
+    .level-tab.l4.active {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+    }
+
     .level-tab.l3.active {
       background: linear-gradient(135deg, #0ea5e9, #2563eb);
       color: #ffffff;
@@ -404,6 +410,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       border-radius: 3px;
       font-weight: 700;
     }
+    .tier-l4 { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid #10b981; }
     .tier-l3 { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .tier-l2 { background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border: 1px solid #6366f1; }
     .tier-l1 { background: rgba(168, 85, 247, 0.15); color: #f5d0fe; border: 1px solid #a855f7; }
@@ -556,6 +563,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       font-family: var(--font-mono);
       text-transform: uppercase;
     }
+    .badge-company { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; }
     .badge-org { background: rgba(14, 165, 233, 0.2); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .badge-worker { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid #6366f1; }
     .badge-cognition { background: rgba(168, 85, 247, 0.2); color: #f5d0fe; border: 1px solid #a855f7; }
@@ -916,9 +924,12 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       <div class="brand-name">Enterprise AI Factory</div>
     </div>
 
-    <!-- 3-Tier Hierarchy Switcher -->
+    <!-- 4-Tier Hierarchy Switcher -->
     <div class="level-switcher">
-      <button class="level-tab l3 active" id="tabL3" onclick="switchLevel(3)">
+      <button class="level-tab l4 active" id="tabL4" onclick="switchLevel(4)">
+        🌐 <span>Level 4: Value Chain</span>
+      </button>
+      <button class="level-tab l3" id="tabL3" onclick="switchLevel(3)">
         🏢 <span>Level 3: Company</span>
       </button>
       <button class="level-tab l2" id="tabL2" onclick="switchLevel(2)">
@@ -945,13 +956,15 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     </div>
   </header>
 
-  <!-- Sub-Navbar: Interactive Breadcrumb & Telemetry Strip (Selected at Company level) -->
+  <!-- Sub-Navbar: Interactive 4-Tier Breadcrumb & Telemetry Strip -->
   <div class="kpi-bar">
     <div class="breadcrumb-trail" id="breadcrumbTrail">
-      <span class="crumb active" id="crumbL3" onclick="switchLevel(3)">🏢 Company Value Stream</span>
+      <span class="crumb active" id="crumbL4" onclick="switchLevel(4)">🌐 Value Chain</span>
       <span class="crumb-sep" id="crumbSep1" style="display:none;">➔</span>
-      <span class="crumb" id="crumbL2" style="display:none;" onclick="switchLevel(2)">🏭 Organization</span>
+      <span class="crumb" id="crumbL3" style="display:none;" onclick="switchLevel(3)">🏢 Company</span>
       <span class="crumb-sep" id="crumbSep2" style="display:none;">➔</span>
+      <span class="crumb" id="crumbL2" style="display:none;" onclick="switchLevel(2)">🏭 Organization</span>
+      <span class="crumb-sep" id="crumbSep3" style="display:none;">➔</span>
       <span class="crumb" id="crumbL1" style="display:none;" onclick="switchLevel(1)">🧠 Worker Mind</span>
     </div>
 
@@ -1103,10 +1116,79 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
     const GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
 
-    let currentLevel = 3;       // 3: Company, 2: Organization, 1: Mind
-    let activeOrgType = "sop";  // Selected organization at Company Level
-    let selectedNodeId = "sop"; // Selected item in current canvas
+    let currentLevel = 4;           // 4: Value Chain, 3: Company, 2: Organization, 1: Mind
+    let activeCompanyId = "comp_3"; // Selected company in Value Chain (Apex OEM)
+    let activeOrgType = "sop";      // Selected organization at Company Level
+    let selectedNodeId = "comp_3";  // Selected item in current canvas
     let activeEngine = "groq";
+
+    /* LEVEL 4: MULTI-COMPANY VALUE CHAIN / CONGLOMERATE (6 Companies as Nodes) */
+    const VALUE_CHAIN_COMPANIES = [
+      {
+        id: "comp_1", code: "CO-01", name: "SilicoFab Semiconductor Corp",
+        role: "Tier-1 Silicon Foundry & ASIC Fab",
+        desc: "Fabricates custom 3nm/5nm AI ASIC accelerators, wafer lot processing, and cleanroom production.",
+        artifact: "Wafer Capacity Contract & Lot Dispatch Manifest ($48.2M)",
+        metrics: { waferYield: "94.2%", fabLeadTime: "24 Wks" },
+        tier: 4, x: 40, y: 100,
+        orgs: ["Commercial Sales", "Fab S&OP", "Cleanroom MES", "Silicon Logistics"]
+      },
+      {
+        id: "comp_2", code: "CO-02", name: "MicroPCB & Substrates Inc",
+        role: "High-Density Interconnect (HDI) Supplier",
+        desc: "Supplies multi-layer PCB laminates, passive component matrix, and advanced ball-grid substrate packaging.",
+        artifact: "Certified Substrate Reel Dispatch & Batch Lot ($18.5M)",
+        metrics: { onTimeShip: "98.4%", ppmDefect: "12 PPM" },
+        tier: 4, x: 40, y: 360,
+        orgs: ["Material Procurement", "Substrate S&OP", "Chemical MES", "Depot WMS"]
+      },
+      {
+        id: "comp_3", code: "CO-03", name: "Apex Hardware Systems (OEM)",
+        role: "Brand Enterprise & Demand Orchestrator",
+        desc: "Flagship OEM: product architecture, commercial contract intake, multi-echelon S&OP, and enterprise sales.",
+        artifact: "Global Enterprise Consensus Operating Plan ($135.0M)",
+        metrics: { grossMargin: "44.8%", sopFillRate: "95.2%" },
+        tier: 4, isCore: true, x: 440, y: 220,
+        orgs: ["CRM & Commercial", "S&OP Planning", "ERP Core", "MES Shop Floor", "WMS Logistics", "Finance & Treasury"]
+      },
+      {
+        id: "comp_4", code: "CO-04", name: "Pegasus EMS Contract Mfg",
+        role: "Global Box-Build & Final Assembly",
+        desc: "Turnkey electronic contract manufacturing: SMT lines, automated robotic feeders, ICT testing, and burn-in packaging.",
+        artifact: "Box-Build Manufacturing Release & Acceptance ($74.6M)",
+        metrics: { smtYield: "97.4%", plantOEE: "89.2%" },
+        tier: 4, x: 840, y: 100,
+        orgs: ["EMS Program Mgmt", "Production S&OP", "Plant MES", "Outbound WMS"]
+      },
+      {
+        id: "comp_5", code: "CO-05", name: "TransGlobal Intermodal 3PL",
+        role: "Global Freight, Customs & Distribution",
+        desc: "Operates air charter, ocean container freight, bonded customs clearance, and regional DC routing networks.",
+        artifact: "Intermodal Master Waybill & Customs SLA Bond",
+        metrics: { slaCompliance: "99.1%", transitVelocity: "4.2 Days" },
+        tier: 4, x: 840, y: 360,
+        orgs: ["Carrier Commercial", "Routing S&OP", "Freight Billing", "Regional DCs"]
+      },
+      {
+        id: "comp_6", code: "CO-06", name: "OmniCloud Datacenters",
+        role: "Hyperscale Cloud & Enterprise Customer",
+        desc: "Consumes server racks, deploys cluster compute instances, verifies datacenter SLAs, and issues enterprise payments.",
+        artifact: "Signed Multi-Year Cluster Acceptance & Master PO ($182.0M)",
+        metrics: { acceptanceRate: "99.8%", paymentTerms: "Net 30" },
+        tier: 4, x: 1240, y: 220,
+        orgs: ["Strategic Sourcing", "Capacity Planning", "Inbound Ops", "Treasury AP"]
+      }
+    ];
+
+    const VALUE_CHAIN_WIRES = [
+      { from: "comp_1", to: "comp_4", label: "ASIC Wafers" },
+      { from: "comp_2", to: "comp_4", label: "HDI Substrates" },
+      { from: "comp_3", to: "comp_1", label: "Long-Lead ASIC PO" },
+      { from: "comp_3", to: "comp_4", label: "Turnkey Work Orders" },
+      { from: "comp_4", to: "comp_5", label: "Finished Assemblies" },
+      { from: "comp_5", to: "comp_6", label: "Air/Ocean Delivery" },
+      { from: "comp_6", to: "comp_3", label: "Enterprise Bookings", feedback: true }
+    ];
 
     /* LEVEL 3: COMPANY-LEVEL PROCESS (6 Organizations as Nodes) */
     const COMPANY_ORGS = [
@@ -1614,8 +1696,16 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       fin: { name: "Finance & Treasury", modules: FIN_MODULES, wires: FIN_WIRES }
     };
 
-    /* WAREHOUSE CATALOG ACROSS 3 TIERS */
+    /* WAREHOUSE CATALOG ACROSS 4 TIERS */
     const WAREHOUSE_CATALOG = {
+      level4: [
+        { name: "SilicoFab Semiconductor Corp", tier: "L4", icon: "💎", desc: "Tier-1 Silicon Foundry & ASIC Fab (Wafer contracts & cleanroom capacity)." },
+        { name: "MicroPCB & Substrates Inc", tier: "L4", icon: "🔌", desc: "High-density interconnect (HDI) laminate and ball-grid array substrate supplier." },
+        { name: "Apex Hardware Systems (OEM)", tier: "L4", icon: "🏢", desc: "Flagship brand enterprise, IP architecture, and global S&OP demand orchestrator." },
+        { name: "Pegasus EMS Contract Mfg", tier: "L4", icon: "🏭", desc: "Turnkey box-build manufacturing, automated robotics, and surface mount technology." },
+        { name: "TransGlobal Intermodal 3PL", tier: "L4", icon: "🚢", desc: "Intermodal air freight, ocean carrier logistics, and bonded customs brokerage." },
+        { name: "OmniCloud Datacenters", tier: "L4", icon: "☁️", desc: "Tier-1 Hyperscale customer consuming server racks and enterprise cloud compute." }
+      ],
       level3: [
         { name: "CRM & Commercial Ops", tier: "L3", icon: "👥", desc: "Customer intake, opportunity pipeline, pricing rules, and contract terms." },
         { name: "S&OP Planning Engine", tier: "L3", icon: "📊", desc: "11-stage cross-functional consensus planning: balances demand and supply constraints." },
@@ -1721,9 +1811,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
       renderCurrentCanvas();
       renderWarehouse();
-      selectNode("sop");
+      selectNode("comp_3");
       autoFitView();
-      logEvent("Enterprise AI Factory online: Organizations selected visually at Company Level.", "ok");
+      logEvent("Enterprise AI Factory online: Multi-Enterprise Value Chain active (4 Levels).", "ok");
     }
 
     function applyTransform() {
@@ -1779,42 +1869,66 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
 
     /* =========================================================================
-       3. 3-TIER HIERARCHY SWITCHING (SELECTED VISUALLY AT COMPANY LEVEL)
+       3. 4-TIER HIERARCHY SWITCHING (SELECTED VISUALLY AT EACH LEVEL)
        ========================================================================= */
     function switchLevel(lvl) {
       currentLevel = lvl;
+      document.getElementById("tabL4").classList.toggle("active", lvl === 4);
       document.getElementById("tabL3").classList.toggle("active", lvl === 3);
       document.getElementById("tabL2").classList.toggle("active", lvl === 2);
       document.getElementById("tabL1").classList.toggle("active", lvl === 1);
 
       const whLabel = document.getElementById("whContextLabel");
+      const compInfo = VALUE_CHAIN_COMPANIES.find(c => c.id === activeCompanyId) || VALUE_CHAIN_COMPANIES[2];
       const orgInfo = ALL_ORGS[activeOrgType] || ALL_ORGS["sop"];
 
       // Update interactive breadcrumb trail
+      const cL4 = document.getElementById("crumbL4");
       const cL3 = document.getElementById("crumbL3");
       const cL2 = document.getElementById("crumbL2");
       const cL1 = document.getElementById("crumbL1");
       const sep1 = document.getElementById("crumbSep1");
       const sep2 = document.getElementById("crumbSep2");
+      const sep3 = document.getElementById("crumbSep3");
 
-      if (lvl === 3) {
-        cL3.className = "crumb active";
+      if (lvl === 4) {
+        cL4.className = "crumb active";
+        cL3.style.display = "none";
         cL2.style.display = "none";
         cL1.style.display = "none";
         sep1.style.display = "none";
         sep2.style.display = "none";
+        sep3.style.display = "none";
 
-        whLabel.innerHTML = "Showing: <strong>Level 3 Enterprise Organizations</strong>";
+        whLabel.innerHTML = "Showing: <strong>Level 4 Value Chain Companies</strong>";
+        selectedNodeId = activeCompanyId;
+        showToast("Level 4: Multi-Enterprise Value Chain");
+      } else if (lvl === 3) {
+        cL4.className = "crumb";
+        cL3.style.display = "flex";
+        cL3.className = "crumb active";
+        cL3.innerHTML = `🏢 ${compInfo.name}`;
+        cL2.style.display = "none";
+        cL1.style.display = "none";
+        sep1.style.display = "inline";
+        sep2.style.display = "none";
+        sep3.style.display = "none";
+
+        whLabel.innerHTML = `Showing: <strong>Level 3 Organizations (${compInfo.name})</strong>`;
         selectedNodeId = activeOrgType;
-        showToast("Level 3: Company Value Stream");
+        showToast(`Level 3: ${compInfo.name}`);
       } else if (lvl === 2) {
+        cL4.className = "crumb";
+        cL3.style.display = "flex";
         cL3.className = "crumb";
+        cL3.innerHTML = `🏢 ${compInfo.name}`;
         cL2.style.display = "flex";
         cL2.className = "crumb active";
         cL2.innerHTML = `🏭 ${orgInfo.name} (${orgInfo.modules.length} Workers)`;
         cL1.style.display = "none";
         sep1.style.display = "inline";
-        sep2.style.display = "none";
+        sep2.style.display = "inline";
+        sep3.style.display = "none";
 
         whLabel.innerHTML = `Showing: <strong>Level 2 ${orgInfo.name} Workers (${orgInfo.modules.length} Roles)</strong>`;
         const hasWorker = orgInfo.modules.some(m => m.id === selectedNodeId);
@@ -1824,7 +1938,10 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         showToast(`Level 2: ${orgInfo.name}`);
       } else {
         const currentWorker = findWorkerById(selectedNodeId);
+        cL4.className = "crumb";
+        cL3.style.display = "flex";
         cL3.className = "crumb";
+        cL3.innerHTML = `🏢 ${compInfo.name}`;
         cL2.style.display = "flex";
         cL2.className = "crumb";
         cL2.innerHTML = `🏭 ${orgInfo.name}`;
@@ -1833,6 +1950,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
         cL1.innerHTML = `🧠 ${currentWorker.name} Mind`;
         sep1.style.display = "inline";
         sep2.style.display = "inline";
+        sep3.style.display = "inline";
 
         whLabel.innerHTML = "Showing: <strong>Level 1 Cognitive Skills & Personas</strong>";
         selectedNodeId = "core";
@@ -1843,6 +1961,15 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       renderWarehouse();
       selectNode(selectedNodeId);
       autoFitView();
+    }
+
+    // Direct entry from clicking or double-clicking a company node in Level 4 Value Chain!
+    function openCompanyFromValueChain(compId) {
+      if (VALUE_CHAIN_COMPANIES.some(c => c.id === compId)) {
+        activeCompanyId = compId;
+      }
+      switchLevel(3);
+      closeAllDrawers();
     }
 
     // Direct entry from clicking or double-clicking an organization node at Company Level!
@@ -1856,7 +1983,10 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     const switchOrganizationView = openOrganizationFromCompany;
 
     function drillDownFromInspector() {
-      if (currentLevel === 3) {
+      if (currentLevel === 4) {
+        // Open the selected company's Level 3 enterprise organizations
+        openCompanyFromValueChain(selectedNodeId);
+      } else if (currentLevel === 3) {
         // Open the selected organization's Level 2 workflow
         openOrganizationFromCompany(selectedNodeId);
       } else if (currentLevel === 2) {
@@ -1885,6 +2015,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     }
 
     function getActiveNodes() {
+      if (currentLevel === 4) return VALUE_CHAIN_COMPANIES;
       if (currentLevel === 3) return COMPANY_ORGS;
       if (currentLevel === 2) return (ALL_ORGS[activeOrgType] || ALL_ORGS["sop"]).modules;
 
@@ -1929,15 +2060,39 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
       nodes.forEach(n => {
         const el = document.createElement("div");
+        const isL4 = currentLevel === 4;
         const isL3 = currentLevel === 3;
         el.className = `canvas-node ${n.id === selectedNodeId ? "selected" : ""}`;
         el.id = `node_${n.id}`;
         el.style.left = `${n.x}px`;
         el.style.top = `${n.y}px`;
 
-        let badgeClass = "badge-org";
-        if (currentLevel === 2) badgeClass = "badge-worker";
-        else if (currentLevel === 1) badgeClass = "badge-cognition";
+        let badgeClass = "badge-company";
+        let icon = "🌐";
+        let tierLabel = "Value Chain Enterprise";
+        let drillBtnLabel = "🏢 Open Company";
+        
+        if (isL4) {
+          badgeClass = "badge-company";
+          icon = "🌐";
+          tierLabel = "Value Chain Company";
+          drillBtnLabel = "🏢 Open Company";
+        } else if (isL3) {
+          badgeClass = "badge-org";
+          icon = "🏢";
+          tierLabel = "Organization";
+          drillBtnLabel = "🔍 Open Org Flow";
+        } else if (currentLevel === 2) {
+          badgeClass = "badge-worker";
+          icon = "⚙️";
+          tierLabel = `Tier ${n.tier}`;
+          drillBtnLabel = "🧠 View Mind";
+        } else if (currentLevel === 1) {
+          badgeClass = "badge-cognition";
+          icon = "🧠";
+          tierLabel = "Cognitive Unit";
+          drillBtnLabel = "⬅ Back to Org";
+        }
 
         const mKeys = Object.keys(n.metrics || {});
 
@@ -1946,7 +2101,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
           <div class="node-port out"></div>
           <div class="node-bar">
             <div class="node-title-wrap">
-              <span>${isL3 ? "🏢" : currentLevel === 2 ? "⚙️" : "🧠"}</span>
+              <span>${icon}</span>
               <span>${n.name}</span>
             </div>
             <span class="node-badge-pill ${badgeClass}">${n.code}</span>
@@ -1956,36 +2111,34 @@ HTML_CONTENT = r'''<!DOCTYPE html>
             <div class="node-desc-text">${n.desc}</div>
             <div class="node-metrics-box">
               <span style="color:var(--text-dim);">${mKeys[0] || "Metric"}:</span>
-              <span style="color:var(--accent-blue);">${n.metrics[mKeys[0]] || ""}</span>
+              <span style="color:var(--accent-blue);">${n.metrics ? n.metrics[mKeys[0]] : ""}</span>
               <span style="color:var(--text-dim);">${mKeys[1] || "Status"}:</span>
-              <span style="color:var(--accent-emerald);">${n.metrics[mKeys[1]] || ""}</span>
+              <span style="color:var(--accent-emerald);">${n.metrics ? n.metrics[mKeys[1]] : ""}</span>
             </div>
           </div>
           <div class="node-foot">
             <span style="font-size:0.62rem; color:var(--text-dim); font-family:var(--font-mono);">
-              ${isL3 ? "Organization" : currentLevel === 2 ? `Tier ${n.tier}` : "Cognitive Unit"}
+              ${tierLabel}
             </span>
             <button class="btn-drill" onclick="event.stopPropagation(); ${
-              isL3 
-                ? `openOrganizationFromCompany('${n.id}');` 
-                : currentLevel === 2 
-                  ? `selectNode('${n.id}'); switchLevel(1);` 
-                  : `switchLevel(2);`
-            }">
-              ${
-                isL3 
-                  ? "🔍 Open Org Flow" 
+              isL4
+                ? `openCompanyFromValueChain('${n.id}');`
+                : isL3 
+                  ? `openOrganizationFromCompany('${n.id}');` 
                   : currentLevel === 2 
-                    ? "🧠 View Mind" 
-                    : "⬅ Back to Org"
-              }
+                    ? `selectNode('${n.id}'); switchLevel(1);` 
+                    : `switchLevel(2);`
+            }">
+              ${drillBtnLabel}
             </button>
           </div>
         `;
 
         // Click to select node
         el.addEventListener("click", () => {
-          if (currentLevel === 3 && n.id in ALL_ORGS) {
+          if (currentLevel === 4) {
+            activeCompanyId = n.id;
+          } else if (currentLevel === 3 && n.id in ALL_ORGS) {
             activeOrgType = n.id;
           }
           selectNode(n.id);
@@ -1993,7 +2146,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
         // Double-click to directly drill down
         el.addEventListener("dblclick", () => {
-          if (currentLevel === 3) {
+          if (currentLevel === 4) {
+            openCompanyFromValueChain(n.id);
+          } else if (currentLevel === 3) {
             openOrganizationFromCompany(n.id);
           } else if (currentLevel === 2) {
             selectNode(n.id);
@@ -2022,7 +2177,10 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       let wires = [];
       let activeNodesList = [];
 
-      if (currentLevel === 3) {
+      if (currentLevel === 4) {
+        wires = VALUE_CHAIN_WIRES;
+        activeNodesList = VALUE_CHAIN_COMPANIES;
+      } else if (currentLevel === 3) {
         wires = COMPANY_WIRES;
         activeNodesList = COMPANY_ORGS;
       } else if (currentLevel === 2) {
@@ -2110,7 +2268,16 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
       const card = document.getElementById("inspectorBodyCard");
       let subItemsHtml = "";
-      if (currentLevel === 3 && n.workers) {
+      if (currentLevel === 4 && n.keyOrgs) {
+        subItemsHtml = `
+          <div style="font-size:0.68rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase; margin-top:3px;">
+            Key Internal Organizations (${n.keyOrgs.length}):
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px;">
+            ${n.keyOrgs.map(o => `<span class="sub-item-badge">🏭 ${o}</span>`).join("")}
+          </div>
+        `;
+      } else if (currentLevel === 3 && n.workers) {
         subItemsHtml = `
           <div style="font-size:0.68rem; font-weight:700; color:var(--accent-purple); text-transform:uppercase; margin-top:3px;">
             Key Organizational Workers (${n.workers.length}):
@@ -2152,7 +2319,9 @@ HTML_CONTENT = r'''<!DOCTYPE html>
 
       // Update Drill button text
       const drillBtn = document.getElementById("btnInspectDrill");
-      if (currentLevel === 3) {
+      if (currentLevel === 4) {
+        drillBtn.textContent = `🏢 Open ${n.name} (Level 3)`;
+      } else if (currentLevel === 3) {
         drillBtn.textContent = `🔍 Open ${n.name} (Level 2)`;
       } else if (currentLevel === 2) {
         drillBtn.textContent = `🧠 View ${n.name} Mind (Level 1)`;
@@ -2168,7 +2337,7 @@ HTML_CONTENT = r'''<!DOCTYPE html>
     function renderWarehouse() {
       const list = document.getElementById("warehouseList");
       list.innerHTML = "";
-      const items = currentLevel === 3 ? WAREHOUSE_CATALOG.level3 : currentLevel === 2 ? WAREHOUSE_CATALOG.level2 : WAREHOUSE_CATALOG.level1;
+      const items = currentLevel === 4 ? WAREHOUSE_CATALOG.level4 : currentLevel === 3 ? WAREHOUSE_CATALOG.level3 : currentLevel === 2 ? WAREHOUSE_CATALOG.level2 : WAREHOUSE_CATALOG.level1;
 
       items.forEach(it => {
         const d = document.createElement("div");
@@ -2202,12 +2371,12 @@ HTML_CONTENT = r'''<!DOCTYPE html>
       logEvent(`[COPILOT] Order: "${txt}"`, "ok");
 
       const sysPrompt = `You are the Enterprise AI Factory Chief Architect.
-The user wants to assemble or optimize across 3 levels: Company (L3), Organization (L2), or Mind (L1).
-All 6 organizations (CRM, S&OP, ERP, MES, WMS, Finance) are fully linked.
+The user wants to assemble or optimize across 4 levels: Value Chain (L4), Company (L3), Organization (L2), or Mind (L1).
+All 6 value chain enterprises and 6 organizations (CRM, S&OP, ERP, MES, WMS, Finance) are fully linked.
 Return JSON:
 {
   "summary": string,
-  "level": 1 | 2 | 3,
+  "level": 1 | 2 | 3 | 4,
   "recommendations": [string]
 }`;
 
@@ -2239,9 +2408,12 @@ Return JSON:
 
         if (!resJson) {
           resJson = {
-            summary: "Compiled End-to-End Enterprise Flow: S&OP Consensus to ERP MRP Execution & Shop Floor Dispatch",
-            level: 2,
-            recommendations: ["Link S&OP consensus directly to ERP MRP II run", "Release shop floor work orders to MES SMT line dispatch"]
+            summary: "Synchronized End-to-End Multi-Enterprise Value Chain: Foundry Wafers ➔ Substrates ➔ OEM S&OP Consensus ➔ EMS Box-Build ➔ 3PL Air Freight ➔ Hyperscaler Racks",
+            level: 4,
+            recommendations: [
+              "Synchronize SilicoFab wafer allocation directly with Apex OEM S&OP demand signals",
+              "Align Pegasus EMS shop-floor build schedules with TransGlobal bonded air freight slots"
+            ]
           };
         }
 
@@ -2362,22 +2534,34 @@ Return JSON:
 
       body.innerHTML = `
         <div style="font-weight:700; color:var(--accent-blue); font-size:0.85rem;">
-          ENTERPRISE 3-TIER FRACTAL BILL OF MATERIALS (BOM)
+          ENTERPRISE 4-TIER FRACTAL BILL OF MATERIALS (BOM)
         </div>
         <div style="font-size:0.7rem; color:var(--text-muted);">
-          Hierarchy: Level 3 (Company Value Stream) ➔ Level 2 (All 6 Organizations: ${totalWorkers} Workers) ➔ Level 1 (Worker Mind)
+          Hierarchy: Level 4 (Value Chain / Ecosystem: 6 Companies) ➔ Level 3 (Company Value Stream: 6 Orgs) ➔ Level 2 (${totalWorkers} Organizational Workers) ➔ Level 1 (Worker Cognition & Mind)
         </div>
 
         <table class="bom-grid">
           <thead>
             <tr>
               <th>Tier</th>
-              <th>Organization</th>
-              <th>Workers / Stages</th>
+              <th>Entity / Level</th>
+              <th>Composition</th>
               <th>Primary Output Artifact</th>
             </tr>
           </thead>
           <tbody>
+            <tr>
+              <td><span class="part-tier-tag tier-l4">L4 Value Chain</span></td>
+              <td><strong>6 Interconnected Enterprises</strong></td>
+              <td>SilicoFab (Fab), MicroPCB (Substrates), Apex (OEM), Pegasus (EMS), TransGlobal (3PL), OmniCloud (Hyperscaler)</td>
+              <td>Multi-Enterprise Demand & Supply Synchronization ($124.8M AOP)</td>
+            </tr>
+            <tr>
+              <td><span class="part-tier-tag tier-l3">L3 Company</span></td>
+              <td><strong>Enterprise Operating Core</strong></td>
+              <td>6 Coordinated Organizations (CRM ➔ S&OP ➔ ERP ➔ MES ➔ WMS ➔ Finance)</td>
+              <td>End-to-End Enterprise Closed Loop Operating Plan</td>
+            </tr>
             <tr>
               <td><span class="part-tier-tag tier-l2">L2 Org</span></td>
               <td><strong>CRM & Commercial</strong></td>
@@ -2417,8 +2601,8 @@ Return JSON:
             <tr>
               <td><span class="part-tier-tag tier-l1">L1 Mind</span></td>
               <td><strong>Cognitive Society of Mind</strong></td>
-              <td>Internal Personas + Cognitive Skills</td>
-              <td>ElastiCache, DynamoDB, Cedar Policy, Circuit Breaker</td>
+              <td>Internal Dialectical Personas + Deterministic Agent Harness</td>
+              <td>ElastiCache Context, DynamoDB ACID, Cedar Policy, Circuit Breaker</td>
             </tr>
           </tbody>
         </table>
