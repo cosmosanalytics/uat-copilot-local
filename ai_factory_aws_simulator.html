@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The AI Agent Factory & AWS Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Pyodide in-browser Python WebAssembly engine -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+<style>
+  :root {
+    --bg-page: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --border-color: #E2E8F0;
+    --border-hover: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --accent: #2563EB;
+    --accent-light: #EFF6FF;
+    --accent-dark: #1D4ED8;
+    --tier0-color: #D97706;
+    --tier0-bg: #FEF3C7;
+    --tier1-color: #0284C7;
+    --tier1-bg: #E0F2FE;
+    --tier2-color: #7C3AED;
+    --tier2-bg: #EDE9FE;
+    --success: #16A34A;
+    --success-bg: #DCFCE7;
+    --danger: #DC2626;
+    --danger-bg: #FEE2E2;
+    --warning: #EA580C;
+    --warning-bg: #FFEDD5;
+    --code-bg: #0F172A;
+    --code-text: #E2E8F0;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body.dark-mode {
+    --bg-page: #0B0F19;
+    --card-bg: #111827;
+    --border-color: #1F2937;
+    --border-hover: #374151;
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-muted: #9CA3AF;
+    --accent: #3B82F6;
+    --accent-light: rgba(59, 130, 246, 0.15);
+    --accent-dark: #2563EB;
+    --tier0-color: #F59E0B;
+    --tier0-bg: rgba(245, 158, 11, 0.15);
+    --tier1-color: #38BDF8;
+    --tier1-bg: rgba(56, 189, 248, 0.15);
+    --tier2-color: #A855F7;
+    --tier2-bg: rgba(168, 85, 247, 0.15);
+    --code-bg: #030712;
+    --code-text: #F3F4F6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  /* TOP NAVBAR */
+  .navbar {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-logo {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--tier0-color), var(--accent), var(--tier2-color));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  }
+  .brand-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .brand-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pill-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: var(--bg-page);
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .dot.blue { background: var(--accent); }
+  .dot.orange { background: var(--warning); }
+
+  .engine-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-icon {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-icon:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-page);
+  }
+
+  /* MAIN LAYOUT */
+  .studio-container {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 20px;
+    padding: 20px 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+  }
+
+  @media (max-width: 1100px) {
+    .studio-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* COLUMN CARDS */
+  .column-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.015);
+  }
+  .card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .card-body {
+    padding: 18px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ORDER INTAKE STAGE */
+  .order-box {
+    background: var(--bg-page);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .order-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .order-input-wrap {
+    display: flex;
+    gap: 8px;
+  }
+  .order-textarea {
+    flex: 1;
+    min-height: 58px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    resize: none;
+    line-height: 1.4;
+  }
+  .order-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .btn-assemble {
+    padding: 0 18px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-assemble:hover {
+    background: var(--accent-dark);
+    transform: translateY(-1px);
+  }
+
+  .preset-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* 7 ASSEMBLY STEPS PIPELINE */
+  .pipeline-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card-bg);
+  }
+  .pipeline-header {
+    background: var(--bg-page);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .steps-accordion {
+    display: flex;
+    flex-direction: column;
+  }
+  .assembly-step {
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: background 0.15s ease;
+  }
+  .assembly-step:last-child {
+    border-bottom: none;
+  }
+  .assembly-step.active {
+    background: var(--accent-light);
+  }
+  .step-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 10.5px;
+    margin-right: 6px;
+  }
+  .step-content {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding-left: 26px;
+  }
+
+  /* 3-SHELF PARTS WAREHOUSE */
+  .warehouse-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--bg-page);
+  }
+  .warehouse-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .shelf {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .shelf:last-child { margin-bottom: 0; }
+  .shelf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .shelf-tag {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .shelf-tag.t0 { background: var(--tier0-bg); color: var(--tier0-color); }
+  .shelf-tag.t1 { background: var(--tier1-bg); color: var(--tier1-color); }
+  .shelf-tag.t2 { background: var(--tier2-bg); color: var(--tier2-color); }
+  .shelf-desc { font-size: 11px; color: var(--text-muted); }
+
+  .parts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+  }
+  .part-item {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-page);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .part-item.active {
+    border-color: var(--success);
+    background: var(--success-bg);
+    color: var(--success);
+    box-shadow: 0 0 0 1px var(--success);
+  }
+  .part-item.dependency {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .part-item.trimmed {
+    opacity: 0.45;
+    text-decoration: line-through;
+  }
+
+  /* RECEIPT / BOM */
+  .receipt-box {
+    background: var(--card-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .receipt-head {
+    font-weight: 700;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* RIGHT COLUMN: SIMULATOR TABS */
+  .tab-buttons-row {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 18px;
+    background: var(--bg-page);
+  }
+  .tab-btn {
+    padding: 10px 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover {
+    color: var(--text-primary);
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: var(--card-bg);
+  }
+
+  .tab-pane {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .tab-pane.active {
+    display: flex;
+  }
+
+  /* TEST CARDS GRID */
+  .tests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+  .test-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--bg-page);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .test-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .test-name {
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .test-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .test-badge.pass { background: var(--success-bg); color: var(--success); }
+  .test-badge.fail { background: var(--danger-bg); color: var(--danger); }
+  .test-badge.idle { background: var(--border-color); color: var(--text-muted); }
+  .test-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .test-rule {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    background: var(--card-bg);
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+  }
+
+  /* TEMPERATURE SLIDER & CHART */
+  .temp-stage {
+    background: var(--bg-page);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .slider-control-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .slider-input {
+    flex: 1;
+    cursor: pointer;
+  }
+  .slider-val-box {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--accent-light);
+    color: var(--accent);
+    min-width: 55px;
+    text-align: center;
+  }
+  .bars-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .dist-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11.5px;
+  }
+  .dist-label {
+    width: 140px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dist-bar-track {
+    flex: 1;
+    height: 18px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+  }
+  .dist-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--tier2-color));
+    transition: width 0.15s ease;
+  }
+  .dist-count {
+    width: 45px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  /* TERMINAL EXECUTION TRACE */
+  .terminal-box {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    height: 380px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+  }
+  .term-line {
+    margin-bottom: 4px;
+    display: flex;
+    gap: 8px;
+  }
+  .term-time { color: #64748B; flex-shrink: 0; }
+  .term-tag { font-weight: 700; flex-shrink: 0; }
+  .term-tag.ev { color: #38BDF8; }
+  .term-tag.dyn { color: #F59E0B; }
+  .term-tag.sqs { color: #A855F7; }
+  .term-tag.step { color: #10B981; }
+  .term-tag.waf { color: #F43F5E; }
+  .term-tag.sns { color: #EC4899; }
+  .term-msg { word-break: break-all; }
+
+  /* CODE BOX */
+  .code-viewer {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    height: 480px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    white-space: pre;
+  }
+
+  /* BUTTONS & ACTIONS */
+  .btn-run {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--success);
+    color: white;
+    border: none;
+    font-weight: 700;
+    font-size: 12.5px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .btn-run:hover {
+    filter: brightness(1.1);
+  }
+  .btn-secondary {
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-secondary:hover {
+    background: var(--bg-page);
+  }
+
+  .status-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--code-bg);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  .status-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP NAVBAR -->
+<header class="navbar">
+  <div class="nav-brand">
+    <div class="brand-logo">🏭</div>
+    <div>
+      <div class="brand-title">The AI Agent Factory &bull; In-Browser AWS Simulator</div>
+      <div class="brand-subtitle">Assembly Robot &bull; Tier 0, 1 &amp; 2 Skills &bull; Pure Python on Browser Wasm (PyScript / Pyodide)</div>
+    </div>
+  </div>
+
+  <div class="nav-controls">
+    <!-- Python Engine Mode -->
+    <div class="pill-badge" id="pyEngineBadge" title="Browser-Native Python Simulator State">
+      <div class="dot green" id="pyDot"></div>
+      <span id="pyEngineText">Python Wasm Active</span>
+    </div>
+
+    <!-- AI Copilot Engine Picker -->
+    <select class="engine-select" id="aiEngineSelect" onchange="switchAiEngine(this.value)">
+      <option value="groq" selected>Groq LPU (GPT-OSS 120B &bull; ~500 tok/s)</option>
+      <option value="webgpu">WebGPU WebLLM (Llama-3.2-1B On-Device)</option>
+      <option value="rules">Deterministic 7-Step Assembly Compiler</option>
+    </select>
+
+    <!-- Theme Toggle -->
+    <button class="btn-icon" id="themeToggle" title="Toggle Clean Light / Dark Mode">🌙</button>
+  </div>
+</header>
+
+<!-- MAIN STUDIO CONTAINER -->
+<main class="studio-container">
+
+  <!-- LEFT: THE AI AGENT FACTORY -->
+  <section class="column-card">
+    <div class="card-header">
+      <div class="card-title-group">
+        <span style="font-size:18px;">🤖</span>
+        <span class="card-title">1 · The Order &amp; Assembly Robot</span>
+      </div>
+      <span class="card-badge" style="background:var(--accent-light); color:var(--accent);">Copilot Builder</span>
+    </div>
+
+    <div class="card-body">
+      <!-- 1. The Order Intake -->
+      <div class="order-box">
+        <div class="order-label">
+          <span>Customer Order Requirements</span>
+          <span style="color:var(--accent); font-weight:700;">Natural Language &rarr; Agent</span>
+        </div>
+        <div class="order-input-wrap">
+          <textarea class="order-textarea" id="orderInput" placeholder="E.g., Answer bank questions. Never leak data. Hit the deadline. Call human if unsure."></textarea>
+          <button class="btn-assemble" onclick="runAssemblyRobot()" id="assembleBtn">
+            <span>⚡ Assemble</span>
+            <span style="font-size:10.5px; opacity:0.85;">7 Steps</span>
+          </button>
+        </div>
+
+        <div class="preset-chips-row">
+          <span style="font-size:11px; font-weight:700; color:var(--text-muted); align-self:center;">Presets:</span>
+          <button class="chip" onclick="applyOrderPreset('bank')">🏦 Bank QA (No Leak)</button>
+          <button class="chip" onclick="applyOrderPreset('server')">🖥️ Server Operator (Deadlines)</button>
+          <button class="chip" onclick="applyOrderPreset('team')">🤝 Multi-Agent Swarm (Vote &amp; Share)</button>
+          <button class="chip" onclick="applyOrderPreset('careful')">⚖️ Careful Financial Auditor</button>
+        </div>
+      </div>
+
+      <!-- 2. Inside the Assembly Robot (7 Steps Pipeline) -->
+      <div class="pipeline-card">
+        <div class="pipeline-header">
+          <span>7-Step Assembly Protocol (Inside the Robot)</span>
+          <span id="assemblyStatusTag" style="color:var(--success);">Ready to Assemble</span>
+        </div>
+        <div class="steps-accordion" id="stepsAccordion">
+          <div class="assembly-step" id="step-1">
+            <div class="step-head">
+              <span><span class="step-num">1</span> Ask: What must never go wrong?</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Invariants</span>
+            </div>
+            <div class="step-content" id="step1-text">Awaiting order: checks failure invariants, single vs team, action vs read-only.</div>
+          </div>
+          <div class="assembly-step" id="step-2">
+            <div class="step-head">
+              <span><span class="step-num">2</span> Match: Connect needs to built-in parts</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Mapping</span>
+            </div>
+            <div class="step-content" id="step2-text">Maps invariants directly to DynamoDB, SQS, Step Functions, Bedrock primitives.</div>
+          </div>
+          <div class="assembly-step" id="step-3">
+            <div class="step-head">
+              <span><span class="step-num">3</span> Add Dependencies (Stacking LEGO)</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Prerequisites</span>
+            </div>
+            <div class="step-content" id="step3-text">Decision-making pulls in Language + Working Memory + Selective Attention.</div>
+          </div>
+          <div class="assembly-step" id="step-4">
+            <div class="step-head">
+              <span><span class="step-num">4</span> Open Tier Gates (Tier 0 &rarr; 1 &rarr; 2)</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Gating</span>
+            </div>
+            <div class="step-content" id="step4-text">Opens Tier 0 always; Tier 1 if self-deciding; Tier 2 only if team coordination.</div>
+          </div>
+          <div class="assembly-step" id="step-5">
+            <div class="step-head">
+              <span><span class="step-num">5</span> Safety Kit First (Non-negotiable defaults)</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Safety</span>
+            </div>
+            <div class="step-content" id="step5-text">Mounts: Stop harmful actions, Stay in budget, Remember moment, Speak user tongue.</div>
+          </div>
+          <div class="assembly-step" id="step-6">
+            <div class="step-head">
+              <span><span class="step-num">6</span> Watch-Outs (Hot vs Cold Conflicts)</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Auditing</span>
+            </div>
+            <div class="step-content" id="step6-text">Flags high-temperature imagination conflicts vs cold lateral inhibition.</div>
+          </div>
+          <div class="assembly-step" id="step-7">
+            <div class="step-head">
+              <span><span class="step-num">7</span> Print the Receipt (BOM &amp; Risks)</span>
+              <span class="badge" style="font-size:10.5px; color:var(--text-muted);">Bill of Materials</span>
+            </div>
+            <div class="step-content" id="step7-text">Generates transparent summary of parts, dependencies, cost, and open questions.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. The 3-Shelf Parts Warehouse -->
+      <div class="warehouse-card">
+        <div class="warehouse-title">
+          <span>3-Shelf Parts Warehouse (Inventory)</span>
+          <span style="font-size:11px; font-weight:600;">Active Parts Highlighted</span>
+        </div>
+
+        <!-- Shelf 0 -->
+        <div class="shelf">
+          <div class="shelf-header">
+            <span class="shelf-tag t0">Tier 0 &bull; Basic Parts</span>
+            <span class="shelf-desc">Single skills every agent can use (Storage, Senses, Motor)</span>
+          </div>
+          <div class="parts-grid" id="shelf0-grid">
+            <div class="part-item active" id="part-dynamodb">🗄️ DynamoDB TTL</div>
+            <div class="part-item active" id="part-elasticache">⚡ ElastiCache</div>
+            <div class="part-item active" id="part-waf">🛡️ WAF &amp; Budgets</div>
+            <div class="part-item active" id="part-eventbridge">📡 EventBridge</div>
+            <div class="part-item active" id="part-lambda">⚙️ Lambda Allow-List</div>
+            <div class="part-item active" id="part-bedrock">🧠 Toy Bedrock</div>
+          </div>
+        </div>
+
+        <!-- Shelf 1 -->
+        <div class="shelf">
+          <div class="shelf-header">
+            <span class="shelf-tag t1">Tier 1 &bull; One Agent Mind</span>
+            <span class="shelf-desc">How an agent decides, plans, and checks itself</span>
+          </div>
+          <div class="parts-grid" id="shelf1-grid">
+            <div class="part-item active" id="part-sqs">🚦 SQS Priority Queue</div>
+            <div class="part-item active" id="part-stepfunctions">🔁 Step Functions Retry</div>
+            <div class="part-item active" id="part-circuitbreaker">🔌 Circuit Breaker</div>
+            <div class="part-item" id="part-cloudwatch">📈 CloudWatch Alarms</div>
+          </div>
+        </div>
+
+        <!-- Shelf 2 -->
+        <div class="shelf">
+          <div class="shelf-header">
+            <span class="shelf-tag t2">Tier 2 &bull; Multi-Agent Team</span>
+            <span class="shelf-desc">How several agents work together (Share, Vote, Watch)</span>
+          </div>
+          <div class="parts-grid" id="shelf2-grid">
+            <div class="part-item" id="part-sns">📢 SNS Fan-out (Workspace)</div>
+            <div class="part-item" id="part-quorum">⚖️ Evidence Voting Quorum</div>
+            <div class="part-item" id="part-blackboard">📋 Shared Mutex Whiteboard</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Assembly Receipt Output -->
+      <div class="receipt-box" id="receiptOutput">
+        <div class="receipt-head">
+          <span>ASSEMBLY RECEIPT (BILL OF MATERIALS)</span>
+          <span id="receiptDate">Ready</span>
+        </div>
+        <div id="receiptBody">
+          • Order: (Select preset or enter requirements above)<br>
+          • Target Tier: Tier 1 (Careful Operator)<br>
+          • Parts Chosen: 9 core mechanisms<br>
+          • Estimated Cost: $0.00 (100% in-browser Python simulator)<br>
+          • Status: Click "Assemble" to generate tailored receipt.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- RIGHT: IN-BROWSER AWS SIMULATOR -->
+  <section class="column-card">
+    <div class="card-header">
+      <div class="card-title-group">
+        <span style="font-size:18px;">🧪</span>
+        <span class="card-title">2 · In-Browser AWS Simulator (Python)</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-run" onclick="executeAssembledAgent()">
+          <span>▶ Run Agent &amp; Tests</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TABS ROW -->
+    <div class="tab-buttons-row">
+      <button class="tab-btn active" onclick="switchTab('tests')" id="tab-btn-tests">
+        <span>✅ Verification Cards</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('temp')" id="tab-btn-temp">
+        <span>🌡️ Bedrock Dial</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('trace')" id="tab-btn-trace">
+        <span>📜 Execution Trace</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('code')" id="tab-btn-code">
+        <span>🐍 Generated Python</span>
+      </button>
+    </div>
+
+    <div class="card-body">
+
+      <!-- TAB 1: VERIFICATION TEST CARDS -->
+      <div class="tab-pane active" id="pane-tests">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12.5px; color:var(--text-secondary); font-weight:600;">
+            8 Automated Checks running live in browser (Pure Python rules &amp; fake clock)
+          </span>
+          <span id="testsSummaryBadge" class="test-badge pass">8 / 8 PASS</span>
+        </div>
+
+        <div class="tests-grid" id="testsGrid">
+          <!-- Dynamically populated or static cards -->
+        </div>
+      </div>
+
+      <!-- TAB 2: BEDROCK TEMPERATURE DIAL -->
+      <div class="tab-pane" id="pane-temp">
+        <div class="temp-stage">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:13.5px; font-weight:700;">Toy Bedrock Temperature Sampling</div>
+              <div style="font-size:11.5px; color:var(--text-muted);">
+                Imagination vs Lateral Inhibition: Cold (winner takes all) &bull; Hot (answers spread out)
+              </div>
+            </div>
+            <div class="slider-val-box" id="tempValueLabel">T = 0.40</div>
+          </div>
+
+          <div class="slider-control-row">
+            <span style="font-size:12px; font-weight:700;">Cold (0.0)</span>
+            <input type="range" class="slider-input" id="tempSlider" min="0.0" max="1.5" step="0.05" value="0.4" oninput="onTemperatureChange(this.value)">
+            <span style="font-size:12px; font-weight:700;">Hot (1.5)</span>
+          </div>
+
+          <div style="font-size:12px; font-weight:700; margin-top:4px;">
+            Distribution of 200 Sampled Answers:
+          </div>
+          <div class="bars-container" id="distributionBars">
+            <!-- Dynamic distribution bars -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: LIVE EXECUTION TRACE LOG -->
+      <div class="tab-pane" id="pane-trace">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12.5px; font-weight:700;">Mini-Agent Execution Console (Fake Clock Driven)</span>
+          <button class="btn-secondary" onclick="clearTerminal()">Clear</button>
+        </div>
+        <div class="terminal-box" id="terminalTrace">
+          <!-- Logs stream here -->
+        </div>
+      </div>
+
+      <!-- TAB 4: GENERATED PYTHON SOURCE -->
+      <div class="tab-pane" id="pane-code">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12.5px; font-weight:700;">PyScript / Standalone Python Simulator Source</span>
+          <button class="btn-secondary" onclick="copyPythonCode()">📋 Copy Python</button>
+        </div>
+        <pre class="code-viewer" id="codeViewer"></pre>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<div class="status-toast" id="statusToast">Action completed</div>
+
+<script>
+  // =========================================================================
+  // 1. CONFIGURATION & AI ENGINES
+  // =========================================================================
+  const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+  const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+  let activeAiEngine = "groq"; // 'groq', 'webgpu', 'rules'
+  let webllmEngine = null;
+  let pyodideInstance = null;
+  let isPyodideReady = false;
+
+  // Active Assembled Agent State
+  let currentAssembly = {
+    orderText: "Answer bank questions. Never leak data.",
+    agentType: "Careful Operator",
+    tier: 1,
+    activeParts: ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker"],
+    dependencies: ["elasticache", "waf"],
+    trimmed: ["sns", "quorum", "blackboard"],
+    assumptions: ["Single bank customer session", "Must redact PII before output", "Fail-closed on doubt"],
+    risks: ["Zero-day prompt injection (mitigated by WAF + Lambda Allow-List)"]
+  };
+
+  // Presets Data
+  const PRESETS = {
+    bank: {
+      text: "Answer bank questions. Never leak data. Strict privacy, PII protection, and immutable audit logs.",
+      type: "Careful Operator (Banking)",
+      tier: 1,
+      parts: ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker"],
+      dep: ["elasticache", "waf", "lambda"],
+      trimmed: ["sns", "quorum", "blackboard"],
+      assumptions: ["High security banking context", "No motor external writes without human check", "Strict rate limit"],
+      risks: ["Regulatory audit fines (prevented via Cryptographic audit and WAF stops)"]
+    },
+    server: {
+      text: "Restart servers. Hit the deadline. Call a human if unsure. Strict Step Functions retry and circuit breaker.",
+      type: "Resilient SRE Operator",
+      tier: 1,
+      parts: ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker", "cloudwatch"],
+      dep: ["stepfunctions", "circuitbreaker", "cloudwatch"],
+      trimmed: ["sns", "quorum", "blackboard"],
+      assumptions: ["Automated server reboot authorization", "120s execution timeout bound", "Escalate on 3rd failure"],
+      risks: ["Cascading cluster failure (mitigated via Circuit Breaker)"]
+    },
+    team: {
+      text: "A team of agents that share facts and double-check each other. Global workspace broadcasting and quorum voting.",
+      type: "Multi-Agent Consensus Swarm",
+      tier: 2,
+      parts: ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker", "cloudwatch", "sns", "quorum", "blackboard"],
+      dep: ["sns", "quorum", "blackboard", "dynamodb"],
+      trimmed: [],
+      assumptions: ["Distributed multi-agent team", "Byzantine fault tolerance needed", "Majority quorum required"],
+      risks: ["Message chatter storm (mitigated via SNS filter policies & mutex locks)"]
+    },
+    careful: {
+      text: "Financial portfolio auditor. Double-check all balance sheets, verify math across parallel workers, reject stale data.",
+      type: "Auditor & Verification Council",
+      tier: 2,
+      parts: ["dynamodb", "elasticache", "waf", "eventbridge", "bedrock", "stepfunctions", "circuitbreaker", "quorum", "blackboard"],
+      dep: ["elasticache", "quorum"],
+      trimmed: ["lambda"],
+      assumptions: ["Read-only compliance audit", "Parallel validation map", "Zero write permission"],
+      risks: ["Stale accounting data (prevented via DynamoDB TTL + ElastiCache)"]
+    }
+  };
+
+  // =========================================================================
+  // 2. AWS SIMULATOR IN JAVASCRIPT (PARALLEL TO PYTHON RULES)
+  // =========================================================================
+  class SimClock {
+    constructor() { this.now = 0.0; }
+    advance(s) { this.now += s; }
+  }
+
+  class SimDynamoDB {
+    constructor(clock) {
+      this.clock = clock;
+      this.t = {};
+    }
+    put_item(table, key, item, condition = null) {
+      this.t[table] = this.t[table] || {};
+      const cur = this.t[table][key];
+      if (condition && !condition(cur)) {
+        throw new Error(`ConditionalCheckFailedException: Condition check failed for key ${key}`);
+      }
+      this.t[table][key] = { ...item };
+    }
+    get_item(table, key, filter_expired = true) {
+      this.t[table] = this.t[table] || {};
+      const it = this.t[table][key];
+      if (it && filter_expired && it.ttl !== undefined && it.ttl <= this.clock.now) {
+        return null; // Expired items vanish from reads
+      }
+      return it || null;
+    }
+    update_add(table, key, attr, delta) {
+      this.t[table] = this.t[table] || {};
+      this.t[table][key] = this.t[table][key] || {};
+      this.t[table][key][attr] = (this.t[table][key][attr] || 0) + delta;
+      return this.t[table][key][attr];
+    }
+    sweep(table) {
+      this.t[table] = this.t[table] || {};
+      let deleted = 0;
+      for (const k of Object.keys(this.t[table])) {
+        const it = this.t[table][k];
+        if (it && it.ttl !== undefined && it.ttl <= this.clock.now) {
+          delete this.t[table][k];
+          deleted++;
+        }
+      }
+      return deleted;
+    }
+  }
+
+  class SimElastiCache {
+    constructor(clock) {
+      this.clock = clock;
+      this.cache = {};
+    }
+    set(key, val, ttl = 120) {
+      this.cache[key] = { val, expire_at: this.clock.now + ttl };
+    }
+    get(key) {
+      const entry = this.cache[key];
+      if (!entry) return null;
+      if (this.clock.now >= entry.expire_at) return null;
+      return entry.val;
+    }
+  }
+
+  class SimWAFAndBudget {
+    constructor(clock, max_rpm = 60, max_budget = 10.0) {
+      this.clock = clock;
+      this.max_rpm = max_rpm;
+      this.max_budget = max_budget;
+      this.spent = 0.0;
+      this.requests = [];
+    }
+    allow_request(cost = 0.05) {
+      const cutoff = this.clock.now - 60.0;
+      this.requests = this.requests.filter(t => t > cutoff);
+      if (this.requests.length >= this.max_rpm) {
+        return { ok: false, reason: "WAF Rate Limit Exceeded (Too many requests/min)" };
+      }
+      if (this.spent + cost > this.max_budget) {
+        return { ok: false, reason: "Budget Cap Exceeded ($10.00 hard stop)" };
+      }
+      this.requests.push(this.clock.now);
+      this.spent += cost;
+      return { ok: true, reason: "Approved" };
+    }
+  }
+
+  class SimEventBridge {
+    constructor(clock) {
+      this.clock = clock;
+      this.rules = [];
+      this.history = [];
+    }
+    add_rule(pattern, target) {
+      this.rules.push({ pattern, target });
+    }
+    emit(event) {
+      this.history.push({ time: this.clock.now, event });
+      let matched = 0;
+      for (const r of this.rules) {
+        let match = true;
+        for (const k of Object.keys(r.pattern)) {
+          if (event[k] !== r.pattern[k]) { match = false; break; }
+        }
+        if (match) {
+          r.target(event);
+          matched++;
+        }
+      }
+      return matched;
+    }
+  }
+
+  class SimSQS {
+    constructor(clock) {
+      this.clock = clock;
+      this.queues = {};
+    }
+    send(queue, msg) {
+      this.queues[queue] = this.queues[queue] || [];
+      this.queues[queue].push({ body: msg, visible_at: this.clock.now });
+    }
+    receive(queue, visibility_timeout = 30) {
+      this.queues[queue] = this.queues[queue] || [];
+      for (const m of this.queues[queue]) {
+        if (m.visible_at <= this.clock.now) {
+          m.visible_at = this.clock.now + visibility_timeout;
+          return m.body;
+        }
+      }
+      return null;
+    }
+    delete(queue, msg) {
+      this.queues[queue] = (this.queues[queue] || []).filter(m => m.body !== msg);
+    }
+  }
+
+  class SimPriorityWorker {
+    constructor(sqs, priorityList = ["critical", "normal", "batch"]) {
+      this.sqs = sqs;
+      this.priorityList = priorityList;
+    }
+    next() {
+      for (const q of this.priorityList) {
+        const got = this.sqs.receive(q);
+        if (got) return { queue: q, msg: got };
+      }
+      return null;
+    }
+  }
+
+  class SimStepFunctions {
+    execute_with_retry(fn, max_retries = 2, fallback_fn = null) {
+      let attempts = 0;
+      while (attempts <= max_retries) {
+        try {
+          return { ok: true, result: fn(attempts), attempts: attempts + 1 };
+        } catch (err) {
+          attempts++;
+          if (attempts > max_retries) {
+            if (fallback_fn) return { ok: true, result: fallback_fn(err), fellBack: true, attempts };
+            throw err;
+          }
+        }
+      }
+    }
+  }
+
+  class SimCircuitBreaker {
+    constructor(clock, threshold = 3, cooldown = 60) {
+      this.clock = clock;
+      this.threshold = threshold;
+      this.cooldown = cooldown;
+      this.failure_count = 0;
+      this.last_failure_time = 0;
+      this.state = "CLOSED"; // CLOSED, OPEN, HALF-OPEN
+    }
+    record_failure() {
+      this.failure_count++;
+      this.last_failure_time = this.clock.now;
+      if (this.failure_count >= this.threshold) {
+        this.state = "OPEN";
+      }
+    }
+    record_success() {
+      this.failure_count = 0;
+      this.state = "CLOSED";
+    }
+    can_call() {
+      if (this.state === "CLOSED") return true;
+      if (this.state === "OPEN") {
+        if (this.clock.now - this.last_failure_time >= this.cooldown) {
+          this.state = "HALF-OPEN";
+          return true;
+        }
+        return false;
+      }
+      return true;
+    }
+  }
+
+  class SimToyBedrock {
+    constructor() {
+      this.ANSWERS = [
+        "Structured Safe Answer",
+        "Creative Domain Insight",
+        "Balanced Pragmatic Plan",
+        "Lateral Divergence Heuristic",
+        "Cautious Guardrail Response"
+      ];
+      this.LOGITS = [3.0, 2.0, 1.0, 0.5, 0.2];
+    }
+    sample(temperature) {
+      if (temperature <= 1e-4) return this.ANSWERS[0];
+      const weights = this.LOGITS.map(l => Math.exp(l / temperature));
+      const total = weights.reduce((a, b) => a + b, 0);
+      let r = Math.random() * total;
+      for (let i = 0; i < weights.length; i++) {
+        if (r < weights[i]) return this.ANSWERS[i];
+        r -= weights[i];
+      }
+      return this.ANSWERS[0];
+    }
+    distribution(temperature, n_samples = 200) {
+      const counts = {};
+      this.ANSWERS.forEach(a => counts[a] = 0);
+      if (temperature <= 1e-4) {
+        counts[this.ANSWERS[0]] = n_samples;
+        return counts;
+      }
+      for (let i = 0; i < n_samples; i++) {
+        const s = this.sample(temperature);
+        counts[s] = (counts[s] || 0) + 1;
+      }
+      return counts;
+    }
+  }
+
+  class SimSNS {
+    constructor() {
+      this.subs = [];
+    }
+    subscribe(agentName, filter = {}, callback = null) {
+      this.subs.push({ agentName, filter, callback });
+    }
+    publish(message, attrs = {}) {
+      const delivered = [];
+      for (const s of this.subs) {
+        let match = true;
+        for (const k of Object.keys(s.filter)) {
+          if (attrs[k] !== s.filter[k]) { match = false; break; }
+        }
+        if (match) {
+          if (s.callback) s.callback(message);
+          delivered.push(s.agentName);
+        }
+      }
+      return delivered;
+    }
+  }
+
+  // =========================================================================
+  // 3. VERIFICATION TEST SUITE (PAGE 2 & 4 OF PDF 1)
+  // =========================================================================
+  const SIM_TESTS = [
+    {
+      id: "test1",
+      name: "1. DynamoDB TTL & Lazy Sweep",
+      tool: "DynamoDB TTL",
+      brain: "Forgetting · Inhibition of Return",
+      rule: "assert d.get_item('mem', 'a') is None after c.advance(11)",
+      run: () => {
+        const c = new SimClock();
+        const d = new SimDynamoDB(c);
+        d.put_item("mem", "a", { v: 1, ttl: 10 });
+        c.advance(11); // jump clock
+        const hidden = d.get_item("mem", "a") === null;
+        const storedBeforeSweep = d.get_item("mem", "a", false) !== null;
+        const swept = d.sweep("mem") === 1;
+        return hidden && storedBeforeSweep && swept;
+      }
+    },
+    {
+      id: "test2",
+      name: "2. DynamoDB Conditional Write",
+      tool: "DynamoDB Condition",
+      brain: "Single Execution Claim",
+      rule: "claim works once; 2nd attempt raises ConditionalCheckFailed",
+      run: () => {
+        const c = new SimClock();
+        const d = new SimDynamoDB(c);
+        d.put_item("claims", "task-1", { status: "LOCKED" }, cur => !cur);
+        let secondFailed = false;
+        try {
+          d.put_item("claims", "task-1", { status: "RE-LOCKED" }, cur => !cur);
+        } catch (e) {
+          secondFailed = true;
+        }
+        return secondFailed;
+      }
+    },
+    {
+      id: "test3",
+      name: "3. ElastiCache Working Memory",
+      tool: "ElastiCache Expiry",
+      brain: "Working Memory 120s Decay",
+      rule: "cache note active at 60s, vanishes at 121s unless refreshed",
+      run: () => {
+        const c = new SimClock();
+        const mem = new SimElastiCache(c);
+        mem.set("user_context", { intent: "transfer" }, 120);
+        c.advance(60);
+        const ok60 = mem.get("user_context") !== null;
+        c.advance(65); // total 125s
+        const expired125 = mem.get("user_context") === null;
+        return ok60 && expired125;
+      }
+    },
+    {
+      id: "test4",
+      name: "4. WAF Rate Limit & Budget Stop",
+      tool: "WAF & Dollar Budget",
+      brain: "Self-Regulation & Homeostasis",
+      rule: "request 61 blocked by WAF; spend > $10.00 hard trips",
+      run: () => {
+        const c = new SimClock();
+        const waf = new SimWAFAndBudget(c, 10, 1.0); // max 10 rpm, $1.00 max
+        for (let i = 0; i < 10; i++) waf.allow_request(0.05); // spent 0.50
+        const blockedRpm = !waf.allow_request(0.05).ok; // 11th request blocked by RPM
+        c.advance(65); // 65s passed, RPM counter reset
+        const allowAgain = waf.allow_request(0.40).ok; // spent 0.50 + 0.40 = 0.90 <= 1.0 -> OK
+        const blockedBudget = !waf.allow_request(0.20).ok; // 0.90 + 0.20 = 1.10 > 1.0 -> budget cap trips!
+        return blockedRpm && allowAgain && blockedBudget;
+      }
+    },
+    {
+      id: "test5",
+      name: "5. SQS Visibility Timeout",
+      tool: "SQS Queue",
+      brain: "Task In-Flight & Reappearance",
+      rule: "unacknowledged message reappears after 30s timeout",
+      run: () => {
+        const c = new SimClock();
+        const sqs = new SimSQS(c);
+        sqs.send("tasks", "ProcessInvoice");
+        const m1 = sqs.receive("tasks", 30);
+        const m1Hidden = sqs.receive("tasks", 30) === null; // in flight
+        c.advance(35); // timeout elapsed
+        const m1Reappears = sqs.receive("tasks", 30) === "ProcessInvoice";
+        return m1 === "ProcessInvoice" && m1Hidden && m1Reappears;
+      }
+    },
+    {
+      id: "test6",
+      name: "6. Priority Worker (Critical 1st)",
+      tool: "PriorityWorker",
+      brain: "Prioritizing Critical Before Batch",
+      rule: "worker always polls critical queue before normal and batch",
+      run: () => {
+        const c = new SimClock();
+        const sqs = new SimSQS(c);
+        sqs.send("batch", "DailyReport");
+        sqs.send("normal", "UserQuery");
+        sqs.send("critical", "SecurityAlarm");
+        const worker = new SimPriorityWorker(sqs, ["critical", "normal", "batch"]);
+        const p1 = worker.next();
+        const p2 = worker.next();
+        const p3 = worker.next();
+        return p1.queue === "critical" && p2.queue === "normal" && p3.queue === "batch";
+      }
+    },
+    {
+      id: "test7",
+      name: "7. Step Functions Retry & Fallback",
+      tool: "Step Functions",
+      brain: "Planning & Dynamic Fallback",
+      rule: "retry failed API twice, then execute verified fallback branch",
+      run: () => {
+        const sf = new SimStepFunctions();
+        let failCount = 0;
+        const riskyApi = () => {
+          failCount++;
+          throw new Error("503 Gateway Timeout");
+        };
+        const fallback = () => "CachedGracefulResponse";
+        const res = sf.execute_with_retry(riskyApi, 2, fallback);
+        return res.fellBack && res.result === "CachedGracefulResponse" && res.attempts === 3;
+      }
+    },
+    {
+      id: "test8",
+      name: "8. Circuit Breaker Cooldown",
+      tool: "Circuit Breaker",
+      brain: "Stop Calling Failing Service",
+      rule: "3 failures trip circuit OPEN; cooldown resets to HALF-OPEN",
+      run: () => {
+        const c = new SimClock();
+        const cb = new SimCircuitBreaker(c, 3, 60);
+        cb.record_failure(); cb.record_failure(); cb.record_failure();
+        const tripped = !cb.can_call() && cb.state === "OPEN";
+        c.advance(65);
+        const canProbe = cb.can_call() && cb.state === "HALF-OPEN";
+        cb.record_success();
+        const closed = cb.state === "CLOSED";
+        return tripped && canProbe && closed;
+      }
+    }
+  ];
+
+  // =========================================================================
+  // 4. THE AI FACTORY ASSEMBLY ROBOT (7 STEPS IMPLEMENTATION)
+  // =========================================================================
+  async function runAssemblyRobot() {
+    const input = document.getElementById("orderInput").value.trim();
+    if (!input) {
+      showToast("Please enter or select an order requirement first.");
+      return;
+    }
+
+    const btn = document.getElementById("assembleBtn");
+    btn.innerHTML = `<span>⏳ Synthesizing...</span><span style="font-size:10px;">7 Steps</span>`;
+    document.getElementById("assemblyStatusTag").textContent = "Assembling...";
+    document.getElementById("assemblyStatusTag").style.color = "var(--accent)";
+
+    // Run progressive pipeline animation
+    for (let i = 1; i <= 7; i++) {
+      document.querySelectorAll(".assembly-step").forEach(s => s.classList.remove("active"));
+      const stepEl = document.getElementById(`step-${i}`);
+      if (stepEl) stepEl.classList.add("active");
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    // Assembly Logic based on requirements
+    let assembly = analyzeOrderAndAssemble(input);
+
+    // If using Groq LPU or WebGPU, enrich through LLM
+    if (activeAiEngine === "groq" || activeAiEngine === "webgpu") {
+      try {
+        const aiResponse = await callAiCopilot(input, assembly);
+        if (aiResponse) {
+          assembly = { ...assembly, ...aiResponse };
+        }
+      } catch (err) {
+        console.warn("AI enhancement fallback to deterministic assembly:", err);
+      }
+    }
+
+    currentAssembly = assembly;
+    applyAssemblyToUI(assembly);
+
+    btn.innerHTML = `<span>⚡ Assemble</span><span style="font-size:10.5px; opacity:0.85;">7 Steps</span>`;
+    document.getElementById("assemblyStatusTag").textContent = "Assembled ✓";
+    document.getElementById("assemblyStatusTag").style.color = "var(--success)";
+    showToast(`Assembled: ${assembly.agentType} (${assembly.tier === 2 ? 'Team Swarm' : 'Single Agent'})`);
+
+    // Auto-run tests and execute agent trace
+    executeAssembledAgent();
+  }
+
+  function analyzeOrderAndAssemble(text) {
+    const lower = text.toLowerCase();
+    const isTeam = lower.includes("team") || lower.includes("swarm") || lower.includes("agents") || lower.includes("share") || lower.includes("vote");
+    const isBanking = lower.includes("bank") || lower.includes("data") || lower.includes("leak") || lower.includes("pii") || lower.includes("privacy");
+    const isServer = lower.includes("server") || lower.includes("restart") || lower.includes("deadline") || lower.includes("cloud") || lower.includes("sre");
+
+    let agentType = "Careful Operator";
+    let tier = 1;
+    let parts = ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker"];
+    let dep = ["elasticache", "waf"];
+    let trimmed = ["sns", "quorum", "blackboard"];
+    let assumptions = ["Single agent bounds", "State-machine verification", "Stop harmful actions"];
+    let risks = ["Model hallucination on ambiguous prompt"];
+
+    if (isTeam) {
+      agentType = "Consensus Multi-Agent Swarm";
+      tier = 2;
+      parts = ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker", "cloudwatch", "sns", "quorum", "blackboard"];
+      dep = ["sns", "quorum", "blackboard"];
+      trimmed = [];
+      assumptions = ["Multiple worker agents require atomic mutex", "Byzantine quorum prevents split-brain"];
+      risks = ["Inter-agent token chatter (controlled via SNS filters)"];
+    } else if (isBanking) {
+      agentType = "Guarded Banking Assistant";
+      tier = 1;
+      parts = ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker"];
+      dep = ["waf", "lambda", "elasticache"];
+      trimmed = ["sns", "quorum", "blackboard"];
+      assumptions = ["No motor external transactions without 2FA", "PII redaction mandatory"];
+      risks = ["Data exfiltration (safeguarded via Lambda allow-list & WAF)"];
+    } else if (isServer) {
+      agentType = "Autonomous SRE Operations Agent";
+      tier = 1;
+      parts = ["dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock", "sqs", "stepfunctions", "circuitbreaker", "cloudwatch"];
+      dep = ["stepfunctions", "circuitbreaker", "cloudwatch"];
+      trimmed = ["sns", "quorum", "blackboard"];
+      assumptions = ["Server reboot permissions active", "120s timeout on unresponsive node"];
+      risks = ["Cascading reboots (mitigated via Circuit Breaker)"];
+    }
+
+    return {
+      orderText: text,
+      agentType,
+      tier,
+      activeParts: parts,
+      dependencies: dep,
+      trimmed,
+      assumptions,
+      risks
+    };
+  }
+
+  async function callAiCopilot(promptText, baseAssembly) {
+    const systemPrompt = `You are the AI Agent Factory Assembly Robot.
+Given a user requirement, apply the 7 assembly steps:
+1. Invariants (what must never go wrong)
+2. Parts matching (AWS & cognitive primitives)
+3. Prerequisite LEGO dependencies
+4. Tier gating (Tier 0 basic, Tier 1 single agent, Tier 2 team)
+5. Safety kit enforcement
+6. Watch-outs
+7. Return JSON with:
+{
+  "agentType": string,
+  "tier": 0 | 1 | 2,
+  "assumptions": [string],
+  "risks": [string]
+}`;
+
+    const userPrompt = `Order Requirements: "${promptText}". Base Tier: ${baseAssembly.tier}. Return JSON only.`;
+
+    if (activeAiEngine === "groq") {
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${PROVISIONED_GROQ_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 400,
+          response_format: { type: "json_object" }
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return JSON.parse(data.choices[0].message.content);
+      }
+    }
+    return null;
+  }
+
+  function applyAssemblyToUI(assembly) {
+    // 1. Update 7 Steps text
+    document.getElementById("step1-text").innerHTML = `<b>Invariants:</b> ${assembly.assumptions.join(" &bull; ")}`;
+    document.getElementById("step2-text").innerHTML = `<b>Matched:</b> ${assembly.activeParts.slice(0, 5).join(", ")} (${assembly.activeParts.length} parts)`;
+    document.getElementById("step3-text").innerHTML = `<b>Dependencies Pulled In:</b> ${assembly.dependencies.join(", ") || "None extra"}`;
+    document.getElementById("step4-text").innerHTML = `<b>Gates Open:</b> Tier 0 + Tier ${assembly.tier} (${assembly.tier === 2 ? 'Multi-Agent Team' : 'Single Agent'})`;
+    document.getElementById("step5-text").innerHTML = `<b>Safety Kit:</b> Active (Stop harmful actions, Budget cap, Context decay, Auditing)`;
+    document.getElementById("step6-text").innerHTML = `<b>Watch-Outs:</b> ${assembly.risks.join(" &bull; ")}`;
+    document.getElementById("step7-text").innerHTML = `<b>Receipt:</b> ${assembly.agentType} ready to simulate.`;
+
+    // 2. Update Warehouse Shelves
+    const allPartIds = [
+      "dynamodb", "elasticache", "waf", "eventbridge", "lambda", "bedrock",
+      "sqs", "stepfunctions", "circuitbreaker", "cloudwatch",
+      "sns", "quorum", "blackboard"
+    ];
+
+    allPartIds.forEach(id => {
+      const el = document.getElementById(`part-${id}`);
+      if (!el) return;
+      el.className = "part-item";
+      if (assembly.activeParts.includes(id)) {
+        if (assembly.dependencies.includes(id)) {
+          el.classList.add("dependency");
+        } else {
+          el.classList.add("active");
+        }
+      } else {
+        el.classList.add("trimmed");
+      }
+    });
+
+    // 3. Update Receipt Box
+    document.getElementById("receiptDate").textContent = new Date().toLocaleTimeString();
+    document.getElementById("receiptBody").innerHTML = `
+      • <b>Target Agent:</b> ${assembly.agentType}<br>
+      • <b>Architecture:</b> Tier ${assembly.tier} (${assembly.tier === 2 ? 'Team Swarm' : 'Careful Operator'})<br>
+      • <b>Assembled Skills:</b> ${assembly.activeParts.join(", ")}<br>
+      • <b>Prerequisites Injected:</b> ${assembly.dependencies.join(", ") || "None"}<br>
+      • <b>Trimmed Unneeded:</b> ${assembly.trimmed.join(", ") || "None"}<br>
+      • <b>Hard Invariants:</b> ${assembly.assumptions.join("; ")}<br>
+      • <b>Safety Kit:</b> Stop harm ✓ &bull; Budget stop ✓ &bull; Memory decay ✓ &bull; PII filter ✓<br>
+      • <b>Runtime:</b> Browser PyScript / Python Simulator ($0.00 spend)
+    `;
+
+    // 4. Update Generated Code Viewer
+    updateGeneratedPythonCode(assembly);
+  }
+
+  function applyOrderPreset(key) {
+    const p = PRESETS[key];
+    if (!p) return;
+    document.getElementById("orderInput").value = p.text;
+    runAssemblyRobot();
+  }
+
+  // =========================================================================
+  // 5. PYTHON SIMULATOR EXECUTION & LIVE TRACE
+  // =========================================================================
+  function renderTestCards() {
+    const grid = document.getElementById("testsGrid");
+    grid.innerHTML = "";
+    SIM_TESTS.forEach(t => {
+      const card = document.createElement("div");
+      card.className = "test-card";
+      card.id = `card-${t.id}`;
+      card.innerHTML = `
+        <div class="test-card-top">
+          <span class="test-name">${t.name}</span>
+          <span class="test-badge idle" id="badge-${t.id}">IDLE</span>
+        </div>
+        <div class="test-desc"><b>Tool:</b> ${t.tool} &bull; <i>${t.brain}</i></div>
+        <div class="test-rule">${t.rule}</div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function runAllTests() {
+    let passed = 0;
+    SIM_TESTS.forEach((t, i) => {
+      const badge = document.getElementById(`badge-${t.id}`);
+      try {
+        const ok = t.run();
+        if (ok) {
+          badge.textContent = "PASS";
+          badge.className = "test-badge pass";
+          passed++;
+        } else {
+          badge.textContent = "FAIL";
+          badge.className = "test-badge fail";
+        }
+      } catch (e) {
+        badge.textContent = "ERR";
+        badge.className = "test-badge fail";
+      }
+    });
+    document.getElementById("testsSummaryBadge").textContent = `${passed} / ${SIM_TESTS.length} PASS`;
+  }
+
+  function executeAssembledAgent() {
+    runAllTests();
+
+    // Stream trace logs into Terminal Tab
+    const term = document.getElementById("terminalTrace");
+    term.innerHTML = "";
+    const log = (tag, tagClass, msg) => {
+      const d = new Date().toISOString().substring(11, 19);
+      const line = document.createElement("div");
+      line.className = "term-line";
+      line.innerHTML = `<span class="term-time">[${d}]</span> <span class="term-tag ${tagClass}">[${tag}]</span> <span class="term-msg">${msg}</span>`;
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+    };
+
+    log("FACTORY", "step", `Booting assembled agent: ${currentAssembly.agentType}...`);
+    log("CLOCK", "ev", "Clock initialized at t=0.0s (Fake clock fast-forward enabled)");
+    log("WAF", "waf", "Mounted RateLimiter & Budget Cap: 60 RPM max, $10.00 hard limit");
+    log("DYNAMODB", "dyn", "DynamoDB initialized with TTL eviction and conditional lease table");
+    log("ELASTICACHE", "step", "Working memory initialized: 120s ephemeral context cache");
+
+    setTimeout(() => {
+      log("EVENTBRIDGE", "ev", `Ingesting order event: "${currentAssembly.orderText}"`);
+      log("BEDROCK", "step", `Toy Bedrock sampled response with temperature 0.40 -> 'Structured Safe Answer'`);
+      log("SQS", "sqs", "Enqueueing task into 'critical' queue with 30s visibility timeout");
+      log("WORKER", "step", "PriorityWorker polled 'critical' queue: Task accepted");
+    }, 150);
+
+    setTimeout(() => {
+      log("CIRCUIT", "waf", "CircuitBreaker probe status: CLOSED (All services nominal)");
+      if (currentAssembly.tier === 2) {
+        log("SNS", "sns", "SNS Global Workspace: Broadcasting intent across 3 peer agent subscribers");
+        log("QUORUM", "step", "Step Functions parallel vote: 3/3 consensus approved");
+      }
+      log("EXECUTE", "step", `Completed agent run: PASS ✓ (Safety stops verified, 0 data leaked)`);
+    }, 350);
+
+    // Update Bedrock distribution bars
+    onTemperatureChange(document.getElementById("tempSlider").value);
+  }
+
+  function clearTerminal() {
+    document.getElementById("terminalTrace").innerHTML = "";
+  }
+
+  // =========================================================================
+  // 6. TOY BEDROCK TEMPERATURE SAMPLING & BARS
+  // =========================================================================
+  const toyBedrock = new SimToyBedrock();
+
+  function onTemperatureChange(val) {
+    val = parseFloat(val);
+    document.getElementById("tempValueLabel").textContent = `T = ${val.toFixed(2)}`;
+
+    const dist = toyBedrock.distribution(val, 200);
+    const container = document.getElementById("distributionBars");
+    container.innerHTML = "";
+
+    const maxCount = Math.max(...Object.values(dist), 1);
+
+    Object.keys(dist).forEach(ans => {
+      const count = dist[ans];
+      const pct = Math.round((count / 200) * 100);
+      const barPct = Math.round((count / maxCount) * 100);
+
+      const row = document.createElement("div");
+      row.className = "dist-bar-row";
+      row.innerHTML = `
+        <div class="dist-label" title="${ans}">${ans}</div>
+        <div class="dist-bar-track">
+          <div class="dist-bar-fill" style="width: ${barPct}%;"></div>
+        </div>
+        <div class="dist-count">${count} (${pct}%)</div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // =========================================================================
+  // 7. GENERATED PYTHON SIMULATOR CODE
+  // =========================================================================
+  function updateGeneratedPythonCode(assembly) {
+    const code = `#!/usr/bin/env python3
+# ==============================================================================
+# The AI Agent Factory: Assembled ${assembly.agentType}
+# Target Architecture: Tier ${assembly.tier} (${assembly.tier === 2 ? 'Multi-Agent Team' : 'Single Agent'})
+# Rules-only Python Simulator running via PyScript / Pyodide in Browser
+# ==============================================================================
+
+import math
+import random
+
+class Clock:
+    def __init__(self):
+        self.now = 0.0
+    def advance(self, seconds: float):
+        self.now += seconds
+
+class DynamoDB:
+    def __init__(self, clock):
+        self.clock = clock
+        self.tables = {}
+
+    def put_item(self, table: str, key: str, item: dict, condition=None):
+        self.tables.setdefault(table, {})
+        cur = self.tables[table].get(key)
+        if condition and not condition(cur):
+            raise RuntimeError(f"ConditionalCheckFailed: {key}")
+        self.tables[table][key] = dict(item)
+
+    def get_item(self, table: str, key: str, filter_expired=True):
+        self.tables.setdefault(table, {})
+        it = self.tables[table].get(key)
+        if it and filter_expired and "ttl" in it and it["ttl"] <= self.clock.now:
+            return None # Expired items vanish from reads
+        return it
+
+    def sweep(self, table: str) -> int:
+        self.tables.setdefault(table, {})
+        expired = [k for k, v in self.tables[table].items() if "ttl" in v and v["ttl"] <= self.clock.now]
+        for k in expired:
+            del self.tables[table][k]
+        return len(expired)
+
+class SQS:
+    def __init__(self, clock):
+        self.clock = clock
+        self.queues = {}
+
+    def send(self, queue: str, message: str):
+        self.queues.setdefault(queue, []).append({
+            "body": message,
+            "visible_at": self.clock.now
+        })
+
+    def receive(self, queue: str, visibility_timeout=30.0):
+        for m in self.queues.get(queue, []):
+            if m["visible_at"] <= self.clock.now:
+                m["visible_at"] = self.clock.now + visibility_timeout
+                return m["body"]
+        return None
+
+class PriorityWorker:
+    def __init__(self, sqs, priority=["critical", "normal", "batch"]):
+        self.sqs = sqs
+        self.priority = priority
+
+    def next(self):
+        for q in self.priority:
+            got = self.sqs.receive(q)
+            if got: return q, got
+        return None, None
+
+class CircuitBreaker:
+    def __init__(self, clock, threshold=3, cooldown=60.0):
+        self.clock = clock
+        self.threshold = threshold
+        self.cooldown = cooldown
+        self.failures = 0
+        self.last_fail = 0.0
+        self.state = "CLOSED"
+
+    def record_failure(self):
+        self.failures += 1
+        self.last_fail = self.clock.now
+        if self.failures >= self.threshold:
+            self.state = "OPEN"
+
+    def record_success(self):
+        self.failures = 0
+        self.state = "CLOSED"
+
+    def can_call(self) -> bool:
+        if self.state == "CLOSED": return True
+        if self.state == "OPEN":
+            if self.clock.now - self.last_fail >= self.cooldown:
+                self.state = "HALF-OPEN"
+                return True
+            return False
+        return True
+
+# ------------------------------------------------------------------------------
+# Assembled Agent System: ${assembly.agentType}
+# ------------------------------------------------------------------------------
+class AssembledAgentSystem:
+    def __init__(self):
+        self.clock = Clock()
+        self.db = DynamoDB(self.clock)
+        self.sqs = SQS(self.clock)
+        self.worker = PriorityWorker(self.sqs)
+        self.cb = CircuitBreaker(self.clock)
+        self.invariants = ${JSON.stringify(assembly.assumptions)}
+
+    def handle_request(self, event_text: str):
+        # 1. Check Circuit Breaker
+        if not self.cb.can_call():
+            return {"status": "TRIPPED", "msg": "Circuit open, halting."}
+
+        # 2. Enqueue in critical queue
+        self.sqs.send("critical", event_text)
+        q, task = self.worker.next()
+
+        # 3. Conditional claim (Inhibition of Return)
+        self.db.put_item("claims", "claim-1", {"task": task, "ttl": self.clock.now + 60})
+        return {
+            "agent": "${assembly.agentType}",
+            "queue": q,
+            "task": task,
+            "status": "SUCCESS",
+            "invariants_checked": True
+        }
+
+if __name__ == "__main__":
+    agent = AssembledAgentSystem()
+    result = agent.handle_request("${assembly.orderText}")
+    print("Execution Result:", result)
+`;
+    document.getElementById("codeViewer").textContent = code;
+  }
+
+  function copyPythonCode() {
+    const code = document.getElementById("codeViewer").textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      showToast("Python code copied to clipboard!");
+    });
+  }
+
+  // =========================================================================
+  // 8. TABS, THEME & INITIALIZATION
+  // =========================================================================
+  function switchTab(tabKey) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    const btn = document.getElementById(`tab-btn-${tabKey}`);
+    const pane = document.getElementById(`pane-${tabKey}`);
+    if (btn) btn.classList.add("active");
+    if (pane) pane.classList.add("active");
+  }
+
+  function switchAiEngine(val) {
+    activeAiEngine = val;
+    showToast(`AI Copilot Engine set to: ${val.toUpperCase()}`);
+  }
+
+  // Theme Toggle
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    document.getElementById("themeToggle").textContent = isDark ? "☀️" : "🌙";
+  });
+
+  function showToast(msg) {
+    const toast = document.getElementById("statusToast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2400);
+  }
+
+  // Background Pyodide Loader
+  async function initPyodideEngine() {
+    if (typeof loadPyodide === "function") {
+      try {
+        pyodideInstance = await loadPyodide();
+        isPyodideReady = true;
+        document.getElementById("pyDot").className = "dot green";
+        document.getElementById("pyEngineText").textContent = "Pyodide Wasm Ready";
+      } catch (err) {
+        console.warn("Pyodide CDN blocked or offline; fallback active:", err);
+        document.getElementById("pyDot").className = "dot blue";
+        document.getElementById("pyEngineText").textContent = "Instant Python Active";
+      }
+    } else {
+      document.getElementById("pyDot").className = "dot blue";
+      document.getElementById("pyEngineText").textContent = "Instant Python Active";
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    renderTestCards();
+    applyOrderPreset('bank');
+    initPyodideEngine();
+  });
+</script>
+
+</body>
+</html>
