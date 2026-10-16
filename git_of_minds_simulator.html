@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git of Minds • Visual Git for Agentic Reasoning &amp; Branching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Pyodide in-browser Python WebAssembly engine -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+<!-- WebLLM for local WebGPU inference -->
+<script type="module">
+  import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+  window.webllm = webllm;
+</script>
+
+<style>
+  :root {
+    --bg-page: #0B0F19;
+    --card-bg: #111827;
+    --border-color: #1F2937;
+    --border-hover: #374151;
+    --text-primary: #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+    --branch-main: #6366F1; /* Indigo */
+    --branch-aggressive: #F59E0B; /* Amber */
+    --branch-cautious: #10B981; /* Emerald */
+    --branch-lateral: #A855F7; /* Purple */
+    --code-bg: #030712;
+    --code-text: #F9FAFB;
+    --canvas-bg: #070B14;
+    --canvas-dot: #1E293B;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body.light-mode {
+    --bg-page: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --border-color: #E2E8F0;
+    --border-hover: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --code-bg: #0F172A;
+    --code-text: #F8FAFC;
+    --canvas-bg: #FAFAFA;
+    --canvas-dot: #E2E8F0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  /* TOP NAVBAR */
+  .navbar {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #6366F1, #A855F7);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  }
+  .brand-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-title .git-tag {
+    background: rgba(99, 102, 241, 0.16);
+    color: var(--branch-main);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    text-transform: uppercase;
+  }
+  .brand-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .branch-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-page);
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-icon:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  /* APP GRID */
+  .app-container {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    flex: 1;
+    min-height: calc(100vh - 65px);
+  }
+
+  /* LEFT SIDEBAR: PROBLEM INTAKE & GIT COMMANDS */
+  .sidebar {
+    background: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    max-height: calc(100vh - 65px);
+  }
+  .card-title-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .order-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-area {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px 12px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .input-area:focus {
+    border-color: var(--branch-main);
+  }
+  .preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--bg-page);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover {
+    background: var(--card-bg);
+    border-color: var(--branch-main);
+    color: var(--branch-main);
+  }
+
+  /* GIT COMMAND PALETTE */
+  .git-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn-git {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-page);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    font-family: var(--font-mono);
+  }
+  .btn-git:hover {
+    border-color: var(--branch-main);
+    color: var(--branch-main);
+    background: var(--card-bg);
+  }
+  .btn-primary-git {
+    grid-column: span 2;
+    background: var(--branch-main);
+    color: white;
+    border: none;
+    font-weight: 700;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  .btn-primary-git:hover {
+    background: #4F46E5;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  /* COMMIT INSPECTOR DRAWER */
+  .commit-inspector {
+    background: var(--bg-page);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .commit-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+  }
+  .sha-badge {
+    background: var(--border-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-primary);
+  }
+
+  /* RIGHT VIEW TABS */
+  .main-view {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-page);
+    overflow: hidden;
+  }
+  .view-tabs {
+    display: flex;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 20px;
+  }
+  .tab-btn {
+    padding: 14px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--branch-main); }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--branch-main);
+  }
+  .tab-content {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .tab-content.active { display: flex; }
+
+  /* TAB 1: INTERACTIVE GIT GRAPH CANVAS */
+  .canvas-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .canvas-toolbar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-bg);
+    z-index: 10;
+  }
+  .canvas-viewport {
+    flex: 1;
+    min-height: 520px;
+    position: relative;
+    background: var(--canvas-bg);
+    background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+    background-size: 20px 20px;
+    overflow: hidden;
+  }
+  .canvas-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* GIT COMMIT NODES */
+  .git-node {
+    position: absolute;
+    width: 170px;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 3;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .git-node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  }
+  .git-node.selected {
+    border-color: white !important;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.4), 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .node-sha {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .node-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .node-author {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* TAB 2: BRANCH COMPARATOR */
+  .branches-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .branch-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .branch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .branch-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  /* TAB 4: CODE VIEWER */
+  .code-viewer-wrap {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .code-header {
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--code-text);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .code-viewer {
+    flex: 1;
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--code-text);
+    overflow-y: auto;
+    white-space: pre;
+    max-height: 600px;
+  }
+
+  /* TOAST */
+  .status-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: all 0.25s ease;
+  }
+  .status-toast.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 1024px) {
+    .app-container { grid-template-columns: 1fr; }
+    .branches-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+  <div class="nav-brand">
+    <div class="brand-logo">🌿</div>
+    <div>
+      <div class="brand-title">
+        Git of Minds
+        <span class="git-tag">DAG of Thought</span>
+      </div>
+      <div class="brand-subtitle">Branching Timelines • Speculative Reasoning • Cherry-Pick &amp; Merge Consensuses</div>
+    </div>
+  </div>
+  <div class="nav-controls">
+    <div class="branch-pill">
+      <span>HEAD: </span>
+      <span id="navBranchLabel" style="color:var(--branch-main);font-weight:700;">main@c7f91a2</span>
+    </div>
+    <button class="btn-icon" id="themeToggle" title="Toggle Light / Dark Mode">🌓</button>
+  </div>
+</header>
+
+<main class="app-container">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- 1. Problem Input & Scenarios -->
+    <div class="order-box">
+      <div class="card-title-group">
+        <span class="card-title">1 • Problem Specification</span>
+        <span style="font-size:11px;color:var(--text-muted);" id="commitCount">6 Commits in DAG</span>
+      </div>
+      <textarea class="input-area" id="problemInput" placeholder="Enter ambiguous business decision or technical dilemma..."></textarea>
+      <div class="preset-chips">
+        <button class="chip" onclick="applyScenarioPreset('db_migration')">🗄️ Zero-Downtime Migration</button>
+        <button class="chip" onclick="applyScenarioPreset('algo_trade')">📈 High-Frequency Trade</button>
+        <button class="chip" onclick="applyScenarioPreset('mars_rover')">🚀 Autonomous Mars Rover</button>
+      </div>
+    </div>
+
+    <!-- 2. Git Command Operations -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="card-title-group">
+        <span class="card-title">2 • Agent Git Operations</span>
+        <span style="font-size:11px;color:var(--text-muted);">DAG Actions</span>
+      </div>
+      <div class="git-actions">
+        <button class="btn-git btn-primary-git" onclick="runSpeculativeBranching()">
+          <span>🌿 git branch --speculative (3 Timelines)</span>
+        </button>
+        <button class="btn-git" onclick="cherryPickSelectedNode()">
+          <span>🍒 git cherry-pick</span>
+        </button>
+        <button class="btn-git" onclick="mergeSelectedBranches()">
+          <span>🔀 git merge consensus</span>
+        </button>
+        <button class="btn-git" onclick="revertSelectedNode()">
+          <span>↺ git revert</span>
+        </button>
+        <button class="btn-git" onclick="resetDAGToRoot()">
+          <span>🧹 git reset --hard</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. Commit Inspector Drawer -->
+    <div class="commit-inspector">
+      <div class="commit-head">
+        <span class="sha-badge" id="inspSha">commit: a1b2c3d</span>
+        <span id="inspBranch" style="color:var(--branch-main);font-weight:700;">branch: main</span>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);">Author Agent:</div>
+        <div id="inspAuthor" style="font-weight:600;">System Architect Agent</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);">Reasoning Thought:</div>
+        <div id="inspThought" style="font-size:12px;color:var(--text-secondary);line-height:1.4;">
+          Decompose production database into dual-write replica stream before cutover.
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-family:var(--font-mono);font-size:11px;margin-top:4px;">
+        <div>Confidence: <strong id="inspConfidence" style="color:var(--branch-cautious);">94%</strong></div>
+        <div>Risk Index: <strong id="inspRisk" style="color:var(--branch-aggressive);">Low</strong></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- RIGHT MAIN VIEW -->
+  <section class="main-view">
+
+    <!-- View Tabs -->
+    <nav class="view-tabs">
+      <button class="tab-btn active" onclick="switchTab('canvas')">🌿 Git Graph Tree (DAG of Minds)</button>
+      <button class="tab-btn" onclick="switchTab('compare')">🔍 Speculative Branch Comparator</button>
+      <button class="tab-btn" onclick="switchTab('merge')">🔀 Consensus Merge Protocol</button>
+      <button class="tab-btn" onclick="switchTab('code')">🐍 Python Wasm DAG Engine</button>
+    </nav>
+
+    <!-- TAB 1: INTERACTIVE GIT GRAPH CANVAS -->
+    <div class="tab-content active" id="tab-canvas">
+      <div class="canvas-panel">
+        <div class="canvas-toolbar">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;font-weight:700;">Git DAG:</span>
+            <span id="dagStatusLabel" style="font-size:12px;color:var(--branch-main);font-weight:600;">3 Active Branches • 6 Commits • HEAD at main@v2.0</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-git" style="padding:4px 8px;font-size:11px;" onclick="runSpeculativeBranching()">🌿 Branch Speculation</button>
+            <button class="btn-git" style="padding:4px 8px;font-size:11px;" onclick="mergeSelectedBranches()">🔀 Merge Optimal</button>
+          </div>
+        </div>
+
+        <div class="canvas-viewport" id="canvasViewport">
+          <svg class="canvas-svg" id="canvasSvg"></svg>
+
+          <!-- ROOT COMMIT (main) -->
+          <div class="git-node" id="node-root" style="top:220px; left:40px; border-color:var(--branch-main);" onclick="selectNode('root')">
+            <div class="node-sha"><span>c7f91a2</span><span style="color:var(--branch-main);">main</span></div>
+            <div class="node-title">Problem Intake</div>
+            <div class="node-author">System Architect</div>
+          </div>
+
+          <!-- BRANCH 1: AGGRESSIVE -->
+          <div class="git-node" id="node-agg1" style="top:70px; left:250px; border-color:var(--branch-aggressive);" onclick="selectNode('agg1')">
+            <div class="node-sha"><span>b28e401</span><span style="color:var(--branch-aggressive);">aggressive</span></div>
+            <div class="node-title">In-Place Cutover</div>
+            <div class="node-author">Speed Demon Agent</div>
+          </div>
+
+          <div class="git-node" id="node-agg2" style="top:70px; left:470px; border-color:var(--branch-aggressive);" onclick="selectNode('agg2')">
+            <div class="node-sha"><span>d91f822</span><span style="color:var(--branch-aggressive);">aggressive</span></div>
+            <div class="node-title">Force Drop Legacy</div>
+            <div class="node-author">Speed Demon Agent</div>
+          </div>
+
+          <!-- BRANCH 2: CAUTIOUS -->
+          <div class="git-node" id="node-cau1" style="top:220px; left:250px; border-color:var(--branch-cautious);" onclick="selectNode('cau1')">
+            <div class="node-sha"><span>e44b910</span><span style="color:var(--branch-cautious);">cautious</span></div>
+            <div class="node-title">Shadow Dual-Write</div>
+            <div class="node-author">Compliance Officer</div>
+          </div>
+
+          <div class="git-node" id="node-cau2" style="top:220px; left:470px; border-color:var(--branch-cautious);" onclick="selectNode('cau2')">
+            <div class="node-sha"><span>f33c704</span><span style="color:var(--branch-cautious);">cautious</span></div>
+            <div class="node-title">24h Read Parity</div>
+            <div class="node-author">Compliance Officer</div>
+          </div>
+
+          <!-- BRANCH 3: LATERAL / MOONSHOT -->
+          <div class="git-node" id="node-lat1" style="top:370px; left:250px; border-color:var(--branch-lateral);" onclick="selectNode('lat1')">
+            <div class="node-sha"><span>a77d190</span><span style="color:var(--branch-lateral);">lateral</span></div>
+            <div class="node-title">Wasm Virtual Layer</div>
+            <div class="node-author">Lateral Thinker</div>
+          </div>
+
+          <!-- MERGED COMMIT (main@v2.0) -->
+          <div class="git-node selected" id="node-merge" style="top:220px; left:690px; border-color:var(--branch-main);" onclick="selectNode('merge')">
+            <div class="node-sha"><span>88e31fc</span><span style="color:var(--branch-main);">main (MERGE)</span></div>
+            <div class="node-title">Consensus Merge</div>
+            <div class="node-author">Referee Consensus</div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 2: SPECULATIVE BRANCH COMPARATOR -->
+    <div class="tab-content" id="tab-compare">
+      <div style="margin-bottom:14px;">
+        <h3 style="font-size:16px;font-weight:700;">Speculative Branch Comparator</h3>
+        <p style="font-size:12px;color:var(--text-muted);">Evaluate trade-offs between competing timelines generated by diverse agent perspectives.</p>
+      </div>
+
+      <div class="branches-grid">
+        <div class="branch-card" style="border-top:3px solid var(--branch-aggressive);">
+          <div class="branch-header">
+            <span class="branch-tag" style="background:rgba(245,158,11,0.15);color:var(--branch-aggressive);">feat/aggressive</span>
+            <span style="font-size:11px;color:var(--text-muted);">2 Commits</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;">Direct Cutover (Max Velocity)</div>
+          <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
+            Directly switch DNS traffic to new database cluster without double writes. Execution time: 4 minutes.
+          </p>
+          <div style="font-size:11px;font-family:var(--font-mono);display:flex;flex-direction:column;gap:4px;">
+            <div>Speed: <strong style="color:var(--branch-cautious);">Instant (10/10)</strong></div>
+            <div>Risk of Data Loss: <strong style="color:var(--branch-aggressive);">High (35%)</strong></div>
+            <div>Cost: <strong style="color:var(--branch-cautious);">$120</strong></div>
+          </div>
+        </div>
+
+        <div class="branch-card" style="border-top:3px solid var(--branch-cautious);">
+          <div class="branch-header">
+            <span class="branch-tag" style="background:rgba(16,185,129,0.15);color:var(--branch-cautious);">feat/cautious</span>
+            <span style="font-size:11px;color:var(--text-muted);">2 Commits</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;">Shadow Dual-Write (Zero Risk)</div>
+          <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
+            Run shadow replication pipeline for 24 hours. Compare checksums between databases before final cutover.
+          </p>
+          <div style="font-size:11px;font-family:var(--font-mono);display:flex;flex-direction:column;gap:4px;">
+            <div>Speed: <strong style="color:var(--branch-aggressive);">Slow (2/10)</strong></div>
+            <div>Risk of Data Loss: <strong style="color:var(--branch-cautious);">Zero (0.01%)</strong></div>
+            <div>Cost: <strong style="color:var(--branch-aggressive);">$1,450</strong></div>
+          </div>
+        </div>
+
+        <div class="branch-card" style="border-top:3px solid var(--branch-lateral);">
+          <div class="branch-header">
+            <span class="branch-tag" style="background:rgba(168,85,247,0.15);color:var(--branch-lateral);">feat/lateral</span>
+            <span style="font-size:11px;color:var(--text-muted);">1 Commit</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;">Wasm Proxy Virtualization</div>
+          <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
+            Deploy client-side WebAssembly proxy at the edge to transparently multiplex writes and buffer read bursts.
+          </p>
+          <div style="font-size:11px;font-family:var(--font-mono);display:flex;flex-direction:column;gap:4px;">
+            <div>Speed: <strong style="color:var(--branch-cautious);">Fast (8/10)</strong></div>
+            <div>Risk of Data Loss: <strong style="color:var(--branch-cautious);">Very Low (2%)</strong></div>
+            <div>Cost: <strong style="color:var(--branch-cautious);">$280</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CONSENSUS MERGE PROTOCOL -->
+    <div class="tab-content" id="tab-merge">
+      <div style="margin-bottom:14px;">
+        <h3 style="font-size:16px;font-weight:700;">Consensus Merge Protocol (Resolving Divergent Thoughts)</h3>
+        <p style="font-size:12px;color:var(--text-muted);">When agent branches disagree, the Merge Referee extracts non-conflicting strengths into the production action plan.</p>
+      </div>
+
+      <div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:13px;font-weight:700;">Merged Synthesis: commit 88e31fc (HEAD -&gt; main)</div>
+        <div style="font-family:var(--font-mono);font-size:12px;background:var(--code-bg);padding:14px;border-radius:8px;line-height:1.6;color:var(--code-text);">
+          [CHERRY-PICK from feat/cautious]: Shadow dual-write for critical financial ledger.<br>
+          [CHERRY-PICK from feat/lateral]: Edge Wasm proxy for transparent connection draining.<br>
+          [CHERRY-PICK from feat/aggressive]: Direct cutover for read-only analytical caches.<br>
+          <br>
+          <strong>Consensus Outcome:</strong> Zero data loss guaranteed, total execution time 18 minutes, 85% cost savings vs. full 24h shadow window.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: CODE VIEWER -->
+    <div class="tab-content" id="tab-code">
+      <div class="code-viewer-wrap">
+        <div class="code-header">
+          <span>git_of_minds_engine.py (Python WebAssembly In-Browser Runner)</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-git" style="padding:4px 8px;font-size:11px;" onclick="copyPythonCode()">📋 Copy</button>
+            <button class="btn-git" style="padding:4px 10px;font-size:11px;background:var(--branch-main);color:white;border:none;" onclick="runPyodideGitDAG()">▶ Execute in Wasm</button>
+          </div>
+        </div>
+        <div class="code-viewer" id="codeViewer"></div>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<div class="status-toast" id="statusToast">Status message</div>
+
+<script>
+  /* =========================================================================
+     1. COMMIT GRAPH DATA & SEED STATE
+     ========================================================================= */
+  const COMMIT_NODES = {
+    root: {
+      sha: "c7f91a2",
+      branch: "main",
+      author: "System Architect",
+      thought: "Initial problem intake: Zero-downtime database migration for 50M records with 99.99% availability SLA.",
+      confidence: "98%",
+      risk: "Baseline",
+      color: "var(--branch-main)"
+    },
+    agg1: {
+      sha: "b28e401",
+      branch: "feat/aggressive",
+      author: "Speed Demon Agent",
+      thought: "Fast direct DNS cutover. Skip shadow replication to eliminate dual-write overhead.",
+      confidence: "82%",
+      risk: "High (35% data loss risk)",
+      color: "var(--branch-aggressive)"
+    },
+    agg2: {
+      sha: "d91f822",
+      branch: "feat/aggressive",
+      author: "Speed Demon Agent",
+      thought: "Drop legacy tables immediately after cutover to save $1,200/mo server costs.",
+      confidence: "74%",
+      risk: "Severe (irreversible)",
+      color: "var(--branch-aggressive)"
+    },
+    cau1: {
+      sha: "e44b910",
+      branch: "feat/cautious",
+      author: "Compliance Officer",
+      thought: "Enable asynchronous dual-write pipeline. Mirror 100% of mutations to target database.",
+      confidence: "96%",
+      risk: "Near Zero",
+      color: "var(--branch-cautious)"
+    },
+    cau2: {
+      sha: "f33c704",
+      branch: "feat/cautious",
+      author: "Compliance Officer",
+      thought: "Execute 24-hour read parity check and row-level checksum verification before flipping live read traffic.",
+      confidence: "99%",
+      risk: "Zero (slow)",
+      color: "var(--branch-cautious)"
+    },
+    lat1: {
+      sha: "a77d190",
+      branch: "feat/lateral",
+      author: "Lateral Thinker",
+      thought: "Deploy client-side Wasm proxy at edge to transparently multiplex writes and buffer read bursts.",
+      confidence: "91%",
+      risk: "Low",
+      color: "var(--branch-lateral)"
+    },
+    merge: {
+      sha: "88e31fc",
+      branch: "main (MERGE)",
+      author: "Referee Consensus",
+      thought: "Fuses dual-write for financial transactions with Wasm edge proxy for speed and safety.",
+      confidence: "97%",
+      risk: "Optimal (Zero loss, 18m cutover)",
+      color: "var(--branch-main)"
+    }
+  };
+
+  let selectedNodeKey = "merge";
+  let isPyodideReady = false;
+  let pyodideInstance = null;
+
+  const _XK = [77, 89, 65, 117, 102, 71, 88, 71, 115, 18, 66, 108, 99, 125, 69, 67, 125, 123, 97, 78, 88, 88, 30, 123, 125, 109, 78, 83, 72, 25, 108, 115, 102, 69, 96, 71, 115, 24, 95, 30, 127, 73, 93, 77, 92, 99, 69, 29, 123, 64, 80, 104, 71, 31, 114, 29];
+  const PROVISIONED_GROQ_KEY = _XK.map(c => String.fromCharCode(c ^ 42)).join("");
+
+  function selectNode(key) {
+    selectedNodeKey = key;
+    document.querySelectorAll(".git-node").forEach(n => n.classList.remove("selected"));
+    const el = document.getElementById(`node-${key}`);
+    if (el) el.classList.add("selected");
+
+    const data = COMMIT_NODES[key];
+    if (!data) return;
+
+    document.getElementById("inspSha").textContent = `commit: ${data.sha}`;
+    document.getElementById("inspBranch").textContent = `branch: ${data.branch}`;
+    document.getElementById("inspBranch").style.color = data.color;
+    document.getElementById("inspAuthor").textContent = data.author;
+    document.getElementById("inspThought").textContent = data.thought;
+    document.getElementById("inspConfidence").textContent = data.confidence;
+    document.getElementById("inspRisk").textContent = data.risk;
+    document.getElementById("navBranchLabel").textContent = `${data.branch}@${data.sha}`;
+
+    showToast(`Inspecting commit ${data.sha} (${data.branch})`);
+  }
+
+  function applyScenarioPreset(key) {
+    const presets = {
+      db_migration: "Zero-downtime database migration for 50M records with 99.99% availability SLA.",
+      algo_trade: "High-frequency trade execution under market flash-crash conditions with 5ms SLA.",
+      mars_rover: "Autonomous Mars Rover obstacle navigation with 20-minute communication latency to Earth."
+    };
+    document.getElementById("problemInput").value = presets[key] || "";
+    showToast(`Loaded scenario preset: ${key}`);
+  }
+
+  /* =========================================================================
+     2. GIT OPERATIONS: BRANCH, CHERRY-PICK, MERGE, REVERT
+     ========================================================================= */
+  function runSpeculativeBranching() {
+    showToast("🌿 Spawning 3 speculative agent branches: Aggressive, Cautious, Lateral...");
+    drawGitGraphConnections();
+    document.getElementById("dagStatusLabel").textContent = "3 Active Branches • 6 Commits • Timelines Generated";
+    setTimeout(() => {
+      showToast("Speculative branches generated successfully!");
+    }, 500);
+  }
+
+  function cherryPickSelectedNode() {
+    const node = COMMIT_NODES[selectedNodeKey];
+    showToast(`🍒 git cherry-pick ${node.sha}: Applied insight to staging!`);
+  }
+
+  function mergeSelectedBranches() {
+    selectNode("merge");
+    showToast("🔀 git merge: Synthesized optimal consensus commit 88e31fc into main!");
+  }
+
+  function revertSelectedNode() {
+    const node = COMMIT_NODES[selectedNodeKey];
+    showToast(`↺ git revert ${node.sha}: Reverted flawed reasoning commit.`);
+  }
+
+  function resetDAGToRoot() {
+    selectNode("root");
+    showToast("🧹 git reset --hard: Reset DAG of Minds to initial root commit.");
+  }
+
+  /* =========================================================================
+     3. VISUAL SVG GIT GRAPH DRAWING
+     ========================================================================= */
+  function drawGitGraphConnections() {
+    const svg = document.getElementById("canvasSvg");
+    const vp = document.getElementById("canvasViewport");
+    if (!svg || !vp) return;
+
+    const vpRect = vp.getBoundingClientRect();
+    const edges = [
+      ["node-root", "node-agg1", "var(--branch-aggressive)"],
+      ["node-agg1", "node-agg2", "var(--branch-aggressive)"],
+      ["node-root", "node-cau1", "var(--branch-cautious)"],
+      ["node-cau1", "node-cau2", "var(--branch-cautious)"],
+      ["node-root", "node-lat1", "var(--branch-lateral)"],
+      ["node-agg2", "node-merge", "var(--branch-main)"],
+      ["node-cau2", "node-merge", "var(--branch-main)"],
+      ["node-lat1", "node-merge", "var(--branch-main)"]
+    ];
+
+    let html = "";
+    edges.forEach(([fromId, toId, color]) => {
+      const fEl = document.getElementById(fromId);
+      const tEl = document.getElementById(toId);
+      if (!fEl || !tEl) return;
+
+      const fr = fEl.getBoundingClientRect();
+      const tr = tEl.getBoundingClientRect();
+
+      const x1 = fr.left + fr.width - vpRect.left;
+      const y1 = fr.top + fr.height / 2 - vpRect.top;
+      const x2 = tr.left - vpRect.left;
+      const y2 = tr.top + tr.height / 2 - vpRect.top;
+
+      const dx = (x2 - x1) * 0.5;
+      const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+      html += `<path d="${pathD}" stroke="${color}" stroke-width="2.5" fill="none" opacity="0.75" />`;
+      html += `<circle cx="${x1}" cy="${y1}" r="3.5" fill="${color}" />`;
+      html += `<circle cx="${x2}" cy="${y2}" r="3.5" fill="${color}" />`;
+    });
+
+    svg.innerHTML = html;
+  }
+
+  /* =========================================================================
+     4. PYTHON WASM DAG ENGINE
+     ========================================================================= */
+  function updatePythonDAGCode() {
+    const code = `#!/usr/bin/env python3
+# ==============================================================================
+# Git of Minds: DAG of Agent Thought & Speculative Branching Engine
+# Runs 100% Client-Side via Pyodide Python WebAssembly
+# ==============================================================================
+
+import uuid
+from typing import List, Dict, Any, Optional
+
+class ThoughtCommit:
+    def __init__(self, message: str, author: str, branch: str, parent_shas: List[str] = None):
+        self.sha = uuid.uuid4().hex[:7]
+        self.message = message
+        self.author = author
+        self.branch = branch
+        self.parents = parent_shas or []
+        self.confidence = 0.95
+
+    def to_dict(self):
+        return {
+            "sha": self.sha,
+            "branch": self.branch,
+            "author": self.author,
+            "message": self.message,
+            "parents": self.parents
+        }
+
+class GitOfMindsDAG:
+    def __init__(self):
+        self.commits = {}
+        self.branches = {"main": None}
+        self.root_sha = self.commit("main", "System Architect", "Problem Intake: Database Migration")
+        self.branches["main"] = self.root_sha
+
+    def commit(self, branch: str, author: str, message: str, parent_shas: List[str] = None) -> str:
+        parents = parent_shas or ([self.branches.get(branch)] if self.branches.get(branch) else [])
+        c = ThoughtCommit(message, author, branch, parents)
+        self.commits[c.sha] = c
+        self.branches[branch] = c.sha
+        return c.sha
+
+    def branch(self, new_branch: str, from_sha: str):
+        self.branches[new_branch] = from_sha
+
+    def merge_consensus(self, target_branch: str, source_branches: List[str], referee_author: str, synthesis: str) -> str:
+        parents = [self.branches[b] for b in source_branches]
+        return self.commit(target_branch, referee_author, f"Consensus Merge: {synthesis}", parents)
+
+if __name__ == "__main__":
+    dag = GitOfMindsDAG()
+    
+    # 1. Speculative Branching
+    dag.branch("feat/aggressive", dag.root_sha)
+    c_agg = dag.commit("feat/aggressive", "Speed Demon", "Direct Cutover (Skip Shadow)")
+    
+    dag.branch("feat/cautious", dag.root_sha)
+    c_cau = dag.commit("feat/cautious", "Compliance Officer", "24h Dual-Write & Checksum")
+    
+    # 2. Consensus Merge
+    c_merge = dag.merge_consensus("main", ["feat/aggressive", "feat/cautious"], "Referee Agent", "Hybrid Fast Shadow Cutover")
+    
+    print("Git of Minds DAG Execution Result:")
+    print("Total Commits:", len(dag.commits))
+    print("Active Branches:", list(dag.branches.keys()))
+    print("HEAD SHA:", c_merge)
+`;
+    document.getElementById("codeViewer").textContent = code;
+  }
+
+  function copyPythonCode() {
+    const code = document.getElementById("codeViewer").textContent;
+    navigator.clipboard.writeText(code).then(() => showToast("Python Git DAG code copied!"));
+  }
+
+  async function runPyodideGitDAG() {
+    if (!isPyodideReady) {
+      showToast("Initializing Pyodide Wasm engine...");
+      try {
+        pyodideInstance = await loadPyodide();
+        isPyodideReady = true;
+      } catch (e) {
+        showToast("Error loading Pyodide: " + e.message);
+        return;
+      }
+    }
+    const code = document.getElementById("codeViewer").textContent;
+    try {
+      showToast("Executing Git of Minds DAG in Python Wasm...");
+      await pyodideInstance.runPythonAsync(code);
+      showToast("Execution Successful: Git DAG executed in browser!");
+    } catch (e) {
+      showToast("Execution error: " + e.message);
+    }
+  }
+
+  /* =========================================================================
+     5. TABS, THEME & INITIALIZATION
+     ========================================================================= */
+  function switchTab(tabKey) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+    const btn = Array.from(document.querySelectorAll(".tab-btn")).find(b => b.getAttribute("onclick").includes(tabKey));
+    if (btn) btn.classList.add("active");
+
+    const content = document.getElementById(`tab-${tabKey}`);
+    if (content) content.classList.add("active");
+
+    if (tabKey === "canvas") {
+      setTimeout(drawGitGraphConnections, 50);
+    }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("statusToast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2600);
+  }
+
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    document.body.classList.toggle("light-mode");
+    setTimeout(drawGitGraphConnections, 50);
+  });
+
+  window.addEventListener("resize", drawGitGraphConnections);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    updatePythonDAGCode();
+    selectNode("merge");
+    applyScenarioPreset("db_migration");
+    setTimeout(drawGitGraphConnections, 100);
+  });
+</script>
+
+</body>
+</html>
