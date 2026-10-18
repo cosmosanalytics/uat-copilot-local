@@ -55,14 +55,18 @@ def test_cicd_app():
         print(f"Level 2 Tab: {tab_l2.text}")
         print(f"Level 1 Tab: {tab_l1.text}")
 
-        # Check nodes on Level 3 (AWS AI Foundation)
+        # Check nodes on Level 3 (AWS Production Cloud: 9 nodes)
         aws_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
-        print(f"Level 3 Canvas nodes: {len(aws_nodes)}")
+        print(f"Level 3 Canvas nodes: {len(aws_nodes)} (Expected 9)")
 
+        ecs_node = driver.find_element(By.ID, "node_aws_ecs")
+        alb_node = driver.find_element(By.ID, "node_aws_alb")
         bedrock_node = driver.find_element(By.ID, "node_aws_bedrock")
         step_node = driver.find_element(By.ID, "node_aws_stepfunctions")
         lambda_node = driver.find_element(By.ID, "node_aws_lambda")
-        print(f"Found Bedrock node: {bedrock_node.is_displayed()}")
+        print(f"Found ECS Fargate node: {ecs_node.is_displayed()}")
+        print(f"Found ALB Ingress node: {alb_node.is_displayed()}")
+        print(f"Found Bedrock FM node: {bedrock_node.is_displayed()}")
         print(f"Found Step Functions node: {step_node.is_displayed()}")
         print(f"Found Lambda node: {lambda_node.is_displayed()}")
 

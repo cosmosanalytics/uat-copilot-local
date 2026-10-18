@@ -883,7 +883,7 @@ def build_cicd_app():
     <div class="header-left">
       <div class="brand-logo">⚡</div>
       <div class="brand-title-wrap">
-        <h1>AI Factory CI/CD <span style="font-weight:400; color:var(--text-muted);">• Worker AI ➔ GitHub ➔ AWS Bedrock & Cloud</span></h1>
+        <h1>AI Factory CI/CD <span style="font-weight:400; color:var(--text-muted);">• Worker AI ➔ GitHub ➔ AWS Production Cloud</span></h1>
         <div class="brand-subtitle">Repo: <a href="https://github.com/cosmosanalytics/uat-copilot-local" target="_blank" style="color:var(--accent-blue); text-decoration:none;">cosmosanalytics/uat-copilot-local</a> [main]</div>
       </div>
     </div>
@@ -891,7 +891,7 @@ def build_cicd_app():
     <!-- 3-Tier Hierarchy Switcher (HUI-02) -->
     <div class="level-switcher">
       <button class="level-tab l3 active" id="tabL3" onclick="switchLevel(3)">
-        <span>☁️</span> Level 3: AWS AI Foundation
+        <span>☁️</span> Level 3: AWS Production Cloud
       </button>
       <button class="level-tab l2" id="tabL2" onclick="switchLevel(2)">
         <span>🐙</span> Level 2: GitHub CI/CD
@@ -925,7 +925,7 @@ def build_cicd_app():
   <div class="interrupt-banner" id="interruptBanner">
     <div class="interrupt-left">
       <span>⚠️</span>
-      <span><strong>ACTION REQUIRED:</strong> GitHub Actions CI passed (48/48). Production Deploy Gate requires Human Approval before Bedrock Agent & Step Functions rollout.</span>
+      <span><strong>ACTION REQUIRED:</strong> GitHub Actions CI passed (48/48). Production Deploy Gate requires Human Approval before AWS Production Cloud & Bedrock rollout.</span>
     </div>
     <div class="interrupt-actions">
       <button class="btn-interrupt primary" onclick="openDrawerTab('inbox')">Review Decision Card</button>
@@ -937,10 +937,11 @@ def build_cicd_app():
   <!-- KPI SUB-NAVBAR -->
   <div class="sub-kpi-bar">
     <div class="kpi-items">
-      <span class="kpi-badge">Target: <strong>AWS us-east-1 (Prod)</strong></span>
-      <span class="kpi-badge">Bedrock FM: <strong style="color:var(--accent-green);">Claude 3.5 Sonnet (v2)</strong></span>
-      <span class="kpi-badge">Step Functions: <strong style="color:var(--aws-stepfunctions);">128 State Machines</strong></span>
-      <span class="kpi-badge">Lambda Workers: <strong style="color:var(--aws-lambda);">42 Active</strong></span>
+      <span class="kpi-badge">Target: <strong>AWS Production Cloud (us-east-1)</strong></span>
+      <span class="kpi-badge">ECS Compute: <strong style="color:var(--aws-orange);">4/4 Tasks Healthy</strong></span>
+      <span class="kpi-badge">Bedrock FM: <strong style="color:var(--accent-green);">Claude 3.5 Sonnet</strong></span>
+      <span class="kpi-badge">Step Functions: <strong style="color:var(--aws-stepfunctions);">128 Active</strong></span>
+      <span class="kpi-badge">Lambda Workers: <strong style="color:var(--aws-lambda);">42 Tools</strong></span>
       <span class="kpi-badge">Guardrails: <strong style="color:var(--accent-green);">0 Leaks • Active</strong></span>
     </div>
     <div class="kpi-items">
@@ -951,13 +952,20 @@ def build_cicd_app():
   <!-- WORKSPACE BODY -->
   <div class="workspace-layout">
 
-    <!-- LEFT SIDEBAR: AI Foundation Tools & Real GitHub Commits -->
+    <!-- LEFT SIDEBAR: Pipeline Parts, AI Foundation Tools & Real GitHub Commits -->
     <aside class="sidebar-left">
       <div class="sidebar-head">
-        <span>AWS AI Foundation Stack</span>
-        <span style="font-size:10px; color:var(--aws-orange);">AWS GENAI</span>
+        <span>AWS Production Cloud</span>
+        <span style="font-size:10px; color:var(--aws-orange);">L3 PROD</span>
       </div>
       <div class="pipeline-part-list">
+        <div class="part-item" onclick="switchLevel(3)">
+          <div class="part-header">
+            <span>☁️ Production Cloud Core</span>
+            <span class="part-tag tag-aws">INFRASTRUCTURE</span>
+          </div>
+          <div>Route 53 ➔ ALB ➔ ECS Fargate ➔ Aurora ➔ S3</div>
+        </div>
         <div class="part-item" onclick="switchLevel(3)">
           <div class="part-header">
             <span>🧠 Amazon Bedrock</span>
@@ -985,13 +993,6 @@ def build_cicd_app():
             <span class="part-tag tag-aws">VECTOR RAG</span>
           </div>
           <div>Serverless Vector Search • 1.4M Embeddings • Hybrid RAG</div>
-        </div>
-        <div class="part-item" onclick="switchLevel(3)">
-          <div class="part-header">
-            <span>🎯 Amazon SageMaker</span>
-            <span class="part-tag tag-aws">INFERENCE</span>
-          </div>
-          <div>Custom Fine-Tuning • JumpStart Models • Quantized GPUs</div>
         </div>
       </div>
 
@@ -1110,23 +1111,26 @@ def build_cicd_app():
 
     let activeDrawerTab = 'inbox';
 
-    // Canvas Node Definitions featuring AWS AI Foundation & Serverless Stack
+    // Canvas Node Definitions featuring AWS Production Cloud & AI Foundation Stack
     const LEVEL_NODES = {
-      3: [ // Level 3: AWS AI Foundation & Production Cloud Ecosystem
-        { id: "aws_stepfunctions", title: "AWS Step Functions", tag: "STATE MACHINE", x: 20, y: 50, metrics: "128 Active | 0 Errs" },
-        { id: "aws_bedrock", title: "Amazon Bedrock (FM)", tag: "FOUNDATION AI", x: 260, y: 50, metrics: "Claude 3.5 | Guardrails: ON" },
-        { id: "aws_lambda", title: "AWS Lambda Tool Runners", tag: "SERVERLESS", x: 500, y: 50, metrics: "42 Concurrency | 18ms" },
-        { id: "aws_sagemaker", title: "Amazon SageMaker AI", tag: "INFERENCE", x: 500, y: 200, metrics: "JumpStart | 99.9% Up" },
-        { id: "aws_opensearch", title: "OpenSearch Serverless", tag: "VECTOR RAG", x: 260, y: 200, metrics: "1.4M Vectors | 4.2ms" },
-        { id: "aws_dynamodb", title: "DynamoDB & S3 Memory", tag: "AGENT STATE", x: 20, y: 200, metrics: "Sub-ms Read | 420 GB" }
+      3: [ // Level 3: AWS Production Cloud (Company Equivalent)
+        { id: "aws_edge", title: "Route 53 & CloudFront", tag: "DNS & CDN", x: 20, y: 30, metrics: "14ms | Hit: 92%" },
+        { id: "aws_alb", title: "Application Load Balancer", tag: "INGRESS", x: 260, y: 30, metrics: "RPS: 1,420 | Err: 0.00%" },
+        { id: "aws_ecs", title: "Amazon ECS Fargate Cluster", tag: "COMPUTE", x: 500, y: 30, metrics: "4/4 Tasks | CPU: 24.5%" },
+        { id: "aws_stepfunctions", title: "AWS Step Functions", tag: "STATE MACHINE", x: 20, y: 165, metrics: "128 Active | 0 Errs" },
+        { id: "aws_bedrock", title: "Amazon Bedrock (FM)", tag: "FOUNDATION AI", x: 260, y: 165, metrics: "Claude 3.5 | Guardrails: ON" },
+        { id: "aws_lambda", title: "AWS Lambda Tool Runners", tag: "SERVERLESS", x: 500, y: 165, metrics: "42 Concurrency | 18ms" },
+        { id: "aws_obs", title: "CloudWatch & EventBridge", tag: "OBSERVABILITY", x: 20, y: 300, metrics: "Alarms: 0 OK | Logs: 45 eps" },
+        { id: "aws_opensearch", title: "OpenSearch Serverless", tag: "VECTOR RAG", x: 260, y: 300, metrics: "1.4M Vectors | 4.2ms" },
+        { id: "aws_aurora", title: "Aurora PostgreSQL & S3", tag: "DATA LAKE", x: 500, y: 300, metrics: "Sub-ms Read | 420 GB" }
       ],
-      2: [ // Level 2: GitHub CI/CD Pipeline (DevSecOps)
-        { id: "gh_pr", title: "Pull Request #42", tag: "PR GATE", x: 20, y: 50, metrics: "Branch: feat/bedrock-v3.2" },
+      2: [ // Level 2: GitHub CI/CD Pipeline (DevSecOps - S&OP Equivalent)
+        { id: "gh_pr", title: "Pull Request #42 Gate", tag: "PR GATE", x: 20, y: 50, metrics: "Branch: feat/v2.4.1" },
         { id: "gh_review", title: "AI Code Review Agent", tag: "STATIC ANALYSIS", x: 260, y: 50, metrics: "Groq LPU: Approved" },
-        { id: "gh_sec", title: "CodeQL & Guardrail Scan", tag: "DEVSECOPS", x: 500, y: 50, metrics: "0 CVEs • PII Shield" },
+        { id: "gh_sec", title: "CodeQL & Trivy Scan", tag: "DEVSECOPS", x: 500, y: 50, metrics: "0 CVEs • PII Shield" },
         { id: "gh_ci", title: "Automated CI Test Matrix", tag: "TESTING", x: 500, y: 200, metrics: "48/48 Passed (94.6%)" },
         { id: "gh_gate", title: "Production Human Gate", tag: "HUMAN GATE", x: 260, y: 200, isGate: true, metrics: "Needs Approval" },
-        { id: "gh_cd", title: "AWS Bedrock & Step Deploy", tag: "CD ROLLOUT", x: 20, y: 200, metrics: "Zero Downtime" }
+        { id: "gh_cd", title: "AWS ECS & Bedrock Deploy", tag: "CD CANARY", x: 20, y: 200, metrics: "Blue/Green Ready" }
       ],
       1: [ // Level 1: Worker AI Dev Mind (Society of Mind)
         { id: "w_arch", title: "Software Architect Agent", tag: "CONTRACT SPEC", x: 20, y: 50, metrics: "OpenAPI 3.1 Validated" },
@@ -1140,11 +1144,15 @@ def build_cicd_app():
     // Connections between nodes
     const LEVEL_CONNECTIONS = {
       3: [
+        ["aws_edge", "aws_alb"],
+        ["aws_alb", "aws_ecs"],
+        ["aws_alb", "aws_stepfunctions"],
         ["aws_stepfunctions", "aws_bedrock"],
         ["aws_bedrock", "aws_lambda"],
-        ["aws_lambda", "aws_sagemaker"],
         ["aws_bedrock", "aws_opensearch"],
-        ["aws_stepfunctions", "aws_dynamodb"]
+        ["aws_lambda", "aws_aurora"],
+        ["aws_ecs", "aws_obs"],
+        ["aws_stepfunctions", "aws_obs"]
       ],
       2: [
         ["gh_pr", "gh_review"],
@@ -1593,13 +1601,36 @@ def build_cicd_app():
 
     function renderAwsSim(container) {
       container.innerHTML = `
-        <div style="font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:6px;">AWS AI Foundation Simulator</div>
+        <div style="font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:6px;">AWS Production Cloud & AI Simulator</div>
         
-        <!-- Bedrock Section -->
+        <!-- Production Compute & Ingress Section -->
         <div class="aws-telemetry-box">
+          <div style="font-weight:700; color:var(--aws-orange); font-size:11.5px; display:flex; justify-content:space-between;">
+            <span>☁️ Production ECS & ALB Telemetry</span>
+            <span class="part-tag tag-aws">PROD US-EAST-1</span>
+          </div>
+          <div class="telemetry-row">
+            <span>ECS Fargate Tasks:</span>
+            <strong style="color:var(--accent-green);">4 / 4 Healthy (24.5% CPU)</strong>
+          </div>
+          <div class="telemetry-row">
+            <span>ALB Target RPS:</span>
+            <strong>1,420 req/sec (p99 14ms)</strong>
+          </div>
+          <div class="canary-slider-wrap" style="margin-top:6px;">
+            <div class="slider-labels" style="display:flex; justify-content:space-between; font-size:10px; font-weight:700;">
+              <span>Blue (v2.4.0): <strong id="bluePct">90%</strong></span>
+              <span>Green (v2.4.1): <strong id="greenPct">10%</strong></span>
+            </div>
+            <input type="range" min="0" max="100" value="10" id="canarySlider" oninput="updateCanaryTraffic(this.value)" style="width:100%;">
+          </div>
+        </div>
+
+        <!-- Bedrock AI Foundation Section -->
+        <div class="aws-telemetry-box" style="margin-top:8px;">
           <div style="font-weight:700; color:var(--aws-bedrock); font-size:11.5px; display:flex; justify-content:space-between;">
             <span>🧠 Amazon Bedrock Control</span>
-            <span class="part-tag tag-bedrock">ONLINE</span>
+            <span class="part-tag tag-bedrock">FOUNDATION FM</span>
           </div>
           <div class="telemetry-row">
             <span>Foundation Model:</span>
@@ -1620,7 +1651,7 @@ def build_cicd_app():
           </div>
         </div>
 
-        <!-- Step Functions Section -->
+        <!-- Step Functions State Machine -->
         <div class="aws-telemetry-box" style="margin-top:8px;">
           <div style="font-weight:700; color:var(--aws-stepfunctions); font-size:11.5px; display:flex; justify-content:space-between;">
             <span>🔀 Step Functions State Machine</span>
@@ -1652,15 +1683,29 @@ def build_cicd_app():
           </div>
         </div>
 
-        <div style="font-size:11px; font-weight:700; margin-top:8px;">Live CloudWatch AI Logs [aws/bedrock/agents]:</div>
+        <div style="font-size:11px; font-weight:700; margin-top:8px;">Live CloudWatch Production Logs [aws/ecs/bedrock]:</div>
         <div class="log-console" id="cloudWatchLogs">
-[INFO] 2026-10-17 22:30:02 UTC - Bedrock Guardrails: Inbound prompt evaluated clean (0 PII, 0 toxic).
-[INFO] 2026-10-17 22:30:04 UTC - OpenSearch RAG: 5 vector chunks retrieved (similarity 0.942).
+[INFO] 2026-10-17 22:30:02 UTC - Route 53 / ALB: Target group returning HTTP 200 OK (p99 14ms).
+[INFO] 2026-10-17 22:30:04 UTC - Bedrock Guardrails: Inbound prompt evaluated clean (0 PII, 0 toxic).
 [INFO] 2026-10-17 22:30:08 UTC - Step Functions: State 'Bedrock_Infer' succeeded. Transitioning to 'Human_Gate'.
 [WARN] 2026-10-17 22:30:12 UTC - Step Functions: Paused on Task Token 'token-998f21' awaiting Human Approval.
-[INFO] 2026-10-17 22:30:16 UTC - Lambda tool runners: 42 instances warm, ready for post-approval invocation.
+[INFO] 2026-10-17 22:30:16 UTC - ECS Fargate: 4/4 container tasks healthy on latest deployment revision.
         </div>
       `;
+    }
+
+    function updateCanaryTraffic(val) {
+      const green = parseInt(val);
+      const blue = 100 - green;
+      const blueEl = document.getElementById("bluePct");
+      const greenEl = document.getElementById("greenPct");
+      if (blueEl) blueEl.textContent = `${blue}%`;
+      if (greenEl) greenEl.textContent = `${green}%`;
+      const consoleEl = document.getElementById("cloudWatchLogs");
+      if (consoleEl) {
+        consoleEl.textContent += `\n[ALB ACTION] Canary traffic shifted: ${blue}% Blue / ${green}% Green`;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
     }
 
     function changeBedrockModel(val) {
