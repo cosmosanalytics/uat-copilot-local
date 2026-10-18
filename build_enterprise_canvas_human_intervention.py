@@ -2,8 +2,9 @@
 """
 build_enterprise_canvas_human_intervention.py
 Generates 'enterprise_ai_factory_canvas_human_intervention.html':
-The 4-Tier Enterprise AI Factory Canvas upgraded with the full Human Intervention UI:
-- L4 Value Chain -> L3 Company -> L2 Organization -> L1 Worker Mind
+The 3-Tier Enterprise AI Factory Canvas (Worker Mind, Organization, Company — without Inter-company value chain)
+upgraded with the full Human Intervention UI:
+- L3 Company -> L2 Organization -> L1 Worker Mind
 - Run Modes (Auto / Supervised / Step)
 - Live State Badge (Running, Waiting for you, Paused, Stopped)
 - Soft Pause, Emergency Stop, Per-Stage Pause
@@ -904,24 +905,75 @@ def build():
     };
 
     let consecutiveCleanApprovals = { "sop": 2, "crm": 3 };
-    let actionEventStore = [];
-    let pendingApprovals = [];
-    let undoLedger = [];
 
-    // Master Enterprise Autonomy Policy
+    let pendingApprovals = [
+      {
+        id: "ev_ent_1082",
+        time: new Date().toLocaleTimeString(),
+        stage: "S&OP",
+        stage_name: "Consensus Demand-Supply Balancing",
+        agent: "Autonomous S&OP Engine",
+        action: "rebalance_regional_allocation",
+        why: "Surge in EMEA enterprise cloud orders exceeds regional buffer; reallocating 1,200 units from US hub protects Tier-1 SLA (96.8%) while maintaining gross margin floor.",
+        impact: {
+          money: -340000,
+          units: 1200,
+          kpi_delta: "SLA +4.2%, Margin Floor: 44.8%"
+        },
+        confidence: 0.91,
+        reversible: true,
+        level: "C",
+        status: "awaiting"
+      }
+    ];
+
+    let actionEventStore = [
+      {
+        id: "ev_ent_1080",
+        time: new Date(Date.now() - 120000).toLocaleTimeString(),
+        stage: "CRM",
+        stage_name: "Lead Pipeline Ingestion",
+        agent: "Lead Qualification Worker",
+        action: "pipeline_lead_scoring",
+        why: "Auto-qualified 48 tier-1 enterprise deals totaling $135M pipeline.",
+        impact: { money: 135000000, units: 15400, kpi_delta: "Conversion +3.1%" },
+        confidence: 0.96,
+        reversible: true,
+        level: "A",
+        status: "executed"
+      },
+      ...pendingApprovals
+    ];
+
+    let undoLedger = [
+      {
+        id: "ev_ent_1080",
+        time: new Date(Date.now() - 120000).toLocaleTimeString(),
+        stage: "CRM",
+        stage_name: "Lead Pipeline Ingestion",
+        agent: "Lead Qualification Worker",
+        action: "pipeline_lead_scoring",
+        why: "Auto-qualified 48 tier-1 enterprise deals totaling $135M pipeline.",
+        impact: { money: 135000000, units: 15400 },
+        reversible: true,
+        level: "A",
+        status: "executed"
+      }
+    ];
+
+    // Master Enterprise Autonomy Policy across 3 Tiers (Company -> Organizations -> Worker Roles)
     let enterpriseAutonomyPolicy = {
-      "CO-01": { level: "A", action: "dispatch_wafers", reversible: false },
-      "CO-02": { level: "A", action: "supply_substrates", reversible: true },
-      "CO-03": { level: "C", action: "consensus_operating_plan", reversible: true },
-      "CO-04": { level: "N", action: "firm_smt_schedule", reversible: false },
-      "CO-05": { level: "A", action: "route_3pl_freight", reversible: true },
-      "CO-06": { level: "N", action: "scale_hyperscaler_vms", reversible: true },
-      "CRM":   { level: "A", action: "ingest_pipeline", reversible: true },
-      "S&OP":  { level: "C", action: "adjust_forecast", reversible: true },
-      "ERP":   { level: "N", action: "firm_purchase_orders", reversible: false },
-      "MES":   { level: "H", action: "authorize_cleanroom_lot", reversible: false },
-      "WMS":   { level: "A", action: "dispatch_dc_waves", reversible: true },
-      "FIN":   { level: "C", action: "book_general_ledger", reversible: false }
+      "Company AOP":         { level: "C", action: "reconcile_enterprise_aop", reversible: true },
+      "CRM & Commercial":    { level: "A", action: "pipeline_lead_scoring", reversible: true },
+      "S&OP Planning":       { level: "C", action: "consensus_demand_supply_balancing", reversible: true },
+      "ERP Core":            { level: "N", action: "mrp_explosion_po_release", reversible: false },
+      "MES Shop Floor":      { level: "H", action: "smt_high_voltage_lot_dispatch", reversible: false },
+      "WMS & Logistics":     { level: "A", action: "dynamic_wave_routing", reversible: true },
+      "Finance & Treasury":  { level: "C", action: "three_way_invoice_clearing", reversible: false },
+      "Demand Forecaster":   { level: "A", action: "bayesian_prior_update", reversible: true },
+      "Capacity Planner":    { level: "C", action: "shift_overtime_allocation", reversible: true },
+      "Master Scheduler":    { level: "N", action: "firm_planned_orders", reversible: false },
+      "Quality Inspector":   { level: "H", action: "quarantine_lot_release", reversible: false }
     };
 
     function setRunMode(mode) {
@@ -1485,12 +1537,67 @@ def build():
       });
     }
 
+    // Hook Canvas Rendering to include Human Gate Node
+    const origRenderCurrentCanvas = window.renderCurrentCanvas || renderCurrentCanvas;
+    renderCurrentCanvas = function() {
+      if (typeof origRenderCurrentCanvas === 'function') origRenderCurrentCanvas();
+      if (hasHumanGateOnCanvas && currentLevel === 3) {
+        const isWaiting = pendingApprovals.length > 0;
+        const gateNode = document.createElement("div");
+        gateNode.id = "node_gate_human";
+        gateNode.className = `canvas-node human-gate ${isWaiting ? 'waiting-approval' : ''}`;
+        gateNode.style.left = "730px";
+        gateNode.style.top = "140px";
+        gateNode.innerHTML = `
+          <div class="node-bar">
+            <div class="node-title-wrap">
+              <span class="node-badge-pill badge-level-C">GATE</span>
+              <span style="color: var(--accent-amber); font-weight: 700;">👤 Human Gate</span>
+            </div>
+            <span class="node-autonomy-badge badge-level-C">${isWaiting ? 'HOLD' : 'ARMED'}</span>
+          </div>
+          <div class="node-content">
+            <div class="node-role-label">Enterprise S&OP ➔ ERP Checkpoint</div>
+            <div class="node-desc-text">Level C approval guard on demand-supply balancing &gt; $500k.</div>
+            <div class="node-metrics-box">
+              <span style="color:var(--text-dim);">State:</span>
+              <span style="color:${isWaiting ? 'var(--accent-amber)' : 'var(--accent-emerald)'}; font-weight:700;">${isWaiting ? 'WAITING (' + pendingApprovals.length + ')' : 'CLEAR'}</span>
+              <span style="color:var(--text-dim);">Rule:</span>
+              <span style="color:var(--text-main); font-weight:700;">STRICT</span>
+            </div>
+          </div>
+          <div class="node-foot">
+            <span style="font-size:0.62rem; color:var(--text-dim); font-family:var(--font-mono);">Ports: In / Apprv / Rej</span>
+            <button class="btn-drill" onclick="event.stopPropagation(); openRightTab('inbox');">📬 Inbox (${pendingApprovals.length})</button>
+          </div>
+          <div class="node-port in"></div>
+          <div class="node-port out-approved" title="Approved branch"></div>
+          <div class="node-port out-rejected" title="Rejected branch"></div>
+        `;
+        gateNode.addEventListener("click", () => {
+          openRightTab('inbox');
+        });
+        const nl = document.getElementById("nodesLayer");
+        if (nl) nl.appendChild(gateNode);
+      }
+    };
+
+    function renderCanvas() {
+      renderCurrentCanvas();
+      renderWires();
+    }
+
     // Wrap initialization to call HUI renders
-    const origInit = window.onload;
     window.addEventListener("DOMContentLoaded", () => {
       renderPolicyTable();
+      updateInboxBadge();
+      renderInboxCards();
+      updateUndoLedgerUI();
+      setSystemBadge("waiting", `Waiting for you (${pendingApprovals.length})`);
+      renderCanvas();
       logEvent("Enterprise Human Intervention UI initialized.", "ok");
-      logEvent("Policy engine armed. Spend limit: $500,000.", "ok");
+      logEvent("Autonomy Policy Engine armed across Company, 6 Orgs & 38 Workers.", "ok");
+      logEvent("Active Guardrails: Spend Limit $500,000 | Min SLA 90.0% | Min Confidence 75%.", "ok");
     });
     """
 
