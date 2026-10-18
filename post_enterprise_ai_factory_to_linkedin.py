@@ -30,7 +30,7 @@ We just launched a 3-tier fractal studio modeling an entire autonomous enterpris
 • 📱 Mobile-First Interactive Canvas: Full-width canvas, touch gestures, sliding drawers, and animated bezier cables running 100% client-side with Groq LPU (~500 tok/s) and local WebGPU.
 
 👉 Explore the live Enterprise AI Factory directly in your browser:
-https://cosmosanalytics.github.io/uat-copilot-local/enterprise_ai_factory_canvas.html
+https://cosmosanalytics.github.io/uat-copilot-local/company_ai_factory_canvas.html
 
 #EnterpriseAI #AgenticAI #SupplyChain #ERP #SOP #DigitalTransformation #WebGPU #Groq #OpenSource"""
 
