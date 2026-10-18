@@ -5,20 +5,31 @@ Generates:
   - cicd_ai_factory_canvas_human_intervention.html
   - cicd_pipeline_ai_factory_canvas.html (alias)
 
-Full CI/CD Pipeline from Worker AI -> GitHub (equivalent to S&OP) -> AWS (equivalent to Company),
-using real GitHub AWS repo (cosmosanalytics/uat-copilot-local) and in-browser AWS Simulator,
+Full CI/CD Pipeline from Worker AI -> GitHub (equivalent to S&OP) -> AWS AI Foundation & Cloud Ecosystem (equivalent to Company),
+featuring the full modern AWS Generative AI & Foundation Stack:
+  - Amazon Bedrock (Foundation Models, Claude 3.5 Sonnet, Knowledge Bases, Guardrails)
+  - AWS Step Functions (Multi-Agent State Machine Orchestrator)
+  - AWS Lambda (Serverless Tool Execution & Event Handlers)
+  - Amazon OpenSearch Serverless (Vector Database & Semantic RAG)
+  - Amazon SageMaker AI (Inference Endpoints & Model Registry)
+  - Amazon DynamoDB & S3 (Sub-ms Agent Memory & Artifact Lake)
 with complete 20-Page Human Intervention UI (HUI):
   - 3-Tier Hierarchy:
-      * Level 3: AWS Production Cloud Ecosystem (Company Equivalent)
+      * Level 3: AWS AI Foundation & Cloud Platform (Company Equivalent)
       * Level 2: GitHub CI/CD & DevSecOps Platform (S&OP Equivalent)
       * Level 1: Worker AI Dev Mind & Society of Mind Personas (Worker Equivalent)
   - Run Modes: Auto, Supervised, Step
   - Live State Badge: Waiting for you (1), Running, Paused, Emergency Stopped
-  - Canvas Human Gate Node positioned between GitHub CI/ECR Build and AWS Production Deploy
+  - Canvas Human Gate Node positioned before AWS Bedrock & Step Functions deployment
   - Approvals Inbox with Multi-Tier Decision Cards (Headline, Why, 4-cell impact grid, Groq LPU "Ask Why", Approve, Reject)
   - Autonomy Policy Matrix (A/N/C/H inline pills) for each pipeline stage + Spend / Test / Security Guardrails
-  - Reversible Undo Ledger with countdown timer & instant AWS rollback
-  - Interactive In-Browser AWS Simulator (ECS Fargate tasks, ALB RPS, Aurora I/O, Blue/Green canary slider, live CloudWatch logs)
+  - Reversible Undo Ledger with countdown timer & instant rollback
+  - Interactive In-Browser AWS AI Foundation Simulator:
+      * Bedrock Model Selector (Claude 3.5 Sonnet, Titan, Llama 3) & Interactive Temperature Dial
+      * Step Functions State Machine Execution Visualizer
+      * Lambda Serverless Concurrency & Execution Duration Gauges
+      * OpenSearch Vector RAG telemetry & Bedrock Guardrails Active Filters
+      * Live CloudWatch Generative AI Logs
   - Real GitHub AWS Repo integration (cosmosanalytics/uat-copilot-local commits, branch, actions)
   - Default high-contrast Crisp Light Mode
 """
@@ -34,7 +45,7 @@ def build_cicd_app():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Factory CI/CD • Worker AI ➔ GitHub ➔ AWS Production Cloud</title>
+<title>AI Factory CI/CD • Worker AI ➔ GitHub ➔ AWS AI Foundation & Production Cloud</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -63,6 +74,9 @@ def build_cicd_app():
     --accent-rose: #E11D48;
     
     --aws-orange: #FF9900;
+    --aws-bedrock: #10B981;
+    --aws-lambda: #EA580C;
+    --aws-stepfunctions: #EC4899;
     --aws-squid: #232F3E;
     --github-dark: #24292F;
     --worker-purple: #7C3AED;
@@ -132,7 +146,7 @@ def build_cicd_app():
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
     flex-shrink: 0;
     z-index: 100;
   }
@@ -140,7 +154,7 @@ def build_cicd_app():
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .brand-logo {
@@ -174,7 +188,7 @@ def build_cicd_app():
   }
 
   .brand-subtitle {
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-muted);
     font-family: var(--font-mono);
   }
@@ -403,7 +417,7 @@ def build_cicd_app():
   .kpi-items {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
   }
   .kpi-badge {
     display: inline-flex;
@@ -423,9 +437,9 @@ def build_cicd_app():
     position: relative;
   }
 
-  /* LEFT SIDEBAR: Pipeline Parts & Repo Metadata */
+  /* LEFT SIDEBAR: Pipeline Parts, AI Foundation Tools & Repo */
   .sidebar-left {
-    width: 250px;
+    width: 260px;
     background: var(--bg-card);
     border-right: 1px solid var(--border-color);
     display: flex;
@@ -435,7 +449,7 @@ def build_cicd_app():
   }
   .sidebar-head {
     padding: 10px 14px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -449,19 +463,19 @@ def build_cicd_app():
     padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
   .part-item {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    font-size: 11.5px;
+    padding: 7px 9px;
+    font-size: 11px;
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   }
   .part-item:hover {
     border-color: var(--border-hover);
@@ -480,6 +494,9 @@ def build_cicd_app():
     border-radius: 4px;
     font-family: var(--font-mono);
   }
+  .tag-bedrock { background: rgba(16, 185, 129, 0.15); color: #059669; }
+  .tag-stepfunctions { background: rgba(236, 72, 153, 0.15); color: #DB2777; }
+  .tag-lambda { background: rgba(234, 88, 12, 0.15); color: #C2410C; }
   .tag-aws { background: rgba(255, 153, 0, 0.15); color: #D97706; }
   .tag-github { background: rgba(9, 105, 218, 0.15); color: #0969DA; }
   .tag-worker { background: rgba(124, 58, 237, 0.15); color: #7C3AED; }
@@ -573,7 +590,7 @@ def build_cicd_app():
 
   /* RIGHT DRAWER: Human Intervention Control Hub (HUI-20) */
   .sidebar-right {
-    width: 380px;
+    width: 390px;
     background: var(--bg-card);
     border-left: 1px solid var(--border-color);
     display: flex;
@@ -809,7 +826,7 @@ def build_cicd_app():
     align-self: flex-start;
   }
 
-  /* AWS SIMULATOR & TELEMETRY */
+  /* AWS AI FOUNDATION SIMULATOR */
   .aws-telemetry-box {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -825,18 +842,26 @@ def build_cicd_app():
     font-size: 11px;
     font-family: var(--font-mono);
   }
-  .canary-slider-wrap {
+  .stepfunction-tracker {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 4px;
-    margin-top: 6px;
+    margin: 6px 0;
+    font-size: 9.5px;
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
-  .slider-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10.5px;
-    font-weight: 700;
+  .step-node {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 3px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-family: var(--font-mono);
   }
+  .step-node.done { background: rgba(16, 185, 129, 0.15); color: #059669; border-color: #10B981; }
+  .step-node.active { background: rgba(245, 158, 11, 0.2); color: #D97706; border-color: #F59E0B; font-weight: 700; }
+  
   .log-console {
     background: #090D16;
     color: #10B981;
@@ -858,7 +883,7 @@ def build_cicd_app():
     <div class="header-left">
       <div class="brand-logo">⚡</div>
       <div class="brand-title-wrap">
-        <h1>AI Factory CI/CD <span style="font-weight:400; color:var(--text-muted);">• Worker AI ➔ GitHub ➔ AWS</span></h1>
+        <h1>AI Factory CI/CD <span style="font-weight:400; color:var(--text-muted);">• Worker AI ➔ GitHub ➔ AWS Bedrock & Cloud</span></h1>
         <div class="brand-subtitle">Repo: <a href="https://github.com/cosmosanalytics/uat-copilot-local" target="_blank" style="color:var(--accent-blue); text-decoration:none;">cosmosanalytics/uat-copilot-local</a> [main]</div>
       </div>
     </div>
@@ -866,7 +891,7 @@ def build_cicd_app():
     <!-- 3-Tier Hierarchy Switcher (HUI-02) -->
     <div class="level-switcher">
       <button class="level-tab l3 active" id="tabL3" onclick="switchLevel(3)">
-        <span>☁️</span> Level 3: AWS Cloud
+        <span>☁️</span> Level 3: AWS AI Foundation
       </button>
       <button class="level-tab l2" id="tabL2" onclick="switchLevel(2)">
         <span>🐙</span> Level 2: GitHub CI/CD
@@ -883,7 +908,7 @@ def build_cicd_app():
       <button class="run-mode-btn step" id="modeBtnStep" onclick="setRunMode('step')">🐾 Step</button>
     </div>
 
-    <!-- Live System State Badge (HUI-04) -->
+    <!-- Live State Badge (HUI-04) -->
     <div class="state-badge waiting" id="systemStateBadge">
       <span id="stateDot">⏳</span> <span id="stateText">Waiting for you (1)</span>
     </div>
@@ -900,7 +925,7 @@ def build_cicd_app():
   <div class="interrupt-banner" id="interruptBanner">
     <div class="interrupt-left">
       <span>⚠️</span>
-      <span><strong>ACTION REQUIRED:</strong> GitHub Actions CI passed (48/48). Production Deploy Gate requires Human Approval before AWS ECS rollout.</span>
+      <span><strong>ACTION REQUIRED:</strong> GitHub Actions CI passed (48/48). Production Deploy Gate requires Human Approval before Bedrock Agent & Step Functions rollout.</span>
     </div>
     <div class="interrupt-actions">
       <button class="btn-interrupt primary" onclick="openDrawerTab('inbox')">Review Decision Card</button>
@@ -913,33 +938,68 @@ def build_cicd_app():
   <div class="sub-kpi-bar">
     <div class="kpi-items">
       <span class="kpi-badge">Target: <strong>AWS us-east-1 (Prod)</strong></span>
-      <span class="kpi-badge">Active PR: <strong>#42 feat(cognitive-mesh): v2.4.1</strong></span>
-      <span class="kpi-badge">CI Status: <strong style="color:var(--accent-green);">48/48 Passed (94.6% Cov)</strong></span>
-      <span class="kpi-badge">Security: <strong style="color:var(--accent-green);">CodeQL 0 Alerts • Trivy Clean</strong></span>
-      <span class="kpi-badge">Spend Guard: <strong>$12.40 / $500.00 Limit</strong></span>
+      <span class="kpi-badge">Bedrock FM: <strong style="color:var(--accent-green);">Claude 3.5 Sonnet (v2)</strong></span>
+      <span class="kpi-badge">Step Functions: <strong style="color:var(--aws-stepfunctions);">128 State Machines</strong></span>
+      <span class="kpi-badge">Lambda Workers: <strong style="color:var(--aws-lambda);">42 Active</strong></span>
+      <span class="kpi-badge">Guardrails: <strong style="color:var(--accent-green);">0 Leaks • Active</strong></span>
     </div>
     <div class="kpi-items">
       <span id="stepCounter" style="font-family:var(--font-mono);">Step 5 of 6: Production Human Gate</span>
     </div>
   </div>
 
-  <!-- MAIN WORKSPACE -->
+  <!-- WORKSPACE BODY -->
   <div class="workspace-layout">
 
-    <!-- LEFT SIDEBAR: Parts & Real GitHub Commits -->
+    <!-- LEFT SIDEBAR: AI Foundation Tools & Real GitHub Commits -->
     <aside class="sidebar-left">
       <div class="sidebar-head">
-        <span>Pipeline Components</span>
-        <span style="font-size:10px; color:var(--accent-blue);">3 Tiers</span>
+        <span>AWS AI Foundation Stack</span>
+        <span style="font-size:10px; color:var(--aws-orange);">AWS GENAI</span>
       </div>
       <div class="pipeline-part-list">
         <div class="part-item" onclick="switchLevel(3)">
           <div class="part-header">
-            <span>☁️ AWS Cloud Core</span>
-            <span class="part-tag tag-aws">L3 ECOSYSTEM</span>
+            <span>🧠 Amazon Bedrock</span>
+            <span class="part-tag tag-bedrock">FOUNDATION FM</span>
           </div>
-          <div>ALB ➔ ECS Fargate ➔ Aurora ➔ S3 ➔ CloudWatch</div>
+          <div>Claude 3.5 Sonnet • Titan • Guardrails • Knowledge Bases</div>
         </div>
+        <div class="part-item" onclick="switchLevel(3)">
+          <div class="part-header">
+            <span>🔀 AWS Step Functions</span>
+            <span class="part-tag tag-stepfunctions">STATE MACHINE</span>
+          </div>
+          <div>Multi-Agent Orchestration • Saga Pattern • Human Gates</div>
+        </div>
+        <div class="part-item" onclick="switchLevel(3)">
+          <div class="part-header">
+            <span>⚡ AWS Lambda</span>
+            <span class="part-tag tag-lambda">SERVERLESS TOOLS</span>
+          </div>
+          <div>Microservices • Tool Execution • EventBridge Handlers</div>
+        </div>
+        <div class="part-item" onclick="switchLevel(3)">
+          <div class="part-header">
+            <span>🔍 OpenSearch Vector DB</span>
+            <span class="part-tag tag-aws">VECTOR RAG</span>
+          </div>
+          <div>Serverless Vector Search • 1.4M Embeddings • Hybrid RAG</div>
+        </div>
+        <div class="part-item" onclick="switchLevel(3)">
+          <div class="part-header">
+            <span>🎯 Amazon SageMaker</span>
+            <span class="part-tag tag-aws">INFERENCE</span>
+          </div>
+          <div>Custom Fine-Tuning • JumpStart Models • Quantized GPUs</div>
+        </div>
+      </div>
+
+      <div class="sidebar-head" style="margin-top:6px;">
+        <span>Pipeline Stages</span>
+        <span style="font-size:10px; color:var(--accent-blue);">3 Tiers</span>
+      </div>
+      <div class="pipeline-part-list">
         <div class="part-item" onclick="switchLevel(2)">
           <div class="part-header">
             <span>🐙 GitHub Actions CI/CD</span>
@@ -956,23 +1016,19 @@ def build_cicd_app():
         </div>
       </div>
 
-      <div class="sidebar-head" style="margin-top:10px;">
+      <div class="sidebar-head" style="margin-top:6px;">
         <span>Real GitHub AWS Repo</span>
         <a href="https://github.com/cosmosanalytics/uat-copilot-local" target="_blank" style="font-size:10px; color:var(--accent-blue); text-decoration:none;">Open ↗</a>
       </div>
-      <div style="padding:10px; display:flex; flex-direction:column; gap:8px;" id="realRepoCommitList">
-        <div style="font-size:11px; font-weight:700; color:var(--text-main);">Recent Commits [origin/main]:</div>
+      <div style="padding:10px; display:flex; flex-direction:column; gap:6px;" id="realRepoCommitList">
+        <div style="font-size:10.5px; font-weight:700; color:var(--text-main);">Recent Commits [origin/main]:</div>
         <div style="background:var(--bg-secondary); padding:6px 8px; border-radius:4px; font-size:10.5px;">
-          <div style="font-weight:700; color:var(--accent-blue);">3f13f0c feat: Human Intervention UI</div>
-          <div style="color:var(--text-muted); font-size:9.5px;">By agentic-coder • 2m ago</div>
+          <div style="font-weight:700; color:var(--accent-blue);">3bd3913 feat: CI/CD Canvas</div>
+          <div style="color:var(--text-muted); font-size:9px;">By agentic-coder • Just now</div>
         </div>
         <div style="background:var(--bg-secondary); padding:6px 8px; border-radius:4px; font-size:10.5px;">
-          <div style="font-weight:700;">cf04888 feat: Mode Switch bars</div>
-          <div style="color:var(--text-muted); font-size:9.5px;">By richa • 1h ago</div>
-        </div>
-        <div style="background:var(--bg-secondary); padding:6px 8px; border-radius:4px; font-size:10.5px;">
-          <div style="font-weight:700;">d14b981 chore: Update CI workflows</div>
-          <div style="color:var(--text-muted); font-size:9.5px;">By actions-user • 4h ago</div>
+          <div style="font-weight:700;">3f13f0c feat: Human Intervention UI</div>
+          <div style="color:var(--text-muted); font-size:9px;">By richa • 30m ago</div>
         </div>
       </div>
     </aside>
@@ -996,7 +1052,7 @@ def build_cicd_app():
           ⏪ Undo <span style="font-size:9px; color:var(--text-muted);">(1)</span>
         </button>
         <button class="drawer-tab-btn" id="tabBtnAws" onclick="openDrawerTab('aws')">
-          ☁️ AWS Sim
+          ☁️ AWS AI Sim
         </button>
       </div>
 
@@ -1015,18 +1071,18 @@ def build_cicd_app():
     let isWaitingApproval = true;
     let pendingApprovals = [
       {
-        id: "dec-prod-deploy-001",
-        stage: "GitHub Actions ➔ AWS ECS Production",
-        actionName: "deploy_container_image_v2.4.1",
-        headline: "[GitHub Actions ➔ AWS ECS Production] deploy_container_image_v2.4.1",
-        why: "CI test suite passed 48/48 tests (94.6% coverage). CodeQL identified 0 vulnerabilities and Trivy image scan returned clean. Zero breaking API schema changes detected by Groq LPU reasoning agent. Blue/Green canary deployment ready to receive 10% traffic.",
+        id: "dec-bedrock-deploy-001",
+        stage: "GitHub Actions ➔ AWS Bedrock & Step Functions",
+        actionName: "deploy_bedrock_agent_v3.2",
+        headline: "[GitHub Actions ➔ Amazon Bedrock] deploy_bedrock_agent_v3.2",
+        why: "CI test suite passed 48/48 tests (94.6% coverage). Bedrock Guardrails scan verified 0 PII leaks and prompt injection defenses are active. Step Functions state machine validated for least-privilege Lambda tool execution. OpenSearch vector index refreshed with 1.4M embeddings.",
         impact: {
-          cost: "+$12.40/mo",
-          latency: "38ms (-6ms)",
+          cost: "+$14.20/mo",
+          latency: "210ms (-45ms)",
           sla: "99.98% SLA",
-          risk: "Low (98% Conf)"
+          risk: "Low (99% Conf)"
         },
-        groqRationale: "Groq LPU Fast Rationale: AST semantic analysis confirmed that PR #42 only introduces additive non-blocking endpoints with zero database schema locks. ECS Fargate task definition has been validated against least-privilege IAM task execution roles. Reversible via instantaneous ALB target group switch."
+        groqRationale: "Groq LPU Fast Rationale: Dialectical consensus achieved across Architect, DevSecOps, and Tester personas. Step Functions execution policy strictly bounds Lambda tool execution timeouts to 30s. Bedrock Guardrail filters ensure 100% PII masking and automated rejection of adversarial jailbreaks. Rollback is instant via Step Functions alias pointer."
       }
     ];
 
@@ -1035,8 +1091,8 @@ def build_cicd_app():
         id: "undo-stg-001",
         title: "Deploy to AWS Staging Environment (us-east-1)",
         timestamp: "3 minutes ago",
-        expiresInSec: 24,
-        reversibleCmd: "aws ecs update-service --cluster staging --service web --task-definition web:v2.4.0"
+        expiresInSec: 28,
+        reversibleCmd: "aws stepfunctions update-state-machine --state-machine-arn arn:aws:states:us-east-1:123456789012:stateMachine:AIAgent --definition file://v3.1.json"
       }
     ];
 
@@ -1045,32 +1101,32 @@ def build_cicd_app():
       { id: "p1", name: "Worker AI Code Generation", desc: "Groq LPU dialectical code synthesis", defaultPill: "A" },
       { id: "p2", name: "GitHub PR Creation & Branch Push", desc: "Automated git commit & PR opening", defaultPill: "N" },
       { id: "p3", name: "GitHub Actions CI & Unit Tests", desc: "Pyodide / pytest 48/48 test runner", defaultPill: "A" },
-      { id: "p4", name: "DevSecOps Security Scans", desc: "CodeQL, Dependabot, Trivy container audit", defaultPill: "A" },
-      { id: "p5", name: "AWS Staging / Preview Deployment", desc: "Deploy preview container task to staging VPC", defaultPill: "N" },
-      { id: "p6", name: "AWS Production ECS Deployment", desc: "Production Blue/Green canary deployment gate", defaultPill: "C" },
+      { id: "p4", name: "DevSecOps Security & Guardrails", desc: "CodeQL, Trivy, Bedrock Guardrail policy check", defaultPill: "A" },
+      { id: "p5", name: "AWS Lambda Tool Function Staging", desc: "Deploy serverless tool runner to staging VPC", defaultPill: "N" },
+      { id: "p6", name: "AWS Bedrock Agent & Step Functions Deploy", desc: "Production Bedrock model & state machine gate", defaultPill: "C" },
       { id: "p7", name: "AWS IAM & KMS Security Mutation", desc: "Modifying IAM policies or cryptographic keys", defaultPill: "H" },
-      { id: "p8", name: "AWS Automated Rollback on Alert", desc: "Instant traffic switchback on CloudWatch error", defaultPill: "A" }
+      { id: "p8", name: "AWS Automated Rollback on Alert", desc: "Instant Step Functions rollback on CloudWatch error", defaultPill: "A" }
     ];
 
     let activeDrawerTab = 'inbox';
 
-    // Canvas Node Definitions
+    // Canvas Node Definitions featuring AWS AI Foundation & Serverless Stack
     const LEVEL_NODES = {
-      3: [ // Level 3: AWS Production Cloud Ecosystem
-        { id: "aws_edge", title: "Route 53 & CloudFront", tag: "DNS & CDN", x: 20, y: 50, metrics: "Latency: 14ms | Hit: 92%" },
-        { id: "aws_alb", title: "Application Load Balancer", tag: "INGRESS", x: 260, y: 50, metrics: "RPS: 1,420 | Err: 0.00%" },
-        { id: "aws_ecs", title: "Amazon ECS Fargate", tag: "COMPUTE", x: 500, y: 50, metrics: "Tasks: 4/4 | CPU: 24.5%" },
-        { id: "aws_aurora", title: "Aurora PostgreSQL Serverless", tag: "DATABASE", x: 500, y: 200, metrics: "ACU: 2.5 | Read: 0.8ms" },
-        { id: "aws_s3", title: "Amazon S3 Data Lake", tag: "STORAGE", x: 260, y: 200, metrics: "Size: 420 GB | 99.999999999%" },
-        { id: "aws_obs", title: "CloudWatch & EventBridge", tag: "OBSERVABILITY", x: 20, y: 200, metrics: "Alarms: 0 OK | Logs: 45 eps" }
+      3: [ // Level 3: AWS AI Foundation & Production Cloud Ecosystem
+        { id: "aws_stepfunctions", title: "AWS Step Functions", tag: "STATE MACHINE", x: 20, y: 50, metrics: "128 Active | 0 Errs" },
+        { id: "aws_bedrock", title: "Amazon Bedrock (FM)", tag: "FOUNDATION AI", x: 260, y: 50, metrics: "Claude 3.5 | Guardrails: ON" },
+        { id: "aws_lambda", title: "AWS Lambda Tool Runners", tag: "SERVERLESS", x: 500, y: 50, metrics: "42 Concurrency | 18ms" },
+        { id: "aws_sagemaker", title: "Amazon SageMaker AI", tag: "INFERENCE", x: 500, y: 200, metrics: "JumpStart | 99.9% Up" },
+        { id: "aws_opensearch", title: "OpenSearch Serverless", tag: "VECTOR RAG", x: 260, y: 200, metrics: "1.4M Vectors | 4.2ms" },
+        { id: "aws_dynamodb", title: "DynamoDB & S3 Memory", tag: "AGENT STATE", x: 20, y: 200, metrics: "Sub-ms Read | 420 GB" }
       ],
       2: [ // Level 2: GitHub CI/CD Pipeline (DevSecOps)
-        { id: "gh_pr", title: "Pull Request #42", tag: "PR GATE", x: 20, y: 50, metrics: "Branch: feat/v2.4.1" },
+        { id: "gh_pr", title: "Pull Request #42", tag: "PR GATE", x: 20, y: 50, metrics: "Branch: feat/bedrock-v3.2" },
         { id: "gh_review", title: "AI Code Review Agent", tag: "STATIC ANALYSIS", x: 260, y: 50, metrics: "Groq LPU: Approved" },
-        { id: "gh_sec", title: "CodeQL & Trivy Scan", tag: "DEVSECOPS", x: 500, y: 50, metrics: "0 High/Crit CVEs" },
+        { id: "gh_sec", title: "CodeQL & Guardrail Scan", tag: "DEVSECOPS", x: 500, y: 50, metrics: "0 CVEs • PII Shield" },
         { id: "gh_ci", title: "Automated CI Test Matrix", tag: "TESTING", x: 500, y: 200, metrics: "48/48 Passed (94.6%)" },
         { id: "gh_gate", title: "Production Human Gate", tag: "HUMAN GATE", x: 260, y: 200, isGate: true, metrics: "Needs Approval" },
-        { id: "gh_cd", title: "AWS ECS Production Deploy", tag: "CD CANARY", x: 20, y: 200, metrics: "Blue/Green Ready" }
+        { id: "gh_cd", title: "AWS Bedrock & Step Deploy", tag: "CD ROLLOUT", x: 20, y: 200, metrics: "Zero Downtime" }
       ],
       1: [ // Level 1: Worker AI Dev Mind (Society of Mind)
         { id: "w_arch", title: "Software Architect Agent", tag: "CONTRACT SPEC", x: 20, y: 50, metrics: "OpenAPI 3.1 Validated" },
@@ -1084,11 +1140,11 @@ def build_cicd_app():
     // Connections between nodes
     const LEVEL_CONNECTIONS = {
       3: [
-        ["aws_edge", "aws_alb"],
-        ["aws_alb", "aws_ecs"],
-        ["aws_ecs", "aws_aurora"],
-        ["aws_ecs", "aws_s3"],
-        ["aws_ecs", "aws_obs"]
+        ["aws_stepfunctions", "aws_bedrock"],
+        ["aws_bedrock", "aws_lambda"],
+        ["aws_lambda", "aws_sagemaker"],
+        ["aws_bedrock", "aws_opensearch"],
+        ["aws_stepfunctions", "aws_dynamodb"]
       ],
       2: [
         ["gh_pr", "gh_review"],
@@ -1168,7 +1224,7 @@ def build_cicd_app():
         document.getElementById("interruptBanner").innerHTML = `
           <div class="interrupt-left">
             <span>🛑</span>
-            <span><strong>EMERGENCY KILL SWITCH ACTIVATED:</strong> All CI/CD runners cancelled. AWS ECS deployments locked.</span>
+            <span><strong>EMERGENCY KILL SWITCH ACTIVATED:</strong> Bedrock model rollouts frozen. Step Functions executions suspended.</span>
           </div>
           <div class="interrupt-actions">
             <button class="btn-interrupt primary" onclick="setRunMode('supervised'); document.getElementById('interruptBanner').classList.add('hidden');">Reset Pipeline</button>
@@ -1210,10 +1266,16 @@ def build_cicd_app():
         div.style.left = `${n.x}px`;
         div.style.top = `${n.y}px`;
 
+        let tagClass = 'tag-aws';
+        if (n.isGate) tagClass = 'tag-gate';
+        else if (n.id.includes('bedrock')) tagClass = 'tag-bedrock';
+        else if (n.id.includes('stepfunctions')) tagClass = 'tag-stepfunctions';
+        else if (n.id.includes('lambda')) tagClass = 'tag-lambda';
+
         div.innerHTML = `
           <div class="node-header">
             <span>${n.title}</span>
-            <span class="part-tag ${n.isGate ? 'tag-gate' : 'tag-aws'}">${n.tag}</span>
+            <span class="part-tag ${tagClass}">${n.tag}</span>
           </div>
           <div class="node-body">
             <div>Status: <span style="color:var(--accent-green); font-weight:700;">Healthy</span></div>
@@ -1228,7 +1290,7 @@ def build_cicd_app():
         nodesLayer.appendChild(div);
       });
 
-      // Render Bezier Connections
+      // Render Smart Directional Bezier Connections
       setTimeout(() => {
         conns.forEach(([srcId, dstId]) => {
           const srcEl = document.getElementById(`node_${srcId}`);
@@ -1308,7 +1370,7 @@ def build_cicd_app():
           <div style="text-align:center; padding:30px 10px; color:var(--text-muted);">
             <div style="font-size:32px; margin-bottom:8px;">✅</div>
             <div style="font-weight:700; color:var(--text-main);">No Pending Approvals</div>
-            <div style="font-size:11px; margin-top:4px;">All CI/CD stages and AWS deployment gates are clear.</div>
+            <div style="font-size:11px; margin-top:4px;">All Bedrock, Step Functions, and Lambda deployments are clear.</div>
           </div>
         `;
         return;
@@ -1387,13 +1449,13 @@ def build_cicd_app():
           title: `Approved: ${approved.actionName}`,
           timestamp: "Just now",
           expiresInSec: 30,
-          reversibleCmd: "aws ecs update-service --service web --rollback"
+          reversibleCmd: "aws stepfunctions update-state-machine --state-machine-arn ... --rollback"
         });
 
         setRunMode(runMode);
         renderDrawer();
         renderCanvas();
-        showToast("✓ Production deployment approved! Rolling out to AWS ECS Fargate...");
+        showToast("✓ Production deployment approved! Updating Amazon Bedrock Agent & Step Functions...");
       }
     }
 
@@ -1430,7 +1492,7 @@ def build_cicd_app():
     function renderPolicy(container) {
       let html = `
         <div style="font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:6px;">Autonomy Governance Matrix</div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">Inline A/N/C/H controls for each CI/CD & AWS pipeline stage.</div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">Inline A/N/C/H controls for each CI/CD & Bedrock stage.</div>
         <table class="policy-table">
           <thead>
             <tr>
@@ -1467,7 +1529,7 @@ def build_cicd_app():
           <div style="font-weight:700; margin-bottom:4px;">Global Spend & Safety Guardrails:</div>
           <div>• Daily Cloud Spend Cap: <strong>$500.00</strong></div>
           <div>• Min CI Unit Test Pass: <strong>100%</strong></div>
-          <div>• Min Security Scan Score: <strong>95/100</strong></div>
+          <div>• Bedrock Guardrails PII Redaction: <strong>MANDATORY</strong></div>
         </div>
       `;
 
@@ -1499,7 +1561,7 @@ def build_cicd_app():
                 <span>${item.title}</span>
                 <span class="undo-timer" id="timer_${item.id}">${item.expiresInSec}s</span>
               </div>
-              <div style="font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted);">${item.reversibleCmd}</div>
+              <div style="font-family:var(--font-mono); font-size:9.5px; color:var(--text-muted); word-break:break-all;">${item.reversibleCmd}</div>
               <button class="btn-undo-action" onclick="executeUndo('${item.id}')">⏪ Instant Rollback</button>
             </div>
           `;
@@ -1510,10 +1572,10 @@ def build_cicd_app():
     }
 
     function executeUndo(id) {
-      if (confirm("Rollback AWS Production state to previous known good configuration?")) {
+      if (confirm("Rollback AWS Step Functions & Bedrock state to previous configuration?")) {
         undoLedger = undoLedger.filter(u => u.id !== id);
         renderDrawer();
-        showToast("⏪ Rollback executed successfully! Target group switched back.");
+        showToast("⏪ Rollback executed successfully! Step Functions alias switched back.");
       }
     }
 
@@ -1531,53 +1593,94 @@ def build_cicd_app():
 
     function renderAwsSim(container) {
       container.innerHTML = `
-        <div style="font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:6px;">In-Browser AWS Simulator</div>
+        <div style="font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:6px;">AWS AI Foundation Simulator</div>
+        
+        <!-- Bedrock Section -->
         <div class="aws-telemetry-box">
-          <div class="telemetry-row">
-            <span>ECS Cluster:</span>
-            <strong style="color:var(--accent-green);">production-us-east-1</strong>
+          <div style="font-weight:700; color:var(--aws-bedrock); font-size:11.5px; display:flex; justify-content:space-between;">
+            <span>🧠 Amazon Bedrock Control</span>
+            <span class="part-tag tag-bedrock">ONLINE</span>
           </div>
           <div class="telemetry-row">
-            <span>Desired / Running Tasks:</span>
-            <strong>4 / 4 Healthy</strong>
+            <span>Foundation Model:</span>
+            <select id="bedrockModelSelect" onchange="changeBedrockModel(this.value)" style="font-size:10.5px; font-family:var(--font-mono); background:var(--bg-card); border:1px solid var(--border-color); border-radius:4px; padding:2px 4px;">
+              <option value="anthropic.claude-3-5-sonnet-20241022-v2:0">Claude 3.5 Sonnet v2</option>
+              <option value="amazon.titan-text-express-v1">Amazon Titan Text</option>
+              <option value="meta.llama3-1-70b-instruct-v1:0">Meta Llama 3.1 70B</option>
+            </select>
           </div>
           <div class="telemetry-row">
-            <span>CPU / Memory:</span>
-            <strong>24.5% / 38.2%</strong>
+            <span>Temperature (Dial):</span>
+            <span id="tempVal" style="font-weight:700;">0.2 (Focused)</span>
           </div>
+          <input type="range" min="0" max="100" value="20" id="tempSlider" oninput="updateTemperature(this.value)" style="width:100%;">
           <div class="telemetry-row">
-            <span>ALB Target RPS:</span>
-            <strong>1,420 req/sec</strong>
-          </div>
-
-          <div class="canary-slider-wrap">
-            <div class="slider-labels">
-              <span>Blue (v2.4.0): <strong id="bluePct">90%</strong></span>
-              <span>Green (v2.4.1): <strong id="greenPct">10%</strong></span>
-            </div>
-            <input type="range" min="0" max="100" value="10" id="canarySlider" oninput="updateCanaryTraffic(this.value)" style="width:100%;">
+            <span>Guardrails Status:</span>
+            <strong style="color:var(--accent-green);">PII Masked • 0 Injections</strong>
           </div>
         </div>
 
-        <div style="font-size:11px; font-weight:700; margin-top:8px;">Live CloudWatch Logs [aws/ecs/production]:</div>
+        <!-- Step Functions Section -->
+        <div class="aws-telemetry-box" style="margin-top:8px;">
+          <div style="font-weight:700; color:var(--aws-stepfunctions); font-size:11.5px; display:flex; justify-content:space-between;">
+            <span>🔀 Step Functions State Machine</span>
+            <span class="part-tag tag-stepfunctions">EXEC: #8f2a</span>
+          </div>
+          <div class="stepfunction-tracker">
+            <span class="step-node done">1. Init</span> ➔
+            <span class="step-node done">2. Bedrock_Infer</span> ➔
+            <span class="step-node active">3. Human_Gate</span> ➔
+            <span class="step-node">4. Lambda_Tool</span> ➔
+            <span class="step-node">5. Complete</span>
+          </div>
+          <div class="telemetry-row">
+            <span>Execution Status:</span>
+            <strong style="color:var(--accent-amber);">WAITING_FOR_TASK_TOKEN</strong>
+          </div>
+        </div>
+
+        <!-- Lambda & OpenSearch Section -->
+        <div class="aws-telemetry-box" style="margin-top:8px;">
+          <div style="font-weight:700; color:var(--aws-lambda); font-size:11.5px;">⚡ Serverless & Vector Telemetry</div>
+          <div class="telemetry-row">
+            <span>Lambda Workers:</span>
+            <strong>42 Concurrency (18ms avg)</strong>
+          </div>
+          <div class="telemetry-row">
+            <span>OpenSearch RAG:</span>
+            <strong>1.4M Vectors (4.2ms Cosine)</strong>
+          </div>
+        </div>
+
+        <div style="font-size:11px; font-weight:700; margin-top:8px;">Live CloudWatch AI Logs [aws/bedrock/agents]:</div>
         <div class="log-console" id="cloudWatchLogs">
-[INFO] 2026-10-17 22:15:02 UTC - ALB Health check: 4/4 targets returning HTTP 200 OK
-[INFO] 2026-10-17 22:15:05 UTC - Aurora DB Pool: 32 active connections, 0.6ms latency
-[INFO] 2026-10-17 22:15:10 UTC - CloudWatch Anomaly Detector: 0 spikes detected
-[WARN] 2026-10-17 22:15:15 UTC - Canary traffic shift: 10% routed to task revision 42
-[INFO] 2026-10-17 22:15:18 UTC - Synthetic health probe: p99 latency 38ms
+[INFO] 2026-10-17 22:30:02 UTC - Bedrock Guardrails: Inbound prompt evaluated clean (0 PII, 0 toxic).
+[INFO] 2026-10-17 22:30:04 UTC - OpenSearch RAG: 5 vector chunks retrieved (similarity 0.942).
+[INFO] 2026-10-17 22:30:08 UTC - Step Functions: State 'Bedrock_Infer' succeeded. Transitioning to 'Human_Gate'.
+[WARN] 2026-10-17 22:30:12 UTC - Step Functions: Paused on Task Token 'token-998f21' awaiting Human Approval.
+[INFO] 2026-10-17 22:30:16 UTC - Lambda tool runners: 42 instances warm, ready for post-approval invocation.
         </div>
       `;
     }
 
-    function updateCanaryTraffic(val) {
-      const green = parseInt(val);
-      const blue = 100 - green;
-      document.getElementById("bluePct").textContent = `${blue}%`;
-      document.getElementById("greenPct").textContent = `${green}%`;
+    function changeBedrockModel(val) {
       const consoleEl = document.getElementById("cloudWatchLogs");
       if (consoleEl) {
-        consoleEl.textContent += `\n[ACTION] Canary traffic adjusted: ${blue}% Blue / ${green}% Green`;
+        consoleEl.textContent += `\n[CONFIG] Bedrock Foundation Model updated: ${val}`;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+      showToast(`Switched Bedrock Model to: ${val}`);
+    }
+
+    function updateTemperature(val) {
+      const temp = (val / 100).toFixed(2);
+      let label = "Deterministic";
+      if (temp > 0.7) label = "Creative";
+      else if (temp > 0.3) label = "Balanced";
+      document.getElementById("tempVal").textContent = `${temp} (${label})`;
+      const consoleEl = document.getElementById("cloudWatchLogs");
+      if (consoleEl) {
+        consoleEl.textContent += `\n[ACTION] Bedrock Temperature adjusted: ${temp}`;
         consoleEl.scrollTop = consoleEl.scrollHeight;
       }
     }
@@ -1601,7 +1704,7 @@ def build_cicd_app():
 
     with open("cicd_ai_factory_canvas_human_intervention.html", "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("Successfully generated cicd_ai_factory_canvas_human_intervention.html!")
+    print("Successfully generated cicd_ai_factory_canvas_human_intervention.html with AI Foundation Stack!")
 
     with open("cicd_pipeline_ai_factory_canvas.html", "w", encoding="utf-8") as f:
         f.write(html_content)

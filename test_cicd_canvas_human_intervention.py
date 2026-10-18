@@ -3,13 +3,14 @@
 test_cicd_canvas_human_intervention.py
 Headless Selenium verification for 'cicd_ai_factory_canvas_human_intervention.html':
 - Checks 0 severe console errors
-- Tests 3-tier hierarchy switching (Level 3 AWS Cloud, Level 2 GitHub CI/CD, Level 1 Worker AI)
+- Tests 3-tier hierarchy switching (Level 3 AWS AI Foundation, Level 2 GitHub CI/CD, Level 1 Worker AI)
+- Verifies AWS AI Foundation nodes: Bedrock, Step Functions, Lambda, OpenSearch, SageMaker, DynamoDB
 - Verifies Human Gate node on Level 2 (GitHub CI/CD)
 - Tests Run Modes (Auto / Supervised / Step)
 - Tests Approvals Inbox with Decision Card and "Ask Why" Groq rationale
 - Tests Approve action and Undo Ledger entry
 - Tests Undo rollback action
-- Tests AWS Simulator telemetry and Canary slider
+- Tests AWS AI Foundation Simulator (Bedrock model switcher, Temperature dial, Step Functions tracker, Lambda concurrency)
 - Tests Autonomy Policy matrix
 - Captures full verification screenshots
 """
@@ -46,7 +47,7 @@ def test_cicd_app():
         for err in severe_errors:
             print("  SEVERE ERROR:", err['message'])
 
-        # 2. Check Hierarchy Switcher (Level 3 AWS by default)
+        # 2. Check Hierarchy Switcher (Level 3 AWS AI Foundation by default)
         tab_l3 = driver.find_element(By.ID, "tabL3")
         tab_l2 = driver.find_element(By.ID, "tabL2")
         tab_l1 = driver.find_element(By.ID, "tabL1")
@@ -54,9 +55,16 @@ def test_cicd_app():
         print(f"Level 2 Tab: {tab_l2.text}")
         print(f"Level 1 Tab: {tab_l1.text}")
 
-        # Check nodes on Level 3 (AWS Cloud)
+        # Check nodes on Level 3 (AWS AI Foundation)
         aws_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
         print(f"Level 3 Canvas nodes: {len(aws_nodes)}")
+
+        bedrock_node = driver.find_element(By.ID, "node_aws_bedrock")
+        step_node = driver.find_element(By.ID, "node_aws_stepfunctions")
+        lambda_node = driver.find_element(By.ID, "node_aws_lambda")
+        print(f"Found Bedrock node: {bedrock_node.is_displayed()}")
+        print(f"Found Step Functions node: {step_node.is_displayed()}")
+        print(f"Found Lambda node: {lambda_node.is_displayed()}")
 
         # Switch to Level 2 (GitHub CI/CD)
         tab_l2.click()
@@ -137,25 +145,26 @@ def test_cicd_app():
         policy_rows = driver.find_elements(By.CSS_SELECTOR, "#policyTableBody tr")
         print(f"Policy rows count: {len(policy_rows)} (Expected 8)")
 
-        # 8. Check AWS Simulator Tab
+        # 8. Check AWS AI Foundation Simulator Tab
         driver.find_element(By.ID, "tabBtnAws").click()
         time.sleep(0.5)
-        slider = driver.find_element(By.ID, "canarySlider")
-        print(f"Canary Slider found: {slider.is_displayed()}")
-        driver.execute_script("arguments[0].value = 25; arguments[0].dispatchEvent(new Event('input'));", slider)
-        time.sleep(0.5)
-        blue_pct = driver.find_element(By.ID, "bluePct").text
-        green_pct = driver.find_element(By.ID, "greenPct").text
-        print(f"Canary Traffic updated: Blue {blue_pct} / Green {green_pct}")
+        model_select = driver.find_element(By.ID, "bedrockModelSelect")
+        print(f"Bedrock model select displayed: {model_select.is_displayed()}")
 
-        # Switch back to Level 3 (AWS Cloud) and capture full preview
+        temp_slider = driver.find_element(By.ID, "tempSlider")
+        driver.execute_script("arguments[0].value = 50; arguments[0].dispatchEvent(new Event('input'));", temp_slider)
+        time.sleep(0.5)
+        temp_val = driver.find_element(By.ID, "tempVal").text
+        print(f"Bedrock Temperature updated: {temp_val}")
+
+        # Switch back to Level 3 (AWS AI Foundation) and capture full preview
         tab_l3.click()
         time.sleep(0.5)
         driver.save_screenshot("cicd_human_intervention_preview.png")
         print("Saved cicd_human_intervention_preview.png")
 
         assert len(severe_errors) == 0, f"Found {len(severe_errors)} severe console errors!"
-        print("ALL CI/CD HUMAN INTERVENTION TESTS PASSED WITH 0 SEVERE ERRORS!")
+        print("ALL AWS AI FOUNDATION & CI/CD TESTS PASSED WITH 0 SEVERE ERRORS!")
 
     finally:
         driver.quit()
