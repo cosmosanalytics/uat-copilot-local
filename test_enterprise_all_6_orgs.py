@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 test_enterprise_all_6_orgs.py
-Verifies the 3-Tier Enterprise AI Factory Architecture:
-1. Level 3: Company Level Process (6 Organizations playing roles in Enterprise Value Stream)
-2. Level 2: Organization Level Process (Selected at Company level: CRM, S&OP, ERP, MES, WMS, Finance)
-3. Level 1: Mind Level Process (Cognition: Debate Personas + Cognitive Skills + Deterministic Harness)
+Verifies the 4-Tier Enterprise AI Factory Fractal Value Chain Architecture:
+1. Level 4: Value Chain Level Process (6 Companies: SilicoFab, MicroPCB, Apex OEM, Pegasus EMS, TransGlobal, OmniCloud)
+2. Level 3: Company Level Process (6 Organizations: CRM, S&OP, ERP, MES, WMS, Finance)
+3. Level 2: Organization Level Process (Selected at Company level: 4, 11, 8, 5, 5, 5 Workers)
+4. Level 1: Mind Level Process (Cognition: Debate Personas + Cognitive Skills + Deterministic Harness)
 """
 
 import sys
@@ -35,19 +36,35 @@ try:
     print(f"Browser console logs: {len(logs)} entries, {len(severe)} SEVERE")
     assert len(severe) == 0, f"Found severe console logs: {severe}"
 
-    # 1. Level 3: Company Level (6 Organizations)
-    print("\n--- Verifying Level 3: Company Process ---")
+    # 1. Level 4: Value Chain Level (6 Companies)
+    print("\n--- Verifying Level 4: Multi-Enterprise Value Chain ---")
+    l4_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
+    print(f"Level 4 Companies: {len(l4_nodes)} (Expected 6)")
+    assert len(l4_nodes) == 6, f"Expected 6 companies at Level 4, found {len(l4_nodes)}"
+
+    crumb_l4 = driver.find_element(By.ID, "crumbL4").text
+    print(f"  -> Level 4 Breadcrumb: '{crumb_l4}'")
+
+    driver.save_screenshot("enterprise_l4_value_chain_screenshot.png")
+    print("Saved 'enterprise_l4_value_chain_screenshot.png'")
+
+    # 2. Drill down into Apex OEM (comp_3) at Level 3
+    print("\n--- Drilling down into Apex OEM (Level 3 Company Process) ---")
+    driver.execute_script("openCompanyFromValueChain('comp_3');")
+    time.sleep(0.6)
+
     l3_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
     print(f"Level 3 Organizations: {len(l3_nodes)} (Expected 6)")
     assert len(l3_nodes) == 6, f"Expected 6 organizations at Level 3, found {len(l3_nodes)}"
 
     crumb_l3 = driver.find_element(By.ID, "crumbL3").text
     print(f"  -> Level 3 Breadcrumb: '{crumb_l3}'")
+    assert "Apex" in crumb_l3, f"Expected Apex in breadcrumb, got: {crumb_l3}"
 
     driver.save_screenshot("enterprise_l3_company_screenshot.png")
     print("Saved 'enterprise_l3_company_screenshot.png'")
 
-    # 2. Level 2: Test that Org level dynamically loads whichever organization is selected at Company level
+    # 3. Level 2: Test that Org level dynamically loads whichever organization is selected at Company level
     org_specs = [
         ("crm", 4, "CRM & Commercial Ops"),
         ("sop", 11, "S&OP Planning Engine"),
@@ -97,26 +114,26 @@ try:
         l2_return_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
         assert len(l2_return_nodes) == expected_count, f"Return to Level 2 failed for {org_name}"
 
-    # Capture screenshots of key Level 2 organization views
-    driver.execute_script("openOrganizationFromCompany('erp');")
+    # 4. Navigate back up to Level 4 via breadcrumb or switchLevel(4)
+    print("\n--- Verifying Upward Navigation back to Level 4 Value Chain ---")
+    driver.execute_script("switchLevel(4);")
     time.sleep(0.5)
-    driver.save_screenshot("enterprise_l2_erp_screenshot.png")
-    print("\nSaved 'enterprise_l2_erp_screenshot.png'")
+    l4_return_nodes = driver.find_elements(By.CLASS_NAME, "canvas-node")
+    assert len(l4_return_nodes) == 6, f"Expected 6 companies on return to Level 4, found {len(l4_return_nodes)}"
+    print(f"Successfully returned to Level 4: {len(l4_return_nodes)} Companies rendered.")
 
-    driver.execute_script("openOrganizationFromCompany('sop');")
+    # 5. Verify BOM Modal
+    print("\n--- Verifying 4-Tier BOM Modal ---")
+    driver.execute_script("showBomModal();")
     time.sleep(0.5)
-    driver.save_screenshot("enterprise_l2_sop_screenshot.png")
-    print("Saved 'enterprise_l2_sop_screenshot.png'")
+    bom_modal = driver.find_element(By.ID, "bomModal")
+    assert bom_modal.is_displayed(), "BOM Modal is not displayed!"
+    bom_text = bom_modal.text
+    print(f"BOM modal contains 'Level 4': {'Level 4' in bom_text or 'L4 Value Chain' in bom_text}")
+    assert "L4 Value Chain" in bom_text, "Expected 'L4 Value Chain' in BOM Modal!"
+    driver.execute_script("hideBomModal();")
 
-    driver.execute_script("selectNode('sop_1'); switchLevel(1);")
-    time.sleep(0.5)
-    driver.save_screenshot("enterprise_l1_mind_screenshot.png")
-    print("Saved 'enterprise_l1_mind_screenshot.png'")
-
-    print("\n[SUCCESS] 3-Tier Enterprise AI Factory Architecture Verified 100%!")
-    print("  Level 3 (Company): 6 Organizations in Value Stream")
-    print("  Level 2 (Organization): Dynamically selected at Company level (CRM, S&OP, ERP, MES, WMS, Finance)")
-    print("  Level 1 (Mind): Cognitive Skills + Internal Debate Personas + Deterministic Harness")
+    print("\n🎉 ALL 4-TIER FRACTAL ARCHITECTURAL CHECKS PASSED PERFECTLY!")
 
 finally:
     driver.quit()
