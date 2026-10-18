@@ -884,7 +884,7 @@ def build_cicd_app():
       <div class="brand-logo">⚡</div>
       <div class="brand-title-wrap">
         <h1>AI Factory CI/CD <span style="font-weight:400; color:var(--text-muted);">• Worker AI ➔ GitHub ➔ AWS Production Cloud</span></h1>
-        <div class="brand-subtitle">Repo: <a href="https://github.com/cosmosanalytics/uat-copilot-local" target="_blank" style="color:var(--accent-blue); text-decoration:none;">cosmosanalytics/uat-copilot-local</a> [main]</div>
+        <div class="brand-subtitle">Repo: <a href="https://github.com/cosmosanalytics/AWS" target="_blank" style="color:var(--accent-blue); text-decoration:none;">cosmosanalytics/AWS</a> [main]</div>
       </div>
     </div>
 
@@ -1019,17 +1019,17 @@ def build_cicd_app():
 
       <div class="sidebar-head" style="margin-top:6px;">
         <span>Real GitHub AWS Repo</span>
-        <a href="https://github.com/cosmosanalytics/uat-copilot-local" target="_blank" style="font-size:10px; color:var(--accent-blue); text-decoration:none;">Open ↗</a>
+        <a href="https://github.com/cosmosanalytics/AWS" target="_blank" style="font-size:10px; color:var(--accent-blue); text-decoration:none;">Open ↗</a>
       </div>
       <div style="padding:10px; display:flex; flex-direction:column; gap:6px;" id="realRepoCommitList">
         <div style="font-size:10.5px; font-weight:700; color:var(--text-main);">Recent Commits [origin/main]:</div>
         <div style="background:var(--bg-secondary); padding:6px 8px; border-radius:4px; font-size:10.5px;">
-          <div style="font-weight:700; color:var(--accent-blue);">3bd3913 feat: CI/CD Canvas</div>
-          <div style="color:var(--text-muted); font-size:9px;">By agentic-coder • Just now</div>
+          <div style="font-weight:700; color:var(--accent-blue);">146d88b feat: AWS Production Cloud</div>
+          <div style="color:var(--text-muted); font-size:9px;">By cosmosanalytics • Just now</div>
         </div>
         <div style="background:var(--bg-secondary); padding:6px 8px; border-radius:4px; font-size:10.5px;">
-          <div style="font-weight:700;">3f13f0c feat: Human Intervention UI</div>
-          <div style="color:var(--text-muted); font-size:9px;">By richa • 30m ago</div>
+          <div style="font-weight:700;">a39472e feat: Unified GenAI Stack</div>
+          <div style="color:var(--text-muted); font-size:9px;">By agentic-coder • 15m ago</div>
         </div>
       </div>
     </aside>
