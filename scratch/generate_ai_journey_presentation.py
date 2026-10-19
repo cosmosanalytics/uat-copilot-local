@@ -44,10 +44,10 @@ def create_roadmap_diagram():
     stages = [
         ("1. Single Agent", "Lone Wolf\nMonolithic Prompt\nLinear Context", "#64748B", "01"),
         ("2. Multi-Agent", "Specialized Squad\nPeer Review & QA\nTask Delegation", "#0284C7", "02"),
-        ("3. 3-Layer Brain", "Cognitive Architecture\nFast Reflex + Thinking\nMeta-Executive L3", "#7C3AED", "03"),
-        ("4. AI Factory", "Assembly Line\nDeterministic CI Matrix\nKMS Artifact Store", "#D97706", "04"),
-        ("5. S&OP Org", "Enterprise Division\nSupply & Demand AI\nAutonomous Protocol", "#EA580C", "05"),
-        ("6. Ambient AI", "Zero Cognitive Load\nContext DAG + Skills\nSelf-Healing Loop", "#059669", "06"),
+        ("3. 3-Layer Brain", "Cognitive Hierarchy\nFast Reflex + Thinking\nMeta-Executive L3", "#7C3AED", "03"),
+        ("4. AI Factory", "Assembly Line\nDeterministic CI Matrix\nCertified Artifacts", "#D97706", "04"),
+        ("5. Ambient AI", "Invisible Autonomy\nContext DAG + Skills\nOne-Button Reverse", "#059669", "05"),
+        ("6. Zero Mental Load", "Ambient Ergonomics\n-88% Cognitive Burden\n1-Click Execution", "#4338CA", "06"),
     ]
 
     # Connecting curve
@@ -98,7 +98,7 @@ def create_brain_3layer_diagram():
          "Deep Deliberative Reasoning\n- High-capacity reasoning models (Claude Sonnet 4.6, DeepSeek)\n- Complex code refactoring, mathematical proofs, multi-turn plans\n- Activated ONLY when Layer 1 identifies non-trivial ambiguity",
          "#0284C7", "#F0F9FF", 2.9, "L2"),
         ("Layer 1: Sensory Reflex & Fast Filter (System 1)",
-         "Intuitive Reflex / Spinal Cord\n- Sub-second local execution (WebGPU in-browser + Groq LPU)\n- Regex pattern matching, AST syntax validation, quick probes\n- 100% free / ultra-low latency; absorbs 80% of daily reflexes",
+         "Intuitive Reflex / Spinal Cord\n- Sub-second local execution (fast AST parsers & regex gates)\n- Pattern matching, syntax validation, pre-flight environment probes\n- Absorbs 80% of daily reflexes with zero delay",
          "#059669", "#F0FDF4", 0.6, "L1")
     ]
 
@@ -131,9 +131,9 @@ def create_brain_3layer_diagram():
     return path
 
 # ==============================================================================
-# DIAGRAM 3: AI FACTORY & S&OP ORGANIZATIONAL ARCHITECTURE
+# DIAGRAM 3: THE AI FACTORY & ASSEMBLY WORKERS
 # ==============================================================================
-def create_factory_sop_diagram():
+def create_factory_workers_diagram():
     fig, ax = plt.subplots(figsize=(8.8, 5.4), dpi=240)
     fig.patch.set_facecolor('#FFFFFF')
     ax.set_facecolor('#FFFFFF')
@@ -146,8 +146,8 @@ def create_factory_sop_diagram():
 
     stations = [
         ("Station 1", "AST Ingestion\n& Code Parse", "#0284C7"),
-        ("Station 2", "Secret Shield\n401 Gate Check", "#D97706"),
-        ("Station 3", "48/48 CI Matrix\nGitHub VM Test", "#7C3AED"),
+        ("Station 2", "Secret Shield\nSecurity Audit", "#D97706"),
+        ("Station 3", "48/48 CI Matrix\nAutomated Test", "#7C3AED"),
         ("Station 4", "KMS S3 Store\n& Signed Receipt", "#059669"),
     ]
 
@@ -164,16 +164,16 @@ def create_factory_sop_diagram():
             ax.annotate('', xy=(x + 2.3, 4.45), xytext=(x + 2.05, 4.45),
                         arrowprops=dict(arrowstyle="->", color="#94A3B8", lw=2))
 
-    # S&OP Division Header
-    ax.text(5.0, 3.1, "S&OP ENTERPRISE ORGANIZATIONAL MAPPING", fontsize=10.5, fontweight='bold', color="#0F172A", ha='center')
+    # Assembly Workers Division Header
+    ax.text(5.0, 3.1, "AI FACTORY ASSEMBLY WORKER SPECIALIZATION", fontsize=10.5, fontweight='bold', color="#0F172A", ha='center')
 
-    org_units = [
-        ("Demand & Forecast Agent", "Predicts token consumption, compute burst rates & team velocity.", "#0284C7", "DEMAND"),
-        ("Operations & SFN Orchestrator", "Runs state machines, Step Functions, and multi-cloud workers.", "#7C3AED", "OPS"),
-        ("Governance & Finance Gate", "Dual-tier cost shield ($0 visitor demo vs live project 966273137102).", "#059669", "FINANCE"),
+    worker_units = [
+        ("Architecture & Contract Worker", "Decomposes high-level requirements into atomic component specifications and AST schemas.", "#0284C7", "ARCH"),
+        ("Synthesis & Code Worker", "Constructs clean, modular code units with live self-correcting unit test validation.", "#7C3AED", "CODE"),
+        ("Verification & Packaging Worker", "Executes automated test matrix, validates security constraints, and seals verified artifacts.", "#059669", "VERIFY"),
     ]
 
-    for i, (title, desc, col, tag) in enumerate(org_units):
+    for i, (title, desc, col, tag) in enumerate(worker_units):
         y = 1.9 - i * 0.9
         card = patches.FancyBboxPatch((0.5, y), 9.0, 0.75,
                                       boxstyle="round,pad=0.08,rounding_size=0.12",
@@ -181,14 +181,14 @@ def create_factory_sop_diagram():
         ax.add_patch(card)
 
         # Tag
-        tag_b = patches.FancyBboxPatch((0.7, y + 0.18), 1.1, 0.38,
+        tag_b = patches.FancyBboxPatch((0.7, y + 0.18), 1.15, 0.38,
                                        boxstyle="round,pad=0.05,rounding_size=0.08",
                                        facecolor=col, edgecolor=col, lw=1, zorder=3)
         ax.add_patch(tag_b)
-        ax.text(1.25, y + 0.37, tag, fontsize=7.5, fontweight='bold', color='#FFFFFF', ha='center', va='center', zorder=4)
+        ax.text(1.275, y + 0.37, tag, fontsize=7.5, fontweight='bold', color='#FFFFFF', ha='center', va='center', zorder=4)
 
-        ax.text(2.0, y + 0.50, title, fontsize=9, fontweight='bold', color=col, zorder=3)
-        ax.text(2.0, y + 0.20, desc, fontsize=7.6, color='#475569', zorder=3)
+        ax.text(2.1, y + 0.50, title, fontsize=9, fontweight='bold', color=col, zorder=3)
+        ax.text(2.1, y + 0.20, desc, fontsize=7.6, color='#475569', zorder=3)
 
     plt.tight_layout()
     path = os.path.join(OUT_DIR, "diag_factory_sop.png")
@@ -208,11 +208,11 @@ def create_ambient_pillars_diagram():
     ax.axis('off')
 
     pillars = [
-        ("1. CHUNKING", "Deconstruct large intents into atomic verifiable micro-tasks.", "#0284C7", "P1"),
-        ("2. CONTEXT DAG", "Directed Acyclic Graph routes only prerequisite state node-to-node.", "#7C3AED", "P2"),
-        ("3. SKILL TRANSITION", "Proven sequences crystalize into reusable SKILL.md modules.", "#059669", "P3"),
+        ("1. CHUNKING", "Deconstruct large intents into atomic verifiable micro-tasks (<50 lines).", "#0284C7", "P1"),
+        ("2. CONTEXT DAG", "Directed Acyclic Graph routes only prerequisite state node-to-node without context bloat.", "#7C3AED", "P2"),
+        ("3. SKILL TRANSITION", "Proven execution sequences crystalize into permanent, reusable SKILL.md modules.", "#059669", "P3"),
         ("4. ONE-BUTTON REVERSE", "Instant rollback safety net via isolated Git branches & atomic commits.", "#DC2626", "P4"),
-        ("5. MULTI-ROUTING", "Dynamic dispatch: Local WebGPU ($0) -> Fast Groq LPU -> Deep Bedrock.", "#D97706", "P5"),
+        ("5. MULTI-ROUTING", "Dynamic dispatch: Fast Local Reflex -> Specialized LPUs -> Deep Frontier Models.", "#D97706", "P5"),
     ]
 
     for i, (title, desc, col, badge) in enumerate(pillars):
@@ -244,9 +244,9 @@ def create_cognitive_load_diagram():
     fig.patch.set_facecolor('#FFFFFF')
     ax.set_facecolor('#FFFFFF')
 
-    stages = ['Single\nAgent', 'Multi\nAgent', '3-Layer\nBrain', 'AI Factory\nPipeline', 'Ambient AI\nErgonomics']
-    traditional_load = [95, 110, 80, 55, 12]  # Multi-agent initially caused coordination overhead!
-    human_leverage =   [10,  30, 55, 80, 98]
+    stages = ['Single\nAgent', 'Multi\nAgent', '3-Layer\nBrain', 'AI Factory\nAssembly', 'Ambient AI\nErgonomics']
+    traditional_load = [95, 110, 80, 50, 12]  # Multi-agent initially caused coordination overhead!
+    human_leverage =   [10,  30, 55, 82, 98]
 
     x = np.arange(len(stages))
     width = 0.35
@@ -262,7 +262,7 @@ def create_cognitive_load_diagram():
     ax.set_ylim(0, 125)
     ax.grid(axis='y', linestyle='--', alpha=0.3)
 
-    # Highlight 90% reduction tag
+    # Highlight 88% reduction tag
     ax.annotate('-88% Mental Fatigue\n("Ship it" in 1 click)',
                 xy=(4 - width/2, 14), xytext=(3.1, 45),
                 arrowprops=dict(facecolor='#059669', shrink=0.08, width=2, headwidth=8),
@@ -283,7 +283,7 @@ def create_cognitive_load_diagram():
 # Generate all diagrams
 d_roadmap = create_roadmap_diagram()
 d_brain = create_brain_3layer_diagram()
-d_factory = create_factory_sop_diagram()
+d_factory = create_factory_workers_diagram()
 d_ambient = create_ambient_pillars_diagram()
 d_load = create_cognitive_load_diagram()
 
@@ -308,7 +308,7 @@ def add_header(slide, title_text, category_badge, subtitle_text):
     top_bar.line.color.rgb = hex_to_rgb("#E2E8F0")
     top_bar.line.width = Pt(1)
 
-    pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.18), Inches(2.2), Inches(0.32))
+    pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.18), Inches(2.3), Inches(0.32))
     pill.fill.solid()
     pill.fill.fore_color.rgb = hex_to_rgb("#0284C7")
     pill.line.fill.background()
@@ -319,7 +319,7 @@ def add_header(slide, title_text, category_badge, subtitle_text):
     tf_p.paragraphs[0].font.color.rgb = hex_to_rgb("#FFFFFF")
     tf_p.paragraphs[0].alignment = PP_ALIGN.CENTER
 
-    tx_box = slide.shapes.add_textbox(Inches(3.2), Inches(0.1), Inches(9.5), Inches(0.5))
+    tx_box = slide.shapes.add_textbox(Inches(3.3), Inches(0.1), Inches(9.5), Inches(0.5))
     tf = tx_box.text_frame
     p = tf.paragraphs[0]
     p.text = title_text
@@ -369,14 +369,14 @@ p1.font.color.rgb = hex_to_rgb("#38BDF8")
 p1.alignment = PP_ALIGN.CENTER
 
 p2 = c_tf.add_paragraph()
-p2.text = "From Single Agent to Ambient AI Enterprise"
+p2.text = "From Single Agent to Ambient AI"
 p2.font.size = Pt(32)
 p2.font.bold = True
 p2.font.color.rgb = hex_to_rgb("#FFFFFF")
 p2.alignment = PP_ALIGN.CENTER
 
 p3 = c_tf.add_paragraph()
-p3.text = "A Journey Through 3-Layer Cognitive Brains, Factory Assembly Lines, S&OP Organizations, and Zero-Cognitive-Load Ambient AI"
+p3.text = "A Journey Through 3-Layer Cognitive Brains, Factory Assembly Workers, and Zero-Cognitive-Load Ambient AI"
 p3.font.size = Pt(13)
 p3.font.color.rgb = hex_to_rgb("#94A3B8")
 p3.alignment = PP_ALIGN.CENTER
@@ -392,7 +392,7 @@ p4.alignment = PP_ALIGN.CENTER
 # SLIDE 2: ROADMAP OVERVIEW
 # ------------------------------------------------------------------------------
 s2 = prs.slides.add_slide(blank_layout)
-add_header(s2, "The 6 Eras of the Autonomous Evolution", "Evolution Map", "Visualizing how our architecture matured from brute-force prompts to an intelligent autonomous organization")
+add_header(s2, "The Evolutionary Path of Autonomous AI", "Evolution Map", "Visualizing how our architecture matured from brute-force prompts to an intelligent autonomous ecosystem")
 s2.shapes.add_picture(d_roadmap, Inches(0.8), Inches(1.35), width=Inches(11.733))
 
 c1 = add_card(s2, 0.8, 5.7, 3.6, 1.45, "#F0F9FF", "#0284C7")
@@ -413,7 +413,7 @@ t2.paragraphs[0].font.bold = True
 t2.paragraphs[0].font.size = Pt(11)
 t2.paragraphs[0].font.color.rgb = hex_to_rgb("#6D28D9")
 p = t2.add_paragraph()
-p.text = "Brain-inspired 3-tier cognition + standardized assembly lines. S&OP role division and deterministic verification gates."
+p.text = "Brain-inspired 3-tier cognition + AI Factory assembly workers with deterministic verification gates."
 p.font.size = Pt(9)
 p.font.color.rgb = hex_to_rgb("#334155")
 
@@ -465,7 +465,7 @@ p.font.color.rgb = hex_to_rgb("#0369A1")
 bullets_r = [
     ("Concept", "Role specialization: Researcher, Architect, Coder, and QA Critic working in tandem."),
     ("The Breakthrough", "Cross-verification: The Coder cannot push until the QA Critic asserts exit code 0."),
-    ("The Emerging Challenge", "Coordination tax: Agents chatting endlessly in loops ('After you!' 'No, after you!') consuming massive tokens."),
+    ("The Emerging Challenge", "Coordination tax: Agents chatting endlessly in loops ('After you!' 'No, after you!') consuming massive context."),
     ("Key Lesson", "Specialization is essential, but without hierarchical cognitive control, multi-agent teams drift into chaos.")
 ]
 for title, desc in bullets_r:
@@ -490,10 +490,10 @@ p.font.color.rgb = hex_to_rgb("#6D28D9")
 
 b_items = [
     ("Why 3 Layers?", "The human brain doesn't fire millions of neurons to blink an eyelid. Fast tasks stay in the spinal cord; only novel dilemmas wake the prefrontal cortex."),
-    ("Layer 1 (Reflex)", "WebGPU in-browser + Groq LPU. Handles AST syntax, regex gates, and pre-flight probes at 0ms cost."),
-    ("Layer 2 (Deliberation)", "Heavyweight LLMs (Claude Sonnet 4.6). Engaged only for complex synthesis, algorithmic proofs, and code diffs."),
-    ("Layer 3 (Meta-Cognitive)", "The Executive Monitor. Keeps long-term Knowledge Graph memory, verifies goal alignment, and halts runaways."),
-    ("Fun Takeaway", "Stop burning $0.05 on cloud models to verify if a semicolon exists!")
+    ("Layer 1 (Reflex)", "Fast local/edge filter. Handles AST syntax, regex gates, and pre-flight probes with sub-second latency."),
+    ("Layer 2 (Deliberation)", "Heavyweight deliberative LLMs (Claude Sonnet 4.6). Engaged only for complex synthesis, algorithmic proofs, and code diffs."),
+    ("Layer 3 (Meta-Cognitive)", "The Executive Monitor. Maintains long-term Knowledge Graph memory, verifies goal alignment, and halts runaways."),
+    ("Fun Takeaway", "Stop waking heavy frontier models to verify if a semicolon exists!")
 ]
 for title, desc in b_items:
     p = tbl.add_paragraph()
@@ -504,7 +504,7 @@ for title, desc in b_items:
 s4.shapes.add_picture(d_brain, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 5: THE AI FACTORY
+# SLIDE 5: THE AI FACTORY & ASSEMBLY LINE
 # ------------------------------------------------------------------------------
 s5 = prs.slides.add_slide(blank_layout)
 add_header(s5, "The AI Factory: Industrializing Software Construction", "Milestone 4", "Replacing artisanal prompt crafting with standardized assembly lines and deterministic quality gates")
@@ -518,7 +518,7 @@ p.font.size = Pt(13)
 p.font.color.rgb = hex_to_rgb("#B45309")
 
 f_items = [
-    ("The Factory Metaphor", "Henry Ford didn't build cars by giving 10 workers vague verbal instructions. He built a conveyor belt with specialized stations and rigorous tollgates."),
+    ("The Factory Metaphor", "Henry Ford didn't build cars by giving workers vague verbal instructions. He built a conveyor belt with specialized stations and rigorous tollgates."),
     ("Deterministic Gates", "AI is probabilistic; code execution is deterministic. The factory wraps LLMs in rigid CI assertion matrices (48/48 checks)."),
     ("Automated Testing VM", "GitHub Actions ubuntu-latest runners act as robotic inspectors, auditing builds for secrets and syntax drift."),
     ("Cryptographic Storage", "Verified artifacts are sealed into Amazon S3 with KMS encryption and return signed execution receipts."),
@@ -533,24 +533,24 @@ for title, desc in f_items:
 s5.shapes.add_picture(d_factory, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 6: S&OP & ORGANIZATION
+# SLIDE 6: WORKER TO AI FACTORY: THE ASSEMBLY WORKER ECOSYSTEM
 # ------------------------------------------------------------------------------
 s6 = prs.slides.add_slide(blank_layout)
-add_header(s6, "Organization of Workers: S&OP Corporate Governance", "Milestone 5", "Structuring autonomous agents into cross-functional business departments with budgets and protocol")
+add_header(s6, "Worker to AI Factory: The Assembly Worker Ecosystem", "Milestone 4 Deep Dive", "Structuring autonomous assembly workers into a synchronized, deterministic production pipeline")
 
-deps = [
-    ("Demand & Capacity Planning Agent",
-     "- Anticipates upcoming project workload and calculates token quotas.\n- Forecasts compute burst needs across local vs cloud models.\n- Balances team velocity against API rate limits and quotas.",
+workers = [
+    ("Architecture & Contract Worker",
+     "- Decomposes high-level intent into atomic technical specifications.\n- Establishes strict data schemas, interfaces, and component boundaries.\n- Ensures architectural integrity before code synthesis begins.",
      "#0284C7", "#F0F9FF", 0.8),
-    ("Operational Assembly & Step Functions",
-     "- Converts business objectives into state machines and workflow graphs.\n- Dispatches specialized subagents with isolated branch workspaces.\n- Aggregates telemetry across GitHub Actions and AWS us-east-2.",
+    ("Synthesis & Implementation Worker",
+     "- Generates modular, single-responsibility code units (<50 lines).\n- Runs live AST syntax checks and immediate unit test assertions.\n- Self-heals logic bugs through rapid feedback iterations.",
      "#7C3AED", "#F5F3FF", 4.85),
-    ("Finance, Security & Cost Shield",
-     "- Dual-Tier Spending Governance: Enforces $0 visitor demo safety net.\n- Unlocks live AWS Bedrock & S3 only when Owner Passcode is verified.\n- Generates signed audit one-pagers for executive governance.",
+    ("Automated Verification Worker",
+     "- Executes complete 48/48 CI matrix tests across isolated environments.\n- Scans code diffs for secret leakage and boundary vulnerabilities.\n- Packages certified artifacts and generates verifiable execution receipts.",
      "#059669", "#F0FDF4", 8.9),
 ]
 
-for title, desc, col, bg, left in deps:
+for title, desc, col, bg, left in workers:
     c = add_card(s6, left, 1.4, 3.6, 5.6, bg, col)
     tf = c.text_frame
     p = tf.paragraphs[0]
@@ -568,7 +568,7 @@ for title, desc, col, bg, left in deps:
 # SLIDE 7: AMBIENT AI & THE 5 PILLARS
 # ------------------------------------------------------------------------------
 s7 = prs.slides.add_slide(blank_layout)
-add_header(s7, "Ambient AI: The 5 Pillars of Invisible Ergonomics", "Milestone 6", "Moving from active prompt manipulation to quiet, ambient background autonomy")
+add_header(s7, "Ambient AI: The 5 Pillars of Invisible Ergonomics", "Milestone 5", "Moving from active prompt manipulation to quiet, ambient background autonomy")
 
 c_amb_l = add_card(s7, 0.8, 1.35, 4.2, 5.7, "#F8FAFC", "#059669")
 tal = c_amb_l.text_frame
@@ -579,7 +579,7 @@ p.font.size = Pt(13)
 p.font.color.rgb = hex_to_rgb("#047857")
 
 amb_items = [
-    ("Invisible Autonomy", "AI shouldn't demand your constant attention. It should operate like electricity in the wall: always on, reliable, invisible until called."),
+    ("Invisible Autonomy", "AI shouldn't demand your constant attention. It should operate like electricity: always on, reliable, invisible until called."),
     ("Zero Context Bloat", "Instead of dumping 100,000 tokens into every turn, context is managed as an active Directed Acyclic Graph (DAG)."),
     ("Evolution to Skills", "When an agent discovers a reliable workflow, it packages it into a permanent SKILL.md so it never has to re-learn it."),
     ("Reversible Safety", "Total psychological safety: any change can be rolled back in one click via atomic Git branches."),
@@ -597,7 +597,7 @@ s7.shapes.add_picture(d_ambient, Inches(5.2), Inches(1.35), width=Inches(7.333))
 # SLIDE 8: MINIMIZING HUMAN COGNITIVE LOAD
 # ------------------------------------------------------------------------------
 s8 = prs.slides.add_slide(blank_layout)
-add_header(s8, "The North Star: Minimizing Human Cognitive Load", "Human Ergonomics", "Transforming human operators from stressed micromanagers into confident directors")
+add_header(s8, "The North Star: Minimizing Human Cognitive Load", "Milestone 6", "Transforming human operators from stressed micromanagers into confident directors")
 
 c_cmp = add_card(s8, 0.8, 1.35, 4.2, 5.7, "#FFFFFF", "#DC2626")
 tcmp = c_cmp.text_frame
@@ -613,7 +613,7 @@ p_old.font.size = Pt(9)
 p_old.font.color.rgb = hex_to_rgb("#991B1B")
 
 p_new = tcmp.add_paragraph()
-p_new.text = "\nAMBIENT WAY: Executive Director\n- Human says: 'Proceed' or 'Ship it'\n- AI team evaluates DAG, runs CI matrix, pushes commit\n- Delivers signed receipt + PDF summary\n- 90% cognitive load eliminated!"
+p_new.text = "\nAMBIENT WAY: Executive Director\n- Human says: 'Proceed' or 'Ship it'\n- AI team evaluates DAG, runs CI matrix, pushes commit\n- Delivers signed receipt + status summary\n- 88% cognitive fatigue eliminated!"
 p_new.font.size = Pt(9)
 p_new.font.color.rgb = hex_to_rgb("#065F46")
 
@@ -626,12 +626,12 @@ s9 = prs.slides.add_slide(blank_layout)
 add_header(s9, "Production Tech Stack & Live Cloud Bridge", "Tech Showcase", "Real-world infrastructure proven across GitHub Actions and AWS Project us-east-2 (966273137102)")
 
 tech_blocks = [
-    ("Client & Reflex Layer", "- WebGPU in-browser shader acceleration\n- WebLLM local 360M inference ($0 cost)\n- Real-time Canvas telemetry packet visualizer", "#0284C7", 0.8, 1.4),
-    ("GitHub CI/CD Automation", "- 4 Automated robot jobs (AST, Secrets, Matrix, 401)\n- ubuntu-latest free public cloud runners\n- Ed25519 SSH key signing for live Git pushes", "#7C3AED", 4.85, 1.4),
-    ("AWS Cloud Core (us-east-2)", "- Lambda HTTPS Gateway with SHA-256 header gate\n- Bedrock Claude Sonnet 4.6 Mantle Converse API\n- Step Functions state machines & KMS S3 bucket", "#D97706", 8.9, 1.4),
+    ("Reflex Execution Layer", "- Sub-second local execution for fast syntax parsing\n- Instant regex gates and pre-flight environment probes\n- Real-time telemetry packet visualizer", "#0284C7", 0.8, 1.4),
+    ("GitHub CI/CD Automation", "- 4 Automated robotic jobs (AST, Secrets, Matrix, Tests)\n- ubuntu-latest continuous integration runners\n- Ed25519 SSH key signing for live Git pushes", "#7C3AED", 4.85, 1.4),
+    ("AWS Cloud Core (us-east-2)", "- Lambda HTTPS Gateway with SHA-256 header verification\n- Bedrock Claude Sonnet 4.6 Mantle Converse API\n- Step Functions state machines & KMS S3 bucket", "#D97706", 8.9, 1.4),
     ("AI Knowledge & Database", "- Vector Database with cosine similarity search\n- Knowledge Graph with Cypher multi-hop traversals\n- Context DAG memory indexing & skill registry", "#059669", 0.8, 4.3),
-    ("Dual-Mode Security Gate", "- Non-Owner Visitor Mode: 100% free $0 demo\n- Owner Passcode Mode: Real AWS us-east-2 access\n- Zero secret leakage guarantee via regex auditor", "#DC2626", 4.85, 4.3),
-    ("Executive Synthesis", "- Automated 1-page visual PDF guides\n- Cryptographic telemetry receipts\n- Executive bullet point audit stream", "#475569", 8.9, 4.3),
+    ("Deterministic Security Shield", "- Pre-flight regex auditor guarantees zero secret leakage\n- Cryptographic signature check for cloud dispatch\n- Isolated branch execution per worker task", "#DC2626", 4.85, 4.3),
+    ("Executive Synthesis", "- Automated 1-page visual summary guides\n- Cryptographic telemetry receipts\n- Autonomous audit logging and status streams", "#475569", 8.9, 4.3),
 ]
 
 for title, desc, col, left, top in tech_blocks:
@@ -663,7 +663,7 @@ tf_end = end_card.text_frame
 tf_end.vertical_anchor = MSO_ANCHOR.MIDDLE
 
 p = tf_end.paragraphs[0]
-p.text = "THE FUTURE OF AI ORGANIZATIONS"
+p.text = "THE FUTURE OF AUTONOMOUS SYSTEMS"
 p.font.size = Pt(14)
 p.font.bold = True
 p.font.color.rgb = hex_to_rgb("#34D399")
@@ -685,9 +685,9 @@ p.alignment = PP_ALIGN.CENTER
 
 takeaways = [
     "1. Lone agents hit context ceilings; 3-Layer Brains distribute cognition from instant reflexes to deep deliberation.",
-    "2. The AI Factory turns unpredictable hallucinations into certified 48/48 CI matrix software builds.",
-    "3. S&OP organizational structures allow multi-agent teams to forecast, operate, and govern autonomously.",
-    "4. Ambient AI makes the entire apparatus invisible: you speak your intent, and the organization executes with total safety."
+    "2. The AI Factory organizes assembly workers along a deterministic line to turn unpredictable LLM outputs into certified software.",
+    "3. Ambient AI makes the entire apparatus invisible: you speak your intent, and the system executes with total safety.",
+    "4. Minimizing human cognitive load is the ultimate north star: from anxious babysitting to high-leverage execution in 1 click."
 ]
 for t in takeaways:
     p = tf_end.add_paragraph()
