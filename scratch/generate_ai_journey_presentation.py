@@ -240,7 +240,7 @@ def create_ambient_pillars_diagram():
 # DIAGRAM 5: HUMAN COGNITIVE LOAD REDUCTION CURVE
 # ==============================================================================
 def create_cognitive_load_diagram():
-    fig, ax = plt.subplots(figsize=(8.8, 5.0), dpi=240)
+    fig, ax = plt.subplots(figsize=(8.8, 5.2), dpi=240)
     fig.patch.set_facecolor('#FFFFFF')
     ax.set_facecolor('#FFFFFF')
 
@@ -280,17 +280,87 @@ def create_cognitive_load_diagram():
     plt.close()
     return path
 
+# ==============================================================================
+# DIAGRAM 6: GRAPHICAL PRODUCTION TECH STACK SHOWCASE
+# ==============================================================================
+def create_tech_stack_diagram():
+    fig, ax = plt.subplots(figsize=(10.8, 5.6), dpi=240)
+    fig.patch.set_facecolor('#FFFFFF')
+    ax.set_facecolor('#FFFFFF')
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 7)
+    ax.axis('off')
+
+    tiers = [
+        ('TIER 1: CLIENT REFLEX & SENSORY FILTER', '#0284C7', '#F0F9FF', 5.35, [
+            ('Sub-Second AST Parser', 'Parses syntax & validates structure locally'),
+            ('Regex Pre-Flight Gate', 'Scans for secrets & unauthorized patterns'),
+            ('Live Telemetry Stream', 'Real-time packet telemetry & state monitor')
+        ]),
+        ('TIER 2: CI/CD AUTOMATED FACTORY PIPELINE', '#7C3AED', '#F5F3FF', 3.65, [
+            ('CI Isolated Runner', 'Ephemeral clean-room virtual test environments'),
+            ('48/48 CI Test Matrix', 'Rigid automated pass/fail assertion suite'),
+            ('Ed25519 Signer & Git', 'Cryptographic commit & artifact attestation')
+        ]),
+        ('TIER 3: AWS PRODUCTION CLOUD (us-east-2)', '#D97706', '#FFFBEB', 1.95, [
+            ('Lambda HTTPS Gate', 'SHA-256 header check & secure ingress'),
+            ('Step Functions & Bedrock', 'Multi-agent state machines + Claude Sonnet'),
+            ('Amazon KMS Encrypted S3', 'Tamper-proof storage with signed receipts')
+        ]),
+        ('TIER 4: COGNITIVE MEMORY & DEPENDENCY ENGINE', '#059669', '#F0FDF4', 0.25, [
+            ('Vector DB Semantic RAG', 'Cosine similarity embeddings & fast search'),
+            ('Knowledge Graph DB', 'Cypher multi-hop relational path traversal'),
+            ('Context DAG Cache', 'Prerequisite node routing with zero bloat')
+        ])
+    ]
+
+    for title, col, bg, y, subs in tiers:
+        card = patches.FancyBboxPatch((0.4, y), 10.2, 1.45,
+                                      boxstyle='round,pad=0.08,rounding_size=0.12',
+                                      facecolor=bg, edgecolor=col, lw=1.8, zorder=2)
+        ax.add_patch(card)
+        
+        # Title badge
+        tb = patches.FancyBboxPatch((0.6, y + 1.1), 3.4, 0.28,
+                                    boxstyle='round,pad=0.04,rounding_size=0.06',
+                                    facecolor=col, edgecolor=col, lw=1, zorder=3)
+        ax.add_patch(tb)
+        ax.text(2.3, y + 1.24, title, fontsize=8.2, fontweight='bold', color='#FFFFFF', ha='center', va='center', zorder=4)
+
+        # 3 sub-boxes
+        for j, (st, sd) in enumerate(subs):
+            sx = 0.6 + j * 3.3
+            sub_card = patches.FancyBboxPatch((sx, y + 0.12), 3.15, 0.88,
+                                              boxstyle='round,pad=0.05,rounding_size=0.08',
+                                              facecolor='#FFFFFF', edgecolor=col, lw=1.0, zorder=3)
+            ax.add_patch(sub_card)
+            ax.text(sx + 1.575, y + 0.72, st, fontsize=8.5, fontweight='bold', color=col, ha='center', va='center', zorder=4)
+            ax.text(sx + 1.575, y + 0.38, sd, fontsize=7.2, color='#334155', ha='center', va='center', zorder=4)
+
+    # Connecting vertical flow arrows on the right
+    for y_arr in [5.3, 3.6, 1.9]:
+        ax.annotate('', xy=(10.7, y_arr - 0.25), xytext=(10.7, y_arr + 0.25),
+                    arrowprops=dict(arrowstyle='->', color='#64748B', lw=2.5))
+    ax.text(10.7, 3.5, 'DATA & EXECUTION FLOW', fontsize=7.5, fontweight='bold', color='#64748B', rotation=270, ha='center', va='center')
+
+    plt.tight_layout()
+    p = os.path.join(OUT_DIR, 'diag_tech_stack.png')
+    plt.savefig(p, bbox_inches='tight', dpi=240)
+    plt.close()
+    return p
+
 # Generate all diagrams
 d_roadmap = create_roadmap_diagram()
 d_brain = create_brain_3layer_diagram()
 d_factory = create_factory_workers_diagram()
 d_ambient = create_ambient_pillars_diagram()
 d_load = create_cognitive_load_diagram()
+d_stack = create_tech_stack_diagram()
 
 print("All diagrams generated cleanly without any font warnings!")
 
 # ==============================================================================
-# POWERPOINT SLIDES ASSEMBLY
+# POWERPOINT SLIDES ASSEMBLY (9 TIGHT, HIGH-IMPACT SLIDES)
 # ==============================================================================
 prs = pptx.Presentation()
 prs.slide_width = Inches(13.333)
@@ -300,6 +370,13 @@ blank_layout = prs.slide_layouts[6]
 def hex_to_rgb(hex_str):
     hex_str = hex_str.lstrip('#')
     return RGBColor(*(int(hex_str[i:i+2], 16) for i in (0, 2, 4)))
+
+def setup_text_frame(tf):
+    tf.word_wrap = True
+    tf.margin_left = Inches(0.2)
+    tf.margin_right = Inches(0.2)
+    tf.margin_top = Inches(0.2)
+    tf.margin_bottom = Inches(0.2)
 
 def add_header(slide, title_text, category_badge, subtitle_text):
     top_bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(1.15))
@@ -313,6 +390,7 @@ def add_header(slide, title_text, category_badge, subtitle_text):
     pill.fill.fore_color.rgb = hex_to_rgb("#0284C7")
     pill.line.fill.background()
     tf_p = pill.text_frame
+    setup_text_frame(tf_p)
     tf_p.text = category_badge.upper()
     tf_p.paragraphs[0].font.size = Pt(9.5)
     tf_p.paragraphs[0].font.bold = True
@@ -321,6 +399,7 @@ def add_header(slide, title_text, category_badge, subtitle_text):
 
     tx_box = slide.shapes.add_textbox(Inches(3.3), Inches(0.1), Inches(9.5), Inches(0.5))
     tf = tx_box.text_frame
+    setup_text_frame(tf)
     p = tf.paragraphs[0]
     p.text = title_text
     p.font.size = Pt(20)
@@ -329,6 +408,7 @@ def add_header(slide, title_text, category_badge, subtitle_text):
 
     tx_sub = slide.shapes.add_textbox(Inches(0.8), Inches(0.58), Inches(11.8), Inches(0.45))
     tf_s = tx_sub.text_frame
+    setup_text_frame(tf_s)
     p_s = tf_s.paragraphs[0]
     p_s.text = subtitle_text
     p_s.font.size = Pt(11)
@@ -340,6 +420,7 @@ def add_card(slide, left, top, width, height, bg_color="#FFFFFF", border_color="
     card.fill.fore_color.rgb = hex_to_rgb(bg_color)
     card.line.color.rgb = hex_to_rgb(border_color)
     card.line.width = Pt(1.5)
+    setup_text_frame(card.text_frame)
     return card
 
 # ------------------------------------------------------------------------------
@@ -359,6 +440,7 @@ cover_card.line.color.rgb = hex_to_rgb("#38BDF8")
 cover_card.line.width = Pt(2)
 
 c_tf = cover_card.text_frame
+setup_text_frame(c_tf)
 c_tf.vertical_anchor = MSO_ANCHOR.MIDDLE
 
 p1 = c_tf.paragraphs[0]
@@ -504,73 +586,42 @@ for title, desc in b_items:
 s4.shapes.add_picture(d_brain, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 5: THE AI FACTORY & ASSEMBLY LINE
+# SLIDE 5: THE AI FACTORY & ASSEMBLY WORKERS (ONE COMPLETE SLIDE)
 # ------------------------------------------------------------------------------
 s5 = prs.slides.add_slide(blank_layout)
-add_header(s5, "The AI Factory: Industrializing Software Construction", "Milestone 4", "Replacing artisanal prompt crafting with standardized assembly lines and deterministic quality gates")
+add_header(s5, "The AI Factory & Assembly Workers", "Milestone 4", "Replacing artisanal prompt crafting with standardized assembly lines and specialized worker roles")
 
 c_fac_l = add_card(s5, 0.8, 1.35, 4.2, 5.7, "#F8FAFC", "#D97706")
 tfl = c_fac_l.text_frame
 p = tfl.paragraphs[0]
-p.text = "Industrializing Intelligence"
+p.text = "The Industrial AI Paradigm"
 p.font.bold = True
 p.font.size = Pt(13)
 p.font.color.rgb = hex_to_rgb("#B45309")
 
 f_items = [
-    ("The Factory Metaphor", "Henry Ford didn't build cars by giving workers vague verbal instructions. He built a conveyor belt with specialized stations and rigorous tollgates."),
-    ("Deterministic Gates", "AI is probabilistic; code execution is deterministic. The factory wraps LLMs in rigid CI assertion matrices (48/48 checks)."),
-    ("Automated Testing VM", "GitHub Actions ubuntu-latest runners act as robotic inspectors, auditing builds for secrets and syntax drift."),
-    ("Cryptographic Storage", "Verified artifacts are sealed into Amazon S3 with KMS encryption and return signed execution receipts."),
+    ("The Assembly Metaphor", "Henry Ford didn't build cars by shouting vague verbal orders. He built a conveyor belt with specialized stations and strict tollgates."),
+    ("Assembly Workers", "Specialized agents (Architect, Coder, Verifier) execute discrete tasks with clean contracts (<50 lines)."),
+    ("Deterministic Gates", "AI is probabilistic; code execution is deterministic. The factory wraps LLMs in rigid 48/48 CI matrix tests."),
+    ("Automated Testing VM", "GitHub Actions runners act as robotic inspectors, auditing diffs for secrets and syntax drift before commit."),
+    ("Certified Storage", "Verified artifacts are sealed into Amazon S3 with KMS encryption and verifiable attestation receipts."),
     ("Fun Takeaway", "Treat prompts like machine tooling, not creative writing!")
 ]
 for title, desc in f_items:
     p = tfl.add_paragraph()
     p.text = f"- {title}: {desc}"
-    p.font.size = Pt(9.5)
+    p.font.size = Pt(9.2)
     p.font.color.rgb = hex_to_rgb("#334155")
 
 s5.shapes.add_picture(d_factory, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 6: WORKER TO AI FACTORY: THE ASSEMBLY WORKER ECOSYSTEM
+# SLIDE 6: AMBIENT AI & THE 5 PILLARS
 # ------------------------------------------------------------------------------
 s6 = prs.slides.add_slide(blank_layout)
-add_header(s6, "Worker to AI Factory: The Assembly Worker Ecosystem", "Milestone 4 Deep Dive", "Structuring autonomous assembly workers into a synchronized, deterministic production pipeline")
+add_header(s6, "Ambient AI: The 5 Pillars of Invisible Ergonomics", "Milestone 5", "Moving from active prompt manipulation to quiet, ambient background autonomy")
 
-workers = [
-    ("Architecture & Contract Worker",
-     "- Decomposes high-level intent into atomic technical specifications.\n- Establishes strict data schemas, interfaces, and component boundaries.\n- Ensures architectural integrity before code synthesis begins.",
-     "#0284C7", "#F0F9FF", 0.8),
-    ("Synthesis & Implementation Worker",
-     "- Generates modular, single-responsibility code units (<50 lines).\n- Runs live AST syntax checks and immediate unit test assertions.\n- Self-heals logic bugs through rapid feedback iterations.",
-     "#7C3AED", "#F5F3FF", 4.85),
-    ("Automated Verification Worker",
-     "- Executes complete 48/48 CI matrix tests across isolated environments.\n- Scans code diffs for secret leakage and boundary vulnerabilities.\n- Packages certified artifacts and generates verifiable execution receipts.",
-     "#059669", "#F0FDF4", 8.9),
-]
-
-for title, desc, col, bg, left in workers:
-    c = add_card(s6, left, 1.4, 3.6, 5.6, bg, col)
-    tf = c.text_frame
-    p = tf.paragraphs[0]
-    p.text = title
-    p.font.bold = True
-    p.font.size = Pt(12)
-    p.font.color.rgb = hex_to_rgb(col)
-    p2 = tf.add_paragraph()
-    p2.text = desc
-    p2.font.size = Pt(9.5)
-    p2.font.color.rgb = hex_to_rgb("#1E293B")
-    p2.line_spacing = 1.3
-
-# ------------------------------------------------------------------------------
-# SLIDE 7: AMBIENT AI & THE 5 PILLARS
-# ------------------------------------------------------------------------------
-s7 = prs.slides.add_slide(blank_layout)
-add_header(s7, "Ambient AI: The 5 Pillars of Invisible Ergonomics", "Milestone 5", "Moving from active prompt manipulation to quiet, ambient background autonomy")
-
-c_amb_l = add_card(s7, 0.8, 1.35, 4.2, 5.7, "#F8FAFC", "#059669")
+c_amb_l = add_card(s6, 0.8, 1.35, 4.2, 5.7, "#F8FAFC", "#059669")
 tal = c_amb_l.text_frame
 p = tal.paragraphs[0]
 p.text = "What is Ambient AI?"
@@ -591,75 +642,108 @@ for title, desc in amb_items:
     p.font.size = Pt(9.5)
     p.font.color.rgb = hex_to_rgb("#334155")
 
-s7.shapes.add_picture(d_ambient, Inches(5.2), Inches(1.35), width=Inches(7.333))
+s6.shapes.add_picture(d_ambient, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 8: MINIMIZING HUMAN COGNITIVE LOAD
+# SLIDE 7: MINIMIZING HUMAN COGNITIVE LOAD (FIXED VISUAL COMPARISON)
 # ------------------------------------------------------------------------------
-s8 = prs.slides.add_slide(blank_layout)
-add_header(s8, "The North Star: Minimizing Human Cognitive Load", "Milestone 6", "Transforming human operators from stressed micromanagers into confident directors")
+s7 = prs.slides.add_slide(blank_layout)
+add_header(s7, "The North Star: Minimizing Human Cognitive Load", "Milestone 6", "Transforming human operators from stressed micromanagers into confident directors")
 
-c_cmp = add_card(s8, 0.8, 1.35, 4.2, 5.7, "#FFFFFF", "#DC2626")
-tcmp = c_cmp.text_frame
-p = tcmp.paragraphs[0]
-p.text = "The Babysitting Trap vs. Ambient Ease"
+# Card 1: Top Left (The Micromanager Trap - Red)
+c_old = add_card(s7, 0.8, 1.35, 4.2, 2.75, "#FEF2F2", "#EF4444")
+to = c_old.text_frame
+p = to.paragraphs[0]
+p.text = "OLD WAY: The Babysitting Trap"
 p.font.bold = True
-p.font.size = Pt(11)
+p.font.size = Pt(11.5)
 p.font.color.rgb = hex_to_rgb("#DC2626")
 
-p_old = tcmp.add_paragraph()
-p_old.text = "\nOLD WAY: Human Micromanager\n- Paste stack trace -> read code -> ask model\n- Copy snippet -> test manually -> hit syntax bug\n- Repeat 40 times per hour -> Extreme mental fatigue"
-p_old.font.size = Pt(9)
-p_old.font.color.rgb = hex_to_rgb("#991B1B")
+old_bullets = [
+    ("Context Exhaustion", "Paste stack traces, re-read code diffs, re-prompt."),
+    ("Manual Babysitting", "Anxiously inspect every single line & syntax output."),
+    ("Mental Burnout", "40+ context switches/hour causing extreme fatigue.")
+]
+for title, desc in old_bullets:
+    p = to.add_paragraph()
+    p.text = f"- {title}: {desc}"
+    p.font.size = Pt(9.2)
+    p.font.color.rgb = hex_to_rgb("#991B1B")
 
-p_new = tcmp.add_paragraph()
-p_new.text = "\nAMBIENT WAY: Executive Director\n- Human says: 'Proceed' or 'Ship it'\n- AI team evaluates DAG, runs CI matrix, pushes commit\n- Delivers signed receipt + status summary\n- 88% cognitive fatigue eliminated!"
-p_new.font.size = Pt(9)
-p_new.font.color.rgb = hex_to_rgb("#065F46")
+# Card 2: Bottom Left (The Ambient Director - Green)
+c_new = add_card(s7, 0.8, 4.25, 4.2, 2.8, "#F0FDF4", "#10B981")
+tn = c_new.text_frame
+p = tn.paragraphs[0]
+p.text = "NEW WAY: Ambient Autonomy"
+p.font.bold = True
+p.font.size = Pt(11.5)
+p.font.color.rgb = hex_to_rgb("#059669")
 
-s8.shapes.add_picture(d_load, Inches(5.2), Inches(1.35), width=Inches(7.333))
+new_bullets = [
+    ("Executive Intent", "Human gives high-level directive: 'Ship it' or 'Proceed'."),
+    ("Autonomous Execution", "Context DAG routes state, executes 48/48 CI matrix."),
+    ("Reversible Safety", "One-button rollback safety net + signed receipts."),
+    ("Proven Result", "-88% cognitive mental fatigue eliminated!")
+]
+for title, desc in new_bullets:
+    p = tn.add_paragraph()
+    p.text = f"- {title}: {desc}"
+    p.font.size = Pt(9.2)
+    p.font.color.rgb = hex_to_rgb("#065F46")
+
+# Right Side Chart
+s7.shapes.add_picture(d_load, Inches(5.2), Inches(1.35), width=Inches(7.333))
 
 # ------------------------------------------------------------------------------
-# SLIDE 9: ARCHITECTURAL BLUEPRINT
+# SLIDE 8: ARCHITECTURAL BLUEPRINT (INTUITIVE & GRAPHICAL DIAGRAM)
 # ------------------------------------------------------------------------------
-s9 = prs.slides.add_slide(blank_layout)
-add_header(s9, "Production Tech Stack & Live Cloud Bridge", "Tech Showcase", "Real-world infrastructure proven across GitHub Actions and AWS Project us-east-2 (966273137102)")
+s8 = prs.slides.add_slide(blank_layout)
+add_header(s8, "Production Tech Stack & Cloud Architecture", "Tech Showcase", "Real-world infrastructure connecting client reflex, CI/CD factory, and AWS us-east-2 (966273137102)")
 
-tech_blocks = [
-    ("Reflex Execution Layer", "- Sub-second local execution for fast syntax parsing\n- Instant regex gates and pre-flight environment probes\n- Real-time telemetry packet visualizer", "#0284C7", 0.8, 1.4),
-    ("GitHub CI/CD Automation", "- 4 Automated robotic jobs (AST, Secrets, Matrix, Tests)\n- ubuntu-latest continuous integration runners\n- Ed25519 SSH key signing for live Git pushes", "#7C3AED", 4.85, 1.4),
-    ("AWS Cloud Core (us-east-2)", "- Lambda HTTPS Gateway with SHA-256 header verification\n- Bedrock Claude Sonnet 4.6 Mantle Converse API\n- Step Functions state machines & KMS S3 bucket", "#D97706", 8.9, 1.4),
-    ("AI Knowledge & Database", "- Vector Database with cosine similarity search\n- Knowledge Graph with Cypher multi-hop traversals\n- Context DAG memory indexing & skill registry", "#059669", 0.8, 4.3),
-    ("Deterministic Security Shield", "- Pre-flight regex auditor guarantees zero secret leakage\n- Cryptographic signature check for cloud dispatch\n- Isolated branch execution per worker task", "#DC2626", 4.85, 4.3),
-    ("Executive Synthesis", "- Automated 1-page visual summary guides\n- Cryptographic telemetry receipts\n- Autonomous audit logging and status streams", "#475569", 8.9, 4.3),
+# Embed graphical tech stack diagram
+s8.shapes.add_picture(d_stack, Inches(0.8), Inches(1.35), width=Inches(8.2))
+
+# Right summary card highlighting the 4 core guarantees
+c_stack_summary = add_card(s8, 9.2, 1.35, 3.333, 5.7, "#F8FAFC", "#0284C7")
+tss = c_stack_summary.text_frame
+p = tss.paragraphs[0]
+p.text = "Architectural Guarantees"
+p.font.bold = True
+p.font.size = Pt(12)
+p.font.color.rgb = hex_to_rgb("#0369A1")
+
+stack_takeaways = [
+    ("Tier 1: Sub-Second Reflex", "Local AST parsing & regex filters absorb routine syntax probes before cloud API invocation.", "#0284C7"),
+    ("Tier 2: Deterministic CI", "48/48 automated assertions on clean-room virtual runners before merge.", "#7C3AED"),
+    ("Tier 3: AWS us-east-2", "Lambda HTTPS gateway, Step Functions state machine, Bedrock Claude Sonnet, and KMS S3.", "#D97706"),
+    ("Tier 4: Cognitive Memory", "Vector DB cosine embeddings + Knowledge Graph Cypher multi-hop traversal.", "#059669"),
 ]
 
-for title, desc, col, left, top in tech_blocks:
-    c = add_card(s9, left, top, 3.6, 2.65, "#FFFFFF", col)
-    tf = c.text_frame
-    p = tf.paragraphs[0]
-    p.text = title
+for title, desc, col in stack_takeaways:
+    p = tss.add_paragraph()
+    p.text = f"\n{title}"
     p.font.bold = True
-    p.font.size = Pt(11)
+    p.font.size = Pt(9.5)
     p.font.color.rgb = hex_to_rgb(col)
-    p2 = tf.add_paragraph()
+    
+    p2 = tss.add_paragraph()
     p2.text = desc
-    p2.font.size = Pt(8.8)
+    p2.font.size = Pt(8.5)
     p2.font.color.rgb = hex_to_rgb("#334155")
-    p2.line_spacing = 1.25
 
 # ------------------------------------------------------------------------------
-# SLIDE 10: CONCLUSION & FUTURE VISION
+# SLIDE 9: CONCLUSION & FUTURE VISION
 # ------------------------------------------------------------------------------
-s10 = prs.slides.add_slide(blank_layout)
+s9 = prs.slides.add_slide(blank_layout)
 
-end_card = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9))
+end_card = s9.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.8), Inches(11.733), Inches(5.9))
 end_card.fill.solid()
 end_card.fill.fore_color.rgb = hex_to_rgb("#0F172A")
 end_card.line.color.rgb = hex_to_rgb("#10B981")
 end_card.line.width = Pt(2.5)
 
 tf_end = end_card.text_frame
+setup_text_frame(tf_end)
 tf_end.vertical_anchor = MSO_ANCHOR.MIDDLE
 
 p = tf_end.paragraphs[0]
