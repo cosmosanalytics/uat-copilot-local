@@ -463,13 +463,6 @@ p3.font.size = Pt(13)
 p3.font.color.rgb = hex_to_rgb("#94A3B8")
 p3.alignment = PP_ALIGN.CENTER
 
-p4 = c_tf.add_paragraph()
-p4.text = "\nSimple  *  Intuitive  *  Graphical  *  Fun  *  Autonomous"
-p4.font.size = Pt(13)
-p4.font.bold = True
-p4.font.color.rgb = hex_to_rgb("#34D399")
-p4.alignment = PP_ALIGN.CENTER
-
 # ------------------------------------------------------------------------------
 # SLIDE 2: ROADMAP OVERVIEW
 # ------------------------------------------------------------------------------
@@ -528,7 +521,7 @@ bullets_l = [
     ("Concept", "One giant prompt attempting to be architect, coder, tester, and deployer simultaneously."),
     ("The Pain Point", "Context rot: as conversations grew past 50 turns, the lone agent forgot previous constraints and hallucinated."),
     ("Bottleneck", "Linear thinking with 0 peer review. If the model made a false assumption at step 1, the entire codebase broke."),
-    ("Fun Analogy", "Asking a single intern to build a skyscraper, draft legal contracts, and inspect plumbing alone.")
+    ("Key Analogy", "Asking a single intern to build a skyscraper, draft legal contracts, and inspect plumbing alone.")
 ]
 for title, desc in bullets_l:
     p = tl.add_paragraph()
@@ -575,7 +568,7 @@ b_items = [
     ("Layer 1 (Reflex)", "Fast local/edge filter. Handles AST syntax, regex gates, and pre-flight probes with sub-second latency."),
     ("Layer 2 (Deliberation)", "Heavyweight deliberative LLMs (Claude Sonnet 4.6). Engaged only for complex synthesis, algorithmic proofs, and code diffs."),
     ("Layer 3 (Meta-Cognitive)", "The Executive Monitor. Maintains long-term Knowledge Graph memory, verifies goal alignment, and halts runaways."),
-    ("Fun Takeaway", "Stop waking heavy frontier models to verify if a semicolon exists!")
+    ("Core Takeaway", "Stop waking heavy frontier models to verify if a semicolon exists!")
 ]
 for title, desc in b_items:
     p = tbl.add_paragraph()
@@ -605,7 +598,7 @@ f_items = [
     ("Deterministic Gates", "AI is probabilistic; code execution is deterministic. The factory wraps LLMs in rigid 48/48 CI matrix tests."),
     ("Automated Testing VM", "GitHub Actions runners act as robotic inspectors, auditing diffs for secrets and syntax drift before commit."),
     ("Certified Storage", "Verified artifacts are sealed into Amazon S3 with KMS encryption and verifiable attestation receipts."),
-    ("Fun Takeaway", "Treat prompts like machine tooling, not creative writing!")
+    ("Core Takeaway", "Treat prompts like machine tooling, not creative writing!")
 ]
 for title, desc in f_items:
     p = tfl.add_paragraph()
@@ -634,7 +627,7 @@ amb_items = [
     ("Zero Context Bloat", "Instead of dumping 100,000 tokens into every turn, context is managed as an active Directed Acyclic Graph (DAG)."),
     ("Evolution to Skills", "When an agent discovers a reliable workflow, it packages it into a permanent SKILL.md so it never has to re-learn it."),
     ("Reversible Safety", "Total psychological safety: any change can be rolled back in one click via atomic Git branches."),
-    ("Fun Takeaway", "The ultimate luxury in AI is not a chatbox - it's not having to chat at all!")
+    ("Core Takeaway", "The ultimate luxury in AI is not a chatbox - it's not having to chat at all!")
 ]
 for title, desc in amb_items:
     p = tal.add_paragraph()
