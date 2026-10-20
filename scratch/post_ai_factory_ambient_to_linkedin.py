@@ -17,7 +17,7 @@ MEMBER_URN = 'urn:li:person:muZwZNN9P9'
 
 POST_TEXT = """The AI Factory meets Ambient Autonomy: Minimizing Human Cognitive Load from Development to Cloud Deployment! ⚡☁️
 
-Operating multi-agent software organizations shouldn't overload human cognitive bandwidth. We unified the AI Factory with Ambient AI ergonomics into a single browser-native studio:
+Operating multi-agent software organizations shouldn't overload human cognitive bandwidth. I unified the AI Factory with Ambient AI ergonomics into a single browser-native studio:
 
 🏭 AI Factory Assembly Workers: Dialectical worker minds (Architect, Coder, Tester, Security Guard) break complex requirements into atomic micro-tasks (<50 lines) with live AST validation and zero context bloat.
 🐙 Ambient GitHub CI/CD: Automated 48/48 CI matrix testing, CodeQL/Trivy security scans, and clean-room runner VMs.
@@ -55,7 +55,7 @@ def publish():
         }
     }
 
-    print("Publishing AI Factory & Ambient CI/CD summary to LinkedIn...")
+    print("Publishing AI Factory & Ambient CI/CD summary to LinkedIn with 'I'...")
     res = requests.post(url, headers=headers, json=payload)
     print("Status code:", res.status_code)
     print("Response:", res.text)
