@@ -1,0 +1,94 @@
+{
+  "structured_info": {
+    "title": "Model Predictive Control (Receding Horizon Control)",
+    "summary": "Optimizes a finite prediction horizon N_p while applying only the first control step u(k).",
+    "control_horizon": "N_c (Control moves computed)",
+    "prediction_horizon": "N_p (Look-ahead output prediction trajectory)",
+    "objective_function": "min J = sum(||w_x * (r(k+i) - y(k+i))||^2) + sum(||w_u * Delta u(k+j)||^2)",
+    "invariants": [
+      "Actuator Slew Rate Bound: |Delta u(k)| <= Delta u_max (prevents mechanical shock)",
+      "Manipulated Variable Ceiling: u_min <= u(k) <= u_max",
+      "State Safety Envelope: y_min <= y(k) <= y_max",
+      "Terminal Stability Invariant: x(k + N_p) in X_terminal"
+    ],
+    "execution_steps": [
+      "1. State Ingestion: Sample plant state vector x(k) from sensors",
+      "2. Trajectory Projection: Predict future outputs y(k+i) over prediction horizon N_p",
+      "3. Constrained Optimization: Solve QP subject to state and input inequality constraints",
+      "4. Boundary Verification: Inspect optimal trajectory against invariant tripwires",
+      "5. Receding Horizon Dispatch: Apply first control input u*(k) to actuator",
+      "6. Horizon Step: Advance time k <- k + 1 and repeat"
+    ],
+    "tripwires": [
+      "QP Solver Infeasibility -> Trigger Safe Fallback Controller",
+      "Actuator Rate Violation -> Clamp Delta u to Slew Ceiling",
+      "State Constraint Exceeded -> Emergency Trip & Hold Safe State"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "START_NODE",
+      "label": "Sensor Telemetry Ingestion [x(k)]",
+      "type": "intake",
+      "formula": "x(k) = C*x_hat + e"
+    },
+    {
+      "id": "HORIZON_PRED",
+      "label": "State Trajectory Prediction [N_p]",
+      "type": "optimizer",
+      "formula": "y_pred = A^i * x(k)"
+    },
+    {
+      "id": "QP_OPTIMIZER",
+      "label": "Constrained QP Solver [min J]",
+      "type": "optimizer",
+      "formula": "min sum(e^T Q e + Delta u^T R Delta u)"
+    },
+    {
+      "id": "FEASIBILITY_CHECK",
+      "label": "Feasibility & Invariant Check",
+      "type": "decision",
+      "formula": "u_min <= u <= u_max & |Delta u| <= Delta u_max"
+    },
+    {
+      "id": "TRIPWIRE_FALLBACK",
+      "label": "TRIPWIRE: Safe Hold / Infeasible Abort",
+      "type": "tripwire",
+      "formula": "u(k) = u_safe, Alert SIRT"
+    },
+    {
+      "id": "ACTUATOR_DISPATCH",
+      "label": "Receding Horizon Dispatch [u*(k)]",
+      "type": "terminal",
+      "formula": "Apply u*(k), Shift k -> k+1"
+    }
+  ],
+  "edges": [
+    {
+      "source": "START_NODE",
+      "target": "HORIZON_PRED",
+      "condition": null
+    },
+    {
+      "source": "HORIZON_PRED",
+      "target": "QP_OPTIMIZER",
+      "condition": null
+    },
+    {
+      "source": "QP_OPTIMIZER",
+      "target": "FEASIBILITY_CHECK",
+      "condition": null
+    },
+    {
+      "source": "FEASIBILITY_CHECK",
+      "target": "TRIPWIRE_FALLBACK",
+      "condition": "Constraint Violated OR Infeasible"
+    },
+    {
+      "source": "FEASIBILITY_CHECK",
+      "target": "ACTUATOR_DISPATCH",
+      "condition": "All Invariants Satisfied"
+    }
+  ],
+  "mermaid": "flowchart TD\n    START_NODE[\"Sensor Telemetry Ingestion [x(k)]<br/><small><i>x(k) = C*x_hat + e</i></small>\"]\n    HORIZON_PRED[\"State Trajectory Prediction [N_p]<br/><small><i>y_pred = A^i * x(k)</i></small>\"]\n    QP_OPTIMIZER[\"Constrained QP Solver [min J]<br/><small><i>min sum(e^T Q e + Delta u^T R Delta u)</i></small>\"]\n    FEASIBILITY_CHECK{\"Feasibility & Invariant Check<br/><small><i>u_min <= u <= u_max & |Delta u| <= Delta u_max</i></small>\"}\n    TRIPWIRE_FALLBACK[\"\ud83d\uded1 TRIPWIRE: Safe Hold / Infeasible Abort<br/><small><i>u(k) = u_safe, Alert SIRT</i></small>\"]\n    ACTUATOR_DISPATCH[\"Receding Horizon Dispatch [u*(k)]<br/><small><i>Apply u*(k), Shift k -> k+1</i></small>\"]\n    START_NODE --> HORIZON_PRED\n    HORIZON_PRED --> QP_OPTIMIZER\n    QP_OPTIMIZER --> FEASIBILITY_CHECK\n    FEASIBILITY_CHECK -- \"Constraint Violated OR Infeasible\" --> TRIPWIRE_FALLBACK\n    FEASIBILITY_CHECK -- \"All Invariants Satisfied\" --> ACTUATOR_DISPATCH\n\n    classDef intake fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;\n    classDef optimizer fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#15803d;\n    classDef decision fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#b45309;\n    classDef tripwire fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#991b1b;\n    classDef terminal fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#1e293b;\n    class START_NODE intake;\n    class HORIZON_PRED optimizer;\n    class QP_OPTIMIZER optimizer;\n    class FEASIBILITY_CHECK decision;\n    class TRIPWIRE_FALLBACK tripwire;\n    class ACTUATOR_DISPATCH terminal;"
+}
