@@ -291,8 +291,8 @@ HTML_CONTENT = """<!DOCTYPE html>
     <div class="thesis-card">
       <div class="thesis-icon">🧭</div>
       <div class="thesis-text">
-        <h2>The Core Axiom of Ground Truth</h2>
-        <p><strong>A World Invariant is what the environment strictly enforces</strong>—independent of what an agent wishes to do. If the source text lacks concrete numbers, never invent them. Ground truth means extracting the exact mathematical boundaries, universal negations, and tripwires that exist in reality.</p>
+        <h2>The Golden Principle of Ground Truth</h2>
+        <p><strong>Capture the essentials of the text so that interpretation will never deviate away from the ground truth.</strong> Downstream interpretation naturally drifts into hallucination when unconstrained. Extracting irreducible world invariants creates an unbreakable contract that keeps agent reasoning permanently grounded.</p>
       </div>
     </div>
 

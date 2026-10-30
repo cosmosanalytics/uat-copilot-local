@@ -105,9 +105,16 @@ p3.font.bold = True
 p3.font.color.rgb = BLUE_ACCENT
 p3.alignment = PP_ALIGN.CENTER
 
+p_axiom = tf1.add_paragraph()
+p_axiom.text = "\n⭐ “The principle is to capture the essentials of the text so that interpretation will never deviate away from the ground truth.”"
+p_axiom.font.size = Pt(15)
+p_axiom.font.bold = True
+p_axiom.font.color.rgb = AMBER_WARM
+p_axiom.alignment = PP_ALIGN.CENTER
+
 p4 = tf1.add_paragraph()
-p4.text = "\nWhy AI Agents Fail in the Real World — and How Root Invariants Turn Hallucination into Deterministic Reliability."
-p4.font.size = Pt(14.5)
+p4.text = "Why AI Agents Fail in the Real World — and How Root Invariants Turn Hallucination into Deterministic Reliability."
+p4.font.size = Pt(13)
 p4.font.color.rgb = TEXT_MUTED
 p4.alignment = PP_ALIGN.CENTER
 
@@ -123,24 +130,50 @@ p5.alignment = PP_ALIGN.CENTER
 # ==========================================
 slide2 = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_background(slide2)
-add_header(slide2, "The Core Principle: What is a World Invariant?", 
-           subtitle="Understanding why traditional prompting hallucinates and how ground truth anchors agent execution.")
+add_header(slide2, "The Golden Principle: Anchoring Interpretation to Ground Truth", 
+           subtitle="Capturing the irreducible essentials so that downstream agent interpretation never drifts or hallucinates.")
+
+# Top Golden Axiom Banner
+banner2 = slide2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.5), Inches(11.733), Inches(1.05))
+banner2.fill.solid()
+banner2.fill.fore_color.rgb = RGBColor(254, 249, 195)  # Amber 50
+banner2.line.color.rgb = AMBER_WARM
+banner2.line.width = Pt(1.5)
+
+tf_b2 = banner2.text_frame
+tf_b2.word_wrap = True
+pb1 = tf_b2.paragraphs[0]
+pb1.text = "⭐ THE GOLDEN AXIOM OF GROUND TRUTH"
+pb1.font.size = Pt(10)
+pb1.font.bold = True
+pb1.font.color.rgb = RGBColor(180, 83, 9)
+
+pb2 = tf_b2.add_paragraph()
+pb2.text = "“The principle is to capture the essentials of the text so that interpretation will never deviate away from the ground truth.”"
+pb2.font.size = Pt(13)
+pb2.font.bold = True
+pb2.font.color.rgb = NAVY_PRIMARY
+
+pb3 = tf_b2.add_paragraph()
+pb3.text = "Downstream interpretation naturally drifts when unconstrained. Extracting the invariant core creates an unbreakable tether."
+pb3.font.size = Pt(9.5)
+pb3.font.color.rgb = RGBColor(100, 116, 139)
 
 cols_data = [
     ("🚫 Rule 1: Never Hallucinate Constants", 
-     "If a source defines an optimization formula algebraically as J = sum(w*(r-x)^2), DO NOT invent a fake 42.0 kPa ceiling.\n\nGround truth means exact fidelity: keep unspecified bounds algebraic and extract ONLY what exists in the input.",
+     "If a source defines an optimization formula algebraically as J = sum(w*(r-x)^2), DO NOT invent a fake 42.0 kPa ceiling.\n\nKeep unspecified bounds algebraic and extract ONLY what exists in the input.",
      RED_TRIPWIRE, RGBColor(254, 242, 242)),
     ("⚖️ Rule 2: World Physics != Agent Strategy", 
-     "World Invariants are what the ENVIRONMENT enforces (gravity, token expiration, barren soil, federal laws).\n\nAgent Policies are choices the actor makes. Strategy can bend; world invariants never bend for any prompt.",
+     "World Invariants are what the ENVIRONMENT enforces (gravity, token expiration, barren soil, federal laws).\n\nAgent Strategy can adapt; world invariants never bend for any prompt.",
      BLUE_ACCENT, RGBColor(240, 249, 255)),
     ("🛑 Rule 3: Every Invariant Needs a Tripwire", 
-     "An invariant is useless as passive prose. It must be wired into the Directed Acyclic Graph (DAG) as a hard circuit breaker.\n\nIf telemetry crosses the boundary, execution freezes instantly into a deterministic safe fallback.",
+     "An invariant is useless as passive prose. It must be wired into the Directed Acyclic Graph (DAG) as a hard circuit breaker.\n\nIf telemetry crosses the boundary, execution freezes instantly into safe fallback.",
      GREEN_EMERALD, RGBColor(236, 253, 245))
 ]
 
 for idx, (title, desc, b_color, bg_color) in enumerate(cols_data):
     left = Inches(0.8 + idx * 4.0)
-    card = slide2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(1.6), Inches(3.75), Inches(5.2))
+    card = slide2.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(2.72), Inches(3.75), Inches(4.25))
     card.fill.solid()
     card.fill.fore_color.rgb = bg_color
     card.line.color.rgb = b_color
@@ -150,13 +183,13 @@ for idx, (title, desc, b_color, bg_color) in enumerate(cols_data):
     tf.word_wrap = True
     p = tf.paragraphs[0]
     p.text = title
-    p.font.size = Pt(14)
+    p.font.size = Pt(13)
     p.font.bold = True
     p.font.color.rgb = b_color
     
     p_body = tf.add_paragraph()
     p_body.text = f"\n{desc}"
-    p_body.font.size = Pt(11.5)
+    p_body.font.size = Pt(10.5)
     p_body.font.color.rgb = NAVY_PRIMARY
 
 # ==========================================
@@ -491,8 +524,8 @@ p_sum.font.bold = True
 p_sum.font.color.rgb = BLUE_ACCENT
 
 items = [
-    ("1. Always Pair Raw Input with Compiled Ground Truth", 
-     "Showing only the output hides how the agent achieved fidelity. True accountability requires capturing the raw source document and web interface side-by-side with the synthesized DAG."),
+    ("1. The Core Principle: Capture Essentials to Prevent Deviation", 
+     "The fundamental principle is to capture the essentials of the text so that downstream interpretation will never deviate away from the ground truth. Anchoring root invariants eliminates prompt drift across any domain."),
     ("2. Zero Hallucinated Numbers — Respect Algebraic Bounds", 
      "If a source doesn't specify physical constants, keep them algebraic. Inventing 42 kPa or $1.5% from thin air is a catastrophic failure of ground truth."),
     ("3. The 5-Tier Policy Hierarchy Bridges Any Domain", 
