@@ -14,18 +14,19 @@ HEADERS = {
     "X-Restli-Protocol-Version": "2.0.0"
 }
 
-POST_TEXT = """Excited to release Onyx Truth Studio (App 10) 💎✨ — a side-by-side, invariant-grounded reasoning chatbot powered by in-browser WebGPU and Groq LPU!
+POST_TEXT = """Built an Onyx-type chatbot with side-by-side invariant grounding in a clean, crisp Light Mode UI! 💎✨
 
 Key Highlights:
-• 👥 Side-by-Side Invariant Grounding: Paste any document excerpt, policy, or live web URL on the left; reason with strict ground-truth zero-hallucination guardrails on the right.
-• ⚡ Dual Neural Inference: Switch seamlessly between 100% private in-browser WebGPU (Llama-3.2 via WebLLM) and ultra-fast cloud Groq LPU (Llama-3.3-70B at 500+ tok/s).
-• 🕸️ LLM Flowchart DAG Compiler: Prompts the LLM to analyze the source narrative or SOP and renders interactive Mermaid.js decision graphs live in chat.
-• 🚀 100% Client-Side: Single standalone HTML file with zero server dependencies.
+• 🎯 Direct Straight Answers: Gives succinct, direct answers in line 1 for names, amounts, and decisions without fluff or robotic quote walls.
+• ⚖️ OpenJev Invariant Validation: Integrated OpenJev as a programmatic True/False evaluation judge on every answer, computing entailment confidence and citing verified source context anchors.
+• 👥 Side-by-Side Invariant Grounding: Paste any document, policy, or live web URL on the left; reason with strict ground-truth guardrails on the right.
+• ⚡ Dual Neural Inference: Switch seamlessly between 100% private in-browser WebGPU (Llama-3.2 via WebLLM) and sub-second cloud Groq LPU (Llama-3.3-70B).
+• 🕸️ Interactive Flowchart DAGs: Synthesizes narrative dilemmas, actions, and resolutions directly into live Mermaid.js decision graphs.
+• 🚀 100% Client-Side: Single standalone HTML application with responsive mobile tabs (Split / Chat / Story).
 
-🔗 Live Web App: https://cosmosanalytics.github.io/Langchain-test/onyx_truth_chatbot.html
-📁 GitHub Repo: https://github.com/cosmosanalytics/Langchain-test
+🔗 Try the Live Web App: https://cosmosanalytics.github.io/Langchain-test/onyx_truth_chatbot.html
 
-#AI #MachineLearning #WebGPU #WebLLM #Groq #OpenSource #LangChain #ArtificialIntelligence #SoftwareEngineering"""
+#AI #MachineLearning #WebGPU #WebLLM #Groq #OpenJev #LLMEvaluation #GroundTruth #LangChain #SoftwareEngineering"""
 
 payload = {
     "author": MEMBER_URN,
@@ -50,7 +51,6 @@ if response.status_code in (200, 201):
     data = response.json()
     post_id = data.get("id")
     print(f"Post successfully published! Post ID: {post_id}")
-    # Form post URL
     urn_id = post_id.split(":")[-1] if post_id else ""
     print(f"LinkedIn URL: https://www.linkedin.com/feed/update/{post_id}/")
 else:
