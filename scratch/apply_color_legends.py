@@ -1,0 +1,711 @@
+# -*- coding: utf-8 -*-
+"""
+apply_color_legends.py
+Removes the explicit textual tags 'KG', 'CG', and 'BG' from the graph nodes and headers.
+Replaces them with a clean, intuitive color code legend:
+- Indigo: Standard Operating Procedures (What SHOULD happen)
+- Emerald: Call Records & Customer State (What ACTUALLY happened)
+- Orange: Business Goals & Reconciliation (Compares should vs actual)
+- Pink: Policy Drift Feedback Loop (Updates rules)
+- Slate: Operational Outcomes (Compliance, Net Value, Bottlenecks)
+"""
+
+def generate_color_legend_html():
+    return '''<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Center AI Voice Agents Studio | Live Call &amp; Graph Grounding</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Vis.js Network -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+    .vis-network { outline: none; }
+  </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 flex flex-col antialiased overflow-hidden">
+
+  <!-- TOP HEADER & USE CASE SELECTOR -->
+  <header class="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-xs z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-xs font-black text-sm">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">Call Center AI Voice Agents Studio</h1>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider">Live Grounding</span>
+        </div>
+        <p class="text-[11px] text-slate-500 hidden sm:block">Upper: Real-Time Call &bull; Lower: Graph Grounding (SOP Policies + Call Records &rarr; Business Value &amp; Drift)</p>
+      </div>
+    </div>
+
+    <!-- USE CASE SELECTOR -->
+    <div class="flex items-center space-x-1 bg-slate-100 border border-slate-200 p-1 rounded-xl">
+      <span class="text-[10px] font-mono font-bold text-slate-500 px-2 uppercase hidden lg:inline">Scenario:</span>
+      <button onclick="selectUseCase('billing')" id="btn-usecase-billing" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-indigo-700 border border-indigo-200 shadow-xs transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-file-invoice-dollar text-amber-500"></i>
+        <span>1. Billing ($150)</span>
+      </button>
+      <button onclick="selectUseCase('outage')" id="btn-usecase-outage" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-wifi text-sky-500"></i>
+        <span>2. Outage (LOS)</span>
+      </button>
+      <button onclick="selectUseCase('retention')" id="btn-usecase-retention" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-handshake text-emerald-600"></i>
+        <span>3. VIP Retention ($18k)</span>
+      </button>
+      <button onclick="selectUseCase('cross')" id="btn-usecase-cross" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 border border-transparent transition flex items-center space-x-1.5 bg-gradient-to-r hover:from-indigo-50 hover:to-emerald-50">
+        <i class="fa-solid fa-diagram-project text-indigo-500"></i>
+        <span>🌍 Cross-Usecases</span>
+      </button>
+    </div>
+
+    <!-- Audio Speech Toggle -->
+    <div class="flex items-center space-x-2">
+      <button id="btn-toggle-speech" onclick="toggleVoiceSpeech()" class="px-3 py-1 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1.5">
+        <i id="voice-icon" class="fa-solid fa-volume-high text-emerald-600"></i>
+        <span id="voice-toggle-text">Voice Speech: ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT WORKSPACE: UPPER (CALL) & LOWER (GRAPH WITH COLOR LEGENDS) -->
+  <main class="flex-1 flex flex-col min-h-0 overflow-hidden p-2.5 gap-2">
+
+    <!-- ================================================================= -->
+    <!-- UPPER SIDE: REAL-TIME LIVE CALL CONSOLE (32% Height)              -->
+    <!-- ================================================================= -->
+    <section class="h-[32%] min-h-[195px] bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm flex flex-col shrink-0">
+      
+      <!-- Call Control Bar -->
+      <div class="flex flex-wrap items-center justify-between pb-1.5 border-b border-slate-100 gap-2 shrink-0">
+        <div class="flex items-center space-x-2">
+          <div class="relative">
+            <div class="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-xs shadow-xs">
+              <i class="fa-solid fa-phone-volume animate-pulse"></i>
+            </div>
+            <span class="absolute -top-1 -right-1 flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-black uppercase tracking-wider text-emerald-700">Live Inbound Call</span>
+              <span class="text-slate-300">&bull;</span>
+              <span id="call-timer" class="font-mono text-[11px] text-slate-600 font-bold">00:24</span>
+              <span class="text-slate-300">&bull;</span>
+              <span id="caller-id-pill" class="text-xs font-bold text-slate-900">Caller: Sarah Jenkins (LTV $2,400)</span>
+              <span id="caller-tag" class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">VIP Tier</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Questions Quick Chips -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto text-[11px]">
+          <button onclick="askSampleQuestion('billing')" id="chip-q-billing" class="px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium transition truncate max-w-[210px]">
+            💳 "Waive $150 roaming fee?"
+          </button>
+          <button onclick="askSampleQuestion('outage')" id="chip-q-outage" class="px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium transition truncate max-w-[210px]">
+            🌐 "Red optical light, dispatch tech?"
+          </button>
+          <button onclick="askSampleQuestion('retention')" id="chip-q-retention" class="px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium transition truncate max-w-[210px]">
+            💼 "Cancel $18k enterprise account?"
+          </button>
+        </div>
+
+        <!-- Waveform visualizer -->
+        <div class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 shrink-0">
+          <div id="w-1" class="w-1 h-2.5 bg-emerald-500 rounded-full"></div>
+          <div id="w-2" class="w-1 h-4 bg-emerald-500 rounded-full"></div>
+          <div id="w-3" class="w-1 h-2 bg-emerald-500 rounded-full"></div>
+          <div id="w-4" class="w-1 h-5 bg-emerald-500 rounded-full"></div>
+          <div id="w-5" class="w-1 h-2.5 bg-emerald-500 rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Dialogue Split View: Left = Customer Utterance, Right = AI Voice Agent Response -->
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 pt-1 min-h-0 overflow-y-auto">
+        
+        <!-- Left Box: Transcribed Inbound Customer Audio -->
+        <div class="md:col-span-5 bg-slate-50/70 border border-slate-200 rounded-xl p-2 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-600">Customer Inbound Audio (ASR)</span>
+              </div>
+              <span id="cust-sentiment-badge" class="px-1.5 py-0.2 rounded text-[8px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                Churn Risk: 82%
+              </span>
+            </div>
+            <p id="cust-speech-text" class="text-xs text-slate-800 leading-snug font-medium">
+              &ldquo;I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?&rdquo;
+            </p>
+          </div>
+
+          <!-- Custom Caller Input -->
+          <div class="flex items-center space-x-1.5 mt-1 pt-1 border-t border-slate-200">
+            <input type="text" id="input-custom-call" placeholder="Type custom question..." class="flex-1 px-2 py-0.5 bg-white border border-slate-300 rounded-lg text-[11px] text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+            <button onclick="askCustomCaller()" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition shrink-0">
+              Ask
+            </button>
+          </div>
+        </div>
+
+        <!-- Middle Arrow / Grounding Indicator -->
+        <div class="md:col-span-2 hidden md:flex flex-col items-center justify-center text-center px-1">
+          <div class="p-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 mb-0.5">
+            <i class="fa-solid fa-brain fa-spin text-xs"></i>
+          </div>
+          <span class="text-[8.5px] font-mono font-bold text-indigo-700 uppercase">Automated Grounding</span>
+          <span class="text-[7.5px] text-slate-400">SOP Rule + Call State</span>
+        </div>
+
+        <!-- Right Box: Grounded AI Voice Agent Response -->
+        <div class="md:col-span-5 bg-emerald-50/50 border border-emerald-200 rounded-xl p-2 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">AI Voice Agent (Grounded)</span>
+                <span id="agent-sop-match-badge" class="px-1 py-0.2 rounded text-[8px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">SOP-04 Sec 4.2</span>
+              </div>
+              <button onclick="speakCurrentResponse()" class="text-[9.5px] text-emerald-700 hover:underline font-bold flex items-center space-x-1">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>Replay Voice</span>
+              </button>
+            </div>
+            <p id="agent-speech-text" class="text-xs text-slate-900 leading-snug font-medium">
+              &ldquo;Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.&rdquo;
+            </p>
+          </div>
+
+          <!-- Real-Time Decision Metric Tag -->
+          <div class="flex items-center justify-between mt-1 pt-1 border-t border-emerald-200 text-[9.5px]">
+            <span class="text-slate-500" id="grounding-audit-note">&bull; Grounding: SARAH_JENKINS_LTV &gt; $2,000 &bull; Concession: $150 &le; $250</span>
+            <span class="text-emerald-700 font-bold" id="net-roi-tag">+$2,250 Net Value</span>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- LOWER SIDE: SPATIAL NETWORK GRAPH WITH COLOR CODE LEGENDS (68%)   -->
+    <!-- ================================================================= -->
+    <section class="flex-1 min-h-[400px] bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+      
+      <!-- COLOR CODE LEGENDS HEADER (NO CLUNKY TAGS!) -->
+      <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        
+        <!-- Clean Color Legend Pills -->
+        <div class="flex flex-wrap items-center gap-3 text-[11px]">
+          <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mr-0.5">Color Legends:</span>
+          
+          <!-- Indigo: SOPs / What should happen -->
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200">
+            <span class="w-2.5 h-2.5 rounded bg-indigo-600 shadow-2xs"></span>
+            <span class="font-bold text-indigo-900">SOP Rulebook &amp; Limits</span>
+            <span class="text-[10px] text-indigo-700 font-medium hidden sm:inline">(What SHOULD happen)</span>
+          </div>
+
+          <!-- Emerald: Calls / What actually happened -->
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 shadow-2xs"></span>
+            <span class="font-bold text-emerald-900">Call Records &amp; State</span>
+            <span class="text-[10px] text-emerald-700 font-medium hidden sm:inline">(What ACTUALLY happened)</span>
+          </div>
+
+          <!-- Orange: Business Reconciliation -->
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200">
+            <span class="w-2.5 h-2.5 rounded bg-amber-600 shadow-2xs"></span>
+            <span class="font-bold text-amber-900">Reconciliation &amp; Goals</span>
+            <span class="text-[10px] text-amber-700 font-medium hidden sm:inline">(Compares should vs actual)</span>
+          </div>
+
+          <!-- Pink: Feedback Loop -->
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-pink-50 border border-pink-200">
+            <span class="w-2.5 h-2.5 rounded-sm bg-pink-600 shadow-2xs"></span>
+            <span class="font-bold text-pink-900">Policy Drift Loop</span>
+            <span class="text-[10px] text-pink-700 font-medium hidden sm:inline">(Updates rulebook)</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <span id="active-call-highlight-label" class="text-xs text-emerald-700 font-bold hidden xl:inline">
+            &bull; Sarah Jenkins &rarr; SOP-04 &rarr; +$2,250
+          </span>
+          <button onclick="resetGraphView()" class="px-2.5 py-0.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-700 shadow-2xs">
+            <i class="fa-solid fa-arrows-to-dot mr-1"></i> Center
+          </button>
+        </div>
+      </div>
+
+      <!-- VIS.JS SPATIAL GRAPH CANVAS (LIGHT #f8fafc) -->
+      <div class="flex-1 relative bg-slate-50" id="graph-wrapper">
+        <div id="unified-graph-canvas" class="w-full h-full"></div>
+
+        <!-- Floating Edge Decoder in Canvas Corner -->
+        <div class="absolute bottom-2 left-2 bg-white/95 border border-slate-200 rounded-xl p-2 text-[10px] text-slate-600 shadow-xs pointer-events-none space-y-1">
+          <div class="font-bold text-slate-800 text-[10px] flex items-center space-x-1.5">
+            <i class="fa-solid fa-circle-nodes text-indigo-600"></i>
+            <span>Interactive Multi-Node Network</span>
+          </div>
+          <div class="flex items-center space-x-3 text-[9.5px]">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-indigo-600"></span>Upper-Left: SOPs</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span>Upper-Right: Calls</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-600"></span>Center: ROI</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-slate-600"></span>Bottom: 4 Outcomes</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT ENGINE WITH CLEAN NO-TAG NODES & COLOR CODED SCHEMAS -->
+  <script>
+    let activeScenarioKey = "billing";
+    let voiceSpeechEnabled = true;
+    let callTimerInterval = null;
+    let callSeconds = 24;
+    let networkInstance = null;
+    let currentAgentText = "";
+
+    const SCENARIOS = {
+      billing: {
+        key: "billing",
+        callerId: "Caller: Sarah Jenkins (LTV $2,400)",
+        tag: "VIP Tier",
+        sentiment: "Churn Risk: 82%",
+        sopMatch: "SOP-04 Sec 4.2",
+        question: "I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?",
+        agentSpeech: "Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.",
+        audit: "• Grounding: SARAH_JENKINS_LTV > $2,000 • Concession: $150 ≤ $250 limit",
+        roi: "+$2,250 Net Value",
+        highlightLabel: "Sarah Jenkins → SOP-04 → +$2,250 ROI",
+        // Actual multi-nodes for Billing (NO CLUNKY KG/CG/BG TAGS)
+        nodes: [
+          // ==========================================
+          // UPPER-LEFT: SOPS & RULES (BLUE/INDIGO)
+          // ==========================================
+          { id: "sop_main", x: -380, y: -170, label: "SOP-04: Inbound Billing\\n& Roaming Disputes", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "rule_tier1", x: -480, y: -90, label: "Tier-1 Agent Limit\\n$50 Standard Discretion", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "rule_vip", x: -280, y: -90, label: "VIP Hardship Exception\\nClause 4.2: Up to $250", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "role_agent", x: -380, y: -20, label: "Role: Tier-1 Voice Agent", shape: "dot", size: 13, color: { background: "#6366f1", border: "#312e81" }, font: { color: "#1e1b4b", size: 10 } },
+
+          // ==========================================
+          // UPPER-RIGHT: CALL RECORDS & EVENTS (GREEN/EMERALD)
+          // ==========================================
+          { id: "cust_entity", x: 380, y: -170, label: "Customer: Sarah Jenkins\\n(Account #48291 • LTV $2,400)", shape: "dot", size: 15, color: { background: "#10b981", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11.5 } },
+          { id: "event_dispute", x: 270, y: -90, label: "Event: Disputed $150\\nRoaming Fee on Statement", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10 } },
+          { id: "dec_action", x: 490, y: -90, label: "Decision: Full $150 Waiver\\n(Clause 4.2 Exception Applied)", shape: "box", color: { background: "#a7f3d0", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2 },
+          { id: "cust_history", x: 380, y: -20, label: "Diary: 6 yrs tenure • 0 prior claims\\nChurn Risk: 82% if denied", shape: "ellipse", color: { background: "#dcfce7", border: "#10b981" }, font: { color: "#064e3b", size: 10 } },
+
+          // ==========================================
+          // CENTER-MIDDLE: RECONCILIATION & GOALS (ORANGE/AMBER)
+          // ==========================================
+          { id: "reconcile_engine", x: 0, y: -20, label: "Reconciliation Engine\\nConcession $150 vs LTV $2,400", shape: "box", color: { background: "#ffedd5", border: "#ea580c" }, font: { color: "#7c2d12", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "goal_retention", x: -90, y: 55, label: "Goal: Protect Customer LTV", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+          { id: "kpi_fcr", x: 90, y: 55, label: "KPI: 100% First Call Resolution", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+
+          // ==========================================
+          // BOTTOM ROW: 4 IMPROVEMENT POTENTIALS
+          // ==========================================
+          { id: "out_drift", x: -420, y: 175, label: "Policy drift\\n47 repeated exceptions\\n→ Update SOP-04 ($50→$150)", shape: "box", color: { background: "#fdf2f8", border: "#db2777" }, font: { color: "#831843", bold: true, size: 10.5 }, borderWidth: 2.5 },
+          { id: "out_compliance", x: -140, y: 175, label: "Compliance gap\\nPolicy followed?\\n100% Validated under Sec 4.2", shape: "box", color: { background: "#f8fafc", border: "#64748b" }, font: { color: "#0f172a", bold: true, size: 10.5 }, borderWidth: 2 },
+          { id: "out_netvalue", x: 140, y: 175, label: "Net value\\nValue vs cost\\n+$2,250 Net Preserved ($2.4k-$150)", shape: "box", color: { background: "#ecfdf5", border: "#059669" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2.5 },
+          { id: "out_bottlenecks", x: 420, y: 175, label: "Bottlenecks\\nWhere steps stall\\n42s AHT (Eliminated 45s hold)", shape: "box", color: { background: "#f0f9ff", border: "#0284c7" }, font: { color: "#0369a1", bold: true, size: 10.5 }, borderWidth: 2 }
+        ],
+        edges: [
+          // Blue SOP internal edges
+          { from: "sop_main", to: "rule_tier1", label: "governs", color: { color: "#4f46e5" } },
+          { from: "sop_main", to: "rule_vip", label: "governs", color: { color: "#4f46e5" } },
+          { from: "role_agent", to: "rule_tier1", label: "authorized", color: { color: "#4f46e5" } },
+
+          // Green Call internal edges
+          { from: "cust_entity", to: "event_dispute", label: "incurred", color: { color: "#10b981" } },
+          { from: "event_dispute", to: "dec_action", label: "resolved_by", color: { color: "#10b981" } },
+          { from: "cust_entity", to: "cust_history", label: "profile", color: { color: "#10b981" } },
+
+          // Cross-Graph: Blue & Green flow into Orange Center
+          { from: "rule_vip", to: "reconcile_engine", label: "conforms_to_rule", color: { color: "#4f46e5" }, width: 2 },
+          { from: "dec_action", to: "reconcile_engine", label: "evaluates_action", color: { color: "#10b981" }, width: 2 },
+          { from: "reconcile_engine", to: "goal_retention", color: { color: "#f97316" } },
+          { from: "reconcile_engine", to: "kpi_fcr", color: { color: "#f97316" } },
+
+          // Orange Center flows down to Bottom 4 Improvement Potentials
+          { from: "reconcile_engine", to: "out_drift", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_compliance", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_netvalue", color: { color: "#059669" }, width: 2.5 },
+          { from: "reconcile_engine", to: "out_bottlenecks", color: { color: "#0284c7" }, width: 2 },
+
+          // PINK DASHED FEEDBACK LOOP: Policy drift -> SOP root!
+          { from: "out_drift", to: "sop_main", label: "updates_rule", arrows: { to: { enabled: true, scaleFactor: 1.1 } }, dashes: [7, 5], color: { color: "#db2777" }, width: 3.5, smooth: { enabled: true, type: "curvedCW", roundness: 0.28 } }
+        ]
+      },
+
+      outage: {
+        key: "outage",
+        callerId: "Caller: Marcus Vance (Home Office Gigabit)",
+        tag: "Business Pro",
+        sentiment: "Red LOS Hardware Alarm",
+        sopMatch: "SOP-12 Rule 3",
+        question: "My fiber router has had a blinking red optical light for 2 hours and my team is offline. Can you dispatch a tech today?",
+        agentSpeech: "I'm so sorry for the interruption to your home office, Marcus. I just ran real-time line telemetry on your ONT and detected an optical loss of 31.4dB on the fiber drop, indicating an exterior drop cable fault rather than inside hardware. Under SOP-12, I have bypassed the 180s reboot checklist and immediately booked technician dispatch #TX-9041 for today between 1:00 PM and 3:00 PM.",
+        audit: "• Grounding: OPTICAL_LOSS_31.4dB > 28dB • Action: Bypass manual triage checklist",
+        roi: "+$450 Saved • 12s AHT",
+        highlightLabel: "Marcus Vance → SOP-12 → Truck Roll #TX-9041",
+        // Actual multi-nodes for Outage (NO CLUNKY TAGS)
+        nodes: [
+          // Upper-Left: SOP-12 (Blue)
+          { id: "sop_main", x: -380, y: -170, label: "SOP-12: Broadband Hardware\\n& Signal Attenuation", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "rule_restart", x: -480, y: -90, label: "Standard Manual Checklist\\n180s Phone Reboot Sequence", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "rule_opt", x: -280, y: -90, label: "Rule 3 Telemetry Exception\\nOptical Loss > 28dB Bypass", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "role_dispatch", x: -380, y: -20, label: "Role: Field Dispatcher", shape: "dot", size: 13, color: { background: "#6366f1", border: "#312e81" }, font: { color: "#1e1b4b", size: 10 } },
+
+          // Upper-Right: Marcus Outage (Green)
+          { id: "cust_entity", x: 380, y: -170, label: "Customer: Marcus Vance\\n(Gigabit Fiber Pro • 3.5 yrs)", shape: "dot", size: 15, color: { background: "#10b981", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11.5 } },
+          { id: "event_los", x: 270, y: -90, label: "Event: Red LOS Alarm\\nONT Optical Signal Loss", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10 } },
+          { id: "dec_action", x: 490, y: -90, label: "Decision: Instant Truck Roll\\n(#TX-9041 Confirmed)", shape: "box", color: { background: "#a7f3d0", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2 },
+          { id: "telemetry_node", x: 380, y: -20, label: "Telemetry: 31.4dB Line Loss\\nExterior Physical Drop Fault", shape: "ellipse", color: { background: "#dcfce7", border: "#10b981" }, font: { color: "#064e3b", size: 10 } },
+
+          // Center-Middle: Reconciliation (Orange)
+          { id: "reconcile_engine", x: 0, y: -20, label: "Reconciliation Engine\\nBypasses 180s Checklist via Telemetry", shape: "box", color: { background: "#ffedd5", border: "#ea580c" }, font: { color: "#7c2d12", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "goal_uptime", x: -90, y: 55, label: "Goal: 99.9% Uptime SLA", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+          { id: "kpi_aht12", x: 90, y: 55, label: "KPI: 12s AHT", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+
+          // Bottom Row: 4 Outcomes
+          { id: "out_drift", x: -420, y: 175, label: "Policy drift\\nStandardize auto-triage\\nBypass manual 180s reboot", shape: "box", color: { background: "#fdf2f8", border: "#db2777" }, font: { color: "#831843", bold: true, size: 10.5 }, borderWidth: 2.5 },
+          { id: "out_compliance", x: -140, y: 175, label: "Compliance gap\\nPolicy followed?\\nTelemetry Loss > 28dB Validated", shape: "box", color: { background: "#f8fafc", border: "#64748b" }, font: { color: "#0f172a", bold: true, size: 10.5 }, borderWidth: 2 },
+          { id: "out_netvalue", x: 140, y: 175, label: "Net value\\nValue vs cost\\n+$450 Field Saved (Zero repeat rolls)", shape: "box", color: { background: "#ecfdf5", border: "#059669" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2.5 },
+          { id: "out_bottlenecks", x: 420, y: 175, label: "Bottlenecks\\nWhere steps stall\\n12s AHT (Eliminated 168s hold)", shape: "box", color: { background: "#f0f9ff", border: "#0284c7" }, font: { color: "#0369a1", bold: true, size: 10.5 }, borderWidth: 2 }
+        ],
+        edges: [
+          { from: "sop_main", to: "rule_restart", color: { color: "#4f46e5" } },
+          { from: "sop_main", to: "rule_opt", color: { color: "#4f46e5" } },
+          { from: "role_dispatch", to: "rule_opt", color: { color: "#4f46e5" } },
+
+          { from: "cust_entity", to: "event_los", color: { color: "#10b981" } },
+          { from: "event_los", to: "telemetry_node", color: { color: "#10b981" } },
+          { from: "telemetry_node", to: "dec_action", color: { color: "#10b981" } },
+
+          { from: "rule_opt", to: "reconcile_engine", label: "conforms_to_rule", color: { color: "#4f46e5" }, width: 2 },
+          { from: "dec_action", to: "reconcile_engine", label: "dispatched", color: { color: "#10b981" }, width: 2 },
+          { from: "reconcile_engine", to: "goal_uptime", color: { color: "#f97316" } },
+          { from: "reconcile_engine", to: "kpi_aht12", color: { color: "#f97316" } },
+
+          { from: "reconcile_engine", to: "out_drift", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_compliance", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_netvalue", color: { color: "#059669" }, width: 2.5 },
+          { from: "reconcile_engine", to: "out_bottlenecks", color: { color: "#0284c7" }, width: 2 },
+
+          { from: "out_drift", to: "sop_main", label: "updates_rule", arrows: { to: { enabled: true, scaleFactor: 1.1 } }, dashes: [7, 5], color: { color: "#db2777" }, width: 3.5, smooth: { enabled: true, type: "curvedCW", roundness: 0.28 } }
+        ]
+      },
+
+      retention: {
+        key: "retention",
+        callerId: "Caller: Elena Rostova (Apex Logistics Corp)",
+        tag: "Enterprise Tier",
+        sentiment: "Churn Risk: 94%",
+        sopMatch: "SOP-28 Clause 2.4",
+        question: "We have been a loyal client for 8 years, but our renewal rate jumped 25%. I want to cancel our $18,000/yr enterprise account today.",
+        agentSpeech: "Elena, thank you for being a cornerstone enterprise partner with us for over 8 years. We deeply value Apex Logistics. In accordance with SOP-28 Executive Retention guidelines for tenured partners, I am authorized to lock in a 15% discount across a 2-year renewal term, preserving your annual rate at $15,300 with dedicated SLA guarantees. May I send over the addendum for your digital signature right now?",
+        audit: "• Grounding: TENURE_8.4YRS & ARR_$18K • Offer: 15% Max on 2-Yr Commitment",
+        roi: "+$27,900 ARR Preserved",
+        highlightLabel: "Apex Logistics → SOP-28 → +$27,900 ARR",
+        // Actual multi-nodes for Retention (NO CLUNKY TAGS)
+        nodes: [
+          // Upper-Left: SOP-28 (Blue)
+          { id: "sop_main", x: -380, y: -170, label: "SOP-28: Enterprise Contract\\nRetention & Churn Prevention", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "rule_5pct", x: -480, y: -90, label: "Standard Discretionary Limit\\n5% Max Annual Discount", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "rule_15pct", x: -280, y: -90, label: "Clause 2.4 Executive Retention\\n15% Discount on 2-Yr Lock", shape: "ellipse", color: { background: "#e0e7ff", border: "#4f46e5" }, font: { color: "#1e1b4b", size: 10 } },
+          { id: "role_exec", x: -380, y: -20, label: "Role: Executive Director", shape: "dot", size: 13, color: { background: "#6366f1", border: "#312e81" }, font: { color: "#1e1b4b", size: 10 } },
+
+          // Upper-Right: Elena Retention (Green)
+          { id: "cust_entity", x: 380, y: -170, label: "Customer: Apex Logistics\\n($18k ARR • 8.4 yrs client)", shape: "dot", size: 15, color: { background: "#10b981", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11.5 } },
+          { id: "event_churn", x: 270, y: -90, label: "Event: 25% Rate Hike Dispute\\nThreatened Immediate Cancel", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10 } },
+          { id: "dec_action", x: 490, y: -90, label: "Decision: 15% Renewal Approved\\n($15.3k/yr • 2-Yr Agreement)", shape: "box", color: { background: "#a7f3d0", border: "#047857" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2 },
+          { id: "cust_diary", x: 380, y: -20, label: "Diary: Competitor offer on file\\nChurn Risk: 94% without offer", shape: "ellipse", color: { background: "#dcfce7", border: "#10b981" }, font: { color: "#064e3b", size: 10 } },
+
+          // Center-Middle: Reconciliation (Orange)
+          { id: "reconcile_engine", x: 0, y: -20, label: "Reconciliation Engine\\n$2,700 Concession protects $30.6k Value", shape: "box", color: { background: "#ffedd5", border: "#ea580c" }, font: { color: "#7c2d12", bold: true, size: 12 }, borderWidth: 2 },
+          { id: "goal_arr", x: -90, y: 55, label: "Goal: Net ARR Retention", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+          { id: "kpi_contract", x: 90, y: 55, label: "KPI: 2-Year Contract Locked", shape: "ellipse", color: { background: "#ffedd5", border: "#f97316" }, font: { color: "#7c2d12", size: 10 } },
+
+          // Bottom Row: 4 Outcomes
+          { id: "out_drift", x: -420, y: 175, label: "Policy drift\\nTier-1 Quota Audit Approved\\nAutomate VIP renewals", shape: "box", color: { background: "#fdf2f8", border: "#db2777" }, font: { color: "#831843", bold: true, size: 10.5 }, borderWidth: 2.5 },
+          { id: "out_compliance", x: -140, y: 175, label: "Compliance gap\\nPolicy followed?\\nClause 2.4 (15% Approved)", shape: "box", color: { background: "#f8fafc", border: "#64748b" }, font: { color: "#0f172a", bold: true, size: 10.5 }, borderWidth: 2 },
+          { id: "out_netvalue", x: 140, y: 175, label: "Net value\\nValue vs cost\\n+$27,900 ARR Preserved", shape: "box", color: { background: "#ecfdf5", border: "#059669" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2.5 },
+          { id: "out_bottlenecks", x: 420, y: 175, label: "Bottlenecks\\nWhere steps stall\\n58s Negotiation (0s Queue)", shape: "box", color: { background: "#f0f9ff", border: "#0284c7" }, font: { color: "#0369a1", bold: true, size: 10.5 }, borderWidth: 2 }
+        ],
+        edges: [
+          { from: "sop_main", to: "rule_5pct", color: { color: "#4f46e5" } },
+          { from: "sop_main", to: "rule_15pct", color: { color: "#4f46e5" } },
+          { from: "role_exec", to: "rule_15pct", color: { color: "#4f46e5" } },
+
+          { from: "cust_entity", to: "event_churn", color: { color: "#10b981" } },
+          { from: "event_churn", to: "dec_action", color: { color: "#10b981" } },
+          { from: "cust_entity", to: "cust_diary", color: { color: "#10b981" } },
+
+          { from: "rule_15pct", to: "reconcile_engine", label: "authorized_terms", color: { color: "#4f46e5" }, width: 2 },
+          { from: "dec_action", to: "reconcile_engine", label: "terms_accepted", color: { color: "#10b981" }, width: 2 },
+          { from: "reconcile_engine", to: "goal_arr", color: { color: "#f97316" } },
+          { from: "reconcile_engine", to: "kpi_contract", color: { color: "#f97316" } },
+
+          { from: "reconcile_engine", to: "out_drift", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_compliance", color: { color: "#64748b" }, width: 2 },
+          { from: "reconcile_engine", to: "out_netvalue", color: { color: "#059669" }, width: 2.5 },
+          { from: "reconcile_engine", to: "out_bottlenecks", color: { color: "#0284c7" }, width: 2 },
+
+          { from: "out_drift", to: "sop_main", label: "updates_rule", arrows: { to: { enabled: true, scaleFactor: 1.1 } }, dashes: [7, 5], color: { color: "#db2777" }, width: 3.5, smooth: { enabled: true, type: "curvedCW", roundness: 0.28 } }
+        ]
+      },
+
+      cross: {
+        key: "cross",
+        callerId: "Enterprise Call Center AI Overview (All Domains)",
+        tag: "Macro Enterprise",
+        sentiment: "Cross-Domain Orchestration",
+        sopMatch: "Multi-SOP Active",
+        question: "How does the Enterprise AI synthesize Billing, Hardware Outages, and Contract Retention simultaneously?",
+        agentSpeech: "The enterprise architecture co-locates all 3 domains under a unified corporate hub: Billing disputes adhere to SOP-04 financial limits, Broadband outages bypass triage checklists using SOP-12 optical telemetry, and Enterprise accounts receive multi-year retention renewals via SOP-28. Each call reconciles should-be policy against actual caller state to safeguard business ROI.",
+        audit: "• Cross-Domain Synthesis: Billing + Telecom + Enterprise ARR",
+        roi: "+$30,600 Cumulative Value",
+        highlightLabel: "Cross-Usecases View: Corporate AI Core coordinating Billing, Outage & Retention",
+        // Actual multi-nodes for Cross-Usecases (NO CLUNKY TAGS)
+        nodes: [
+          // Upper-Left: All 3 SOPs (Blue)
+          { id: "sop_bill", x: -480, y: -140, label: "SOP-04: Inbound Billing\\nRoaming Dispute Rules", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", size: 10.5 } },
+          { id: "sop_12", x: -380, y: -60, label: "SOP-12: Broadband Hardware\\nOptical Telemetry Rules", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", size: 10.5 } },
+          { id: "sop_28", x: -280, y: -140, label: "SOP-28: Enterprise ARR\\nRetention Authority", shape: "box", color: { background: "#e0e7ff", border: "#4338ca" }, font: { color: "#1e1b4b", size: 10.5 } },
+
+          // Upper-Right: All 3 Calls (Green)
+          { id: "cust_sarah", x: 280, y: -140, label: "Sarah: $150 Roaming\\nFee Waiver Approved", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10.5 } },
+          { id: "cust_marcus", x: 380, y: -60, label: "Marcus: 31.4dB Line Loss\\nTech #TX-9041 Dispatched", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10.5 } },
+          { id: "cust_elena", x: 480, y: -140, label: "Elena: $18k Contract\\n15% 2-Yr Renewal Locked", shape: "box", color: { background: "#d1fae5", border: "#059669" }, font: { color: "#064e3b", size: 10.5 } },
+
+          // Center-Middle: Enterprise Hub (Orange)
+          { id: "corp_hub", x: 0, y: -20, label: "ENTERPRISE CALL CENTER AI CORE\\nCross-Domain Governance & ROI Engine", shape: "star", size: 24, color: { background: "#fed7aa", border: "#ea580c" }, font: { color: "#7c2d12", bold: true, size: 11.5 } },
+
+          // Bottom Row: Aggregated Outcomes
+          { id: "out_drift", x: -420, y: 175, label: "Policy drift\\nCross-domain automated feedback\\nSOP-04, 12, 28 synchronized", shape: "box", color: { background: "#fdf2f8", border: "#db2777" }, font: { color: "#831843", bold: true, size: 10.5 }, borderWidth: 2.5 },
+          { id: "out_compliance", x: -140, y: 175, label: "Compliance gap\\nPolicy followed?\\n100% Policy Verification Across All", shape: "box", color: { background: "#f8fafc", border: "#64748b" }, font: { color: "#0f172a", bold: true, size: 10.5 }, borderWidth: 2 },
+          { id: "out_netvalue", x: 140, y: 175, label: "Net value\\nValue vs cost\\n+$30,600 Cumulative Value Preserved", shape: "box", color: { background: "#ecfdf5", border: "#059669" }, font: { color: "#064e3b", bold: true, size: 11 }, borderWidth: 2.5 },
+          { id: "out_bottlenecks", x: 420, y: 175, label: "Bottlenecks\\nWhere steps stall\\nZero Escalation Stall Across Fleet", shape: "box", color: { background: "#f0f9ff", border: "#0284c7" }, font: { color: "#0369a1", bold: true, size: 10.5 }, borderWidth: 2 }
+        ],
+        edges: [
+          { from: "sop_bill", to: "corp_hub", color: { color: "#4f46e5" }, width: 2 },
+          { from: "sop_12", to: "corp_hub", color: { color: "#4f46e5" }, width: 2 },
+          { from: "sop_28", to: "corp_hub", color: { color: "#4f46e5" }, width: 2 },
+
+          { from: "cust_sarah", to: "corp_hub", color: { color: "#10b981" }, width: 2 },
+          { from: "cust_marcus", to: "corp_hub", color: { color: "#10b981" }, width: 2 },
+          { from: "cust_elena", to: "corp_hub", color: { color: "#10b981" }, width: 2 },
+
+          { from: "corp_hub", to: "out_drift", color: { color: "#64748b" }, width: 2 },
+          { from: "corp_hub", to: "out_compliance", color: { color: "#64748b" }, width: 2 },
+          { from: "corp_hub", to: "out_netvalue", color: { color: "#059669" }, width: 2.5 },
+          { from: "corp_hub", to: "out_bottlenecks", color: { color: "#0284c7" }, width: 2 },
+
+          { from: "out_drift", to: "sop_bill", label: "updates_all_sops", arrows: { to: { enabled: true, scaleFactor: 1.1 } }, dashes: [7, 5], color: { color: "#db2777" }, width: 3.5, smooth: { enabled: true, type: "curvedCW", roundness: 0.28 } }
+        ]
+      }
+    };
+
+    function initUnifiedGraph() {
+      const container = document.getElementById('unified-graph-canvas');
+      if (!container) return;
+
+      const scenario = SCENARIOS[activeScenarioKey] || SCENARIOS.billing;
+      const data = {
+        nodes: scenario.nodes,
+        edges: scenario.edges
+      };
+
+      const options = {
+        physics: {
+          enabled: false // Exact spatial pinning!
+        },
+        interaction: {
+          dragNodes: true,
+          zoomView: true,
+          dragView: true
+        }
+      };
+
+      if (networkInstance) networkInstance.destroy();
+      networkInstance = new vis.Network(container, data, options);
+
+      setTimeout(() => {
+        if (networkInstance) networkInstance.fit({ animation: { duration: 500 } });
+      }, 60);
+    }
+
+    function selectUseCase(key) {
+      activeScenarioKey = key;
+      const s = SCENARIOS[key];
+      if (!s) return;
+
+      // Update button styles (Light Mode)
+      ['billing', 'outage', 'retention', 'cross'].forEach(k => {
+        const btn = document.getElementById(`btn-usecase-${k}`);
+        if (btn) {
+          if (k === key) {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-indigo-700 border border-indigo-200 shadow-xs transition flex items-center space-x-1.5";
+          } else {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 border border-transparent transition flex items-center space-x-1.5";
+          }
+        }
+      });
+
+      // Update upper call UI
+      document.getElementById('caller-id-pill').textContent = s.callerId;
+      document.getElementById('caller-tag').textContent = s.tag;
+      document.getElementById('cust-sentiment-badge').textContent = s.sentiment;
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${s.question}&rdquo;`;
+      document.getElementById('agent-sop-match-badge').textContent = s.sopMatch;
+      document.getElementById('agent-speech-text').innerHTML = `&ldquo;${s.agentSpeech}&rdquo;`;
+      document.getElementById('grounding-audit-note').textContent = s.audit;
+      document.getElementById('net-roi-tag').textContent = s.roi;
+      document.getElementById('active-call-highlight-label').textContent = `• ${s.highlightLabel}`;
+
+      currentAgentText = s.agentSpeech;
+
+      // Re-render spatial hierarchy graph with clean no-tag nodes
+      initUnifiedGraph();
+
+      // Trigger speech synthesis
+      speakCurrentResponse();
+    }
+
+    function askSampleQuestion(key) {
+      selectUseCase(key);
+    }
+
+    function askCustomCaller() {
+      const input = document.getElementById('input-custom-call');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const lower = val.toLowerCase();
+      if (lower.includes('outage') || lower.includes('router') || lower.includes('optical') || lower.includes('fiber') || lower.includes('light')) {
+        selectUseCase('outage');
+      } else if (lower.includes('cancel') || lower.includes('renew') || lower.includes('contract') || lower.includes('enterprise') || lower.includes('discount')) {
+        selectUseCase('retention');
+      } else {
+        selectUseCase('billing');
+      }
+
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${val}&rdquo;`;
+      input.value = '';
+    }
+
+    function resetGraphView() {
+      if (networkInstance) {
+        networkInstance.fit({ animation: { duration: 600 } });
+      }
+    }
+
+    function toggleVoiceSpeech() {
+      voiceSpeechEnabled = !voiceSpeechEnabled;
+      const icon = document.getElementById('voice-icon');
+      const text = document.getElementById('voice-toggle-text');
+      if (voiceSpeechEnabled) {
+        icon.className = "fa-solid fa-volume-high text-emerald-600";
+        text.textContent = "Voice Speech: ON";
+      } else {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.textContent = "Voice Speech: OFF";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakCurrentResponse() {
+      if (!voiceSpeechEnabled || !('speechSynthesis' in window) || !currentAgentText) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentAgentText);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      const waveBars = [
+        document.getElementById('w-1'),
+        document.getElementById('w-2'),
+        document.getElementById('w-3'),
+        document.getElementById('w-4'),
+        document.getElementById('w-5')
+      ];
+
+      const waveInterval = setInterval(() => {
+        waveBars.forEach(b => {
+          if (b) b.style.height = `${Math.floor(Math.random() * 16) + 4}px`;
+        });
+      }, 120);
+
+      utterance.onend = () => {
+        clearInterval(waveInterval);
+        waveBars.forEach((b, i) => {
+          if (b) b.style.height = `${[10, 16, 8, 20, 10][i]}px`;
+        });
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function startCallTimer() {
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('call-timer');
+        if (el) el.textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      startCallTimer();
+      selectUseCase('billing');
+    });
+  </script>
+</body>
+</html>
+'''
+
+if __name__ == '__main__':
+    html = generate_color_legend_html()
+    with open('callcenter_ai_voice_agents.html', 'w', encoding='utf-8') as f:
+        f.write(html)
+    print("SUCCESS: Color-coded legends & clean nodes built into callcenter_ai_voice_agents.html!")
