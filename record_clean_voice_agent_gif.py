@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 record_clean_voice_agent_gif.py
-Records the Call Center AI Voice Agents Studio with:
-1. Unified Triad Cross-Graph View (KG + CG + BG + Cross-Edges)
-2. Domain Subgraph Navigation (Billing, Telecom, Enterprise, All-Domains)
-3. Real-Time Animated Graph Growth Stepper in Live Calls
-4. ZERO covered UI - 100% visible with external top header caption bar.
+Records the Call Center AI Voice Agents Studio with the Single Unified UI:
+- Upper Side: Real-Time Live Call (active caller, question chips, ASR, agent speech, voice synthesis)
+- Lower Side: BG, KG, and CG highlighted for the current call with cross-graph edges
+- Cross-Usecases Option: Macro Enterprise View
 """
 
 import os
@@ -56,11 +55,11 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     draw.rectangle([(0, caption_h - 3), (app_w, caption_h)], fill=accent_rgb)
 
     # Badge Pill
-    draw.rounded_rectangle([(16, 12), (16 + 215, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
+    draw.rounded_rectangle([(16, 12), (16 + 225, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
     draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
 
     # Caption text
-    draw.text((248, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
+    draw.text((258, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
 
     # 3. Paste the untouched, 100% visible web app directly underneath
     new_canvas.paste(app_img, (0, caption_h))
@@ -81,82 +80,62 @@ def main():
         page.goto(url)
         page.wait_for_timeout(1500)
 
-        # FRAME 1: Full Triad Architecture (100% UI Visible)
+        # FRAME 1: Single UI Overview - Billing Call Active
         capture_uncovered_frame(
             page,
-            "1. ARCHITECTURE VIEW",
-            "Agent Hierarchy: KG (What should happen) + CG (What actually happened) -> BG (Reconciles should vs actual)",
+            "1. SINGLE UNIFIED UI",
+            "Upper: Real-Time Live Call (Sarah Jenkins $150 dispute) &bull; Lower: KG, CG & BG highlighted for the current call!",
             (99, 102, 241)
         )
 
-        # FRAME 2: ORDER 1 - Unified Triad Cross-Graph View (Billing Domain)
-        page.click('#tab-triad')
-        page.wait_for_timeout(1500)
+        # FRAME 2: Upper Live Call & Grounded Speech Playback
+        page.click('#chip-q-billing')
+        page.wait_for_timeout(1000)
         capture_uncovered_frame(
             page,
-            "2. UNIFIED TRIAD GRAPH",
-            "Order 1: Co-locates SOP KG (Indigo), Call CG (Amber) & ROI BG (Emerald) with explicit cross-graph edges!",
-            (99, 102, 241)
-        )
-
-        # FRAME 3: ORDER 2 - Domain Subgraph Navigation (All Domains Unified)
-        page.click('#triad-filter-all')
-        page.wait_for_timeout(1500)
-        capture_uncovered_frame(
-            page,
-            "3. MACRO ENTERPRISE",
-            "Order 2: Domain Subgraphs unified into Corporate AI Hub (Billing SOP-04, Telecom SOP-12 & Enterprise SOP-28).",
+            "2. LIVE CALL GROUNDING",
+            "Upper: Customer asks $150 fee waiver -> AI Agent grounds in SOP-04 Clause 4.2 ($2.4k LTV) -> Waives $150 with $0 hold.",
             (16, 185, 129)
         )
 
-        # FRAME 4: ORDER 3 - Real-Time Live Call & Graph Growth Stepper
-        page.click('#tab-call')
+        # FRAME 3: Lower Graph Call Path Highlight (Sarah Jenkins -> SOP-04 -> +$2,250 ROI)
+        page.click('#btn-focus-call')
         page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "4. LIVE CALL SIMULATOR",
-            "Order 3: Inbound customer call streams into 4-stage Real-Time Graph Growth Engine (T0:CG -> T1:KG -> T2:Decision -> T3:ROI).",
+            "3. GRAPH HIGHLIGHTED",
+            "Lower: SOP Rulebook (KG) + Call Record (CG) -> Reconciles +$2,250 Net Value (BG) & logs drift loop back to SOP-04!",
             (245, 158, 11)
         )
 
-        # FRAME 5: Sample Call 2 - Broadband Outage & Telemetry Bypass
-        page.click('#sample-btn-outage')
+        # FRAME 4: Use Case 2 - Broadband Outage & Instant Tech Dispatch
+        page.click('#btn-usecase-outage')
         page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "5. REAL-TIME OUTAGE CALL",
-            "Telemetry Grounding: Optical loss 31.4dB bypasses 180s manual phone reboot -> Auto-dispatches field tech in 12s.",
+            "4. USE CASE 2: OUTAGE",
+            "Upper: Marcus Vance red LOS alarm -> Lower: Optical loss 31.4dB conforms to SOP-12 -> Auto-dispatches truck in 12s.",
             (14, 165, 233)
         )
 
-        # FRAME 6: SOP Knowledge Graph Tab (Rulebook Canvas)
-        page.click('#tab-kg')
-        page.wait_for_timeout(1500)
+        # FRAME 5: Use Case 3 - Enterprise Churn & ARR Retention
+        page.click('#btn-usecase-retention')
+        page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "6. SOP RULEBOOK GRAPH",
-            "SOP Knowledge Graph (KG): Authoritative rulebook defining Tier-1 limits ($50), Supervisor limits ($250) & Roles.",
-            (59, 130, 246)
-        )
-
-        # FRAME 7: Call Records Context Graph Tab (Call Diary Canvas)
-        page.click('#tab-cg')
-        page.wait_for_timeout(1500)
-        capture_uncovered_frame(
-            page,
-            "7. CALL DIARY GRAPH",
-            "Call Records Context Graph (CG): Empirical decision chain tracking customer state, telemetry alarms & agent concessions.",
-            (245, 158, 11)
-        )
-
-        # FRAME 8: Business Goals ROI & Policy Drift Feedback Loop
-        page.click('#tab-bg')
-        page.wait_for_timeout(1500)
-        capture_uncovered_frame(
-            page,
-            "8. BUSINESS ROI & DRIFT",
-            "Business Graph (BG): Reconciles Should vs Actual -> +$2,250 Net Value & emits automated SOP updates back to KG!",
+            "5. USE CASE 3: RETENTION",
+            "Upper: Elena Rostova $18k cancellation -> Lower: SOP-28 Clause 2.4 locks 15% discount renewal -> Protects +$27,900 ARR.",
             (16, 185, 129)
+        )
+
+        # FRAME 6: Cross-Usecases View (All Domains Co-located in Corporate Core)
+        page.click('#btn-usecase-cross')
+        page.wait_for_timeout(1500)
+        capture_uncovered_frame(
+            page,
+            "6. CROSS-USECASES VIEW",
+            "Enterprise Macro View: Corporate AI Hub co-locates and cross-correlates Billing (SOP-04), Outage (SOP-12) & Retention (SOP-28).",
+            (99, 102, 241)
         )
 
         browser.close()
@@ -171,7 +150,7 @@ def main():
             OUTPUT_GIF,
             save_all=True,
             append_images=pil_images[1:],
-            duration=2200,
+            duration=2400,
             loop=0,
             optimize=True
         )

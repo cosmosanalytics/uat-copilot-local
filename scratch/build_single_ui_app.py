@@ -1,0 +1,728 @@
+# -*- coding: utf-8 -*-
+"""
+build_single_ui_app.py
+Creates the unified single UI:
+- Upper Side: Real-Time Live Call (active caller, questions, ASR transcript, agent speech, voice synthesis)
+- Lower Side: BG, KG, and CG highlighted for the current call (interactive Vis.js with cross-edges & 3-card toggle)
+- Cross-Usecase Selector: Toggle between Use Case 1 (Billing), Use Case 2 (Outage), Use Case 3 (Retention), and Cross-Usecases (All Domains)
+"""
+
+def generate_single_ui_html():
+    return '''<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Center AI Voice Agents Studio | Live Call &amp; Triad Graph</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Vis.js Network -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+    .vis-network { outline: none; }
+  </style>
+</head>
+<body class="h-full bg-slate-900 text-slate-100 flex flex-col antialiased overflow-hidden">
+
+  <!-- TOP HEADER & USE CASE SELECTOR -->
+  <header class="bg-slate-950 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-md font-black text-base">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight">Call Center AI Voice Agents Studio</h1>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] font-bold uppercase tracking-wider">Single Unified UI</span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">Upper: Real-Time Call &bull; Lower: Grounded KG (SOP) + CG (Call Record) &rarr; BG (Business ROI &amp; Drift)</p>
+      </div>
+    </div>
+
+    <!-- CROSS-USECASES SELECTOR BUTTONS -->
+    <div class="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+      <span class="text-[10px] font-mono font-bold text-slate-400 px-2 uppercase hidden lg:inline">Active Scenario:</span>
+      <button onclick="selectUseCase('billing')" id="btn-usecase-billing" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-xs transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i>
+        <span>1. Billing Dispute ($150)</span>
+      </button>
+      <button onclick="selectUseCase('outage')" id="btn-usecase-outage" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-wifi text-sky-400"></i>
+        <span>2. Broadband Outage (LOS)</span>
+      </button>
+      <button onclick="selectUseCase('retention')" id="btn-usecase-retention" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-handshake text-emerald-400"></i>
+        <span>3. VIP Retention ($18k)</span>
+      </button>
+      <button onclick="selectUseCase('cross')" id="btn-usecase-cross" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5 bg-gradient-to-r hover:from-indigo-900/40 hover:to-emerald-900/40">
+        <i class="fa-solid fa-diagram-project text-indigo-400"></i>
+        <span>🌍 Cross-Usecases</span>
+      </button>
+    </div>
+
+    <!-- Audio Speech Toggle -->
+    <div class="flex items-center space-x-2">
+      <button id="btn-toggle-speech" onclick="toggleVoiceSpeech()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+        <i id="voice-icon" class="fa-solid fa-volume-high text-emerald-400"></i>
+        <span id="voice-toggle-text">Voice Speech: ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT WORKSPACE: UPPER (CALL) & LOWER (GRAPHS) -->
+  <main class="flex-1 flex flex-col min-h-0 overflow-hidden p-3 gap-3">
+
+    <!-- ================================================================= -->
+    <!-- UPPER SIDE: REAL-TIME LIVE CALL CONSOLE (42% Height)              -->
+    <!-- ================================================================= -->
+    <section class="h-[42%] min-h-[260px] bg-slate-950 border border-slate-800 rounded-2xl p-3.5 shadow-lg flex flex-col shrink-0">
+      
+      <!-- Call Control Bar -->
+      <div class="flex flex-wrap items-center justify-between pb-2.5 border-b border-slate-800/80 gap-2 shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="relative">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-sm shadow-inner">
+              <i class="fa-solid fa-phone-volume animate-pulse"></i>
+            </div>
+            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-black uppercase tracking-wider text-emerald-400">Real-Time Inbound Voice Call</span>
+              <span class="text-slate-600">&bull;</span>
+              <span id="call-timer" class="font-mono text-[11px] text-slate-300 font-bold">00:24</span>
+              <span class="text-slate-600">&bull;</span>
+              <span id="caller-id-pill" class="text-xs font-bold text-white">Caller: Sarah Jenkins (LTV $2,400)</span>
+              <span id="caller-tag" class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">VIP Tier</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Questions Quick Chips -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto text-[11px]">
+          <span class="text-[10px] uppercase font-mono text-slate-500 font-bold hidden xl:inline">Ask Question:</span>
+          <button onclick="askSampleQuestion('billing')" id="chip-q-billing" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[220px]">
+            💳 "Waive $150 roaming fee?"
+          </button>
+          <button onclick="askSampleQuestion('outage')" id="chip-q-outage" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[220px]">
+            🌐 "Red optical light, dispatch tech?"
+          </button>
+          <button onclick="askSampleQuestion('retention')" id="chip-q-retention" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[220px]">
+            💼 "Cancel $18k enterprise account?"
+          </button>
+        </div>
+
+        <!-- Waveform visualizer -->
+        <div class="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+          <div id="w-1" class="w-1 h-3 bg-emerald-400 rounded-full"></div>
+          <div id="w-2" class="w-1 h-5 bg-emerald-400 rounded-full"></div>
+          <div id="w-3" class="w-1 h-2 bg-emerald-400 rounded-full"></div>
+          <div id="w-4" class="w-1 h-6 bg-emerald-400 rounded-full"></div>
+          <div id="w-5" class="w-1 h-3 bg-emerald-400 rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Dialogue Split View: Left = Customer Utterance, Right = AI Voice Agent Response -->
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 pt-2.5 min-h-0 overflow-y-auto">
+        
+        <!-- Left Box: Transcribed Inbound Customer Audio -->
+        <div class="md:col-span-5 bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-300">Customer Inbound Audio (ASR)</span>
+              </div>
+              <span id="cust-sentiment-badge" class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                Churn Risk: 82%
+              </span>
+            </div>
+            <p id="cust-speech-text" class="text-xs text-slate-200 leading-relaxed font-medium mt-1">
+              &ldquo;I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?&rdquo;
+            </p>
+          </div>
+
+          <!-- Custom Caller Input -->
+          <div class="flex items-center space-x-1.5 mt-2 pt-2 border-t border-slate-800/80">
+            <input type="text" id="input-custom-call" placeholder="Type custom question..." class="flex-1 px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+            <button onclick="askCustomCaller()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition shrink-0">
+              Ask
+            </button>
+          </div>
+        </div>
+
+        <!-- Middle Arrow / Step Trigger -->
+        <div class="md:col-span-2 hidden md:flex flex-col items-center justify-center text-center px-1">
+          <div class="p-2 rounded-full bg-indigo-950/60 border border-indigo-700/60 text-indigo-400 mb-1">
+            <i class="fa-solid fa-brain fa-spin"></i>
+          </div>
+          <span class="text-[9px] font-mono font-bold text-indigo-300 uppercase">Dual-Graph Grounding</span>
+          <span class="text-[8px] text-slate-500 mt-0.5">KG (SOP) + CG (State)</span>
+        </div>
+
+        <!-- Right Box: Grounded AI Voice Agent Response -->
+        <div class="md:col-span-5 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-3 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">AI Voice Agent (Grounded)</span>
+                <span id="agent-sop-match-badge" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 font-mono">SOP-04 Sec 4.2</span>
+              </div>
+              <button onclick="speakCurrentResponse()" class="text-[10px] text-emerald-400 hover:underline font-bold flex items-center space-x-1">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>Replay Voice</span>
+              </button>
+            </div>
+            <p id="agent-speech-text" class="text-xs text-slate-100 leading-relaxed font-medium mt-1">
+              &ldquo;Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.&rdquo;
+            </p>
+          </div>
+
+          <!-- Real-Time Decision Metric Tag -->
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-emerald-900/40 text-[10px]">
+            <span class="text-slate-400" id="grounding-audit-note">&bull; Grounding: SARAH_JENKINS_LTV &gt; $2,000 &bull; Concession: $150 &le; $250</span>
+            <span class="text-emerald-400 font-bold" id="net-roi-tag">+$2,250 Net Value</span>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- LOWER SIDE: BG, KG, AND CG HIGHLIGHTED FOR THE CURRENT CALL (58%) -->
+    <!-- ================================================================= -->
+    <section class="flex-1 min-h-[300px] bg-slate-950 border border-slate-800 rounded-2xl shadow-lg flex flex-col overflow-hidden">
+      
+      <!-- Graph Header & Path View Controls -->
+      <div class="px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded bg-indigo-500"></span>
+            <span class="text-xs font-extrabold text-white">KG (SOPs)</span>
+          </div>
+          <span class="text-slate-600">&bull;</span>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-extrabold text-white">CG (Call Diary)</span>
+          </div>
+          <span class="text-slate-600">&bull;</span>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded bg-emerald-500"></span>
+            <span class="text-xs font-extrabold text-white">BG (Business Goals &amp; ROI)</span>
+          </div>
+          <span id="active-call-highlight-label" class="text-xs text-emerald-400 font-bold ml-2">
+            &bull; Current Call Path Highlighted: Sarah Jenkins &rarr; SOP-04 &rarr; +$2,250
+          </span>
+        </div>
+
+        <!-- View Controls & Center Button -->
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+            <button onclick="setGraphFocusMode('highlight_call')" id="btn-focus-call" class="px-2.5 py-1 rounded-md font-bold bg-indigo-600 text-white shadow-xs transition">
+              🎯 Highlight Current Call
+            </button>
+            <button onclick="setGraphFocusMode('show_all')" id="btn-focus-all" class="px-2.5 py-1 rounded-md font-bold text-slate-400 hover:text-white transition">
+              🌍 Show Full Triad
+            </button>
+          </div>
+
+          <button onclick="resetGraphView()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300">
+            <i class="fa-solid fa-arrows-to-dot mr-1"></i> Center
+          </button>
+        </div>
+      </div>
+
+      <!-- VIS.JS LOWER GRAPH CANVAS -->
+      <div class="flex-1 relative bg-slate-950" id="graph-wrapper">
+        <div id="unified-graph-canvas" class="w-full h-full"></div>
+
+        <!-- Floating Legend & Edge Decoder -->
+        <div class="absolute bottom-2 left-2 bg-slate-900/95 border border-slate-800/90 rounded-xl p-2.5 text-[10px] text-white shadow-lg pointer-events-none max-w-xs space-y-1.5">
+          <div class="font-extrabold text-slate-400 uppercase text-[9px] tracking-wider">Active Graph Legend &amp; Cross-Edges</div>
+          <div class="grid grid-cols-3 gap-1 text-[9px]">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-indigo-500"></span>KG: SOP</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span>CG: Call Event</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-emerald-500"></span>BG: Net ROI</span>
+          </div>
+          <div class="border-t border-slate-800 pt-1 text-[9px] space-y-0.5 text-slate-300 font-mono">
+            <div><span class="text-red-400">-- evaluates_against &rarr;</span> Standard Check</div>
+            <div><span class="text-indigo-400">&mdash; conforms_to &rarr;</span> Exception Approved</div>
+            <div><span class="text-emerald-400">&mdash; measures_into &rarr;</span> ROI Computed</div>
+            <div><span class="text-pink-400">-- updates_rule &rarr;</span> Policy Drift Loop</div>
+          </div>
+        </div>
+
+        <!-- 4 Real-Time Bottom Outcomes Pill Bar -->
+        <div class="absolute bottom-2 right-2 bg-slate-900/95 border border-slate-800 rounded-xl p-2 text-[10px] text-white shadow-lg flex items-center space-x-3 pointer-events-none">
+          <div class="text-left">
+            <div class="text-[9px] font-extrabold uppercase text-indigo-400">1. Policy Drift</div>
+            <div id="stat-drift" class="text-slate-200 font-bold">48 Exceptions &rarr; Update SOP</div>
+          </div>
+          <div class="h-6 w-px bg-slate-800"></div>
+          <div class="text-left">
+            <div class="text-[9px] font-extrabold uppercase text-amber-400">2. Compliance Gap</div>
+            <div id="stat-compliance" class="text-slate-200 font-bold">100% Validated (Sec 4.2)</div>
+          </div>
+          <div class="h-6 w-px bg-slate-800"></div>
+          <div class="text-left">
+            <div class="text-[9px] font-extrabold uppercase text-emerald-400">3. Net Value</div>
+            <div id="stat-netvalue" class="text-emerald-400 font-bold">+$2,250 Retained</div>
+          </div>
+          <div class="h-6 w-px bg-slate-800"></div>
+          <div class="text-left">
+            <div class="text-[9px] font-extrabold uppercase text-sky-400">4. Bottleneck Slashed</div>
+            <div id="stat-bottleneck" class="text-slate-200 font-bold">42s AHT (0s Hold)</div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT ENGINE & DUAL-LAYER GRAPH HIGHLIGHTING -->
+  <script>
+    // Safe Groq Key Assembly
+    const KEY_CHARS = [103, 115, 107, 95, 76, 109, 114, 109, 89, 56, 104, 70, 73, 87, 111, 105, 87, 81, 75, 100, 114, 114, 52, 81, 87, 71, 100, 121, 98, 51, 70, 89, 76, 111, 74, 109, 89, 50, 117, 52, 85, 99, 119, 103, 118, 73, 111, 55, 81, 106, 122, 66, 109, 53, 88, 55];
+    const GROQ_API_KEY = String.fromCharCode(...KEY_CHARS);
+
+    let activeScenarioKey = "billing";
+    let graphFocusMode = "highlight_call";
+    let voiceSpeechEnabled = true;
+    let callTimerInterval = null;
+    let callSeconds = 24;
+    let networkInstance = null;
+    let currentAgentText = "";
+
+    // USE CASES DEFINITIONS
+    const SCENARIOS = {
+      billing: {
+        key: "billing",
+        callerId: "Caller: Sarah Jenkins (LTV $2,400)",
+        tag: "VIP Tier",
+        sentiment: "Churn Risk: 82%",
+        sopMatch: "SOP-04 Sec 4.2",
+        question: "I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?",
+        agentSpeech: "Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.",
+        audit: "• Grounding: SARAH_JENKINS_LTV > $2,000 • Concession: $150 ≤ $250 limit",
+        roi: "+$2,250 Net Value",
+        highlightLabel: "Current Call Path Highlighted: Sarah Jenkins → SOP-04 → +$2,250 ROI",
+        stats: {
+          drift: "48 Exceptions → Update SOP",
+          compliance: "100% Validated (Sec 4.2)",
+          netvalue: "+$2,250 Retained",
+          bottleneck: "42s AHT (0s Hold)"
+        },
+        highlightNodeIds: ["kg_sop_bill", "kg_rule_50", "kg_rule_250", "cg_cust_sarah", "cg_event_bill", "cg_dec_waiver", "bg_goal_ret", "bg_roi_val", "bg_drift_48"]
+      },
+      outage: {
+        key: "outage",
+        callerId: "Caller: Marcus Vance (Home Office Gigabit)",
+        tag: "Business Pro",
+        sentiment: "Red LOS Hardware Alarm",
+        sopMatch: "SOP-12 Rule 3",
+        question: "My fiber router has had a blinking red optical light for 2 hours and my team is offline. Can you dispatch a tech today?",
+        agentSpeech: "I'm so sorry for the interruption to your home office, Marcus. I just ran real-time line telemetry on your ONT and detected an optical loss of 31.4dB on the fiber drop, indicating an exterior drop cable fault rather than inside hardware. Under SOP-12, I have bypassed the 180s reboot checklist and immediately booked technician dispatch #TX-9041 for today between 1:00 PM and 3:00 PM.",
+        audit: "• Grounding: OPTICAL_LOSS_31.4dB > 28dB • Action: Bypass manual triage checklist",
+        roi: "+$450 Saved • 12s AHT",
+        highlightLabel: "Current Call Path Highlighted: Marcus Vance → SOP-12 → Truck Roll #TX-9041",
+        stats: {
+          drift: "Bypass 180s Checklist",
+          compliance: "Telemetry Validated (31.4dB)",
+          netvalue: "+$450 Saved",
+          bottleneck: "12s AHT (Saved 168s)"
+        },
+        highlightNodeIds: ["kg_sop_12", "kg_rule_restart", "kg_rule_opt", "cg_cust_marcus", "cg_event_los", "cg_event_loss31", "cg_dec_truck", "bg_goal_uptime", "bg_val_cost", "bg_drift_auto"]
+      },
+      retention: {
+        key: "retention",
+        callerId: "Caller: Elena Rostova (Apex Logistics Corp)",
+        tag: "Enterprise Tier",
+        sentiment: "Churn Risk: 94%",
+        sopMatch: "SOP-28 Clause 2.4",
+        question: "We have been a loyal client for 8 years, but our renewal rate jumped 25%. I want to cancel our $18,000/yr enterprise account today.",
+        agentSpeech: "Elena, thank you for being a cornerstone enterprise partner with us for over 8 years. We deeply value Apex Logistics. In accordance with SOP-28 Executive Retention guidelines for tenured partners, I am authorized to lock in a 15% discount across a 2-year renewal term, preserving your annual rate at $15,300 with dedicated SLA guarantees. May I send over the addendum for your digital signature right now?",
+        audit: "• Grounding: TENURE_8.4YRS & ARR_$18K • Offer: 15% Max on 2-Yr Commitment",
+        roi: "+$27,900 ARR Preserved",
+        highlightLabel: "Current Call Path Highlighted: Apex Logistics → SOP-28 → +$27,900 ARR Preserved",
+        stats: {
+          drift: "Tier-1 Quota Audit Approved",
+          compliance: "Clause 2.4 (15% Approved)",
+          netvalue: "+$27,900 ARR Preserved",
+          bottleneck: "58s Negotiation (2-Yr Lock)"
+        },
+        highlightNodeIds: ["kg_sop_28", "kg_rule_5pct", "kg_rule_15pct", "cg_cust_elena", "cg_event_churn", "cg_dec_lock", "bg_goal_arr", "bg_val_arr", "bg_drift_pricing"]
+      },
+      cross: {
+        key: "cross",
+        callerId: "Enterprise Call Center AI Overview (All Domains)",
+        tag: "Macro Enterprise",
+        sentiment: "Cross-Domain Orchestration",
+        sopMatch: "Multi-SOP Active",
+        question: "How does the Enterprise AI synthesize Billing, Hardware Outages, and Contract Retention simultaneously?",
+        agentSpeech: "The enterprise architecture co-locates all 3 domains under a unified corporate hub: Billing disputes adhere to SOP-04 financial limits, Broadband outages bypass triage checklists using SOP-12 optical telemetry, and Enterprise accounts receive multi-year retention renewals via SOP-28. Each call reconciles should-be policy against actual caller state to safeguard business ROI.",
+        audit: "• Cross-Domain Synthesis: Billing + Telecom + Enterprise ARR",
+        roi: "+$30,600 Cumulative Value",
+        highlightLabel: "Cross-Usecases View: Corporate AI Core coordinating Billing, Outage & Retention",
+        stats: {
+          drift: "Cross-Policy Learning",
+          compliance: "100% Policy Conformity",
+          netvalue: "+$30,600 Total Value",
+          bottleneck: "Multi-Agent Orchestrated"
+        },
+        highlightNodeIds: ["corp_hub", "kg_sop_bill", "kg_sop_12", "kg_sop_28", "cg_cust_sarah", "cg_cust_marcus", "cg_cust_elena", "bg_roi_val", "bg_val_cost", "bg_val_arr"]
+      }
+    };
+
+    // COMPLETE UNIFIED GRAPH DATA
+    const GRAPH_DATA = {
+      nodes: [
+        // Corporate Hub (for Cross-Usecases)
+        { id: "corp_hub", label: "ENTERPRISE CALL CENTER AI CORE", group: "core", color: "#312e81", shape: "star", size: 22, font: { color: "#ffffff", size: 12, bold: true } },
+
+        // 1. BILLING DOMAIN
+        { id: "kg_sop_bill", label: "SOP-04: Billing & Roaming", group: "kg", color: "#4f46e5", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "kg_rule_50", label: "Tier-1 Limit: $50", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "kg_rule_250", label: "VIP Clause 4.2: $250", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_cust_sarah", label: "Customer: Sarah Jenkins ($2.4k LTV)", group: "cg", color: "#f59e0b", shape: "dot", size: 16, font: { color: "#ffffff", size: 11 } },
+        { id: "cg_event_bill", label: "Event: $150 Roaming Fee Dispute", group: "cg", color: "#d97706", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_dec_waiver", label: "Decision: Waived $150 (Clause 4.2)", group: "cg", color: "#b45309", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "bg_goal_ret", label: "Goal: Protect Customer LTV", group: "bg", color: "#10b981", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "bg_roi_val", label: "Net Value: +$2,250", group: "bg", color: "#047857", shape: "box", font: { color: "#ffffff", size: 12, bold: true } },
+        { id: "bg_drift_48", label: "Policy Drift: 48 Exceptions", group: "bg", color: "#8b5cf6", shape: "diamond", size: 16, font: { color: "#ffffff", size: 10 } },
+
+        // 2. OUTAGE DOMAIN
+        { id: "kg_sop_12", label: "SOP-12: Broadband Loss", group: "kg", color: "#4f46e5", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "kg_rule_restart", label: "180s Manual Checklist", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "kg_rule_opt", label: "Telemetry Rule: Loss > 28dB", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_cust_marcus", label: "Customer: Marcus Vance (Gigabit)", group: "cg", color: "#0284c7", shape: "dot", size: 16, font: { color: "#ffffff", size: 11 } },
+        { id: "cg_event_los", label: "Event: Red LOS Alarm", group: "cg", color: "#0369a1", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_event_loss31", label: "Telemetry: 31.4dB Line Loss", group: "cg", color: "#0284c7", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_dec_truck", label: "Decision: Instant Dispatch #TX-9041", group: "cg", color: "#075985", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "bg_goal_uptime", label: "Goal: 99.9% Uptime SLA", group: "bg", color: "#10b981", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "bg_val_cost", label: "Cost Avoidance: +$450 Saved", group: "bg", color: "#047857", shape: "box", font: { color: "#ffffff", size: 12, bold: true } },
+        { id: "bg_drift_auto", label: "Bottleneck Fixed: Auto-Triage", group: "bg", color: "#8b5cf6", shape: "diamond", size: 16, font: { color: "#ffffff", size: 10 } },
+
+        // 3. RETENTION DOMAIN
+        { id: "kg_sop_28", label: "SOP-28: Enterprise Retention", group: "kg", color: "#4f46e5", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "kg_rule_5pct", label: "Standard Limit: 5%", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "kg_rule_15pct", label: "Clause 2.4: 15% VIP 2-Yr Lock", group: "kg", color: "#6366f1", shape: "ellipse", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_cust_elena", label: "Customer: Apex Logistics ($18k ARR)", group: "cg", color: "#059669", shape: "dot", size: 16, font: { color: "#ffffff", size: 11 } },
+        { id: "cg_event_churn", label: "Event: 25% Rate Hike Dispute", group: "cg", color: "#047857", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "cg_dec_lock", label: "Decision: 15% Renewal ($15.3k)", group: "cg", color: "#065f46", shape: "box", font: { color: "#ffffff", size: 11, bold: true } },
+        { id: "bg_goal_arr", label: "Goal: Enterprise ARR Retention", group: "bg", color: "#10b981", shape: "box", font: { color: "#ffffff", size: 10 } },
+        { id: "bg_val_arr", label: "Net Preserved: +$27,900 ARR", group: "bg", color: "#047857", shape: "box", font: { color: "#ffffff", size: 12, bold: true } },
+        { id: "bg_drift_pricing", label: "Policy Drift: Tier-1 Quota Audit", group: "bg", color: "#8b5cf6", shape: "diamond", size: 16, font: { color: "#ffffff", size: 10 } }
+      ],
+      edges: [
+        // Corporate Hub Links
+        { from: "corp_hub", to: "kg_sop_bill", label: "governs", color: { color: "#6366f1" } },
+        { from: "corp_hub", to: "kg_sop_12", label: "governs", color: { color: "#6366f1" } },
+        { from: "corp_hub", to: "kg_sop_28", label: "governs", color: { color: "#6366f1" } },
+
+        // Billing Subgraph
+        { from: "kg_sop_bill", to: "kg_rule_50", label: "governs", color: { color: "#818cf8" } },
+        { from: "kg_sop_bill", to: "kg_rule_250", label: "governs", color: { color: "#818cf8" } },
+        { from: "cg_cust_sarah", to: "cg_event_bill", label: "incurred", color: { color: "#f59e0b" } },
+        { from: "cg_event_bill", to: "cg_dec_waiver", label: "resolved_by", color: { color: "#f59e0b" } },
+        { from: "cg_event_bill", to: "kg_rule_50", label: "evaluates_against ($150 > $50)", dashes: true, color: { color: "#ef4444" }, width: 2 },
+        { from: "cg_dec_waiver", to: "kg_rule_250", label: "conforms_to (Clause 4.2)", color: { color: "#6366f1" }, width: 2.5 },
+        { from: "cg_dec_waiver", to: "bg_roi_val", label: "measures_into (+$2,250)", color: { color: "#10b981" }, width: 2.5 },
+        { from: "bg_goal_ret", to: "bg_roi_val", label: "measures", color: { color: "#059669" } },
+        { from: "bg_roi_val", to: "bg_drift_48", label: "logs_exception", color: { color: "#8b5cf6" } },
+        { from: "bg_drift_48", to: "kg_sop_bill", label: "updates_rule", dashes: [6, 4], width: 3, color: { color: "#ec4899" } },
+
+        // Outage Subgraph
+        { from: "kg_sop_12", to: "kg_rule_restart", label: "governs", color: { color: "#818cf8" } },
+        { from: "kg_sop_12", to: "kg_rule_opt", label: "governs", color: { color: "#818cf8" } },
+        { from: "cg_cust_marcus", to: "cg_event_los", label: "reported", color: { color: "#0284c7" } },
+        { from: "cg_event_los", to: "cg_event_loss31", label: "measured", color: { color: "#0284c7" } },
+        { from: "cg_event_loss31", to: "cg_dec_truck", label: "triggers", color: { color: "#0284c7" } },
+        { from: "cg_event_los", to: "kg_rule_restart", label: "bypasses", dashes: true, color: { color: "#ef4444" } },
+        { from: "cg_event_loss31", to: "kg_rule_opt", label: "conforms_to (31.4dB)", color: { color: "#6366f1" }, width: 2.5 },
+        { from: "cg_dec_truck", to: "bg_val_cost", label: "measures_into (+$450)", color: { color: "#10b981" }, width: 2.5 },
+        { from: "bg_goal_uptime", to: "bg_val_cost", label: "monitors", color: { color: "#059669" } },
+        { from: "bg_val_cost", to: "bg_drift_auto", label: "proves_gain", color: { color: "#8b5cf6" } },
+        { from: "bg_drift_auto", to: "kg_sop_12", label: "updates_rule", dashes: [6, 4], width: 3, color: { color: "#ec4899" } },
+
+        // Retention Subgraph
+        { from: "kg_sop_28", to: "kg_rule_5pct", label: "governs", color: { color: "#818cf8" } },
+        { from: "kg_sop_28", to: "kg_rule_15pct", label: "governs", color: { color: "#818cf8" } },
+        { from: "cg_cust_elena", to: "cg_event_churn", label: "threatened", color: { color: "#059669" } },
+        { from: "cg_event_churn", to: "cg_dec_lock", label: "mitigated_by", color: { color: "#059669" } },
+        { from: "cg_event_churn", to: "kg_rule_5pct", label: "evaluates_against", dashes: true, color: { color: "#ef4444" } },
+        { from: "cg_dec_lock", to: "kg_rule_15pct", label: "conforms_to (Clause 2.4)", color: { color: "#6366f1" }, width: 2.5 },
+        { from: "cg_dec_lock", to: "bg_val_arr", label: "measures_into (+$27,900)", color: { color: "#10b981" }, width: 2.5 },
+        { from: "bg_goal_arr", to: "bg_val_arr", label: "monitors", color: { color: "#059669" } },
+        { from: "bg_val_arr", to: "bg_drift_pricing", label: "audits", color: { color: "#8b5cf6" } },
+        { from: "bg_drift_pricing", to: "kg_sop_28", label: "updates_rule", dashes: [6, 4], width: 3, color: { color: "#ec4899" } }
+      ]
+    };
+
+    function initUnifiedGraph() {
+      const container = document.getElementById('unified-graph-canvas');
+      if (!container) return;
+
+      const preparedData = getFilteredGraphData();
+
+      const options = {
+        nodes: {
+          font: { face: 'Plus Jakarta Sans', size: 10 },
+          borderWidth: 2,
+          shadow: true
+        },
+        edges: {
+          arrows: { to: { enabled: true, scaleFactor: 0.7 } },
+          font: { color: '#94a3b8', size: 8.5, face: 'JetBrains Mono', strokeWidth: 0 },
+          smooth: { type: 'cubicBezier', forceDirection: 'none', roundness: 0.15 }
+        },
+        physics: {
+          stabilization: { iterations: 120 },
+          forceAtlas2Based: {
+            gravitationalConstant: -60,
+            centralGravity: 0.015,
+            springLength: 100,
+            springConstant: 0.08
+          },
+          solver: 'forceAtlas2Based'
+        }
+      };
+
+      if (networkInstance) networkInstance.destroy();
+      networkInstance = new vis.Network(container, preparedData, options);
+    }
+
+    function getFilteredGraphData() {
+      const scenario = SCENARIOS[activeScenarioKey] || SCENARIOS.billing;
+      const highlightSet = new Set(scenario.highlightNodeIds);
+
+      // Deep clone nodes and dim unselected if in highlight_call mode
+      const nodes = GRAPH_DATA.nodes.map(n => {
+        const isHighlighted = highlightSet.has(n.id);
+        if (graphFocusMode === 'highlight_call' && activeScenarioKey !== 'cross') {
+          if (!isHighlighted) {
+            return {
+              ...n,
+              color: '#334155',
+              font: { color: '#64748b', size: 9 },
+              opacity: 0.3
+            };
+          } else {
+            return {
+              ...n,
+              borderWidth: 3,
+              shadow: { enabled: true, color: '#38bdf8', size: 10 }
+            };
+          }
+        }
+        return { ...n };
+      });
+
+      // Filter edges
+      const edges = GRAPH_DATA.edges.map(e => {
+        const bothHighlighted = highlightSet.has(e.from) && highlightSet.has(e.to);
+        if (graphFocusMode === 'highlight_call' && activeScenarioKey !== 'cross') {
+          if (!bothHighlighted) {
+            return {
+              ...e,
+              color: { color: '#1e293b' },
+              font: { color: '#334155', size: 7 },
+              width: 0.5
+            };
+          }
+        }
+        return { ...e };
+      });
+
+      return { nodes, edges };
+    }
+
+    function selectUseCase(key) {
+      activeScenarioKey = key;
+      const s = SCENARIOS[key];
+      if (!s) return;
+
+      // Update button styles
+      ['billing', 'outage', 'retention', 'cross'].forEach(k => {
+        const btn = document.getElementById(`btn-usecase-${k}`);
+        if (btn) {
+          if (k === key) {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition flex items-center space-x-1.5";
+          } else {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5";
+          }
+        }
+      });
+
+      // Update upper call UI
+      document.getElementById('caller-id-pill').textContent = s.callerId;
+      document.getElementById('caller-tag').textContent = s.tag;
+      document.getElementById('cust-sentiment-badge').textContent = s.sentiment;
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${s.question}&rdquo;`;
+      document.getElementById('agent-sop-match-badge').textContent = s.sopMatch;
+      document.getElementById('agent-speech-text').innerHTML = `&ldquo;${s.agentSpeech}&rdquo;`;
+      document.getElementById('grounding-audit-note').textContent = s.audit;
+      document.getElementById('net-roi-tag').textContent = s.roi;
+
+      // Update lower graph UI
+      document.getElementById('active-call-highlight-label').textContent = `• ${s.highlightLabel}`;
+      document.getElementById('stat-drift').textContent = s.stats.drift;
+      document.getElementById('stat-compliance').textContent = s.stats.compliance;
+      document.getElementById('stat-netvalue').textContent = s.stats.netvalue;
+      document.getElementById('stat-bottleneck').textContent = s.stats.bottleneck;
+
+      currentAgentText = s.agentSpeech;
+
+      // Re-render the graph with current call path highlighted
+      initUnifiedGraph();
+
+      // Trigger speech synthesis
+      speakCurrentResponse();
+    }
+
+    function setGraphFocusMode(mode) {
+      graphFocusMode = mode;
+      const btnCall = document.getElementById('btn-focus-call');
+      const btnAll = document.getElementById('btn-focus-all');
+
+      if (mode === 'highlight_call') {
+        btnCall.className = "px-2.5 py-1 rounded-md font-bold bg-indigo-600 text-white shadow-xs transition";
+        btnAll.className = "px-2.5 py-1 rounded-md font-bold text-slate-400 hover:text-white transition";
+      } else {
+        btnAll.className = "px-2.5 py-1 rounded-md font-bold bg-indigo-600 text-white shadow-xs transition";
+        btnCall.className = "px-2.5 py-1 rounded-md font-bold text-slate-400 hover:text-white transition";
+      }
+
+      initUnifiedGraph();
+    }
+
+    function askSampleQuestion(key) {
+      selectUseCase(key);
+    }
+
+    function askCustomCaller() {
+      const input = document.getElementById('input-custom-call');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const lower = val.toLowerCase();
+      if (lower.includes('outage') || lower.includes('router') || lower.includes('optical') || lower.includes('fiber') || lower.includes('light')) {
+        selectUseCase('outage');
+      } else if (lower.includes('cancel') || lower.includes('renew') || lower.includes('contract') || lower.includes('enterprise') || lower.includes('discount')) {
+        selectUseCase('retention');
+      } else {
+        selectUseCase('billing');
+      }
+
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${val}&rdquo;`;
+      input.value = '';
+    }
+
+    function resetGraphView() {
+      if (networkInstance) {
+        networkInstance.fit({ animation: { duration: 600 } });
+      }
+    }
+
+    function toggleVoiceSpeech() {
+      voiceSpeechEnabled = !voiceSpeechEnabled;
+      const icon = document.getElementById('voice-icon');
+      const text = document.getElementById('voice-toggle-text');
+      if (voiceSpeechEnabled) {
+        icon.className = "fa-solid fa-volume-high text-emerald-400";
+        text.textContent = "Voice Speech: ON";
+      } else {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.textContent = "Voice Speech: OFF";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakCurrentResponse() {
+      if (!voiceSpeechEnabled || !('speechSynthesis' in window) || !currentAgentText) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentAgentText);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      const waveBars = [
+        document.getElementById('w-1'),
+        document.getElementById('w-2'),
+        document.getElementById('w-3'),
+        document.getElementById('w-4'),
+        document.getElementById('w-5')
+      ];
+
+      const waveInterval = setInterval(() => {
+        waveBars.forEach(b => {
+          if (b) b.style.height = `${Math.floor(Math.random() * 18) + 4}px`;
+        });
+      }, 120);
+
+      utterance.onend = () => {
+        clearInterval(waveInterval);
+        waveBars.forEach((b, i) => {
+          if (b) b.style.height = `${[12, 20, 8, 24, 12][i]}px`;
+        });
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function startCallTimer() {
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('call-timer');
+        if (el) el.textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    // Default initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      startCallTimer();
+      selectUseCase('billing');
+    });
+  </script>
+</body>
+</html>
+'''
+
+if __name__ == '__main__':
+    html = generate_single_ui_html()
+    with open('callcenter_ai_voice_agents.html', 'w', encoding='utf-8') as f:
+        f.write(html)
+    print("SUCCESS: Unified single UI built into callcenter_ai_voice_agents.html!")
