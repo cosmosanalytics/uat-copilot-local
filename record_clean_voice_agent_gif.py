@@ -2,10 +2,10 @@
 """
 record_clean_voice_agent_gif.py
 Records the Call Center AI Voice Agents Studio with:
-- ZERO opaque bars covering any UI elements.
-- The web app is 100% visible from top header to bottom metrics.
-- External captions placed in a dedicated top header strip ABOVE the web app.
-- Features: Real-Time Live Call Simulator with Sample Questions grounded in KG & CG.
+1. Unified Triad Cross-Graph View (KG + CG + BG + Cross-Edges)
+2. Domain Subgraph Navigation (Billing, Telecom, Enterprise, All-Domains)
+3. Real-Time Animated Graph Growth Stepper in Live Calls
+4. ZERO covered UI - 100% visible with external top header caption bar.
 """
 
 import os
@@ -56,11 +56,11 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     draw.rectangle([(0, caption_h - 3), (app_w, caption_h)], fill=accent_rgb)
 
     # Badge Pill
-    draw.rounded_rectangle([(16, 12), (16 + 210, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
+    draw.rounded_rectangle([(16, 12), (16 + 215, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
     draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
 
     # Caption text
-    draw.text((242, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
+    draw.text((248, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
 
     # 3. Paste the untouched, 100% visible web app directly underneath
     new_canvas.paste(app_img, (0, caption_h))
@@ -84,79 +84,78 @@ def main():
         # FRAME 1: Full Triad Architecture (100% UI Visible)
         capture_uncovered_frame(
             page,
-            "ARCHITECTURE VIEW",
-            "Triad Graph Hierarchy: KG (What should happen) + CG (What actually happened) -> BG (Reconciles should vs actual)",
+            "1. ARCHITECTURE VIEW",
+            "Agent Hierarchy: KG (What should happen) + CG (What actually happened) -> BG (Reconciles should vs actual)",
             (99, 102, 241)
         )
 
-        # FRAME 2: Real-Time Live Call Simulator - Billing Dispute Sample Question
+        # FRAME 2: ORDER 1 - Unified Triad Cross-Graph View (Billing Domain)
+        page.click('#tab-triad')
+        page.wait_for_timeout(1500)
+        capture_uncovered_frame(
+            page,
+            "2. UNIFIED TRIAD GRAPH",
+            "Order 1: Co-locates SOP KG (Indigo), Call CG (Amber) & ROI BG (Emerald) with explicit cross-graph edges!",
+            (99, 102, 241)
+        )
+
+        # FRAME 3: ORDER 2 - Domain Subgraph Navigation (All Domains Unified)
+        page.click('#triad-filter-all')
+        page.wait_for_timeout(1500)
+        capture_uncovered_frame(
+            page,
+            "3. MACRO ENTERPRISE",
+            "Order 2: Domain Subgraphs unified into Corporate AI Hub (Billing SOP-04, Telecom SOP-12 & Enterprise SOP-28).",
+            (16, 185, 129)
+        )
+
+        # FRAME 4: ORDER 3 - Real-Time Live Call & Graph Growth Stepper
         page.click('#tab-call')
         page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "LIVE CALL SIMULATOR",
-            "Real-Time Call: Sarah asks sample question ($150 roaming waiver). Agent grounds in SOP-04 & Sarah's $2.4k LTV to waive fee.",
-            (16, 185, 129)
+            "4. LIVE CALL SIMULATOR",
+            "Order 3: Inbound customer call streams into 4-stage Real-Time Graph Growth Engine (T0:CG -> T1:KG -> T2:Decision -> T3:ROI).",
+            (245, 158, 11)
         )
 
-        # FRAME 3: Real-Time Live Call Simulator - Broadband Outage Sample Question
+        # FRAME 5: Sample Call 2 - Broadband Outage & Telemetry Bypass
         page.click('#sample-btn-outage')
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "REAL-TIME OUTAGE CALL",
-            "Sample Call 2: Blinking optical light -> Agent queries telemetry (31.4dB loss) & SOP-12 to auto-dispatch field tech in 12s.",
+            "5. REAL-TIME OUTAGE CALL",
+            "Telemetry Grounding: Optical loss 31.4dB bypasses 180s manual phone reboot -> Auto-dispatches field tech in 12s.",
             (14, 165, 233)
         )
 
-        # FRAME 4: SOP Knowledge Graph Tab (100% Separate Graph Canvas)
+        # FRAME 6: SOP Knowledge Graph Tab (Rulebook Canvas)
         page.click('#tab-kg')
         page.wait_for_timeout(1500)
         capture_uncovered_frame(
             page,
-            "TAB 2: SOP RULEBOOK",
-            "SOP Knowledge Graph (KG): Formal rulebook defining Tier-1 limits ($50), Supervisor limits ($250) & Roles.",
+            "6. SOP RULEBOOK GRAPH",
+            "SOP Knowledge Graph (KG): Authoritative rulebook defining Tier-1 limits ($50), Supervisor limits ($250) & Roles.",
             (59, 130, 246)
         )
 
-        # FRAME 5: Call Records Context Graph Tab (100% Separate Graph Canvas)
+        # FRAME 7: Call Records Context Graph Tab (Call Diary Canvas)
         page.click('#tab-cg')
         page.wait_for_timeout(1500)
         capture_uncovered_frame(
             page,
-            "TAB 3: CALL DIARY",
-            "Call Records Context Graph (CG): Empirical decision chain (Event: $150 bill -> Decision: $50 offer -> Exception: $150 waiver -> Retained).",
+            "7. CALL DIARY GRAPH",
+            "Call Records Context Graph (CG): Empirical decision chain tracking customer state, telemetry alarms & agent concessions.",
             (245, 158, 11)
         )
 
-        # FRAME 6: Business Goals Graph Tab (100% Separate Graph Canvas)
+        # FRAME 8: Business Goals ROI & Policy Drift Feedback Loop
         page.click('#tab-bg')
         page.wait_for_timeout(1500)
         capture_uncovered_frame(
             page,
-            "TAB 4: BUSINESS ROI",
-            "Business Graph (BG): Reconciles should vs actual -> +$2,250 Net Value ($2,400 LTV retained - $150 fee concession).",
-            (16, 185, 129)
-        )
-
-        # FRAME 7: Policy Drift Feedback Loop Highlight
-        page.click('#tab-hierarchy')
-        page.select_option('#preset-select', 'billing_dispute')
-        page.wait_for_timeout(1000)
-        capture_uncovered_frame(
-            page,
-            "POLICY DRIFT LOOP",
-            "Improvement: 47 repeated exceptions trigger automated update to SOP-04 in KG ($50 -> $150), eliminating 45s hold!",
-            (99, 102, 241)
-        )
-
-        # FRAME 8: Use Case 3 - VIP Retention Preset
-        page.select_option('#preset-select', 'vip_retention')
-        page.wait_for_timeout(1000)
-        capture_uncovered_frame(
-            page,
-            "USE CASE: RETENTION",
-            "Enterprise churn threat: Voice agent matches 15% discount renewal under SOP-28 -> Protects +$27,900 ARR.",
+            "8. BUSINESS ROI & DRIFT",
+            "Business Graph (BG): Reconciles Should vs Actual -> +$2,250 Net Value & emits automated SOP updates back to KG!",
             (16, 185, 129)
         )
 
