@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 record_clean_voice_agent_gif.py
-Records the Call Center AI Voice Agents Studio with the Single Unified UI:
-- Upper Side: Real-Time Live Call (active caller, question chips, ASR, agent speech, voice synthesis)
-- Lower Side: BG, KG, and CG highlighted for the current call with cross-graph edges
-- Cross-Usecases Option: Macro Enterprise View
+Records the Call Center AI Voice Agents Studio with the Spatial Hierarchy:
+- Upper Left: KG (What SHOULD happen - SOPs)
+- Upper Right: CG (What ACTUALLY happened - calls)
+- Center Middle: BG (Compares should vs actual)
+- Bottom: 4 Improvement Potentials (Policy drift, Compliance gap, Net value, Bottlenecks)
+- Dashed Feedback Arrow: From Policy drift back up to KG!
 """
 
 import os
@@ -55,11 +57,11 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     draw.rectangle([(0, caption_h - 3), (app_w, caption_h)], fill=accent_rgb)
 
     # Badge Pill
-    draw.rounded_rectangle([(16, 12), (16 + 225, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
+    draw.rounded_rectangle([(16, 12), (16 + 230, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
     draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
 
     # Caption text
-    draw.text((258, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
+    draw.text((264, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
 
     # 3. Paste the untouched, 100% visible web app directly underneath
     new_canvas.paste(app_img, (0, caption_h))
@@ -80,51 +82,49 @@ def main():
         page.goto(url)
         page.wait_for_timeout(1500)
 
-        # FRAME 1: Single UI Overview - Billing Call Active
+        # FRAME 1: Single UI Overview - Spatial Hierarchy (KG Upper-L, CG Upper-R, BG Center-M, 4 Outcomes Bottom)
         capture_uncovered_frame(
             page,
-            "1. SINGLE UNIFIED UI",
-            "Upper: Real-Time Live Call (Sarah Jenkins $150 dispute) &bull; Lower: KG, CG & BG highlighted for the current call!",
+            "1. SPATIAL HIERARCHY",
+            "Upper: Real Call &bull; Lower: KG (Upper-Left), CG (Upper-Right), BG (Center-Middle) & 4 Outcomes (Bottom)!",
             (99, 102, 241)
         )
 
-        # FRAME 2: Upper Live Call & Grounded Speech Playback
+        # FRAME 2: Live Inbound Call & Grounded Voice Speech
         page.click('#chip-q-billing')
         page.wait_for_timeout(1000)
         capture_uncovered_frame(
             page,
-            "2. LIVE CALL GROUNDING",
-            "Upper: Customer asks $150 fee waiver -> AI Agent grounds in SOP-04 Clause 4.2 ($2.4k LTV) -> Waives $150 with $0 hold.",
+            "2. LIVE INBOUND CALL",
+            "Sarah Jenkins asks $150 fee waiver -> AI Agent grounds in SOP-04 Clause 4.2 ($2.4k LTV) -> Waives $150 with $0 balance.",
             (16, 185, 129)
         )
 
-        # FRAME 3: Lower Graph Call Path Highlight (Sarah Jenkins -> SOP-04 -> +$2,250 ROI)
-        page.click('#btn-focus-call')
-        page.wait_for_timeout(1200)
+        # FRAME 3: Policy Drift Loop from Bottom-Left back up to KG
         capture_uncovered_frame(
             page,
-            "3. GRAPH HIGHLIGHTED",
-            "Lower: SOP Rulebook (KG) + Call Record (CG) -> Reconciles +$2,250 Net Value (BG) & logs drift loop back to SOP-04!",
-            (245, 158, 11)
+            "3. POLICY DRIFT LOOP",
+            "Reconciliation: 47 repeated exceptions trigger automated update from Bottom Policy Drift back up to Knowledge Graph!",
+            (236, 72, 153)
         )
 
-        # FRAME 4: Use Case 2 - Broadband Outage & Instant Tech Dispatch
+        # FRAME 4: Use Case 2 - Broadband Outage & Field Dispatch
         page.click('#btn-usecase-outage')
         page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
             "4. USE CASE 2: OUTAGE",
-            "Upper: Marcus Vance red LOS alarm -> Lower: Optical loss 31.4dB conforms to SOP-12 -> Auto-dispatches truck in 12s.",
+            "Marcus Vance red optical alarm -> 31.4dB loss conforms to SOP-12 -> Instant field truck roll dispatched in 12s.",
             (14, 165, 233)
         )
 
-        # FRAME 5: Use Case 3 - Enterprise Churn & ARR Retention
+        # FRAME 5: Use Case 3 - Enterprise Churn & ARR Lock
         page.click('#btn-usecase-retention')
         page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
             "5. USE CASE 3: RETENTION",
-            "Upper: Elena Rostova $18k cancellation -> Lower: SOP-28 Clause 2.4 locks 15% discount renewal -> Protects +$27,900 ARR.",
+            "Elena Rostova cancellation -> SOP-28 Clause 2.4 locks 15% discount renewal -> Protects +$27,900 2-yr ARR.",
             (16, 185, 129)
         )
 

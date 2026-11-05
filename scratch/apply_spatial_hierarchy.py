@@ -1,0 +1,704 @@
+# -*- coding: utf-8 -*-
+"""
+apply_spatial_hierarchy.py
+Updates callcenter_ai_voice_agents.html so the single graph strictly organizes:
+- Upper Left: All KG nodes (Knowledge Graph - What SHOULD happen: SOPs & Rules)
+- Upper Right: All CG nodes (Context Graph - What ACTUALLY happened: Calls & Events)
+- Center Middle: All BG nodes (Business Graph - Compares should vs actual)
+- Bottom: The 4 Improvement Potentials (Policy drift, Compliance gap, Net value, Bottlenecks)
+- Dashed Feedback Arrow: From Policy drift at bottom back up to KG at top left!
+"""
+
+def generate_spatial_html():
+    return '''<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Center AI Voice Agents Studio | Live Call &amp; Triad Graph</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Vis.js Network -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+    .vis-network { outline: none; }
+  </style>
+</head>
+<body class="h-full bg-slate-900 text-slate-100 flex flex-col antialiased overflow-hidden">
+
+  <!-- TOP HEADER & USE CASE SELECTOR -->
+  <header class="bg-slate-950 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-md font-black text-base">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight">Call Center AI Voice Agents Studio</h1>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] font-bold uppercase tracking-wider">Hierarchy Graph View</span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">Upper: Real-Time Call &bull; Lower: Spatial Triad (KG Upper-Left, CG Upper-Right, BG Center-Middle, 4 Outcomes Bottom)</p>
+      </div>
+    </div>
+
+    <!-- CROSS-USECASES SELECTOR BUTTONS -->
+    <div class="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+      <span class="text-[10px] font-mono font-bold text-slate-400 px-2 uppercase hidden lg:inline">Use Case:</span>
+      <button onclick="selectUseCase('billing')" id="btn-usecase-billing" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-xs transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i>
+        <span>1. Billing Dispute ($150)</span>
+      </button>
+      <button onclick="selectUseCase('outage')" id="btn-usecase-outage" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-wifi text-sky-400"></i>
+        <span>2. Broadband Outage (LOS)</span>
+      </button>
+      <button onclick="selectUseCase('retention')" id="btn-usecase-retention" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-handshake text-emerald-400"></i>
+        <span>3. VIP Retention ($18k)</span>
+      </button>
+      <button onclick="selectUseCase('cross')" id="btn-usecase-cross" class="usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5 bg-gradient-to-r hover:from-indigo-900/40 hover:to-emerald-900/40">
+        <i class="fa-solid fa-diagram-project text-indigo-400"></i>
+        <span>🌍 Cross-Usecases</span>
+      </button>
+    </div>
+
+    <!-- Audio Speech Toggle -->
+    <div class="flex items-center space-x-2">
+      <button id="btn-toggle-speech" onclick="toggleVoiceSpeech()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+        <i id="voice-icon" class="fa-solid fa-volume-high text-emerald-400"></i>
+        <span id="voice-toggle-text">Voice Speech: ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT WORKSPACE: UPPER (CALL) & LOWER (HIERARCHY GRAPH) -->
+  <main class="flex-1 flex flex-col min-h-0 overflow-hidden p-3 gap-3">
+
+    <!-- ================================================================= -->
+    <!-- UPPER SIDE: REAL-TIME LIVE CALL CONSOLE (38% Height)              -->
+    <!-- ================================================================= -->
+    <section class="h-[38%] min-h-[240px] bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col shrink-0">
+      
+      <!-- Call Control Bar -->
+      <div class="flex flex-wrap items-center justify-between pb-2 border-b border-slate-800/80 gap-2 shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="relative">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xs shadow-inner">
+              <i class="fa-solid fa-phone-volume animate-pulse"></i>
+            </div>
+            <span class="absolute -top-1 -right-1 flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-black uppercase tracking-wider text-emerald-400">Real-Time Call</span>
+              <span class="text-slate-600">&bull;</span>
+              <span id="call-timer" class="font-mono text-[11px] text-slate-300 font-bold">00:24</span>
+              <span class="text-slate-600">&bull;</span>
+              <span id="caller-id-pill" class="text-xs font-bold text-white">Caller: Sarah Jenkins (LTV $2,400)</span>
+              <span id="caller-tag" class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">VIP Tier</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Questions Quick Chips -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto text-[11px]">
+          <button onclick="askSampleQuestion('billing')" id="chip-q-billing" class="px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[210px]">
+            💳 "Waive $150 roaming fee?"
+          </button>
+          <button onclick="askSampleQuestion('outage')" id="chip-q-outage" class="px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[210px]">
+            🌐 "Red optical light, dispatch tech?"
+          </button>
+          <button onclick="askSampleQuestion('retention')" id="chip-q-retention" class="px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition truncate max-w-[210px]">
+            💼 "Cancel $18k enterprise account?"
+          </button>
+        </div>
+
+        <!-- Waveform visualizer -->
+        <div class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+          <div id="w-1" class="w-1 h-2.5 bg-emerald-400 rounded-full"></div>
+          <div id="w-2" class="w-1 h-4 bg-emerald-400 rounded-full"></div>
+          <div id="w-3" class="w-1 h-2 bg-emerald-400 rounded-full"></div>
+          <div id="w-4" class="w-1 h-5 bg-emerald-400 rounded-full"></div>
+          <div id="w-5" class="w-1 h-2.5 bg-emerald-400 rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- Dialogue Split View: Left = Customer Utterance, Right = AI Voice Agent Response -->
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-2 min-h-0 overflow-y-auto">
+        
+        <!-- Left Box: Transcribed Inbound Customer Audio -->
+        <div class="md:col-span-5 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-300">Customer Inbound Audio (ASR)</span>
+              </div>
+              <span id="cust-sentiment-badge" class="px-1.5 py-0.2 rounded text-[8px] font-extrabold uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                Churn Risk: 82%
+              </span>
+            </div>
+            <p id="cust-speech-text" class="text-xs text-slate-200 leading-snug font-medium">
+              &ldquo;I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?&rdquo;
+            </p>
+          </div>
+
+          <!-- Custom Caller Input -->
+          <div class="flex items-center space-x-1.5 mt-1.5 pt-1.5 border-t border-slate-800/80">
+            <input type="text" id="input-custom-call" placeholder="Type custom question..." class="flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+            <button onclick="askCustomCaller()" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold transition shrink-0">
+              Ask
+            </button>
+          </div>
+        </div>
+
+        <!-- Middle Arrow / Step Trigger -->
+        <div class="md:col-span-2 hidden md:flex flex-col items-center justify-center text-center px-1">
+          <div class="p-1.5 rounded-full bg-indigo-950/60 border border-indigo-700/60 text-indigo-400 mb-0.5">
+            <i class="fa-solid fa-brain fa-spin text-xs"></i>
+          </div>
+          <span class="text-[8.5px] font-mono font-bold text-indigo-300 uppercase">Dual-Graph Grounding</span>
+          <span class="text-[7.5px] text-slate-500">KG (SOP) + CG (State)</span>
+        </div>
+
+        <!-- Right Box: Grounded AI Voice Agent Response -->
+        <div class="md:col-span-5 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-2.5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">AI Voice Agent (Grounded)</span>
+                <span id="agent-sop-match-badge" class="px-1 py-0.2 rounded text-[8px] font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 font-mono">SOP-04 Sec 4.2</span>
+              </div>
+              <button onclick="speakCurrentResponse()" class="text-[9.5px] text-emerald-400 hover:underline font-bold flex items-center space-x-1">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>Replay Voice</span>
+              </button>
+            </div>
+            <p id="agent-speech-text" class="text-xs text-slate-100 leading-snug font-medium">
+              &ldquo;Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.&rdquo;
+            </p>
+          </div>
+
+          <!-- Real-Time Decision Metric Tag -->
+          <div class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-emerald-900/40 text-[9.5px]">
+            <span class="text-slate-400" id="grounding-audit-note">&bull; Grounding: SARAH_JENKINS_LTV &gt; $2,000 &bull; Concession: $150 &le; $250</span>
+            <span class="text-emerald-400 font-bold" id="net-roi-tag">+$2,250 Net Value</span>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- LOWER SIDE: SPATIAL HIERARCHY GRAPH (KG UPPER-L, CG UPPER-R,       -->
+    <!-- BG CENTER-M, 4 POTENTIALS BOTTOM) (62% Height)                    -->
+    <!-- ================================================================= -->
+    <section class="flex-1 min-h-[340px] bg-slate-950 border border-slate-800 rounded-2xl shadow-lg flex flex-col overflow-hidden">
+      
+      <!-- Spatial Graph Header -->
+      <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded bg-indigo-500"></span>
+            <span class="text-xs font-extrabold text-indigo-300">Upper-Left: KG (SOPs)</span>
+          </div>
+          <span class="text-slate-600">&bull;</span>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-extrabold text-emerald-300">Upper-Right: CG (Call Records)</span>
+          </div>
+          <span class="text-slate-600">&bull;</span>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded bg-amber-600"></span>
+            <span class="text-xs font-extrabold text-amber-300">Center: BG (Reconciles)</span>
+          </div>
+          <span class="text-slate-600">&bull;</span>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded bg-slate-600"></span>
+            <span class="text-xs font-extrabold text-slate-300">Bottom: 4 Improvement Potentials</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <span id="active-call-highlight-label" class="text-xs text-emerald-400 font-bold hidden sm:inline">
+            &bull; Sarah Jenkins &rarr; SOP-04 &rarr; +$2,250
+          </span>
+          <button onclick="resetGraphView()" class="px-2.5 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300">
+            <i class="fa-solid fa-arrows-to-dot mr-1"></i> Center
+          </button>
+        </div>
+      </div>
+
+      <!-- VIS.JS SPATIAL GRAPH CANVAS -->
+      <div class="flex-1 relative bg-slate-950" id="graph-wrapper">
+        <div id="unified-graph-canvas" class="w-full h-full"></div>
+
+        <!-- Feedback Loop Callout Overlay Tag -->
+        <div class="absolute bottom-2 left-2 bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-[9.5px] text-slate-300 flex items-center space-x-2 pointer-events-none">
+          <span class="text-pink-400 font-mono font-bold">&larr; - - - - - - -</span>
+          <span>Dashed loop: <strong>Policy drift</strong> updates <strong>Knowledge Graph</strong> rulebook</span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT ENGINE & DETERMINISTIC SPATIAL VIS.JS GRAPH -->
+  <script>
+    let activeScenarioKey = "billing";
+    let voiceSpeechEnabled = true;
+    let callTimerInterval = null;
+    let callSeconds = 24;
+    let networkInstance = null;
+    let currentAgentText = "";
+
+    const SCENARIOS = {
+      billing: {
+        key: "billing",
+        callerId: "Caller: Sarah Jenkins (LTV $2,400)",
+        tag: "VIP Tier",
+        sentiment: "Churn Risk: 82%",
+        sopMatch: "SOP-04 Sec 4.2",
+        question: "I was charged a $150 international roaming fee on my last bill that I didn't authorize. Can you waive it?",
+        agentSpeech: "Hello Sarah, I completely understand your concern regarding the $150 roaming fee. Because you have been a valued customer with us for 6 years and maintain an exceptional account standing, I am applying our VIP Hardship Exception under SOP-04 Section 4.2 to waive the full $150 right now. Your balance has been adjusted to $0, and no supervisor transfer is required.",
+        audit: "• Grounding: SARAH_JENKINS_LTV > $2,000 • Concession: $150 ≤ $250 limit",
+        roi: "+$2,250 Net Value",
+        highlightLabel: "Sarah Jenkins → SOP-04 → +$2,250 ROI",
+        sopTitle: "Knowledge Graph (KG)\\nWhat SHOULD happen (SOPs)\\nSOP-04: Billing & Roaming",
+        cgTitle: "Context Graph (CG)\\nWhat ACTUALLY happened (calls)\\nSarah Jenkins: $150 Fee Waiver",
+        bgTitle: "Business Graph (BG)\\nCompares should vs actual\\nEvaluated: $150 Concession vs $2,400 LTV",
+        outcomes: {
+          drift: "Policy drift\\n47 repeated exceptions\\n→ Update SOP-04 ($50→$150)",
+          compliance: "Compliance gap\\nPolicy followed?\\n100% Validated (Clause 4.2)",
+          netvalue: "Net value\\nValue vs cost\\n+$2,250 Net Preserved",
+          bottlenecks: "Bottlenecks\\nWhere steps stall\\nSlashed 45s supervisor wait"
+        }
+      },
+      outage: {
+        key: "outage",
+        callerId: "Caller: Marcus Vance (Home Office Gigabit)",
+        tag: "Business Pro",
+        sentiment: "Red LOS Hardware Alarm",
+        sopMatch: "SOP-12 Rule 3",
+        question: "My fiber router has had a blinking red optical light for 2 hours and my team is offline. Can you dispatch a tech today?",
+        agentSpeech: "I'm so sorry for the interruption to your home office, Marcus. I just ran real-time line telemetry on your ONT and detected an optical loss of 31.4dB on the fiber drop, indicating an exterior drop cable fault rather than inside hardware. Under SOP-12, I have bypassed the 180s reboot checklist and immediately booked technician dispatch #TX-9041 for today between 1:00 PM and 3:00 PM.",
+        audit: "• Grounding: OPTICAL_LOSS_31.4dB > 28dB • Action: Bypass manual triage checklist",
+        roi: "+$450 Saved • 12s AHT",
+        highlightLabel: "Marcus Vance → SOP-12 → Truck Roll #TX-9041",
+        sopTitle: "Knowledge Graph (KG)\\nWhat SHOULD happen (SOPs)\\nSOP-12: Broadband Hardware & Signal",
+        cgTitle: "Context Graph (CG)\\nWhat ACTUALLY happened (calls)\\nMarcus Vance: Red LOS 31.4dB Loss",
+        bgTitle: "Business Graph (BG)\\nCompares should vs actual\\nEvaluated: Bypass 180s Triage Checklist",
+        outcomes: {
+          drift: "Policy drift\\nStandardize auto-triage\\nBypass manual 180s reboot",
+          compliance: "Compliance gap\\nPolicy followed?\\nTelemetry Loss > 28dB Confirmed",
+          netvalue: "Net value\\nValue vs cost\\n+$450 Field Dispatch Saved",
+          bottlenecks: "Bottlenecks\\nWhere steps stall\\n12s AHT (Eliminated 168s stall)"
+        }
+      },
+      retention: {
+        key: "retention",
+        callerId: "Caller: Elena Rostova (Apex Logistics Corp)",
+        tag: "Enterprise Tier",
+        sentiment: "Churn Risk: 94%",
+        sopMatch: "SOP-28 Clause 2.4",
+        question: "We have been a loyal client for 8 years, but our renewal rate jumped 25%. I want to cancel our $18,000/yr enterprise account today.",
+        agentSpeech: "Elena, thank you for being a cornerstone enterprise partner with us for over 8 years. We deeply value Apex Logistics. In accordance with SOP-28 Executive Retention guidelines for tenured partners, I am authorized to lock in a 15% discount across a 2-year renewal term, preserving your annual rate at $15,300 with dedicated SLA guarantees. May I send over the addendum for your digital signature right now?",
+        audit: "• Grounding: TENURE_8.4YRS & ARR_$18K • Offer: 15% Max on 2-Yr Commitment",
+        roi: "+$27,900 ARR Preserved",
+        highlightLabel: "Apex Logistics → SOP-28 → +$27,900 ARR",
+        sopTitle: "Knowledge Graph (KG)\\nWhat SHOULD happen (SOPs)\\nSOP-28: Enterprise Contract Retention",
+        cgTitle: "Context Graph (CG)\\nWhat ACTUALLY happened (calls)\\nElena Rostova: $18k ARR Renewal",
+        bgTitle: "Business Graph (BG)\\nCompares should vs actual\\nEvaluated: 15% Discount on 2-Yr Commitment",
+        outcomes: {
+          drift: "Policy drift\\nAudit Tier-1 quota\\nAutomate executive retention",
+          compliance: "Compliance gap\\nPolicy followed?\\nClause 2.4 (15% Approved)",
+          netvalue: "Net value\\nValue vs cost\\n+$27,900 2-Yr ARR Protected",
+          bottlenecks: "Bottlenecks\\nWhere steps stall\\n58s Negotiation (0s Queue)"
+        }
+      },
+      cross: {
+        key: "cross",
+        callerId: "Enterprise Call Center AI Overview (All Domains)",
+        tag: "Macro Enterprise",
+        sentiment: "Cross-Domain Orchestration",
+        sopMatch: "Multi-SOP Active",
+        question: "How does the Enterprise AI synthesize Billing, Hardware Outages, and Contract Retention simultaneously?",
+        agentSpeech: "The enterprise architecture co-locates all 3 domains under a unified corporate hub: Billing disputes adhere to SOP-04 financial limits, Broadband outages bypass triage checklists using SOP-12 optical telemetry, and Enterprise accounts receive multi-year retention renewals via SOP-28. Each call reconciles should-be policy against actual caller state to safeguard business ROI.",
+        audit: "• Cross-Domain Synthesis: Billing + Telecom + Enterprise ARR",
+        roi: "+$30,600 Cumulative Value",
+        highlightLabel: "Cross-Usecases View: Corporate AI Core coordinating Billing, Outage & Retention",
+        sopTitle: "Knowledge Graph (KG)\\nWhat SHOULD happen (SOPs)\\nSOP-04, SOP-12, SOP-28 Rulebooks",
+        cgTitle: "Context Graph (CG)\\nWhat ACTUALLY happened (calls)\\nSarah, Marcus & Elena Call Stream",
+        bgTitle: "Business Graph (BG)\\nCompares should vs actual\\nMacro Enterprise Reconciliation Hub",
+        outcomes: {
+          drift: "Policy drift\\nUpdates the KG\\nCross-domain automated feedback",
+          compliance: "Compliance gap\\nPolicy followed?\\n100% Policy Verification",
+          netvalue: "Net value\\nValue vs cost\\n+$30,600 Cumulative ROI",
+          bottlenecks: "Bottlenecks\\nWhere steps stall\\nZero handoff friction"
+        }
+      }
+    };
+
+    function buildSpatialGraphData() {
+      const s = SCENARIOS[activeScenarioKey] || SCENARIOS.billing;
+
+      // 1. UPPER LEFT: KNOWLEDGE GRAPH (KG)
+      // 2. UPPER RIGHT: CONTEXT GRAPH (CG)
+      // 3. CENTER MIDDLE: BUSINESS GRAPH (BG)
+      // 4. BOTTOM: 4 IMPROVEMENT POTENTIALS
+      const nodes = [
+        // Upper Left: KG Main Box
+        {
+          id: "node_kg",
+          x: -360,
+          y: -170,
+          label: s.sopTitle,
+          shape: "box",
+          margin: 14,
+          color: { background: "#e0e7ff", border: "#4338ca" },
+          font: { color: "#1e1b4b", face: "Plus Jakarta Sans", size: 12, bold: true },
+          borderWidth: 2
+        },
+
+        // Upper Right: CG Main Box
+        {
+          id: "node_cg",
+          x: 360,
+          y: -170,
+          label: s.cgTitle,
+          shape: "box",
+          margin: 14,
+          color: { background: "#dcfce7", border: "#15803d" },
+          font: { color: "#064e3b", face: "Plus Jakarta Sans", size: 12, bold: true },
+          borderWidth: 2
+        },
+
+        // Center Middle: BG Main Box
+        {
+          id: "node_bg",
+          x: 0,
+          y: 0,
+          label: s.bgTitle,
+          shape: "box",
+          margin: 14,
+          color: { background: "#ffedd5", border: "#c2410c" },
+          font: { color: "#7c2d12", face: "Plus Jakarta Sans", size: 13, bold: true },
+          borderWidth: 2
+        },
+
+        // Bottom: 4 Improvement Potentials
+        // 1. Policy drift (Bottom Left)
+        {
+          id: "out_drift",
+          x: -420,
+          y: 170,
+          label: s.outcomes.drift,
+          shape: "box",
+          margin: 12,
+          color: { background: "#f1f5f9", border: "#475569" },
+          font: { color: "#0f172a", face: "Plus Jakarta Sans", size: 11, bold: true },
+          borderWidth: 2
+        },
+
+        // 2. Compliance gap (Center-Left)
+        {
+          id: "out_compliance",
+          x: -140,
+          y: 170,
+          label: s.outcomes.compliance,
+          shape: "box",
+          margin: 12,
+          color: { background: "#f1f5f9", border: "#475569" },
+          font: { color: "#0f172a", face: "Plus Jakarta Sans", size: 11, bold: true },
+          borderWidth: 2
+        },
+
+        // 3. Net value (Center-Right)
+        {
+          id: "out_netvalue",
+          x: 140,
+          y: 170,
+          label: s.outcomes.netvalue,
+          shape: "box",
+          margin: 12,
+          color: { background: "#ecfdf5", border: "#059669" },
+          font: { color: "#064e3b", face: "Plus Jakarta Sans", size: 11, bold: true },
+          borderWidth: 2
+        },
+
+        // 4. Bottlenecks (Bottom Right)
+        {
+          id: "out_bottlenecks",
+          x: 420,
+          y: 170,
+          label: s.outcomes.bottlenecks,
+          shape: "box",
+          margin: 12,
+          color: { background: "#f1f5f9", border: "#475569" },
+          font: { color: "#0f172a", face: "Plus Jakarta Sans", size: 11, bold: true },
+          borderWidth: 2
+        }
+      ];
+
+      // EDGES MATCHING THE USER'S EXACT HIERARCHICAL DIAGRAM
+      const edges = [
+        // KG -> BG (Upper-Left to Center-Middle)
+        {
+          from: "node_kg",
+          to: "node_bg",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#64748b" },
+          width: 2
+        },
+
+        // CG -> BG (Upper-Right to Center-Middle)
+        {
+          from: "node_cg",
+          to: "node_bg",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#64748b" },
+          width: 2
+        },
+
+        // BG -> 4 Improvement Potentials (Center-Middle down to Bottom)
+        {
+          from: "node_bg",
+          to: "out_drift",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#64748b" },
+          width: 2
+        },
+        {
+          from: "node_bg",
+          to: "out_compliance",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#64748b" },
+          width: 2
+        },
+        {
+          from: "node_bg",
+          to: "out_netvalue",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#059669" },
+          width: 2.5
+        },
+        {
+          from: "node_bg",
+          to: "out_bottlenecks",
+          arrows: { to: { enabled: true, scaleFactor: 1.0 } },
+          color: { color: "#64748b" },
+          width: 2
+        },
+
+        // THE KEY DASHED FEEDBACK LOOP: Policy drift -> Knowledge Graph (KG)
+        // From bottom-left up to top-left!
+        {
+          from: "out_drift",
+          to: "node_kg",
+          arrows: { to: { enabled: true, scaleFactor: 1.1 } },
+          dashes: [7, 5],
+          color: { color: "#ec4899" },
+          width: 3.5,
+          smooth: {
+            enabled: true,
+            type: "curvedCW",
+            roundness: 0.28
+          }
+        }
+      ];
+
+      return { nodes, edges };
+    }
+
+    function initUnifiedGraph() {
+      const container = document.getElementById('unified-graph-canvas');
+      if (!container) return;
+
+      const data = buildSpatialGraphData();
+
+      const options = {
+        physics: {
+          enabled: false // Locks strictly into the exact spatial hierarchy!
+        },
+        interaction: {
+          dragNodes: true,
+          zoomView: true,
+          dragView: true
+        }
+      };
+
+      if (networkInstance) networkInstance.destroy();
+      networkInstance = new vis.Network(container, data, options);
+
+      // Fit to container after small delay
+      setTimeout(() => {
+        if (networkInstance) networkInstance.fit({ animation: { duration: 500 } });
+      }, 60);
+    }
+
+    function selectUseCase(key) {
+      activeScenarioKey = key;
+      const s = SCENARIOS[key];
+      if (!s) return;
+
+      // Update button styles
+      ['billing', 'outage', 'retention', 'cross'].forEach(k => {
+        const btn = document.getElementById(`btn-usecase-${k}`);
+        if (btn) {
+          if (k === key) {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition flex items-center space-x-1.5";
+          } else {
+            btn.className = "usecase-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white border border-transparent transition flex items-center space-x-1.5";
+          }
+        }
+      });
+
+      // Update upper call UI
+      document.getElementById('caller-id-pill').textContent = s.callerId;
+      document.getElementById('caller-tag').textContent = s.tag;
+      document.getElementById('cust-sentiment-badge').textContent = s.sentiment;
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${s.question}&rdquo;`;
+      document.getElementById('agent-sop-match-badge').textContent = s.sopMatch;
+      document.getElementById('agent-speech-text').innerHTML = `&ldquo;${s.agentSpeech}&rdquo;`;
+      document.getElementById('grounding-audit-note').textContent = s.audit;
+      document.getElementById('net-roi-tag').textContent = s.roi;
+      document.getElementById('active-call-highlight-label').textContent = `• ${s.highlightLabel}`;
+
+      currentAgentText = s.agentSpeech;
+
+      // Re-render spatial hierarchy graph
+      initUnifiedGraph();
+
+      // Trigger speech synthesis
+      speakCurrentResponse();
+    }
+
+    function askSampleQuestion(key) {
+      selectUseCase(key);
+    }
+
+    function askCustomCaller() {
+      const input = document.getElementById('input-custom-call');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const lower = val.toLowerCase();
+      if (lower.includes('outage') || lower.includes('router') || lower.includes('optical') || lower.includes('fiber') || lower.includes('light')) {
+        selectUseCase('outage');
+      } else if (lower.includes('cancel') || lower.includes('renew') || lower.includes('contract') || lower.includes('enterprise') || lower.includes('discount')) {
+        selectUseCase('retention');
+      } else {
+        selectUseCase('billing');
+      }
+
+      document.getElementById('cust-speech-text').innerHTML = `&ldquo;${val}&rdquo;`;
+      input.value = '';
+    }
+
+    function resetGraphView() {
+      if (networkInstance) {
+        networkInstance.fit({ animation: { duration: 600 } });
+      }
+    }
+
+    function toggleVoiceSpeech() {
+      voiceSpeechEnabled = !voiceSpeechEnabled;
+      const icon = document.getElementById('voice-icon');
+      const text = document.getElementById('voice-toggle-text');
+      if (voiceSpeechEnabled) {
+        icon.className = "fa-solid fa-volume-high text-emerald-400";
+        text.textContent = "Voice Speech: ON";
+      } else {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.textContent = "Voice Speech: OFF";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakCurrentResponse() {
+      if (!voiceSpeechEnabled || !('speechSynthesis' in window) || !currentAgentText) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentAgentText);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      const waveBars = [
+        document.getElementById('w-1'),
+        document.getElementById('w-2'),
+        document.getElementById('w-3'),
+        document.getElementById('w-4'),
+        document.getElementById('w-5')
+      ];
+
+      const waveInterval = setInterval(() => {
+        waveBars.forEach(b => {
+          if (b) b.style.height = `${Math.floor(Math.random() * 16) + 4}px`;
+        });
+      }, 120);
+
+      utterance.onend = () => {
+        clearInterval(waveInterval);
+        waveBars.forEach((b, i) => {
+          if (b) b.style.height = `${[10, 16, 8, 20, 10][i]}px`;
+        });
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function startCallTimer() {
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('call-timer');
+        if (el) el.textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      startCallTimer();
+      selectUseCase('billing');
+    });
+  </script>
+</body>
+</html>
+'''
+
+if __name__ == '__main__':
+    html = generate_spatial_html()
+    with open('callcenter_ai_voice_agents.html', 'w', encoding='utf-8') as f:
+        f.write(html)
+    print("SUCCESS: Spatial Hierarchy Graph built into callcenter_ai_voice_agents.html!")
