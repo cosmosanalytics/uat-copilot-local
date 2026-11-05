@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Rebuild PowerPoint Presentation (.pptx) with:
-  1. ONLY graph screenshots on use case slides (no call console or top header clutter)
-  2. STRICT aspect ratio preservation (NEVER stretched)
-  3. Aligned with LOAD 1 (Updating SOPs) & LOAD 2 (Maximizing business benefit) framework
+  1. SOP Policy Reference Cards placed directly next to / above the graph screenshots
+  2. Pure graph screenshots (unstretched, aspect-ratio locked)
+  3. Clear citations linking benefits (LOAD 1 & LOAD 2) to specific SOP clauses
 """
 
 import os
@@ -32,11 +32,12 @@ def create_deck():
     C_AMBER_LIGHT = RGBColor(254, 243, 199)
     C_PINK = RGBColor(219, 39, 119)
     C_PINK_LIGHT = RGBColor(253, 242, 248)
+    C_SLATE_BORDER = RGBColor(203, 213, 225)
 
     assets_dir = os.path.abspath("docs/presentation_assets")
 
     def add_header(slide, title, category, subtitle=""):
-        pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.4), Inches(3.2), Inches(0.32))
+        pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.35), Inches(3.2), Inches(0.3))
         pill.fill.solid()
         pill.fill.fore_color.rgb = C_INDIGO_LIGHT
         pill.line.color.rgb = C_INDIGO
@@ -44,26 +45,26 @@ def create_deck():
         tf_pill = pill.text_frame
         p_p = tf_pill.paragraphs[0]
         p_p.text = category.upper()
-        p_p.font.size = Pt(9)
+        p_p.font.size = Pt(8.5)
         p_p.font.bold = True
         p_p.font.color.rgb = C_INDIGO
         p_p.alignment = PP_ALIGN.CENTER
 
-        tx_title = slide.shapes.add_textbox(Inches(0.8), Inches(0.75), Inches(11.7), Inches(0.8))
+        tx_title = slide.shapes.add_textbox(Inches(0.8), Inches(0.68), Inches(11.7), Inches(0.75))
         tf_t = tx_title.text_frame
         tf_t.word_wrap = True
         p_t = tf_t.paragraphs[0]
         p_t.text = title
-        p_t.font.size = Pt(22)
+        p_t.font.size = Pt(21)
         p_t.font.bold = True
         p_t.font.color.rgb = C_TEXT_DARK
 
         if subtitle:
             p_sub = tf_t.add_paragraph()
             p_sub.text = subtitle
-            p_sub.font.size = Pt(12)
+            p_sub.font.size = Pt(11)
             p_sub.font.color.rgb = C_TEXT_MUTED
-            p_sub.space_before = Pt(3)
+            p_sub.space_before = Pt(2)
 
     def add_unstretched_picture(slide, img_path, left_in, top_in, max_width_in, max_height_in):
         """Calculates exact dimensions to fit bounding box with ZERO stretching."""
@@ -74,7 +75,6 @@ def create_deck():
             orig_w, orig_h = im.size
         aspect = orig_w / orig_h
 
-        # Fit within max_w and max_h preserving aspect ratio
         if (max_width_in / max_height_in) > aspect:
             final_h = max_height_in
             final_w = max_height_in * aspect
@@ -82,9 +82,45 @@ def create_deck():
             final_w = max_width_in
             final_h = max_width_in / aspect
 
-        # Center vertically in the allowed height box
         final_top = top_in + (max_height_in - final_h) / 2.0
-        return slide.shapes.add_picture(img_path, Inches(left_in), Inches(final_top), width=Inches(final_w), height=Inches(final_h))
+        final_left = left_in + (max_width_in - final_w) / 2.0
+        return slide.shapes.add_picture(img_path, Inches(final_left), Inches(final_top), width=Inches(final_w), height=Inches(final_h))
+
+    def add_sop_reference_card(slide, left_in, top_in, width_in, height_in, sop_code, sop_title, base_rule, exception_clause):
+        """Adds a clean, official SOP Reference Document Card."""
+        card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left_in), Inches(top_in), Inches(width_in), Inches(height_in))
+        card.fill.solid()
+        card.fill.fore_color.rgb = RGBColor(248, 250, 252) # Slate 50
+        card.line.color.rgb = C_INDIGO
+        card.line.width = Pt(1.5)
+
+        tf = card.text_frame
+        tf.word_wrap = True
+        tf.margin_left = Inches(0.2)
+        tf.margin_right = Inches(0.2)
+        tf.margin_top = Inches(0.12)
+
+        # Header with SOP badge
+        p_head = tf.paragraphs[0]
+        p_head.text = f"📄 SOP REFERENCE: {sop_code} — {sop_title}"
+        p_head.font.size = Pt(10)
+        p_head.font.bold = True
+        p_head.font.color.rgb = C_INDIGO
+        p_head.space_after = Pt(4)
+
+        # Base rule
+        p_base = tf.add_paragraph()
+        p_base.text = f"• Baseline Rule: {base_rule}"
+        p_base.font.size = Pt(9)
+        p_base.font.color.rgb = RGBColor(71, 85, 105)
+        p_base.space_after = Pt(3)
+
+        # Exception rule
+        p_exc = tf.add_paragraph()
+        p_exc.text = f"• Exception Authority: {exception_clause}"
+        p_exc.font.size = Pt(9.5)
+        p_exc.font.bold = True
+        p_exc.font.color.rgb = C_TEXT_DARK
 
     # =========================================================================
     # SLIDE 1: TITLE SLIDE
@@ -132,7 +168,7 @@ def create_deck():
 
     load_cols = [
         {
-            "tag": "LOAD 1",
+            "tag": "1 LOAD 1",
             "title": "Forming and Updating SOPs",
             "today": "Today: People write the rulebook and learn it has drifted only during lagging quarterly financial audits.",
             "with_bg": "With the Business Graph: The drift feedback loop automatically flags rules that real calls keep bending, accompanied by live empirical evidence.",
@@ -140,9 +176,9 @@ def create_deck():
             "bg": C_PINK_LIGHT
         },
         {
-            "tag": "LOAD 2",
+            "tag": "2 LOAD 2",
             "title": "Maximizing Business Benefit",
-            "today": "Today: Every exception requires human judgment to evaluate if it is worth the cost, forcing customer calls into lengthy supervisor queues.",
+            "today": "Today: Every exception requires human judgment to evaluate if it is worth the cost, forcing customer calls into supervisor queues.",
             "with_bg": "With the Business Graph: The autonomous voice agent weighs net customer value within the KG's limits and decides decisively on the live call.",
             "color": C_EMERALD,
             "bg": C_EMERALD_LIGHT
@@ -165,7 +201,7 @@ def create_deck():
 
         pn = tf.paragraphs[0]
         pn.text = c["tag"]
-        pn.font.size = Pt(18)
+        pn.font.size = Pt(16)
         pn.font.bold = True
         pn.font.color.rgb = c["color"]
         pn.space_after = Pt(8)
@@ -278,20 +314,33 @@ def create_deck():
         p2.line_spacing = 1.2
 
     # =========================================================================
-    # SLIDE 5: VALUE STORY 1 - BILLING DISPUTE (GRAPH ONLY, UNSTRETCHED)
+    # SLIDE 5: VALUE STORY 1 - BILLING (SOP REFERENCE + UNSTRETCHED GRAPH)
     # =========================================================================
     s5 = prs.slides.add_slide(blank_layout)
     add_header(s5, "Story 1: Billing Dispute ($150 International Roaming)", "Use Case 1 · Customer Retention", "Sarah Jenkins · LTV $2,400 · threatens to churn over a $150 roaming fee")
 
-    # Insert ONLY Graph Screenshot, strictly unstretched
-    g1_path = os.path.join(assets_dir, "graph_only_billing.png")
-    add_unstretched_picture(s5, g1_path, left_in=0.8, top_in=1.8, max_width_in=7.6, max_height_in=4.9)
+    # 1. SOP Reference Card (Above Graph on the Left)
+    add_sop_reference_card(
+        slide=s5,
+        left_in=0.8,
+        top_in=1.65,
+        width_in=7.5,
+        height_in=1.3,
+        sop_code="SOP-04 (REV. 8.2)",
+        sop_title="Telecom Billing Disputes & Roaming Waivers",
+        base_rule="§2.1: Tier-1 Customer Care CSR ceiling is strictly capped at $50.00 USD per billing cycle.",
+        exception_clause="§4.2 VIP Hardship Clause: Authorizes up to $250.00 USD waiver without supervisor escalation if Account LTV > $1,500 and 0 prior concessions in 12 months."
+    )
 
-    # Right side: Load 1 & Load 2 Cards
-    rx = Inches(8.7)
+    # 2. Pure Graph Screenshot (Below SOP card, completely unstretched)
+    g1_path = os.path.join(assets_dir, "graph_only_billing.png")
+    add_unstretched_picture(s5, g1_path, left_in=0.8, top_in=3.05, max_width_in=7.5, max_height_in=3.9)
+
+    # 3. Right Side: Benefits with direct SOP citations
+    rx = Inches(8.6)
     
     # Top Value Badge
-    vbox1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.8), Inches(3.8), Inches(1.0))
+    vbox1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.65), Inches(3.9), Inches(0.95))
     vbox1.fill.solid()
     vbox1.fill.fore_color.rgb = C_EMERALD_LIGHT
     vbox1.line.color.rgb = C_EMERALD
@@ -300,7 +349,7 @@ def create_deck():
     tf_v1.word_wrap = True
     pv1 = tf_v1.paragraphs[0]
     pv1.text = "+$2,250"
-    pv1.font.size = Pt(24)
+    pv1.font.size = Pt(22)
     pv1.font.bold = True
     pv1.font.color.rgb = C_EMERALD
     pv1_sub = tf_v1.add_paragraph()
@@ -308,8 +357,8 @@ def create_deck():
     pv1_sub.font.size = Pt(10)
     pv1_sub.font.color.rgb = C_TEXT_DARK
 
-    # Card: LOAD 2
-    c_l2_1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.95), Inches(3.8), Inches(1.8))
+    # Card: LOAD 2 (Direct citation to SOP-04 §4.2)
+    c_l2_1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.72), Inches(3.9), Inches(2.05))
     c_l2_1.fill.solid()
     c_l2_1.fill.fore_color.rgb = C_BG_CARD
     c_l2_1.line.color.rgb = C_INDIGO
@@ -317,21 +366,21 @@ def create_deck():
     tf_l2_1 = c_l2_1.text_frame
     tf_l2_1.word_wrap = True
     tf_l2_1.margin_left = Inches(0.2)
-    tf_l2_1.margin_top = Inches(0.15)
+    tf_l2_1.margin_top = Inches(0.12)
     p = tf_l2_1.paragraphs[0]
-    p.text = "LOAD 2: Maximizes Business Benefit"
-    p.font.size = Pt(12)
+    p.text = "2 LOAD 2: Maximizes Business Benefit"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_INDIGO
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l2_1.add_paragraph()
-    p2.text = "The Business Graph weighs $2,400 LTV against a $150 credit. The agent applies the §4.2 exception on the live call, with zero supervisor transfer or queue wait."
-    p2.font.size = Pt(10)
+    p2.text = "Direct Reference: SOP-04 §4.2 (VIP Exception)\nThe Business Graph reconciles Sarah Jenkins' $2,400 LTV against the $1,500 qualification threshold. The voice agent executes the $150 waiver instantly on the live call, eliminating supervisor queue latency."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
-    # Card: LOAD 1
-    c_l1_1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.9), Inches(3.8), Inches(1.8))
+    # Card: LOAD 1 (Direct citation to SOP-04 §2.1 policy drift)
+    c_l1_1 = s5.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.88), Inches(3.9), Inches(2.05))
     c_l1_1.fill.solid()
     c_l1_1.fill.fore_color.rgb = C_BG_CARD
     c_l1_1.line.color.rgb = C_PINK
@@ -339,30 +388,44 @@ def create_deck():
     tf_l1_1 = c_l1_1.text_frame
     tf_l1_1.word_wrap = True
     tf_l1_1.margin_left = Inches(0.2)
-    tf_l1_1.margin_top = Inches(0.15)
+    tf_l1_1.margin_top = Inches(0.12)
     p = tf_l1_1.paragraphs[0]
-    p.text = "LOAD 1: Updates the SOP for Us"
-    p.font.size = Pt(12)
+    p.text = "1 LOAD 1: Updates the SOP for Us"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_PINK
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l1_1.add_paragraph()
-    p2.text = "67% of concessions use Clause 4.2, so the BG drift loop automatically flags SOP-04 to raise its $50 base cap to $150. No manual lagging audit needed."
-    p2.font.size = Pt(10)
+    p2.text = "Policy Drift Feedback: SOP-04 §2.1 Base Limit\nBecause 67% of billing disputes exceed the standard $50 limit and trigger Clause 4.2, the BG feedback loop automatically flags SOP-04 to raise its base ceiling to $150, eliminating repetitive exception processing."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
     # =========================================================================
-    # SLIDE 6: VALUE STORY 2 - BROADBAND OUTAGE (GRAPH ONLY, UNSTRETCHED)
+    # SLIDE 6: VALUE STORY 2 - BROADBAND OUTAGE (SOP REFERENCE + GRAPH)
     # =========================================================================
     s6 = prs.slides.add_slide(blank_layout)
     add_header(s6, "Story 2: Broadband Outage & Telemetry Preemption", "Use Case 2 · Technical Operations", "Marcus Vance · 1Gbps Fiber · red optical alarm, 3 reboots already tried")
 
-    g2_path = os.path.join(assets_dir, "graph_only_outage.png")
-    add_unstretched_picture(s6, g2_path, left_in=0.8, top_in=1.8, max_width_in=7.6, max_height_in=4.9)
+    # 1. SOP Reference Card
+    add_sop_reference_card(
+        slide=s6,
+        left_in=0.8,
+        top_in=1.65,
+        width_in=7.5,
+        height_in=1.3,
+        sop_code="SOP-12 (REV. 5.1)",
+        sop_title="Broadband Outage Triage & Truck Roll Protocol",
+        base_rule="§2.1 Mandatory Diagnostic: Telemetry must be queried. If upstream optical loss (LOS) is detected, remote rebooting is counter-indicated.",
+        exception_clause="§6.1 Hardware Defect Waiver: Standard $120.00 truck roll fee is 100% waived, and an urgent field technician slot is scheduled within 4 hours."
+    )
 
-    # Top Value Badge
-    vbox2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.8), Inches(3.8), Inches(1.0))
+    # 2. Pure Graph Screenshot (unstretched)
+    g2_path = os.path.join(assets_dir, "graph_only_outage.png")
+    add_unstretched_picture(s6, g2_path, left_in=0.8, top_in=3.05, max_width_in=7.5, max_height_in=3.9)
+
+    # 3. Right Side Cards
+    vbox2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.65), Inches(3.9), Inches(0.95))
     vbox2.fill.solid()
     vbox2.fill.fore_color.rgb = C_EMERALD_LIGHT
     vbox2.line.color.rgb = C_EMERALD
@@ -371,7 +434,7 @@ def create_deck():
     tf_v2.word_wrap = True
     pv2 = tf_v2.paragraphs[0]
     pv2.text = "+$340"
-    pv2.font.size = Pt(24)
+    pv2.font.size = Pt(22)
     pv2.font.bold = True
     pv2.font.color.rgb = C_EMERALD
     pv2_sub = tf_v2.add_paragraph()
@@ -379,8 +442,7 @@ def create_deck():
     pv2_sub.font.size = Pt(10)
     pv2_sub.font.color.rgb = C_TEXT_DARK
 
-    # Card: LOAD 2
-    c_l2_2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.95), Inches(3.8), Inches(1.8))
+    c_l2_2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.72), Inches(3.9), Inches(2.05))
     c_l2_2.fill.solid()
     c_l2_2.fill.fore_color.rgb = C_BG_CARD
     c_l2_2.line.color.rgb = C_INDIGO
@@ -388,21 +450,20 @@ def create_deck():
     tf_l2_2 = c_l2_2.text_frame
     tf_l2_2.word_wrap = True
     tf_l2_2.margin_left = Inches(0.2)
-    tf_l2_2.margin_top = Inches(0.15)
+    tf_l2_2.margin_top = Inches(0.12)
     p = tf_l2_2.paragraphs[0]
-    p.text = "LOAD 2: Maximizes Business Benefit"
-    p.font.size = Pt(12)
+    p.text = "2 LOAD 2: Maximizes Business Benefit"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_INDIGO
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l2_2.add_paragraph()
-    p2.text = "The agent confirms the outage from upstream hub telemetry, skips the repetitive reboot script (SOP-12 §6.1) and books an urgent field engineer in 2 hours."
-    p2.font.size = Pt(10)
+    p2.text = "Direct Reference: SOP-12 §6.1 (Hardware Defect Waiver)\nThe agent verifies upstream LOS telemetry (31.4dB line loss), bypasses the standard 180s modem reset checklist, waives the $120 dispatch fee, and dispatches field engineering in 2 hours."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
-    # Card: LOAD 1
-    c_l1_2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.9), Inches(3.8), Inches(1.8))
+    c_l1_2 = s6.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.88), Inches(3.9), Inches(2.05))
     c_l1_2.fill.solid()
     c_l1_2.fill.fore_color.rgb = C_BG_CARD
     c_l1_2.line.color.rgb = C_PINK
@@ -410,30 +471,44 @@ def create_deck():
     tf_l1_2 = c_l1_2.text_frame
     tf_l1_2.word_wrap = True
     tf_l1_2.margin_left = Inches(0.2)
-    tf_l1_2.margin_top = Inches(0.15)
+    tf_l1_2.margin_top = Inches(0.12)
     p = tf_l1_2.paragraphs[0]
-    p.text = "LOAD 1: Updates the SOP for Us"
-    p.font.size = Pt(12)
+    p.text = "1 LOAD 1: Updates the SOP for Us"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_PINK
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l1_2.add_paragraph()
-    p2.text = "84% of loss-of-signal calls skip remote diagnostics, so the Business Graph flags SOP-12 to formally standardize upstream telemetry verification first."
-    p2.font.size = Pt(10)
+    p2.text = "Policy Drift Feedback: SOP-12 §2.1 Triage Trees\n84% of loss-of-signal calls skip remote troubleshooting. The Business Graph flags SOP-12 to mandate automated upstream telemetry verification prior to any customer-facing diagnostic questions."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
     # =========================================================================
-    # SLIDE 7: VALUE STORY 3 - VIP RETENTION (GRAPH ONLY, UNSTRETCHED)
+    # SLIDE 7: VALUE STORY 3 - VIP RETENTION (SOP REFERENCE + GRAPH)
     # =========================================================================
     s7 = prs.slides.add_slide(blank_layout)
     add_header(s7, "Story 3: VIP Enterprise Retention ($18k Contract Churn)", "Use Case 3 · Revenue Protection", "Elena Rostova (Apex Global Logistics) · $18,000 ARR · competitor offers 15% less")
 
-    g3_path = os.path.join(assets_dir, "graph_only_retention.png")
-    add_unstretched_picture(s7, g3_path, left_in=0.8, top_in=1.8, max_width_in=7.6, max_height_in=4.9)
+    # 1. SOP Reference Card
+    add_sop_reference_card(
+        slide=s7,
+        left_in=0.8,
+        top_in=1.65,
+        width_in=7.5,
+        height_in=1.3,
+        sop_code="SOP-28 (REV. 4.0)",
+        sop_title="Enterprise & High-LTV Retention Governance",
+        base_rule="§2.1 Discretionary Ceiling: Standard account representative renewal concession is capped at 5.0% without director sign-off.",
+        exception_clause="§3.1 High-Value Allowance: For enterprise accounts with ARR > $15,000.00 USD, specialists are authorized to grant up to 15.0% discount on 24-month contract lock."
+    )
 
-    # Top Value Badge
-    vbox3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.8), Inches(3.8), Inches(1.0))
+    # 2. Pure Graph Screenshot (unstretched)
+    g3_path = os.path.join(assets_dir, "graph_only_retention.png")
+    add_unstretched_picture(s7, g3_path, left_in=0.8, top_in=3.05, max_width_in=7.5, max_height_in=3.9)
+
+    # 3. Right Side Cards
+    vbox3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(1.65), Inches(3.9), Inches(0.95))
     vbox3.fill.solid()
     vbox3.fill.fore_color.rgb = C_EMERALD_LIGHT
     vbox3.line.color.rgb = C_EMERALD
@@ -442,7 +517,7 @@ def create_deck():
     tf_v3.word_wrap = True
     pv3 = tf_v3.paragraphs[0]
     pv3.text = "+$15,300"
-    pv3.font.size = Pt(24)
+    pv3.font.size = Pt(22)
     pv3.font.bold = True
     pv3.font.color.rgb = C_EMERALD
     pv3_sub = tf_v3.add_paragraph()
@@ -450,8 +525,7 @@ def create_deck():
     pv3_sub.font.size = Pt(10)
     pv3_sub.font.color.rgb = C_TEXT_DARK
 
-    # Card: LOAD 2
-    c_l2_3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.95), Inches(3.8), Inches(1.8))
+    c_l2_3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(2.72), Inches(3.9), Inches(2.05))
     c_l2_3.fill.solid()
     c_l2_3.fill.fore_color.rgb = C_BG_CARD
     c_l2_3.line.color.rgb = C_INDIGO
@@ -459,21 +533,20 @@ def create_deck():
     tf_l2_3 = c_l2_3.text_frame
     tf_l2_3.word_wrap = True
     tf_l2_3.margin_left = Inches(0.2)
-    tf_l2_3.margin_top = Inches(0.15)
+    tf_l2_3.margin_top = Inches(0.12)
     p = tf_l2_3.paragraphs[0]
-    p.text = "LOAD 2: Maximizes Business Benefit"
-    p.font.size = Pt(12)
+    p.text = "2 LOAD 2: Maximizes Business Benefit"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_INDIGO
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l2_3.add_paragraph()
-    p2.text = "The agent applies the SOP-28 §3.1 exception (15% discount for a 24-month contract lock), retaining $18,000 ARR for a $2.7k discount with no 4-day approval delay."
-    p2.font.size = Pt(10)
+    p2.text = "Direct Reference: SOP-28 §3.1 (High-Value Retention)\nThe agent confirms Elena's $18k ARR qualifies for Clause 3.1. Approves the 15% rate match ($15,300) contingent on a 24-month lock, protecting $30.6k multi-year revenue with 0 days approval delay."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
-    # Card: LOAD 1
-    c_l1_3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.9), Inches(3.8), Inches(1.8))
+    c_l1_3 = s7.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, Inches(4.88), Inches(3.9), Inches(2.05))
     c_l1_3.fill.solid()
     c_l1_3.fill.fore_color.rgb = C_BG_CARD
     c_l1_3.line.color.rgb = C_PINK
@@ -481,16 +554,16 @@ def create_deck():
     tf_l1_3 = c_l1_3.text_frame
     tf_l1_3.word_wrap = True
     tf_l1_3.margin_left = Inches(0.2)
-    tf_l1_3.margin_top = Inches(0.15)
+    tf_l1_3.margin_top = Inches(0.12)
     p = tf_l1_3.paragraphs[0]
-    p.text = "LOAD 1: Updates the SOP for Us"
-    p.font.size = Pt(12)
+    p.text = "1 LOAD 1: Updates the SOP for Us"
+    p.font.size = Pt(11.5)
     p.font.bold = True
     p.font.color.rgb = C_PINK
-    p.space_after = Pt(6)
+    p.space_after = Pt(5)
     p2 = tf_l1_3.add_paragraph()
-    p2.text = "The Business Graph logs that enterprise renewals frequently trigger the 15% exception, flagging SOP-28 for review and automated contract renewal authority."
-    p2.font.size = Pt(10)
+    p2.text = "Policy Drift Feedback: SOP-28 §2.1 Discount Cap\nThe Business Graph logs that enterprise renewals routinely trigger the 15% exception, flagging SOP-28 to permanently delegate competitive matching authority to Tier-1 enterprise specialists."
+    p2.font.size = Pt(9.5)
     p2.font.color.rgb = C_TEXT_DARK
     p2.line_spacing = 1.2
 
@@ -501,7 +574,7 @@ def create_deck():
     add_header(s8, "Document-to-Graph Extraction Pipeline: Groq LPU Engine", "Technical Ingestion", "Extracting Knowledge Graphs and Context Graphs from raw text documents with sub-second inference.")
 
     img_ext = os.path.join(assets_dir, "extractor_pipeline.png")
-    add_unstretched_picture(s8, img_ext, left_in=0.8, top_in=1.8, max_width_in=7.6, max_height_in=4.9)
+    add_unstretched_picture(s8, img_ext, left_in=0.8, top_in=1.8, max_width_in=7.5, max_height_in=4.9)
 
     ext_notes = [
         ("Raw Text Ingestion", "Ingests 3 unformatted SOP policy manuals and 3 real-world timestamped call transcripts directly from the repository.", C_TEXT_DARK),
@@ -513,7 +586,7 @@ def create_deck():
 
     for m, (atitle, adesc, acol) in enumerate(ext_notes):
         y = Inches(1.8 + m * 1.0)
-        box = s8.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, y, Inches(3.8), Inches(0.92))
+        box = s8.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, rx, y, Inches(3.9), Inches(0.92))
         box.fill.solid()
         box.fill.fore_color.rgb = C_BG_CARD
         box.line.color.rgb = acol
@@ -583,7 +656,7 @@ def create_deck():
     # Save presentation
     output_pptx = os.path.abspath("Call_Center_AI_Voice_Agents_Presentation.pptx")
     prs.save(output_pptx)
-    print(f"Successfully generated PowerPoint presentation (9 slides, graph-only unstretched) at: {output_pptx}")
+    print(f"Successfully generated PowerPoint presentation (9 slides with SOP Reference Cards) at: {output_pptx}")
 
 if __name__ == "__main__":
     create_deck()
