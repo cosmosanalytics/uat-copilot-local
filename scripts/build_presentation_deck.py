@@ -471,86 +471,10 @@ def create_deck():
         ps.font.color.rgb = C_TEXT_MUTED
         ps.line_spacing = 1.25
 
-    # =========================================================================
-    # SLIDE 10: ARCHITECTURE BLUEPRINT & LIVE DEMO ACCESS
-    # =========================================================================
-    s10 = prs.slides.add_slide(blank_layout)
-    add_header(s10, "Production Architecture Blueprint & Live Interactive Demo", "Production Roadmap", "Ready for deployment in AWS project 'For Each and Every' (region us-east-2).")
-
-    # Left: AWS Production Blueprint
-    card_aws = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.8), Inches(5.7), Inches(4.8))
-    card_aws.fill.solid()
-    card_aws.fill.fore_color.rgb = C_BG_CARD
-    card_aws.line.color.rgb = C_INDIGO
-    card_aws.line.width = Pt(1.5)
-
-    tf_aws = card_aws.text_frame
-    tf_aws.word_wrap = True
-    tf_aws.margin_left = Inches(0.3)
-    tf_aws.margin_top = Inches(0.3)
-
-    p = tf_aws.paragraphs[0]
-    p.text = "AWS Enterprise Cloud Blueprint (us-east-2)"
-    p.font.size = Pt(16)
-    p.font.bold = True
-    p.font.color.rgb = C_INDIGO
-    p.space_after = Pt(14)
-
-    aws_bullets = [
-        "Region: us-east-2 (Project: 'For Each and Every')",
-        "Document Ingestion: Amazon Bedrock (anthropic.claude-3-5-sonnet) extracts SOP PDFs into OWL/RDF ontologies.",
-        "Graph Storage: Amazon Neptune (Serverless OpenCypher/SPARQL) stores Knowledge Graph and temporal Context Graph.",
-        "Runtime Voice Agent: Amazon Bedrock (Nova-Lite / Llama-3.3-70B) or Groq Cloud LPU for sub-250ms streaming voice.",
-        "Telephony Integration: Amazon Connect / SIP Trunk with real-time audio ASR transcription."
-    ]
-
-    for b in aws_bullets:
-        pb = tf_aws.add_paragraph()
-        pb.text = f"• {b}"
-        pb.font.size = Pt(11)
-        pb.font.color.rgb = C_TEXT_DARK
-        pb.space_after = Pt(8)
-        pb.line_spacing = 1.2
-
-    # Right: Live Demo Links
-    card_demo = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.8), Inches(1.8), Inches(5.7), Inches(4.8))
-    card_demo.fill.solid()
-    card_demo.fill.fore_color.rgb = C_BG_CARD
-    card_demo.line.color.rgb = C_EMERALD
-    card_demo.line.width = Pt(1.5)
-
-    tf_demo = card_demo.text_frame
-    tf_demo.word_wrap = True
-    tf_demo.margin_left = Inches(0.3)
-    tf_demo.margin_top = Inches(0.3)
-
-    p = tf_demo.paragraphs[0]
-    p.text = "Live Interactive Links & Source Repositories"
-    p.font.size = Pt(16)
-    p.font.bold = True
-    p.font.color.rgb = C_EMERALD
-    p.space_after = Pt(14)
-
-    demo_bullets = [
-        "Live Interactive Web Studio:\nhttps://cosmosanalytics.github.io/uat-copilot-local/callcenter_ai_voice_agents.html",
-        "Mirror Live Studio:\nhttps://cosmosanalytics.github.io/Langchain-test/callcenter_ai_voice_agents.html",
-        "GitHub Repository (Code & Pipeline):\nhttps://github.com/cosmosanalytics/uat-copilot-local",
-        "Raw SOP Policy Documents:\nhttps://github.com/cosmosanalytics/uat-copilot-local/tree/main/docs/sops",
-        "Raw Call Scripts:\nhttps://github.com/cosmosanalytics/uat-copilot-local/tree/main/docs/transcripts"
-    ]
-
-    for b in demo_bullets:
-        pb = tf_demo.add_paragraph()
-        pb.text = f"• {b}"
-        pb.font.size = Pt(10.5)
-        pb.font.color.rgb = C_TEXT_DARK
-        pb.space_after = Pt(8)
-        pb.line_spacing = 1.15
-
     # Save presentation
     output_pptx = os.path.abspath("Call_Center_AI_Voice_Agents_Presentation.pptx")
     prs.save(output_pptx)
-    print(f"Successfully generated PowerPoint presentation at: {output_pptx}")
+    print(f"Successfully generated PowerPoint presentation (9 slides) at: {output_pptx}")
 
 if __name__ == "__main__":
     create_deck()
