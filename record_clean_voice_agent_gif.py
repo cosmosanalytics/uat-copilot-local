@@ -4,8 +4,8 @@ record_clean_voice_agent_gif.py
 Records the Call Center AI Voice Agents Studio with:
 - ZERO opaque bars covering any UI elements.
 - The web app is 100% visible from top header to bottom metrics.
-- External captions, if any, are placed in a dedicated top header strip ABOVE the web app,
-  expanding total height so NOT A SINGLE PIXEL of the app is obscured.
+- External captions placed in a dedicated top header strip ABOVE the web app.
+- Features: Real-Time Live Call Simulator with Sample Questions grounded in KG & CG.
 """
 
 import os
@@ -56,11 +56,11 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     draw.rectangle([(0, caption_h - 3), (app_w, caption_h)], fill=accent_rgb)
 
     # Badge Pill
-    draw.rounded_rectangle([(16, 12), (16 + 180, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
-    draw.text((26, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
+    draw.rounded_rectangle([(16, 12), (16 + 210, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
+    draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
 
     # Caption text
-    draw.text((212, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
+    draw.text((242, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
 
     # 3. Paste the untouched, 100% visible web app directly underneath
     new_canvas.paste(app_img, (0, caption_h))
@@ -89,22 +89,24 @@ def main():
             (99, 102, 241)
         )
 
-        # FRAME 2: Use Case 1 - Billing Dispute Preset Selected
-        page.select_option('#preset-select', 'billing_dispute')
-        page.wait_for_timeout(800)
+        # FRAME 2: Real-Time Live Call Simulator - Billing Dispute Sample Question
+        page.click('#tab-call')
+        page.wait_for_timeout(1200)
         capture_uncovered_frame(
             page,
-            "USE CASE 1: BILLING",
-            "Scenario 1: High-LTV customer disputes $150 roaming fee. SOP limit is $50. Supervisor authorizes $150 waiver.",
-            (245, 158, 11)
+            "LIVE CALL SIMULATOR",
+            "Real-Time Call: Sarah asks sample question ($150 roaming waiver). Agent grounds in SOP-04 & Sarah's $2.4k LTV to waive fee.",
+            (16, 185, 129)
         )
 
-        # FRAME 3: Policy Drift Feedback Loop Highlight
+        # FRAME 3: Real-Time Live Call Simulator - Broadband Outage Sample Question
+        page.click('#sample-btn-outage')
+        page.wait_for_timeout(1000)
         capture_uncovered_frame(
             page,
-            "POLICY DRIFT LOOP",
-            "Improvement: 47 repeated exceptions trigger automated update to SOP-04 in KG ($50 -> $150), eliminating 45s hold!",
-            (99, 102, 241)
+            "REAL-TIME OUTAGE CALL",
+            "Sample Call 2: Blinking optical light -> Agent queries telemetry (31.4dB loss) & SOP-12 to auto-dispatch field tech in 12s.",
+            (14, 165, 233)
         )
 
         # FRAME 4: SOP Knowledge Graph Tab (100% Separate Graph Canvas)
@@ -137,15 +139,15 @@ def main():
             (16, 185, 129)
         )
 
-        # FRAME 7: Use Case 2 - Broadband Outage Preset
+        # FRAME 7: Policy Drift Feedback Loop Highlight
         page.click('#tab-hierarchy')
-        page.select_option('#preset-select', 'tech_outage')
+        page.select_option('#preset-select', 'billing_dispute')
         page.wait_for_timeout(1000)
         capture_uncovered_frame(
             page,
-            "USE CASE 2: OUTAGE",
-            "Scenario 2: Broadband loss. Eliminates 180s phone diagnostic by automating line test in 12s -> truck roll dispatched.",
-            (14, 165, 233)
+            "POLICY DRIFT LOOP",
+            "Improvement: 47 repeated exceptions trigger automated update to SOP-04 in KG ($50 -> $150), eliminating 45s hold!",
+            (99, 102, 241)
         )
 
         # FRAME 8: Use Case 3 - VIP Retention Preset
@@ -153,8 +155,8 @@ def main():
         page.wait_for_timeout(1000)
         capture_uncovered_frame(
             page,
-            "USE CASE 3: RETENTION",
-            "Scenario 3: Enterprise churn threat. Voice agent matches 15% discount renewal -> Protects +$27,900 ARR.",
+            "USE CASE: RETENTION",
+            "Enterprise churn threat: Voice agent matches 15% discount renewal under SOP-28 -> Protects +$27,900 ARR.",
             (16, 185, 129)
         )
 
