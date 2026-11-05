@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 record_clean_voice_agent_gif.py
-Records the Call Center AI Voice Agents Studio with the Spatial Hierarchy:
-- Upper Left: KG (What SHOULD happen - SOPs)
-- Upper Right: CG (What ACTUALLY happened - calls)
-- Center Middle: BG (Compares should vs actual)
-- Bottom: 4 Improvement Potentials (Policy drift, Compliance gap, Net value, Bottlenecks)
-- Dashed Feedback Arrow: From Policy drift back up to KG!
+Records the Call Center AI Voice Agents Studio with:
+- Crisp LIGHT MODE
+- ACTUAL multi-node network graphs in each spatial zone:
+  - Upper-Left: Knowledge Graph network (SOP, Tier-1 Limit, VIP Limit, Agent Role)
+  - Upper-Right: Context Graph network (Customer, Dispute Event, Decision, Churn Diary)
+  - Center-Middle: Business Graph network (Goal, Reconciliation Engine, KPI FCR)
+  - Bottom: 4 Improvement Potentials
+  - Dashed Feedback Loop from Policy drift back up to SOP-04!
 """
 
 import os
@@ -49,7 +51,7 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     # 2. Add an EXTERNAL caption bar ABOVE the web app (Height + 54px)
     caption_h = 54
     total_h = app_h + caption_h
-    new_canvas = Image.new('RGB', (app_w, total_h), (15, 23, 42)) # Clean dark top bar
+    new_canvas = Image.new('RGB', (app_w, total_h), (248, 250, 252)) # Crisp light bar
 
     draw = ImageDraw.Draw(new_canvas)
 
@@ -57,11 +59,11 @@ def capture_uncovered_frame(page, step_label, caption_text, accent_rgb=(16, 185,
     draw.rectangle([(0, caption_h - 3), (app_w, caption_h)], fill=accent_rgb)
 
     # Badge Pill
-    draw.rounded_rectangle([(16, 12), (16 + 230, 36)], radius=6, fill=(30, 41, 59), outline=accent_rgb, width=1)
-    draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(241, 245, 249))
+    draw.rounded_rectangle([(16, 12), (16 + 230, 36)], radius=6, fill=(241, 245, 249), outline=accent_rgb, width=1)
+    draw.text((24, 15), step_label, font=FONT_BOLD_14, fill=(15, 23, 42))
 
     # Caption text
-    draw.text((264, 16), caption_text, font=FONT_REG_12, fill=(226, 232, 240))
+    draw.text((264, 16), caption_text, font=FONT_REG_12, fill=(51, 65, 85))
 
     # 3. Paste the untouched, 100% visible web app directly underneath
     new_canvas.paste(app_img, (0, caption_h))
@@ -82,12 +84,12 @@ def main():
         page.goto(url)
         page.wait_for_timeout(1500)
 
-        # FRAME 1: Single UI Overview - Spatial Hierarchy (KG Upper-L, CG Upper-R, BG Center-M, 4 Outcomes Bottom)
+        # FRAME 1: Single UI Overview in Light Mode with Actual Multi-Node Graphs
         capture_uncovered_frame(
             page,
-            "1. SPATIAL HIERARCHY",
-            "Upper: Real Call &bull; Lower: KG (Upper-Left), CG (Upper-Right), BG (Center-Middle) & 4 Outcomes (Bottom)!",
-            (99, 102, 241)
+            "1. LIGHT MODE ACTUAL GRAPHS",
+            "Upper: Live Call Console &bull; Lower: Actual Multi-Node Networks for KG (Upper-Left), CG (Upper-Right) & BG (Center-Middle)!",
+            (79, 70, 229)
         )
 
         # FRAME 2: Live Inbound Call & Grounded Voice Speech
@@ -105,7 +107,7 @@ def main():
             page,
             "3. POLICY DRIFT LOOP",
             "Reconciliation: 47 repeated exceptions trigger automated update from Bottom Policy Drift back up to Knowledge Graph!",
-            (236, 72, 153)
+            (219, 39, 119)
         )
 
         # FRAME 4: Use Case 2 - Broadband Outage & Field Dispatch
@@ -115,7 +117,7 @@ def main():
             page,
             "4. USE CASE 2: OUTAGE",
             "Marcus Vance red optical alarm -> 31.4dB loss conforms to SOP-12 -> Instant field truck roll dispatched in 12s.",
-            (14, 165, 233)
+            (2, 132, 199)
         )
 
         # FRAME 5: Use Case 3 - Enterprise Churn & ARR Lock
@@ -135,7 +137,7 @@ def main():
             page,
             "6. CROSS-USECASES VIEW",
             "Enterprise Macro View: Corporate AI Hub co-locates and cross-correlates Billing (SOP-04), Outage (SOP-12) & Retention (SOP-28).",
-            (99, 102, 241)
+            (79, 70, 229)
         )
 
         browser.close()
