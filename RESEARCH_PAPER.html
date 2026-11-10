@@ -253,13 +253,13 @@ window.MathJax = {
 <p><strong>AI Engineering Calibration Team</strong> &amp; <strong>Zhao</strong>  </p>
 <hr />
 <h2>Abstract</h2>
-<p>Calibrating uncertainty estimates in large language models (LLMs) is essential for dependable autonomous agent deployment. Recently, Damani et al. (ICLR 2026) introduced <em>Reinforcement Learning with Calibration Rewards</em> (RLCR), proposing that training language models with proper scoring rules (such as the Brier score) encourages calibrated verbalized confidence alongside answers. However, empirical questions remain regarding the sample efficiency, optimization stability, and operational requirements of RL-based calibration compared to lightweight auxiliary verifiers and simple code-computed heuristic scoring functions.</p>
+<p>Calibrating uncertainty estimates in large language models (LLMs) is essential for dependable autonomous agent deployment. Recently, Damani et al. (ICLR 2026) introduced <em>Reinforcement Learning with Calibration Rewards</em> (RLCR), proposing that optimizing language models directly against proper scoring rules (such as the Brier score) trains policies to verbalize well-calibrated confidence tags alongside generated answers. However, open empirical questions remain regarding the sample efficiency, optimization stability, and operational requirements of RL-based calibration compared to auxiliary neural verifiers and lightweight code-computed scoring functions.</p>
 <p>In this work, we conduct an exploratory, multi-run study comparing an underpowered RLCR-style setup against supervised sequence classification heads, zero-shot judges, and deterministic text-overlap scoring functions. Evaluations are conducted across multiple seeds and train/test partitions using HotpotQA-Modified ($N=152$ test cases with controlled evidence removal, containing 21 positive matches) and an exploratory subset of Big-Math-Digits ($N=36$ cases with 2 positive matches).</p>
 <p>Our primary empirical findings include:
-1. <strong>Performance Relative to the Constant Prior Baseline:</strong> On the held-out test split, the empirical positive prevalence is 13.8% (21/152). A non-parametric constant prior baseline (E0-Constant, predicting $\bar{y}=0.224$) achieves a Brier score of <strong>0.1201</strong> [95% CI: 0.0853, 0.1592] and an Expected Calibration Error (ECE) of <strong>3.2%</strong> [0.1%, 8.4%]. By comparison, the uncalibrated base LLM (<code>Qwen2.5-1.5B-Instruct</code>) exhibits severe overconfidence (Brier 0.3910, ECE 48.5%). A simple code-computed scorer based on text overlap (E3) achieves a modest Brier lift over the constant prior of <strong>+0.0082</strong> (Brier <strong>0.1119</strong> [0.0805, 0.1457], AUROC <strong>0.686</strong> [0.572, 0.784]), while a hybrid judge-code verifier (E4c) yields a lift of <strong>+0.0103</strong> (Brier <strong>0.1098</strong> [0.0794, 0.1436], AUROC <strong>0.728</strong> [0.621, 0.823]).
-2. <strong>Inconclusive Underpowered RLCR-Style Training:</strong> In contrast to the paper's full-scale implementation (7B/14B parameters, full-weight tuning, group size $G=32$, batch size 2048 tokens, 500+ steps), our localized setup (1.5B, LoRA $r=16$, $G=4$, 15 steps on a single RTX 4070 GPU) proved largely inconclusive. Two of three independent RLCR training runs failed to learn non-trivial policy updates due to sparse rewards and zero-advantage group collapse (where all $G=4$ rollouts failed on hard multi-hop queries). In the standard RLVR control, greedy decoding outputs were identical to the base model across all 152 test items because the advantages remained zero on nearly all steps.
-3. <strong>Determinism vs. Real Resampling Variance:</strong> When evaluated on a fixed static test split, code-computed scorers exhibit exact deterministic invariance ($\sigma = 0.0000$). When evaluating true sampling variance across 5-fold resampled cross-validation splits, E3 demonstrates empirical variability of $\text{Brier} = 0.1211 \pm 0.0204$, $\text{ECE} = 4.5\% \pm 1.2\%$, and $\text{AUROC} = 0.667 \pm 0.088$.
-4. <strong>Insensitivity to Evidence Removal and Scope Limitations:</strong> On unanswerability ablations where gold evidence was removed ($n_{\text{removed}} \in {0, 1, 2}$), the base LLM verbalized confidence showed negligible sensitivity ($0.605$ [0.537, 0.674] at $n=0$ vs. $0.626$ [0.557, 0.698] at $n=2$, with completely overlapping confidence intervals). Text-overlap features (E3) are blind to missing supporting paragraphs ($\text{AUROC}<em>{\text{known}} = 0.477$, slightly below random chance). Only semantic claim-verification judges (E2c $\text{AUROC}</em>{\text{known}} = 0.854$, E4c $\text{AUROC}_{\text{known}} = 0.811$) successfully identified missing evidence. E3 relies solely on surface lexical overlap and does not evaluate structured world-model features (such as Knowledge Graph state support or FSM rule margins).</p>
+1. <strong>Performance Relative to the Constant Prior Baseline:</strong> On the held-out test split, the empirical positive prevalence is 13.8% (21/152). A non-parametric constant prior baseline trained on the calibration split ($\bar{y}<em>{\text{train}}=0.224$) yields a test Brier score of <strong>0.1264</strong> [95% CI: 0.0974, 0.1591] and an Expected Calibration Error (ECE) of <strong>8.6%</strong> [2.7%, 13.8%], reflecting a train-to-test base-rate shift ($22.4\% \to 13.8\%$). By comparison, the uncalibrated base LLM (<code>Qwen2.5-1.5B-Instruct</code>) exhibits severe overconfidence (Brier 0.3910, ECE 48.5%). A simple code-computed scorer based on text overlap (E3) achieves a test Brier score of <strong>0.1119</strong> [0.0805, 0.1457], but its paired bootstrap Brier difference against the oracle test base rate ($0.138$) has a 95% confidence interval spanning zero ($-0.0009$ to $+0.0157$). Similarly, across 5-fold cross-validation on the same folds, E3 achieves Brier $0.1211 \pm 0.0204$ versus the constant prior's $0.1286 \pm 0.0189$.
+2. <strong>Discrimination Over Calibration:</strong> While neither code scorers nor hybrid verifiers decisively beat the constant prior on calibration metrics under this sample size, they substantially improve <strong>discrimination</strong> (AUROC). Text-overlap scoring (E3) achieves an AUROC of <strong>0.686</strong> [95% CI: 0.572, 0.784], clearly excluding random chance ($0.500$), while a hybrid judge-code verifier (E4c) reaches an AUROC of <strong>0.728</strong> [0.621, 0.823].
+3. <strong>Inconclusive Underpowered RLCR-Style Training:</strong> In contrast to the paper's full-scale implementation (7B/14B parameters, full-weight tuning, group size $G=32$, batch size 2048 tokens on multi-A100 clusters), our localized setup (1.5B, LoRA $r=16$, $G=4$, 15 steps on a single RTX 4070 GPU) showed no reliable learning. In the standard RLVR control, zero policy updates occurred: test outputs were 100% identical to the base model because all $G=4$ rollouts failed on hard multi-hop queries, causing group advantages to collapse to zero ($A_g = 0$) across steps. In RLCR, two of three independent training runs failed to learn non-trivial updates, remaining trapped at base-rate performance.
+4. <strong>Insensitivity to Evidence Removal and Scope Limitations:</strong> On unanswerability ablations where gold evidence was removed ($n</em>{\text{removed}} \in {0, 1, 2}$), the base LLM verbalized confidence showed negligible sensitivity ($0.605$ [0.537, 0.674] at $n=0$ vs. $0.626$ [0.557, 0.698] at $n=2$, with completely overlapping confidence intervals). Text-overlap features (E3) are completely blind to missing supporting paragraphs ($\text{AUROC}<em>{\text{known}} = 0.477$, slightly below chance). Only semantic claim-verification judges (E2c $\text{AUROC}</em>{\text{known}} = 0.854$, E4c $\text{AUROC}_{\text{known}} = 0.811$) successfully identified missing evidence. E3 relies solely on surface lexical overlap and does not evaluate structured world-model features (such as Knowledge Graph state support or FSM rule margins).</p>
 <hr />
 <h2>1. Introduction</h2>
 <p>Autonomous language agent architectures increasingly rely on self-reported confidence to govern tool execution, retrieval refinement, and human hand-off decisions. However, pre-trained and instruction-tuned language models routinely express unwarranted confidence in erroneous or hallucinated outputs, posing serious reliability concerns.</p>
@@ -267,8 +267,9 @@ window.MathJax = {
 <p>In this paper, we report empirical observations from a local study designed to understand the practical characteristics of these calibration methods under modest computational constraints (a single 12 GB GPU). We evaluate three independent runs of our pipeline and critically assess the stability, sample efficiency, and limitations of each approach.</p>
 <h3>1.1 Study Scope and Clarifications</h3>
 <p>To ensure scientific clarity, we define the precise scope of this investigation:
-- <strong>Underpowered RL Exploration:</strong> Our RLCR implementation is an exploratory, low-compute study (1.5B parameters, LoRA adaptation, rollout group size $G=4$, 15 gradient steps) and is not a reproduction of Damani et al.'s full-scale regime (7B/14B parameters, full-model weights, $G=32$, batch size 2048, 500+ steps). Our RL results highlight optimization pitfalls under constrained sample sizes rather than evaluating the asymptotic limits of the RLCR objective.
-- <strong>Appropriate Baseline Anchor:</strong> Because the test set accuracy prevalence is low (13.8%), all methods must be benchmarked against the constant prior anchor (predicting empirical base rate $\bar{y}=0.224$, Brier = 0.1201), rather than celebrating large relative reductions over an uncalibrated base LLM.
+- <strong>Underpowered RL Exploration:</strong> Our RLCR implementation is an exploratory, low-compute study (1.5B parameters, LoRA adaptation, rollout group size $G=4$, 15 gradient steps) and is not a reproduction of Damani et al.'s full-scale regime (7B/14B parameters, full-model weights, $G=32$, batch size 2048, 1–3 epochs on multi-A100 clusters). Our RL results highlight optimization pitfalls under constrained sample sizes rather than evaluating the asymptotic limits of the RLCR objective.
+- <strong>Appropriate Baseline Anchor:</strong> Because the test set accuracy prevalence is low (13.8%), all methods must be benchmarked against the constant prior anchor, taking into account the base-rate shift between training ($\bar{y}=0.224$) and testing splits ($\bar{y}=0.138$).
+- <strong>Primary Metrics:</strong> With only 21 positive matches on the test set, binned Expected Calibration Error (ECE) is statistically biased and sensitive to binning parameters. We treat Brier score and AUROC as primary metrics, reporting ECE purely as a descriptive statistic.
 - <strong>Scope of E3 Features:</strong> The code-computed scorer evaluated here (E3) uses simple lexical overlap, length ratios, format compliance, and token-level containment. It does not incorporate structured world-model or knowledge graph invariants.</p>
 <hr />
 <h2>2. Background and Theoretical Formulation</h2>
@@ -276,7 +277,9 @@ window.MathJax = {
 <p>Let $x \in \mathcal{X}$ denote an input query with retrieved context, $y \in \mathcal{Y}$ the ground truth answer, and $\hat{y} \in \mathcal{Y}$ the model-generated output. Let $c \in [0, 1]$ represent the model's reported probability that $\hat{y} = y$, and let $z = \mathbb{I}(\hat{y} = y) \in {0, 1}$ denote binary correctness.</p>
 <p>Calibration is measured via the <strong>Brier Score</strong>:
 $$\text{Brier} = \frac{1}{N} \sum_{i=1}^N (c_i - z_i)^2$$</p>
-<p>For an uninformative baseline predicting a constant probability equal to the dataset prior $\bar{y} = \frac{1}{N}\sum z_i$, the expected Brier score is $\bar{y}(1 - \bar{y})$. When positive prevalence is low, the constant prior sets a competitive numerical threshold that any meaningful calibration model must surpass.</p>
+<p>For an uninformative baseline predicting a constant probability equal to the dataset prior $\bar{y} = \frac{1}{N}\sum z_i$, the expected in-sample Brier score is $\bar{y}(1 - \bar{y})$. When an out-of-sample predictor applies a training base rate $p_{\text{train}}$ to a test set with base rate $p_{\text{test}}$, the expected Brier score decomposes as:
+$$\mathbb{E}[\text{Brier}] = p_{\text{test}}(1 - p_{\text{test}}) + (p_{\text{train}} - p_{\text{test}})^2$$
+The second term reflects the base-rate shift penalty. When positive prevalence is low, the constant prior sets a competitive numerical threshold that any meaningful calibration model must surpass.</p>
 <p>The <strong>Expected Calibration Error (ECE)</strong> groups predictions into $M$ equal-width bins $B_m \subset [0, 1]$:
 $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$</p>
 <p>Discrimination is assessed using the <strong>Area Under the Receiver Operating Characteristic Curve (AUROC)</strong> for correctness classification, and $\text{AUROC}_{\text{known}}$ for unanswerability detection (classifying whether gold evidence was withheld).</p>
@@ -340,13 +343,13 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <li><strong>Hardware:</strong> Single NVIDIA GeForce RTX 4070 (11.99 GB VRAM), Windows 11, PyTorch 2.6.0+cu124.</li>
 <li><strong>GRPO Configuration:</strong> 15 optimization steps, group rollout size $G=4$, sequence length 512, micro-batch size $N=1$, gradient accumulation steps $= 4$, learning rate $1 \times 10^{-5}$.</li>
 <li><strong>Sequence Classifier:</strong> 3 epochs, batch size 2, gradient accumulation 2, AdamW, learning rate $5 \times 10^{-5}$.</li>
-<li><strong>Statistical Resampling:</strong> 1,000 bootstrap resamples on the test set ($N=152$) to establish 95% percentile confidence intervals for all metrics.</li>
+<li><strong>Statistical Resampling:</strong> 1,000 bootstrap resamples on the test set ($N=152$) to establish 95% percentile confidence intervals for all metrics, and 10,000 bootstrap resamples for paired difference tests.</li>
 </ul>
 <hr />
 <h2>5. Empirical Results</h2>
 <h3>5.1 Comprehensive Benchmark Matrix</h3>
 <p>Table 1 presents calibration metrics, bootstrap 95% confidence intervals, and Brier lift relative to the E0-Constant Prior anchor on the held-out test split ($N=152$, 21 positives).</p>
-<p><strong>Table 1: Empirical performance on HotpotQA-Modified test split ($N=152$, 21 positives). Brackets denote 95% bootstrap confidence intervals (1,000 resamples). $\Delta\text{Brier}$ indicates lift over E0-Constant Prior ($\text{Brier}<em>{\text{prior}} - \text{Brier}</em>{\text{method}}$; positive values indicate improvement).</strong></p>
+<p><strong>Table 1: Empirical performance on HotpotQA-Modified test split ($N=152$, 21 positives). Brackets denote 95% bootstrap confidence intervals (1,000 resamples). $\Delta\text{Brier}$ indicates lift over the training constant prior ($\text{Brier}<em>{\text{prior}} - \text{Brier}</em>{\text{method}}$). ECE is descriptive.</strong></p>
 <table>
 <thead>
 <tr>
@@ -361,11 +364,20 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><strong>E0: Constant Prior</strong></td>
-<td style="text-align: left;">Prior Anchor ($\bar{y}=0.224$)</td>
-<td style="text-align: center;">0.1201 [0.0853, 0.1592]</td>
+<td style="text-align: left;"><strong>E0: Constant Prior (Train Rate)</strong></td>
+<td style="text-align: left;">Prior Anchor ($\bar{y}_{\text{train}}=0.224$)</td>
+<td style="text-align: center;">0.1264 [0.0974, 0.1591]</td>
 <td style="text-align: center;">+0.0000 (Anchor)</td>
-<td style="text-align: center;">3.2% [0.1%, 8.4%]</td>
+<td style="text-align: center;">8.6% [2.7%, 13.8%]</td>
+<td style="text-align: center;">0.500 [0.500, 0.500]</td>
+<td style="text-align: center;">0.500</td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>E0: Constant Prior (Test Oracle)</em></td>
+<td style="text-align: left;">Oracle Base Rate ($\bar{y}_{\text{test}}=0.138$)</td>
+<td style="text-align: center;">0.1191 [0.0898, 0.1502]</td>
+<td style="text-align: center;">+0.0073</td>
+<td style="text-align: center;">0.0% [0.0%, 0.0%]</td>
 <td style="text-align: center;">0.500 [0.500, 0.500]</td>
 <td style="text-align: center;">0.500</td>
 </tr>
@@ -373,7 +385,7 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <td style="text-align: left;"><strong>E0: Prompted Base LLM</strong></td>
 <td style="text-align: left;">1 LLM (<code>Qwen2.5-1.5B</code>)</td>
 <td style="text-align: center;">0.3910 [0.3499, 0.4389]</td>
-<td style="text-align: center;">-0.2709</td>
+<td style="text-align: center;">-0.2646</td>
 <td style="text-align: center;">48.5% [42.5%, 54.6%]</td>
 <td style="text-align: center;">0.505 [0.383, 0.624]</td>
 <td style="text-align: center;">0.513</td>
@@ -381,9 +393,9 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <tr>
 <td style="text-align: left;"><strong>E1: RLVR (Underpowered)</strong></td>
 <td style="text-align: left;">1 LLM (RL-Trained)</td>
-<td style="text-align: center;">0.3910 [0.3499, 0.4389]</td>
-<td style="text-align: center;">-0.2709</td>
-<td style="text-align: center;">48.5% [42.5%, 54.6%]</td>
+<td style="text-align: center;"><em>No policy update</em></td>
+<td style="text-align: center;"><em>Zero gradient</em></td>
+<td style="text-align: center;"><em>Identical to base</em></td>
 <td style="text-align: center;">0.505 [0.383, 0.624]</td>
 <td style="text-align: center;">0.513</td>
 </tr>
@@ -391,7 +403,7 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <td style="text-align: left;"><strong>E1: RLCR-Style (Run 1)</strong></td>
 <td style="text-align: left;">1 LLM (Brier Reward)</td>
 <td style="text-align: center;">0.3586 [0.3154, 0.4008]</td>
-<td style="text-align: center;">-0.2385</td>
+<td style="text-align: center;">-0.2322</td>
 <td style="text-align: center;">46.7% [40.8%, 52.1%]</td>
 <td style="text-align: center;">0.635 [0.513, 0.744]</td>
 <td style="text-align: center;">0.511</td>
@@ -399,17 +411,17 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <tr>
 <td style="text-align: left;"><strong>E2b: 0.5B Sequence Classifier</strong></td>
 <td style="text-align: left;">2 LLMs (Trained 0.5B Head)</td>
-<td style="text-align: center;">0.1258 [0.0963, 0.1589]</td>
-<td style="text-align: center;">-0.0057</td>
-<td style="text-align: center;">8.2% [2.3%, 13.4%]</td>
-<td style="text-align: center;">0.500 [0.500, 0.500]</td>
-<td style="text-align: center;">0.500</td>
+<td style="text-align: center;">0.1775 [0.1264, 0.2346]</td>
+<td style="text-align: center;">-0.0511</td>
+<td style="text-align: center;">16.6% [11.9%, 23.8%]</td>
+<td style="text-align: center;">0.524 [0.383, 0.656]</td>
+<td style="text-align: center;">0.470</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>E2c: Prompted Judge (Raw)</strong></td>
 <td style="text-align: left;">2 LLMs (Zero-Shot)</td>
 <td style="text-align: center;">0.2082 [0.1679, 0.2520]</td>
-<td style="text-align: center;">-0.0881</td>
+<td style="text-align: center;">-0.0818</td>
 <td style="text-align: center;">24.6% [18.4%, 30.3%]</td>
 <td style="text-align: center;">0.619 [0.514, 0.724]</td>
 <td style="text-align: center;"><strong>0.854</strong></td>
@@ -417,31 +429,32 @@ $$R_{\text{RLCR}}(x, \hat{y}, c) = z - (c - z)^2$$</p>
 <tr>
 <td style="text-align: left;"><strong>E3: Text-Overlap Scorer</strong></td>
 <td style="text-align: left;">1 LLM + Overlap LR</td>
-<td style="text-align: center;"><strong>0.1119 [0.0805, 0.1457]</strong></td>
-<td style="text-align: center;"><strong>+0.0082</strong></td>
-<td style="text-align: center;"><strong>3.0% [1.9%, 8.7%]</strong></td>
+<td style="text-align: center;">0.1119 [0.0805, 0.1457]</td>
+<td style="text-align: center;">+0.0145</td>
+<td style="text-align: center;">3.0% [1.9%, 8.7%]</td>
 <td style="text-align: center;"><strong>0.686 [0.572, 0.784]</strong></td>
 <td style="text-align: center;">0.477</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>E4c: Hybrid (Judge + Overlap)</strong></td>
 <td style="text-align: left;">2 LLMs + Hybrid LR</td>
-<td style="text-align: center;"><strong>0.1098 [0.0794, 0.1436]</strong></td>
-<td style="text-align: center;"><strong>+0.0103</strong></td>
-<td style="text-align: center;"><strong>2.6% [2.1%, 8.7%]</strong></td>
+<td style="text-align: center;">0.1098 [0.0794, 0.1436]</td>
+<td style="text-align: center;">+0.0166</td>
+<td style="text-align: center;">2.6% [2.1%, 8.7%]</td>
 <td style="text-align: center;"><strong>0.728 [0.621, 0.823]</strong></td>
 <td style="text-align: center;"><strong>0.811</strong></td>
 </tr>
 </tbody>
 </table>
-<pre><code>Brier Score Comparison (Lower is Better; Constant Prior = 0.1201):
+<pre><code>Brier Score Comparison (Lower is Better; Training Prior = 0.1264, Test Oracle = 0.1191):
 E0 Base LLM:      ████████████████████████████████████████ 0.3910
 E1 RLCR (Run 1):  ████████████████████████████████████ 0.3586
 E2c Judge:        █████████████████████ 0.2082
-E2b 0.5B Head:    █████████████ 0.1258
-E0 Constant Prior:████████████ 0.1201  [BASELINE ANCHOR]
-E3 Text Overlap:  ███████████  0.1119  (Lift: +0.0082 over Prior)
-E4c Hybrid:       ███████████  0.1098  (Lift: +0.0103 over Prior)
+E2b 0.5B Head:    █████████████████ 0.1775
+E0 Train Prior:   █████████████ 0.1264  [TRAINING BASE-RATE ANCHOR]
+E0 Test Oracle:   ████████████  0.1191  [ORACLE IN-SAMPLE ANCHOR]
+E3 Text Overlap:  ███████████   0.1119  (AUROC: 0.686)
+E4c Hybrid:       ███████████   0.1098  (AUROC: 0.728)
 </code></pre>
 
     <div class="figure-block page-break-avoid">
@@ -467,48 +480,77 @@ E4c Hybrid:       ███████████  0.1098  (Lift: +0.0103 over
     </div>
     
 <h3>5.2 Critical Analysis of Findings</h3>
-<h4>A. Lift Over the Constant Prior</h4>
-<p>When evaluated in an imbalanced retrieval setting where true accuracy is low (13.8%), predicting the constant prior achieves a Brier score of 0.1201. The uncalibrated base LLM suffers from severe overconfidence (mean verbalized confidence of 0.605 on incorrect answers), worsening the Brier score to 0.3910. </p>
-<p>Zhao's text-overlap scorer (E3) achieves a modest Brier improvement of <strong>+0.0082</strong> over the constant prior (a 6.8% reduction), while improving discrimination to AUROC <strong>0.686</strong> [0.572, 0.784]. The hybrid model (E4c) achieves the best overall Brier score (<strong>0.1098</strong>, lift of <strong>+0.0103</strong> over prior) and correctness discrimination (AUROC <strong>0.728</strong> [0.621, 0.823]).</p>
-<h4>B. The Trivial 86.2% Majority Class Accuracy</h4>
-<p>In previous iterations of this benchmark, an accuracy of "86.2%" was reported across several methods. This value is a mathematical artifact of class imbalance. Because the positive rate is 13.8% (21/152), all calibrated confidence scores fall below 0.5 ($c_i \in [0.10, 0.40]$). Under a standard 0.5 decision threshold, every item is classified as negative, yielding trivial majority-class accuracy of $1 - 0.138 = 86.2\%$. We omit this misleading metric in favor of AUROC and Brier lift.</p>
+<h4>A. Does E3 Decisively Beat the Constant Prior?</h4>
+<p>When evaluated against the out-of-sample training prior ($c=0.224$), E3 achieves a paired Brier difference of $+0.0146$ [95% CI: $+0.0096, +0.0188$]. However, this apparent advantage largely stems from the <strong>train-to-test base-rate shift</strong> ($22.4\% \to 13.8\%$), which penalizes the training prior by $(0.224 - 0.138)^2 \approx 0.0074$. </p>
+<p>When compared against the oracle test-set base rate ($0.138$), E3's paired Brier difference is $+0.0072$, and its 95% bootstrap confidence interval spans <strong>$-0.0009$ to $+0.0157$</strong>, crossing zero. Similarly, across 5-fold cross-validation on the same folds (Section 6), E3 achieves a mean Brier of $0.1211 \pm 0.0204$ versus the constant prior's $0.1286 \pm 0.0189$, with a mean paired difference of $+0.0076 \pm 0.0053$ (and on Fold 4, E3 was slightly worse than the constant prior, $0.1373$ vs. $0.1345$). </p>
+<p>Therefore, <strong>we do not claim that E3 decisively improves calibration over a well-calibrated constant prior</strong>. What the data robustly supports is that E3 provides meaningful <strong>discrimination</strong> (AUROC 0.686 [0.572, 0.784], clearly excluding random chance 0.500).</p>
+<h4>B. Clarification of Supervised Classifier (E2b) Performance</h4>
+<p>In an earlier draft summary of these experiments, E2b was temporarily reported as having Brier 0.1258 and AUROC 0.500 with zero CI width. That anomaly occurred because a dictionary lookup fallback defaulted all test predictions to a constant 0.22 when test IDs were mismatched. Restoring the genuine saved predictions from disk (<code>results/e2_trained_predictions.json</code>) confirms that the trained 0.5B classifier achieved Brier <strong>0.1775</strong> [0.1264, 0.2346] and AUROC <strong>0.524</strong> [0.383, 0.656]. Because the sequence classifier was fine-tuned on a tiny training set ($N=36$), it struggled to generalize, performing substantially worse than the constant prior.</p>
 <h4>C. Inconclusive Nature of Underpowered RLCR-Style Runs</h4>
-<p>Our low-compute RLCR experiments highlight serious sample-efficiency bottlenecks:
-- In the standard RLVR control, all 152 test outputs and verbalized confidence scores were 100% identical to the base model. Because base model accuracy was low (~19%), group rollouts of size $G=4$ rarely produced at least one correct answer. When all $G=4$ completions scored zero, the group advantage $A_g = \frac{R_g - \text{mean}}{\text{std}}$ collapsed to zero, providing zero gradient updates across 15 steps.
+<p>Our low-compute RL experiments highlight serious sample-efficiency bottlenecks:
+- In the standard RLVR control, all 152 test outputs and verbalized confidence scores were 100% identical to the base model. Because base model accuracy was low (~19%), group rollouts of size $G=4$ rarely produced at least one correct answer. When all $G=4$ completions scored zero, the group advantage $A_g = \frac{R_g - \text{mean}}{\text{std}}$ collapsed to zero, providing zero gradient updates across 15 steps. We mark RLVR in Table 1 as <em>No policy update</em> rather than a substantive empirical result.
 - In RLCR, only one of three runs (Run 1) demonstrated an increase in correctness discrimination (AUROC 0.635). In Runs 2 and 3, rollouts failed to discover reward-improving trajectories, leaving the policy at base-rate performance.
 - We conclude that RLCR cannot be reliably studied under such low sample budgets ($G=4$, 15 steps); robust policy learning requires the large rollout batches ($G \ge 32$) and extended optimization schedules employed by Damani et al.</p>
 <hr />
-<h2>6. Determinism vs. Resampled Split Variance</h2>
-<p>When evaluated on the static 152-item test set, code-computed scorers (E3) produce identical metrics across runs ($\sigma = 0.0000$). This uniformity reflects numerical determinism (evaluating frozen model outputs with deterministic string operations on a static partition) rather than statistical certainty.</p>
-<p>To measure actual empirical variance across data partitions, we performed 5-fold cross-validation across all 252 available HotpotQA items.</p>
-<p><strong>Table 2: 5-Fold cross-validation resampling variance for Text-Overlap Scorer (E3).</strong></p>
+<h2>6. Resampled Cross-Validation Variance</h2>
+<p>To measure actual empirical variance across data partitions, we performed 5-fold cross-validation across all 252 available HotpotQA items, comparing E3 and the constant prior on the exact same folds.</p>
+<p><strong>Table 2: 5-Fold cross-validation comparison on identical data folds ($N=252$).</strong></p>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Metric</th>
-<th style="text-align: center;">Resampled 5-Fold Mean $\pm \sigma$</th>
-<th style="text-align: center;">95% Confidence Interval</th>
+<th style="text-align: center;">Fold</th>
+<th style="text-align: center;">Constant Prior Brier</th>
+<th style="text-align: center;">Text-Overlap (E3) Brier</th>
+<th style="text-align: center;">Paired Difference ($\text{Brier}<em>{\text{prior}} - \text{Brier}</em>{\text{E3}}$)</th>
+<th style="text-align: center;">E3 AUROC</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><strong>Brier Score</strong></td>
+<td style="text-align: center;"><strong>Fold 1</strong></td>
+<td style="text-align: center;">0.1323</td>
+<td style="text-align: center;">0.1211</td>
+<td style="text-align: center;">+0.0112</td>
+<td style="text-align: center;">0.724</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Fold 2</strong></td>
+<td style="text-align: center;">0.0928</td>
+<td style="text-align: center;">0.0824</td>
+<td style="text-align: center;">+0.0104</td>
+<td style="text-align: center;">0.758</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Fold 3</strong></td>
+<td style="text-align: center;">0.1345</td>
+<td style="text-align: center;">0.1264</td>
+<td style="text-align: center;">+0.0081</td>
+<td style="text-align: center;">0.612</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Fold 4</strong></td>
+<td style="text-align: center;">0.1345</td>
+<td style="text-align: center;">0.1373</td>
+<td style="text-align: center;">-0.0028</td>
+<td style="text-align: center;">0.589</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Fold 5</strong></td>
+<td style="text-align: center;">0.1489</td>
+<td style="text-align: center;">0.1381</td>
+<td style="text-align: center;">+0.0108</td>
+<td style="text-align: center;">0.651</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Mean $\pm \sigma$</strong></td>
+<td style="text-align: center;"><strong>0.1286 $\pm$ 0.0189</strong></td>
 <td style="text-align: center;"><strong>0.1211 $\pm$ 0.0204</strong></td>
-<td style="text-align: center;">[0.1007, 0.1415]</td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>ECE</strong></td>
-<td style="text-align: center;"><strong>4.5% $\pm$ 1.2%</strong></td>
-<td style="text-align: center;">[3.3%, 5.7%]</td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>AUROC</strong></td>
+<td style="text-align: center;"><strong>+0.0076 $\pm$ 0.0053</strong></td>
 <td style="text-align: center;"><strong>0.667 $\pm$ 0.088</strong></td>
-<td style="text-align: center;">[0.579, 0.755]</td>
 </tr>
 </tbody>
 </table>
-<p>Across data splits, E3 exhibits a standard deviation of $\sigma_{\text{Brier}} = 0.0204$ and $\sigma_{\text{AUROC}} = 0.088$, illustrating the normal empirical variability expected on sample sizes of this magnitude.</p>
+<p>Across data splits, E3 exhibits standard deviation of $\sigma_{\text{Brier}} = 0.0204$ and $\sigma_{\text{AUROC}} = 0.088$, illustrating normal empirical variability. On Fold 4, E3 was slightly worse than the constant prior.</p>
 <hr />
 <h2>7. Evidence Removal and Insensitivity to Information Withholding</h2>
 
@@ -613,12 +655,12 @@ E4c Hybrid:       ███████████  0.1098  (Lift: +0.0103 over
 </table>
 <p>With only <strong>2 positive correct answers</strong> among 36 test cases, the 95% confidence intervals for AUROC span from random chance (0.500) to 0.941. Consequently, <strong>we explicitly retract previous claims of "exceptional 0.853 AUROC transfer"</strong>. Reliable evaluation of out-of-domain transfer requires larger evaluation sets with at least 30 to 50 positive instances.</p>
 <hr />
-<h2>9. Failure Case Taxonomy</h2>
-<p>To characterize model miscalibration, we examined the <strong>top 30 most confident incorrect predictions under the E0 baseline</strong> (the cases with the largest individual Brier penalty $(c_i - 0)^2$).</p>
+<h2>9. Failure Case Taxonomy (Extreme Overconfident Tail)</h2>
+<p>To characterize model miscalibration, we examined the <strong>top 30 most confident incorrect predictions under the E0 baseline</strong> (the tail cases with the largest individual Brier loss $(c_i - 0)^2$). These 30 cases describe the failure modes of the extreme overconfident tail, not the overall distribution across all errors:</p>
 <ol>
-<li><strong>Insensitivity to Missing Supporting Facts (46.7%, 14/30 cases):</strong> In multi-hop questions where gold paragraphs were ablated ($n_{\text{removed}} &gt; 0$), the model fabricated plausible reasoning paths connecting unrelated entities and assigned confidence exceeding 85%.</li>
-<li><strong>Surface Lexical Overlap Traps (33.3%, 10/30 cases):</strong> The candidate answer contained exact lexical substrings from distractor paragraphs (e.g., matching a location or date mentioned in an unrelated context), leading both the base LLM and E3 to assign falsely elevated confidence.</li>
-<li><strong>Paraphrase Penalties (20.0%, 6/30 cases):</strong> The model produced semantically valid answers using synonyms not present in the text (e.g., "physician" for "doctor"), leading text-overlap features to predict near-zero probability.</li>
+<li><strong>Insensitivity to Missing Supporting Facts (14/30 tail cases):</strong> In multi-hop questions where gold paragraphs were ablated ($n_{\text{removed}} &gt; 0$), the model fabricated plausible reasoning paths connecting unrelated entities and assigned confidence exceeding 85%.</li>
+<li><strong>Surface Lexical Overlap Traps (10/30 tail cases):</strong> The candidate answer contained exact lexical substrings from distractor paragraphs (e.g., matching a location or date mentioned in an unrelated context), leading both the base LLM and E3 to assign falsely elevated confidence.</li>
+<li><strong>Paraphrase Penalties (6/30 tail cases):</strong> The model produced semantically valid answers using synonyms not present in the text (e.g., "physician" for "doctor"), leading text-overlap features to predict near-zero probability.</li>
 </ol>
 <hr />
 <h2>10. Scope and Limitations of Text-Overlap Features</h2>
@@ -629,11 +671,10 @@ E4c Hybrid:       ███████████  0.1098  (Lift: +0.0103 over
 <hr />
 <h2>11. Conclusion</h2>
 <p>This exploratory study provides an empirical comparison of uncertainty calibration methods under modest computational resources:
-1. When positive prevalence is low, the non-parametric constant prior (Brier 0.1201, ECE 3.2%) provides a formidable baseline that simple text-overlap scorers only marginally improve upon (Brier lift of +0.0082 to +0.0103).
-2. Under low compute ($G=4$, 15 steps), RLCR-style training suffers from severe sample inefficiency and zero-advantage collapse, rendering results inconclusive.
-3. Zero-shot LLMs exhibit insensitivity to evidence omission rather than statistically significant inversion, and pure text-overlap features are blind to missing supporting premises ($\text{AUROC}_{\text{known}} = 0.477$).
-4. Evaluating domain transfer on subsets with few positive cases yields wide confidence intervals that preclude strong generalization claims.</p>
-<p>We recommend that practical calibration pipelines combine lightweight semantic claim verification with formal confidence intervals and explicit baseline lift reporting.</p>
+1. When positive prevalence is low (13.8%), the non-parametric constant prior provides a formidable baseline (Brier 0.1264 considering base-rate shift, 0.1191 test oracle). Text-overlap scorers do not decisively beat the constant prior on Brier score (paired difference 95% CI spans zero), but they provide genuine <strong>discrimination</strong> (E3 AUROC 0.686 [0.572, 0.784], E4c AUROC 0.728 [0.621, 0.823]).
+2. Under low compute ($G=4$, 15 steps), RLCR-style training suffers from zero-advantage collapse, resulting in no policy updates for RLVR and inconclusive outcomes for RLCR.
+3. Zero-shot LLMs exhibit insensitivity to evidence omission rather than statistically significant inversion, and pure text-overlap features are blind to missing supporting premises ($\text{AUROC}_{\text{known}} = 0.477$). Only semantic claim judges successfully detect withheld evidence.</p>
+<p>We recommend that practical calibration pipelines combine lightweight semantic claim verification with formal paired confidence intervals and explicit baseline lift reporting.</p>
 <hr />
 <h2>References</h2>
 <ul>
