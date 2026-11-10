@@ -1,0 +1,78 @@
+# Global Experiment Configuration
+# Calibrated Confidence for LLM Agents (RLCR Paper Reproduction & Comparison)
+
+project:
+  name: "RLCR-Calibration-Study"
+  reference_paper: "Beyond Binary Rewards: Training LMs to Reason About Their Uncertainty (arXiv:2507.16806, ICLR 2026)"
+  authors: "Mehul Damani, Isha Puri, Stewart Slocum, Idan Shenfeld, Yoon Kim, Jacob Andreas"
+  owner: "Zhao"
+
+hardware:
+  gpu: "NVIDIA GeForce RTX 4070"
+  vram_gb: 12.0
+  device: "cuda"
+  torch_dtype: "bfloat16"
+
+seeds:
+  primary: 42
+  eval_seeds: [42, 1337, 2026]
+  bootstrap_resamples: 1000
+
+datasets:
+  hotpotqa_modified:
+    source: "mehuldamani/hotpot_qa"
+    splits:
+      train_sample: 500
+      cal_sample: 200
+      test_sample: 300
+    evidence_removal: [0, 1, 2] # 0 = known, 1/2 = unknown
+    eval_method: "exact_match"
+
+  big_math_digits:
+    source: "mehuldamani/big-math-digits"
+    filter: "0.0 <= llama8b_solve_rate <= 0.70 and answer is numerical"
+    splits:
+      train_sample: 500
+      cal_sample: 200
+      test_sample: 300
+    eval_method: "math_verify"
+
+models:
+  agent_model: "Qwen/Qwen2.5-1.5B-Instruct"
+  classifier_model: "Qwen/Qwen2.5-0.5B"
+  judge_model: "Qwen/Qwen2.5-1.5B-Instruct" # 4-bit / prompted
+  grader_model: "exact_match_and_math_verify"
+
+experiments:
+  e0_control:
+    name: "Base Prompted Agent"
+    prompt_format: "tabc_long"
+    confidence_type: "verbalized"
+
+  e1_rlcr:
+    algorithm: "GRPO"
+    reward_weights:
+      accuracy: 0.5
+      brier: 0.5
+      format: 0.5
+    lora:
+      r: 16
+      alpha: 32
+      dropout: 0.05
+
+  e2_classifier:
+    sizes: ["0.5B", "1.5B"]
+    loss_types: ["bce", "brier"]
+    variants: ["e2a_solution_only", "e2b_context_aware", "e2c_prompted_judge"]
+
+  e3_scorer:
+    method: "Frozen LLM + L2 Logistic Regression"
+    cv_folds: 5
+    regularization_C: [0.01, 0.1, 1.0, 10.0, 100.0]
+    features:
+      hotpot: ["answer_in_context", "max_emb_sim", "top2_emb_sim", "nli_entailment", "self_consistency", "format_validity"]
+      math: ["format_validity", "reasoning_len_bucket", "self_consistency"]
+
+  e4_hybrid:
+    method: "Prompted Judge Findings + Code Features"
+    features: ["supported_claims", "unsupported_claims", "missing_info_count", "assumed_facts", "judge_confidence"]
