@@ -12,8 +12,6 @@ def encode_image_base64(path):
     return f"data:image/png;base64,{data}"
 
 def clean_markdown_math(text):
-    # Fix standard LaTeX math that might get mangled by standard markdown
-    # Replace common symbols for cleaner typesetting
     return text
 
 def main():
@@ -44,18 +42,18 @@ def main():
             </div>
             <div class="grid-item">
                 <img src="{img_rlcr}" />
-                <div class="img-subcap">(b) E1: RLCR Policy Gradient (Paper Method)</div>
+                <div class="img-subcap">(b) E1: RLCR-Style Policy (Run 1, AUROC 0.635)</div>
             </div>
             <div class="grid-item">
                 <img src="{img_e3}" />
-                <div class="img-subcap">(c) E3: Zhao's Code Scorer (Convex LR, 3.0% ECE)</div>
+                <div class="img-subcap">(c) E3: Text-Overlap Scorer (Brier 0.1119, ECE 3.0%)</div>
             </div>
             <div class="grid-item">
                 <img src="{img_e4c}" />
-                <div class="img-subcap">(d) E4c: Hybrid Verifier (Judge + Code, 2.6% ECE)</div>
+                <div class="img-subcap">(d) E4c: Hybrid Verifier (Judge + Overlap, Brier 0.1098)</div>
             </div>
         </div>
-        <p class="figure-caption"><strong>Figure 1: Reliability Diagrams Across Evaluated Architectures.</strong> Bars represent empirical accuracy for 10 confidence bins ($M=10$). Red dashed lines indicate the ideal diagonal ($y=x$). Base LLM exhibits extreme overconfidence with a 76.7% gap in bin [0.9, 1.0], while E3 and E4c achieve near-perfect calibration around empirical accuracy.</p>
+        <p class="figure-caption"><strong>Figure 1: Reliability Diagrams Across Evaluated Architectures ($N=152$, 21 positives).</strong> Bars represent empirical accuracy for 10 confidence bins ($M=10$). Red dashed lines indicate the ideal diagonal ($y=x$). The base LLM exhibits severe overconfidence with a 76.7% gap in bin [0.9, 1.0], while E3 and E4c achieve modest Brier lifts (+0.0082 and +0.0103) over the constant prior (Brier 0.1201) while flattening overconfident extremes.</p>
     </div>
     """
     
@@ -68,10 +66,10 @@ def main():
             </div>
             <div class="grid-item">
                 <img src="{img_n_removed}" />
-                <div class="img-subcap">(b) Epistemic Degradation vs. Evidence Removed</div>
+                <div class="img-subcap">(b) Verbalized Confidence vs. Evidence Removed</div>
             </div>
         </div>
-        <p class="figure-caption"><strong>Figure 2: Risk-Coverage & Epistemic Uncertainty Profiling.</strong> (a) Risk (1 - accuracy) as coverage increases from 10% to 100%. Calibrated verifiers maintain near-zero error at high coverage. (b) Mean verbalized confidence as gold evidence is removed ($n_{{\\text{{removed}}}} \\in \\{{0, 1, 2\\}}$). The uncalibrated base LLM shows pathological confidence inversion ($0.605 \\to 0.626$), whereas E4c depresses confidence to $0.002$ when evidence is missing.</p>
+        <p class="figure-caption"><strong>Figure 2: Risk-Coverage & Evidence Ablation Profiling.</strong> (a) Risk (1 - accuracy) as coverage increases from 10% to 100%. (b) Mean verbalized confidence as gold supporting evidence is ablated ($n_{{\\text{{removed}}}} \\in \\{{0, 1, 2\\}}$). The base LLM shows insensitivity to evidence omission (0.605 vs. 0.626, with overlapping 95% CIs), while hybrid verifiers successfully depress confidence when supporting evidence is withheld.</p>
     </div>
     """
     
@@ -80,11 +78,11 @@ def main():
     html_body = markdown.markdown(md_processed, extensions=['tables', 'fenced_code'])
     
     # Insert visual figures after relevant sections
-    target_token_1 = "<h3>5.2 Key Empirical Takeaways</h3>"
+    target_token_1 = "<h3>5.2 Critical Analysis of Findings</h3>"
     if target_token_1 in html_body:
         html_body = html_body.replace(target_token_1, figures_html_1 + "\n" + target_token_1)
         
-    target_token_2 = "<h2>7. Controlled Epistemic Ablation: Unanswerability Detection</h2>"
+    target_token_2 = "<h2>7. Evidence Removal and Insensitivity to Information Withholding</h2>"
     if target_token_2 in html_body:
         html_body = html_body.replace(target_token_2, target_token_2 + "\n" + figures_html_2)
 
@@ -100,13 +98,13 @@ def main():
             color: #666;
         }
         @bottom-left {
-            content: "Antigravity AI Engineering Lab & Zhao (2026)";
+            content: "AI Engineering Calibration Team & Zhao (2026)";
             font-size: 8.5pt;
             font-family: "Georgia", "Times New Roman", serif;
             color: #666;
         }
         @top-right {
-            content: "Empirical Stability & Calibration of LLM Agents";
+            content: "Empirical Stability & Calibration in LM Uncertainty";
             font-size: 8pt;
             font-family: "Georgia", "Times New Roman", serif;
             font-style: italic;
@@ -321,7 +319,7 @@ def main():
 <html>
 <head>
 <meta charset="utf-8">
-<title>Beyond Policy Gradients: Empirical Stability, Calibration, and Invariance in Language Model Uncertainty Estimation</title>
+<title>Empirical Stability and Calibration in Language Model Uncertainty: An Exploratory Study of RLCR-Style Policies, Supervised Verifiers, and Code Scorers</title>
 <script>
 window.MathJax = {{
   tex: {{
