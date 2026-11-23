@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Browser Control AI — WebLLM & Groq LPU</title>
+  <!-- Modern Inter Font & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --surface: #111827;
+      --surface-2: #1e293b;
+      --surface-3: #273549;
+      --border: #334155;
+      --border-focus: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --purple: #8b5cf6;
+      --radius: 12px;
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation */
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+    .brand-icon svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .brand-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Engine Selector Pills */
+    .engine-toggle-group {
+      display: flex;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 3px;
+    }
+    .engine-pill {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 24px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .engine-pill.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+    .engine-pill.groq.active {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      height: calc(100vh - 65px);
+      overflow: hidden;
+    }
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow-y: auto;
+      }
+    }
+
+    /* Left Control Column */
+    .control-pane {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .pane-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Input & Forms */
+    .input-group {
+      margin-bottom: 12px;
+    }
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--surface-3);
+      border-color: #475569;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-color: #3b82f6;
+      color: #fff;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+    .btn-groq {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border-color: #f97316;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(249, 115, 22, 0.25);
+    }
+    .btn-groq:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ea580c, #c2410c);
+    }
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(244, 63, 94, 0.25);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Quick Prompt Chips */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover {
+      background: var(--surface-3);
+      color: #fff;
+      border-color: #64748b;
+    }
+
+    /* Model Status Bar */
+    .status-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+      display: inline-block;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .status-dot.ready { background: var(--emerald); color: var(--emerald); }
+    .status-dot.busy { background: var(--amber); color: var(--amber); animation: pulse 1s infinite alternate; }
+    .status-dot.error { background: var(--rose); color: var(--rose); }
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1.15); }
+    }
+
+    .progress-bar-container {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      transition: width 0.3s ease;
+    }
+
+    /* Execution Log / Agent Stream */
+    .log-stream {
+      background: #080c14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-item {
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .log-item.think { color: #a78bfa; }
+    .log-item.action { color: #38bdf8; font-weight: 600; }
+    .log-item.success { color: #34d399; }
+    .log-item.warn { color: #fbbf24; }
+    .log-item.error { color: #f87171; }
+
+    /* Right Browser Sandbox Viewport */
+    .viewport-pane {
+      display: flex;
+      flex-direction: column;
+      background: #0f172a;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Browser Chrome Frame */
+    .browser-frame {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      height: 100%;
+      overflow: hidden;
+    }
+    .browser-toolbar {
+      background: #1e293b;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .browser-nav-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .nav-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .url-bar-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: #94a3b8;
+    }
+    .url-bar-container svg { width: 14px; height: 14px; margin-right: 8px; color: var(--emerald); }
+    .url-text { flex: 1; outline: none; border: none; background: transparent; color: #cbd5e1; font-family: inherit; font-size: inherit; }
+
+    .site-preset-select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Sandbox Content Viewport */
+    .browser-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      background: #ffffff;
+      color: #1e293b;
+    }
+
+    /* Simulated AI Cursor & Target Box */
+    #ai-cursor {
+      position: absolute;
+      top: 100px;
+      left: 100px;
+      width: 24px;
+      height: 24px;
+      pointer-events: none;
+      z-index: 9999;
+      transition: all 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+      display: none;
+    }
+    #ai-cursor svg {
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4));
+      fill: #3b82f6;
+      stroke: #fff;
+      stroke-width: 1.5;
+    }
+    #ai-cursor.clicking {
+      transform: scale(0.85);
+    }
+    .cursor-ripple {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border: 2px solid #3b82f6;
+      border-radius: 50%;
+      top: -4px;
+      left: -4px;
+      opacity: 0;
+      animation: ripple 0.6s ease-out;
+    }
+    @keyframes ripple {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* Element Highlight Box */
+    .ai-element-highlight {
+      outline: 2px solid #3b82f6 !important;
+      outline-offset: 3px !important;
+      background-color: rgba(59, 130, 246, 0.08) !important;
+      box-shadow: 0 0 14px rgba(59, 130, 246, 0.35) !important;
+      transition: all 0.25s ease;
+    }
+    .element-badge {
+      position: absolute;
+      background: #2563eb;
+      color: #fff;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 1px 5px;
+      border-radius: 3px;
+      z-index: 1000;
+      pointer-events: none;
+      font-weight: bold;
+    }
+
+    /* --- Interactive Simulated Environments --- */
+    .sandbox-page {
+      padding: 30px;
+      max-width: 900px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Preset 1: NovaMart E-Commerce */
+    .shop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+    }
+    .shop-logo { font-size: 22px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+    .shop-cart-btn {
+      background: #0f172a;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 20px;
+    }
+    .product-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .product-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .product-img {
+      height: 140px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+    }
+    .product-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .product-desc { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.4; }
+    .product-footer { display: flex; justify-content: space-between; align-items: center; }
+    .product-price { font-size: 16px; font-weight: 800; color: #0284c7; }
+    .add-cart-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .add-cart-btn:hover { background: #1d4ed8; }
+
+    /* Preset 2: TaskFlow SaaS */
+    .task-container {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 24px;
+    }
+    .task-input-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .task-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .task-item.completed { text-decoration: line-through; color: #94a3b8; }
+
+    /* Modal Cart Drawer */
+    #cart-modal {
+      position: absolute;
+      top: 0;
+      right: -360px;
+      width: 340px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+      z-index: 500;
+      padding: 24px;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    #cart-modal.open { right: 0; }
+    .cart-items { flex: 1; overflow-y: auto; margin: 16px 0; }
+
+    /* Code & Bridge tab */
+    .code-box {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #93c5fd;
+      overflow-x: auto;
+      user-select: all;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header>
+    <a href="#" class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">AgentNavigator AI</div>
+      </div>
+      <span class="brand-badge">Pure HTML / WebGPU / Groq</span>
+    </a>
+
+    <!-- Engine Switcher -->
+    <div class="top-actions">
+      <div class="engine-toggle-group">
+        <button id="pill-webgpu" class="engine-pill active" onclick="switchEngine('webgpu')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07 19.07 4.93"/></svg>
+          WebLLM (Local GPU)
+        </button>
+        <button id="pill-groq" class="engine-pill groq" onclick="switchEngine('groq')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Groq LPU (Ultra Fast)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Column: Controls & AI Brain -->
+    <div class="control-pane">
+
+      <!-- Engine Configuration -->
+      <div class="pane-section" id="engine-config-section">
+        <div class="section-title">
+          <span id="engine-title-label">Local WebGPU Engine</span>
+          <span id="engine-badge" class="brand-badge">Client-Side</span>
+        </div>
+
+        <!-- WebGPU Settings -->
+        <div id="webgpu-controls">
+          <div class="input-group">
+            <label class="input-label" for="webllm-model-select">WebLLM Model (Local in browser)</label>
+            <select id="webllm-model-select">
+              <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2 135M (Fastest download ~120MB)</option>
+              <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen 2.5 0.5B (~390MB - High Quality)</option>
+              <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (~880MB - Recommended)</option>
+              <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B (~2.2GB - Advanced)</option>
+            </select>
+          </div>
+          <button id="btn-load-webgpu" class="btn btn-primary" onclick="initWebLLM()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24L21 8"/><path d="M21 3v5h-5"/></svg>
+            Load Model into WebGPU
+          </button>
+        </div>
+
+        <!-- Groq Settings -->
+        <div id="groq-controls" style="display: none;">
+          <div class="input-group">
+            <label class="input-label" for="groq-api-key">Groq API Key</label>
+            <input type="password" id="groq-api-key" placeholder="gsk_..." onchange="saveGroqKey(this.value)">
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="groq-model-select">Groq LPU Model</label>
+            <select id="groq-model-select">
+              <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B Versatile (~350 t/s)</option>
+              <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (~800 t/s)</option>
+              <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+              <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+            </select>
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+            Key is stored only in your local browser storage. Groq delivers lightning-fast inference on LPUs.
+          </p>
+        </div>
+
+        <!-- Status Card -->
+        <div class="status-card" style="margin-top: 14px;">
+          <div class="status-row">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span id="status-indicator" class="status-dot"></span>
+              <strong id="status-text">Engine Idle</strong>
+            </span>
+            <span id="speed-indicator" style="font-family: var(--font-mono); font-size: 11px; color: #94a3b8;">0 t/s</span>
+          </div>
+          <div class="progress-bar-container" id="progress-container" style="display:none;">
+            <div id="progress-bar" class="progress-bar-fill"></div>
+          </div>
+          <div id="progress-subtext" style="font-size: 11px; color: #94a3b8; font-family: var(--font-mono);"></div>
+        </div>
+      </div>
+
+      <!-- Natural Language Goal Input -->
+      <div class="pane-section">
+        <div class="section-title">
+          <span>Natural Language Directive</span>
+          <span style="font-size:11px; color:var(--text-muted); text-transform:none;">Agentic Browser Task</span>
+        </div>
+        <div class="input-group">
+          <textarea id="user-goal" placeholder="e.g. 'Search for wireless headphones, pick the Pro model, and add it to cart', or 'create a high priority bug task'"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-execute" class="btn btn-primary" style="flex: 2;" onclick="startAgentLoop()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Autonomous Agent
+          </button>
+          <button id="btn-step" class="btn" style="flex: 1;" onclick="executeSingleStep()" title="Run a single action step">
+            Step
+          </button>
+          <button id="btn-stop" class="btn btn-danger" style="width: auto; padding: 10px;" onclick="stopAgentLoop()" title="Halt agent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/></svg>
+          </button>
+        </div>
+
+        <!-- Quick Demo Chips -->
+        <div class="chips">
+          <span class="chip" onclick="setGoal('Search for headphones and add the top rated one to cart')">🛒 E-Commerce: Buy Headphones</span>
+          <span class="chip" onclick="setGoal('Type \'Fix authentication token timeout\' and click Add Task')">📋 SaaS: Create Bug Task</span>
+          <span class="chip" onclick="setGoal('Open Cart and proceed to checkout')">💳 Open Cart & Checkout</span>
+          <span class="chip" onclick="setGoal('Book a flight from New York to Tokyo for 2 passengers')">✈️ Form: Flight Booking</span>
+        </div>
+      </div>
+
+      <!-- Live Agent Thought Stream & Action History -->
+      <div class="pane-section" style="flex: 1; display:flex; flex-direction:column; border-bottom: none;">
+        <div class="section-title">
+          <span>Agent Diagnostics & Thoughts</span>
+          <button onclick="clearLogs()" style="background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer;">Clear</button>
+        </div>
+        <div id="agent-log" class="log-stream">
+          <div class="log-item think">// Agent initialized. Select WebGPU or Groq, then issue natural language browser instructions.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Interactive Browser Sandbox & Viewport -->
+    <div class="viewport-pane">
+      <div class="browser-frame">
+        
+        <!-- Browser Chrome Navigation Bar -->
+        <div class="browser-toolbar">
+          <div class="browser-nav-btns">
+            <button class="nav-btn" onclick="historyBack()" title="Back">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button class="nav-btn" onclick="historyForward()" title="Forward">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <button class="nav-btn" onclick="reloadSandbox()" title="Reload Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
+
+          <div class="url-bar-container">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="text" id="browser-url-input" class="url-text" value="https://novamart.internal/store" readonly>
+          </div>
+
+          <!-- Environment Presets -->
+          <select id="preset-selector" class="site-preset-select" onchange="switchPresetSite(this.value)">
+            <option value="ecommerce">🏬 NovaMart E-Commerce</option>
+            <option value="saas">📋 TaskFlow Dashboard</option>
+            <option value="flight">✈️ GlobalAir Flight Booking</option>
+            <option value="real_browser">🔌 Connect Real Browser Tab</option>
+          </select>
+        </div>
+
+        <!-- Sandbox Viewport Area -->
+        <div id="browser-viewport" class="browser-canvas-wrap">
+          
+          <!-- Virtual Animated AI Cursor -->
+          <div id="ai-cursor">
+            <svg viewBox="0 0 24 24"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+            <div id="cursor-ripple-host"></div>
+          </div>
+
+          <!-- Sandbox Content Container -->
+          <div id="sandbox-root">
+            <!-- Dynamically populated by JS according to selected preset -->
+          </div>
+
+          <!-- E-Commerce Cart Slide-Over Drawer -->
+          <div id="cart-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+              <h3 style="font-size: 18px; color:#0f172a;">Your Cart (<span id="cart-count">0</span>)</h3>
+              <button onclick="toggleCart(false)" id="close-cart-btn" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+            <div id="cart-items" class="cart-items">
+              <p style="color:#64748b; font-size:13px; text-align:center; margin-top:40px;">Your cart is empty.</p>
+            </div>
+            <div style="border-top:1px solid #e2e8f0; padding-top:16px;">
+              <div style="display:flex; justify-content:space-between; font-weight:700; margin-bottom:12px;">
+                <span>Total:</span>
+                <span id="cart-total-price">$0.00</span>
+              </div>
+              <button id="checkout-btn" onclick="alert('Checkout Complete! The agent fulfilled your order.')" style="width:100%; background:#10b981; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">
+                Checkout Now
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    // --- Global State ---
+    window.appState = {
+      engineType: 'webgpu', // 'webgpu' | 'groq'
+      engineReady: false,
+      webllmInstance: null,
+      webllmEngine: null,
+      groqApiKey: localStorage.getItem('groq_api_key') || '',
+      isExecuting: false,
+      stepCount: 0,
+      currentSite: 'ecommerce',
+      cart: [],
+      tasks: [
+        { id: 1, title: 'Refactor login component token handling', priority: 'High', done: false },
+        { id: 2, title: 'Update documentation for WebGPU pipeline', priority: 'Medium', done: true }
+      ]
+    };
+
+    // Prepopulate saved Groq Key
+    if (window.appState.groqApiKey) {
+      document.getElementById('groq-api-key').value = window.appState.groqApiKey;
+    }
+
+    // --- Switch Engine (WebGPU vs Groq LPU) ---
+    window.switchEngine = function(type) {
+      window.appState.engineType = type;
+      const pillWebGPU = document.getElementById('pill-webgpu');
+      const pillGroq = document.getElementById('pill-groq');
+      const webgpuControls = document.getElementById('webgpu-controls');
+      const groqControls = document.getElementById('groq-controls');
+      const engineTitleLabel = document.getElementById('engine-title-label');
+      const engineBadge = document.getElementById('engine-badge');
+
+      if (type === 'webgpu') {
+        pillWebGPU.classList.add('active');
+        pillGroq.classList.remove('active');
+        webgpuControls.style.display = 'block';
+        groqControls.style.display = 'none';
+        engineTitleLabel.textContent = 'Local WebGPU Engine';
+        engineBadge.textContent = 'On-Device';
+        updateStatus(window.appState.webllmEngine ? 'ready' : 'idle', window.appState.webllmEngine ? 'WebLLM Engine Ready' : 'WebGPU Ready to Load');
+      } else {
+        pillWebGPU.classList.remove('active');
+        pillGroq.classList.add('active');
+        webgpuControls.style.display = 'none';
+        groqControls.style.display = 'block';
+        engineTitleLabel.textContent = 'Groq Cloud LPU Engine';
+        engineBadge.textContent = 'Ultra Fast LPU';
+        const hasKey = !!window.appState.groqApiKey;
+        updateStatus(hasKey ? 'ready' : 'idle', hasKey ? 'Groq LPU Ready' : 'Enter Groq API Key');
+      }
+    };
+
+    window.saveGroqKey = function(val) {
+      window.appState.groqApiKey = val.trim();
+      localStorage.setItem('groq_api_key', window.appState.groqApiKey);
+      if (window.appState.groqApiKey) {
+        updateStatus('ready', 'Groq LPU Configured & Ready');
+        log('Groq API Key saved. Ready for inference at ~500+ tokens/sec.', 'success');
+      }
+    };
+
+    // --- UI Status Helpers ---
+    function updateStatus(state, msg) {
+      const dot = document.getElementById('status-indicator');
+      const txt = document.getElementById('status-text');
+      dot.className = 'status-dot ' + state;
+      txt.textContent = msg;
+    }
+
+    function log(msg, type = 'think') {
+      const logContainer = document.getElementById('agent-log');
+      const item = document.createElement('div');
+      item.className = 'log-item ' + type;
+      const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      item.innerHTML = `<span style="color:#64748b;">[${timestamp}]</span> ${msg}`;
+      logContainer.appendChild(item);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    window.clearLogs = function() {
+      document.getElementById('agent-log').innerHTML = '';
+    };
+
+    window.setGoal = function(goalText) {
+      document.getElementById('user-goal').value = goalText;
+    };
+
+    // --- WebLLM On-Device GPU Loader ---
+    window.initWebLLM = async function() {
+      if (!navigator.gpu) {
+        alert("WebGPU is not supported in this browser! Please try Google Chrome, Microsoft Edge, or switch to the Groq LPU engine above.");
+        log("WebGPU not detected in navigator.gpu.", "error");
+        return;
+      }
+
+      const btn = document.getElementById('btn-load-webgpu');
+      const progressContainer = document.getElementById('progress-container');
+      const progressBar = document.getElementById('progress-bar');
+      const progressSubtext = document.getElementById('progress-subtext');
+      const selectedModel = document.getElementById('webllm-model-select').value;
+
+      try {
+        btn.disabled = true;
+        progressContainer.style.display = 'block';
+        updateStatus('busy', 'Initializing WebLLM...');
+        log(`Importing @mlc-ai/web-llm runtime...`, 'think');
+
+        // Dynamically import ESM WebLLM
+        if (!window.appState.webllmInstance) {
+          window.appState.webllmInstance = await import("https://esm.run/@mlc-ai/web-llm");
+        }
+
+        const webllm = window.appState.webllmInstance;
+        log(`Loading model weights: ${selectedModel} directly onto your GPU...`, 'think');
+
+        const initProgressCallback = (report) => {
+          progressSubtext.textContent = report.text;
+          if (report.progress) {
+            progressBar.style.width = Math.round(report.progress * 100) + '%';
+          }
+        };
+
+        window.appState.webllmEngine = await webllm.CreateMLCEngine(selectedModel, {
+          initProgressCallback
+        });
+
+        window.appState.engineReady = true;
+        updateStatus('ready', `Model ${selectedModel} Loaded`);
+        log(`WebGPU model loaded and active in VRAM!`, 'success');
+        progressContainer.style.display = 'none';
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Model Active (${selectedModel})`;
+      } catch (err) {
+        console.error(err);
+        updateStatus('error', 'Failed to load model');
+        log(`WebLLM Load Error: ${err.message}`, 'error');
+        btn.disabled = false;
+      }
+    };
+
+    // --- DOM Serializer & Accessibility Tree Extractor ---
+    // Reads interactive elements in the sandbox to provide the model with a clear state representation
+    function getSimplifiedDOMState() {
+      const root = document.getElementById('sandbox-root');
+      const interactiveElements = root.querySelectorAll('button, a, input, select, textarea, [role="button"], [tabindex="0"]');
+      
+      const elementsMap = [];
+      let index = 1;
+
+      interactiveElements.forEach((el) => {
+        // Assign temporary data-agent-id
+        let agentId = el.getAttribute('data-agent-id');
+        if (!agentId) {
+          agentId = `btn_${index++}`;
+          el.setAttribute('data-agent-id', agentId);
+        }
+
+        const tag = el.tagName.toLowerCase();
+        const text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ');
+        const type = el.type || '';
+        const id = el.id ? `#${el.id}` : '';
+        const isVisible = el.offsetParent !== null;
+
+        if (isVisible && text.length < 120) {
+          elementsMap.push({
+            agentId,
+            tag,
+            type,
+            selector: id || `[data-agent-id="${agentId}"]`,
+            label: text
+          });
+        }
+      });
+
+      return {
+        url: document.getElementById('browser-url-input').value,
+        cartCount: window.appState.cart.length,
+        elements: elementsMap
+      };
+    }
+
+    // --- System Prompt for Browser Control Agent ---
+    const BROWSER_AGENT_SYSTEM_PROMPT = `You are an Autonomous Browser Control AI Agent.
+You inspect the current webpage state and output ONE next rational action in JSON format to achieve the user's goal.
+
+ACTIONS AVAILABLE:
+1. Click element:
+{"action": "click", "target": "ELEMENT_AGENT_ID", "reason": "reasoning"}
+
+2. Type text into input:
+{"action": "type", "target": "ELEMENT_AGENT_ID", "text": "value to type", "reason": "reasoning"}
+
+3. Navigate to URL or open preset:
+{"action": "navigate", "url": "URL_OR_PRESET", "reason": "reasoning"}
+
+4. Finish task when goal is achieved:
+{"action": "finish", "summary": "completed goal explanation"}
+
+RULES:
+- Return ONLY valid JSON with keys: action, target/text/url/summary, reason.
+- Pick target strictly from the provided Interactive Elements list agentId (e.g. "btn_1", "btn_2").
+- Be concise and accurate.`;
+
+    // --- LLM Query Dispatcher (Groq LPU or WebGPU) ---
+    async function queryLLM(promptText, domState) {
+      const startTime = performance.now();
+      const messages = [
+        { role: "system", content: BROWSER_AGENT_SYSTEM_PROMPT },
+        { 
+          role: "user", 
+          content: `USER GOAL: "${promptText}"\n\nCURRENT PAGE STATE:\nURL: ${domState.url}\nInteractive Elements on screen:\n${domState.elements.map(e => `[${e.agentId}] <${e.tag}${e.type ? ` type="${e.type}"` : ''}> "${e.label}"`).join('\n')}\n\nWhat is your next action? Respond with JSON only.`
+        }
+      ];
+
+      let rawResponse = "";
+
+      if (window.appState.engineType === 'groq') {
+        if (!window.appState.groqApiKey) {
+          throw new Error("Please enter your Groq API Key in the settings pane first.");
+        }
+        const model = document.getElementById('groq-model-select').value;
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${window.appState.groqApiKey}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.1,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `Groq API error HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        rawResponse = data.choices[0].message.content;
+        const elapsed = (performance.now() - startTime) / 1000;
+        const tps = Math.round((data.usage?.completion_tokens || 30) / elapsed);
+        document.getElementById('speed-indicator').textContent = `${tps} t/s`;
+      } else {
+        // WebGPU WebLLM
+        if (!window.appState.webllmEngine) {
+          // If user hasn't loaded weights, provide smart fallback rule-based execution demo
+          log("WebGPU model not loaded into VRAM yet. Running rule-based simulated browser agent planner...", "warn");
+          return fallbackPlanAction(promptText, domState);
+        }
+
+        const reply = await window.appState.webllmEngine.chat.completions.create({
+          messages: messages,
+          temperature: 0.1
+        });
+        rawResponse = reply.choices[0].message.content;
+        const elapsed = (performance.now() - startTime) / 1000;
+        document.getElementById('speed-indicator').textContent = `${Math.round(25 / elapsed)} t/s`;
+      }
+
+      // Parse JSON from model
+      try {
+        const cleaned = rawResponse.trim().replace(/^```json/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(cleaned);
+      } catch (parseErr) {
+        log(`Raw output: ${rawResponse}`, 'think');
+        throw new Error("Model response was not valid JSON. Retrying...");
+      }
+    }
+
+    // Smart heuristic fallback if model weights are not loaded yet
+    function fallbackPlanAction(goal, domState) {
+      const g = goal.toLowerCase();
+      // Cart logic
+      if (g.includes("cart") && g.includes("open")) {
+        const cartBtn = domState.elements.find(e => e.label.toLowerCase().includes("cart"));
+        if (cartBtn) return { action: "click", target: cartBtn.agentId, reason: "Opening shopping cart" };
+      }
+      // Add headphones
+      if (g.includes("headphone") || g.includes("buy") || g.includes("add")) {
+        const addBtn = domState.elements.find(e => e.label.toLowerCase().includes("add to cart") || e.label.toLowerCase().includes("add"));
+        if (addBtn) return { action: "click", target: addBtn.agentId, reason: "Clicking Add to Cart" };
+      }
+      // Add task
+      if (g.includes("task")) {
+        const input = domState.elements.find(e => e.tag === "input" && e.label.toLowerCase().includes("task"));
+        const addBtn = domState.elements.find(e => e.label.toLowerCase().includes("add task"));
+        if (input && !input.label.includes("token")) {
+          return { action: "type", target: input.agentId, text: "Fix authentication token timeout", reason: "Typing task title" };
+        }
+        if (addBtn) return { action: "click", target: addBtn.agentId, reason: "Submitting new task" };
+      }
+      // Default to first clickable button
+      const firstBtn = domState.elements[0];
+      if (firstBtn) return { action: "click", target: firstBtn.agentId, reason: "Clicking target element" };
+      return { action: "finish", summary: "Task fulfilled." };
+    }
+
+    // --- Virtual Browser Interaction & Cursor Animation ---
+    async function animateCursorTo(element, isClick = true) {
+      const cursor = document.getElementById('ai-cursor');
+      const viewport = document.getElementById('browser-viewport');
+      const vRect = viewport.getBoundingClientRect();
+      const eRect = element.getBoundingClientRect();
+
+      const targetX = eRect.left - vRect.left + (eRect.width / 2) + viewport.scrollLeft;
+      const targetY = eRect.top - vRect.top + (eRect.height / 2) + viewport.scrollTop;
+
+      cursor.style.display = 'block';
+      cursor.style.left = `${targetX}px`;
+      cursor.style.top = `${targetY}px`;
+
+      // Highlight target element
+      element.classList.add('ai-element-highlight');
+
+      await new Promise(r => setTimeout(r, 450));
+
+      if (isClick) {
+        cursor.classList.add('clicking');
+        const ripple = document.createElement('div');
+        ripple.className = 'cursor-ripple';
+        document.getElementById('cursor-ripple-host').appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+        await new Promise(r => setTimeout(r, 200));
+        cursor.classList.remove('clicking');
+      }
+
+      setTimeout(() => {
+        element.classList.remove('ai-element-highlight');
+      }, 800);
+    }
+
+    async function simulateType(inputEl, text) {
+      inputEl.focus();
+      inputEl.value = "";
+      for (let i = 0; i < text.length; i++) {
+        inputEl.value += text[i];
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 40));
+      }
+      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // --- Action Executor ---
+    const bridgeChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('agent_nav_channel') : null;
+
+    async function executeAction(actionObj) {
+      log(`Action: ${actionObj.action.toUpperCase()} ${actionObj.target ? `[${actionObj.target}]` : ''} - ${actionObj.reason || ''}`, 'action');
+
+      // Broadcast action to real external tabs connected via the bridge snippet
+      if (bridgeChannel) {
+        bridgeChannel.postMessage(actionObj);
+      }
+
+      if (actionObj.action === 'finish') {
+        log(`🎉 Task Complete: ${actionObj.summary || 'Goal achieved successfully!'}`, 'success');
+        stopAgentLoop();
+        return true;
+      }
+
+      if (actionObj.action === 'click') {
+        const root = document.getElementById('sandbox-root');
+        const targetEl = root.querySelector(`[data-agent-id="${actionObj.target}"]`);
+        if (!targetEl) {
+          log(`Target element ${actionObj.target} not found on page.`, 'warn');
+          return false;
+        }
+        await animateCursorTo(targetEl, true);
+        targetEl.click();
+        return false;
+      }
+
+      if (actionObj.action === 'type') {
+        const root = document.getElementById('sandbox-root');
+        const targetEl = root.querySelector(`[data-agent-id="${actionObj.target}"]`);
+        if (!targetEl) {
+          log(`Target input ${actionObj.target} not found.`, 'warn');
+          return false;
+        }
+        await animateCursorTo(targetEl, false);
+        await simulateType(targetEl, actionObj.text || '');
+        return false;
+      }
+
+      if (actionObj.action === 'navigate') {
+        log(`Navigating to ${actionObj.url}...`, 'action');
+        if (actionObj.url.includes('saas') || actionObj.url.includes('task')) {
+          switchPresetSite('saas');
+        } else {
+          switchPresetSite('ecommerce');
+        }
+        return false;
+      }
+
+      return false;
+    }
+
+    // --- Autonomous Agent Execution Loop ---
+    window.startAgentLoop = async function() {
+      const goal = document.getElementById('user-goal').value.trim();
+      if (!goal) {
+        alert("Please enter a natural language directive first.");
+        return;
+      }
+
+      window.appState.isExecuting = true;
+      window.appState.stepCount = 0;
+      document.getElementById('btn-execute').disabled = true;
+      updateStatus('busy', 'Agent Running...');
+      log(`Starting Autonomous Goal: "${goal}"`, 'think');
+
+      const MAX_STEPS = 10;
+
+      while (window.appState.isExecuting && window.appState.stepCount < MAX_STEPS) {
+        window.appState.stepCount++;
+        log(`--- Step ${window.appState.stepCount} ---`, 'think');
+
+        const domState = getSimplifiedDOMState();
+        try {
+          const action = await queryLLM(goal, domState);
+          const finished = await executeAction(action);
+          if (finished) break;
+          // Small pause between actions for UI settling
+          await new Promise(r => setTimeout(r, 700));
+        } catch (err) {
+          log(`Step Error: ${err.message}`, 'error');
+          break;
+        }
+      }
+
+      stopAgentLoop();
+    };
+
+    window.executeSingleStep = async function() {
+      const goal = document.getElementById('user-goal').value.trim();
+      if (!goal) {
+        alert("Please enter a natural language directive first.");
+        return;
+      }
+      const domState = getSimplifiedDOMState();
+      try {
+        const action = await queryLLM(goal, domState);
+        await executeAction(action);
+      } catch (err) {
+        log(`Step Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.stopAgentLoop = function() {
+      window.appState.isExecuting = false;
+      document.getElementById('btn-execute').disabled = false;
+      updateStatus(window.appState.engineReady || window.appState.groqApiKey ? 'ready' : 'idle', 'Agent Idle');
+      document.getElementById('ai-cursor').style.display = 'none';
+    };
+
+    // --- Preset Sites Implementation ---
+
+    window.switchPresetSite = function(presetKey) {
+      window.appState.currentSite = presetKey;
+      document.getElementById('preset-selector').value = presetKey;
+      const root = document.getElementById('sandbox-root');
+      const urlInput = document.getElementById('browser-url-input');
+
+      if (presetKey === 'ecommerce') {
+        urlInput.value = 'https://novamart.internal/store';
+        renderEcommerce(root);
+      } else if (presetKey === 'saas') {
+        urlInput.value = 'https://taskflow.internal/workspace';
+        renderSaaS(root);
+      } else if (presetKey === 'flight') {
+        urlInput.value = 'https://globalair.internal/book';
+        renderFlight(root);
+      } else if (presetKey === 'real_browser') {
+        urlInput.value = 'chrome-extension://agent-bridge/control';
+        renderRealBrowserBridge(root);
+      }
+    };
+
+    // 1. E-Commerce Preset
+    function renderEcommerce(root) {
+      root.innerHTML = `
+        <div class="sandbox-page">
+          <div class="shop-header">
+            <div class="shop-logo">
+              <span style="background:#2563eb; color:#fff; padding:4px 8px; border-radius:6px; font-size:16px;">NM</span>
+              NovaMart Electronics
+            </div>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="shop-search" placeholder="Search products..." style="width:200px; padding:6px 12px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#0f172a;">
+              <button class="shop-cart-btn" id="header-cart-btn" onclick="toggleCart(true)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                Cart (<span id="cart-badge">${window.appState.cart.length}</span>)
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px;">
+            <h2 style="font-size:20px; font-weight:800; color:#0f172a;">Featured Audio & Devices</h2>
+            <p style="font-size:13px; color:#64748b;">Autonomous agent can filter, select, and buy any item.</p>
+          </div>
+
+          <div class="shop-grid">
+            <div class="product-card">
+              <div class="product-img">🎧</div>
+              <div class="product-title">SonicPro Wireless ANC Headphones</div>
+              <div class="product-desc">Active noise cancelling with 40-hour battery life and spatial audio.</div>
+              <div class="product-footer">
+                <span class="product-price">$249.99</span>
+                <button class="add-cart-btn" onclick="addToCart('SonicPro Wireless ANC Headphones', 249.99)">Add to Cart</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-img">⌨️</div>
+              <div class="product-title">Vortex Mechanical Keyboard</div>
+              <div class="product-desc">Hot-swappable tactile switches with customizable RGB backlight.</div>
+              <div class="product-footer">
+                <span class="product-price">$129.50</span>
+                <button class="add-cart-btn" onclick="addToCart('Vortex Mechanical Keyboard', 129.50)">Add to Cart</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-img">💻</div>
+              <div class="product-title">UltraBook Pro 16"</div>
+              <div class="product-desc">M3 Max equivalent workstation with 32GB unified RAM.</div>
+              <div class="product-footer">
+                <span class="product-price">$1,899.00</span>
+                <button class="add-cart-btn" onclick="addToCart('UltraBook Pro 16', 1899.00)">Add to Cart</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      updateCartUI();
+    }
+
+    window.addToCart = function(title, price) {
+      window.appState.cart.push({ title, price });
+      updateCartUI();
+      log(`Added "${title}" to shopping cart!`, 'success');
+    };
+
+    window.toggleCart = function(isOpen) {
+      const modal = document.getElementById('cart-modal');
+      if (isOpen) modal.classList.add('open');
+      else modal.classList.remove('open');
+    };
+
+    function updateCartUI() {
+      const badge = document.getElementById('cart-badge');
+      const count = document.getElementById('cart-count');
+      const container = document.getElementById('cart-items');
+      const totalEl = document.getElementById('cart-total-price');
+
+      if (badge) badge.textContent = window.appState.cart.length;
+      if (count) count.textContent = window.appState.cart.length;
+
+      if (!container) return;
+
+      if (window.appState.cart.length === 0) {
+        container.innerHTML = '<p style="color:#64748b; font-size:13px; text-align:center; margin-top:40px;">Your cart is empty.</p>';
+        if (totalEl) totalEl.textContent = '$0.00';
+        return;
+      }
+
+      let total = 0;
+      container.innerHTML = window.appState.cart.map((item, idx) => {
+        total += item.price;
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+            <div>
+              <div style="font-size:13px; font-weight:600; color:#0f172a;">${item.title}</div>
+              <div style="font-size:12px; color:#0284c7;">$${item.price.toFixed(2)}</div>
+            </div>
+            <button onclick="removeCartItem(${idx})" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer;">Remove</button>
+          </div>
+        `;
+      }).join('');
+
+      if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+    }
+
+    window.removeCartItem = function(idx) {
+      window.appState.cart.splice(idx, 1);
+      updateCartUI();
+    };
+
+    // 2. SaaS Dashboard Preset
+    function renderSaaS(root) {
+      root.innerHTML = `
+        <div class="sandbox-page">
+          <div class="shop-header">
+            <div class="shop-logo">
+              <span style="background:#8b5cf6; color:#fff; padding:4px 8px; border-radius:6px; font-size:16px;">TF</span>
+              TaskFlow Project Manager
+            </div>
+            <span style="font-size:12px; color:#64748b;">Workspace: Engineering Sprint 42</span>
+          </div>
+
+          <div class="task-container">
+            <h3 style="font-size:16px; margin-bottom:14px; color:#0f172a;">Sprint Backlog</h3>
+            
+            <div class="task-input-bar">
+              <input type="text" id="new-task-input" placeholder="Type new task title here..." style="flex:1; border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+              <select id="new-task-priority" style="width:120px; border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High" selected>High</option>
+              </select>
+              <button id="add-task-btn" onclick="addNewTask()" class="btn btn-primary" style="width:auto; padding:8px 16px;">Add Task</button>
+            </div>
+
+            <ul class="task-list" id="task-list-items">
+              ${window.appState.tasks.map(t => `
+                <li class="task-item ${t.done ? 'completed' : ''}">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask(${t.id})">
+                    <span style="font-size:13px; font-weight:500;">${t.title}</span>
+                  </div>
+                  <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:${t.priority === 'High' ? '#fee2e2; color:#ef4444' : '#e0e7ff; color:#4338ca'}; font-weight:bold;">${t.priority}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+      `;
+    }
+
+    window.addNewTask = function() {
+      const input = document.getElementById('new-task-input');
+      const priority = document.getElementById('new-task-priority').value;
+      if (!input.value.trim()) return;
+
+      window.appState.tasks.push({
+        id: Date.now(),
+        title: input.value.trim(),
+        priority: priority,
+        done: false
+      });
+      input.value = '';
+      renderSaaS(document.getElementById('sandbox-root'));
+      log(`Task created in sprint backlog!`, 'success');
+    };
+
+    window.toggleTask = function(id) {
+      const t = window.appState.tasks.find(x => x.id === id);
+      if (t) t.done = !t.done;
+      renderSaaS(document.getElementById('sandbox-root'));
+    };
+
+    // 3. Flight Booking Preset
+    function renderFlight(root) {
+      root.innerHTML = `
+        <div class="sandbox-page">
+          <div class="shop-header">
+            <div class="shop-logo">
+              <span style="background:#0284c7; color:#fff; padding:4px 8px; border-radius:6px; font-size:16px;">✈️</span>
+              GlobalAir Booking
+            </div>
+            <span style="font-size:12px; color:#64748b;">Flight Search Engine</span>
+          </div>
+
+          <div class="task-container">
+            <h3 style="font-size:16px; margin-bottom:16px; color:#0f172a;">Find Flights</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+              <div>
+                <label style="font-size:12px; font-weight:bold; color:#475569;">From</label>
+                <input type="text" id="flight-from" value="JFK - New York" style="border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:bold; color:#475569;">To</label>
+                <input type="text" id="flight-to" value="HND - Tokyo" style="border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+              <div>
+                <label style="font-size:12px; font-weight:bold; color:#475569;">Passengers</label>
+                <select id="flight-passengers" style="border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+                  <option value="1">1 Adult</option>
+                  <option value="2" selected>2 Adults</option>
+                  <option value="3">3 Adults</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:bold; color:#475569;">Cabin Class</label>
+                <select id="flight-class" style="border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+                  <option value="Economy">Economy</option>
+                  <option value="Business" selected>Business Class</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="search-flights-btn" onclick="alert('Flights found! 2 seats reserved on GA #402.')" class="btn btn-primary">Search & Reserve Flights</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. Real Browser Tab Bridge Mode
+    function renderRealBrowserBridge(root) {
+      root.innerHTML = `
+        <div class="sandbox-page">
+          <div class="shop-header">
+            <div class="shop-logo">
+              <span style="background:#10b981; color:#fff; padding:4px 8px; border-radius:6px; font-size:16px;">🔌</span>
+              Real Browser Tab Bridge
+            </div>
+            <span style="font-size:12px; color:#64748b;">Control Any External Website</span>
+          </div>
+
+          <div class="task-container">
+            <h3 style="font-size:16px; margin-bottom:10px; color:#0f172a;">Automate Any Live Web Page via DevTools Console</h3>
+            <p style="font-size:13px; color:#64748b; margin-bottom:16px; line-height:1.5;">
+              Due to modern browser security (Cross-Origin Policy & X-Frame-Options), a pure web app cannot inject clicks into arbitrary external domains directly unless connected via a snippet or extension.
+            </p>
+
+            <h4 style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Option 1: Paste this 1-line Agent Bridge into any Chrome DevTools Console:</h4>
+            <div class="code-box" style="margin-bottom:16px;">
+const bc = new BroadcastChannel('agent_nav_channel');
+bc.onmessage = (e) => {
+  if (e.data.action === 'click') document.querySelector(e.data.selector)?.click();
+  if (e.data.action === 'type') { const el = document.querySelector(e.data.selector); if(el) el.value = e.data.text; }
+};
+console.log('✅ AgentNavigator Connected to this tab!');
+            </div>
+
+            <h4 style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Option 2: Antigravity Native Browser Subagent</h4>
+            <p style="font-size:13px; color:#475569;">
+              You can also ask Antigravity directly in the chat to open and control any live website using the native Chrome DevTools browser subagent!
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Browser navigation bar helpers
+    window.historyBack = function() { log("Navigation Back requested", "action"); };
+    window.historyForward = function() { log("Navigation Forward requested", "action"); };
+    window.reloadSandbox = function() { switchPresetSite(window.appState.currentSite); log("Page reloaded", "think"); };
+
+    // Initial load
+    switchPresetSite('ecommerce');
+    log("System initialized. Select WebLLM (WebGPU) or Groq LPU to start.", "think");
+  </script>
+</body>
+</html>
