@@ -2,10 +2,11 @@
 """
 Generates a stunning, publication-grade 1-Page PDF and high-res Preview PNG:
 "AI MODEL PREDICTIVE CONTROL (AI-MPC)
- Bounding Stochastic Agents into Deterministic Closed-Loop Cybernetic Control
+ Bounding Stochastic Agents into Deterministic Closed-Loop Feedback Control
  Defined by the 6-Layer Architecture"
 
-Header and footer strips removed. Guaranteed STRICT 1-PAGE FIT.
+Header and footer strips removed. Terminology updated to modern Closed-Loop Control.
+Guaranteed STRICT 1-PAGE FIT.
 """
 
 import os
@@ -66,23 +67,23 @@ HTML_CONTENT = """<!DOCTYPE html>
 </head>
 <body>
 
-  <!-- TITLE BLOCK (Running Header Removed) -->
+  <!-- TITLE BLOCK (Clean, No Running Header) -->
   <div>
     <div class="mb-2.5">
       <h1 class="text-[25px] font-black tracking-tight text-slate-900 leading-tight">
         AI Model Predictive Control (AI-MPC)
       </h1>
       <p class="text-[12px] font-semibold text-indigo-700 tracking-tight mt-0.5">
-        Bounding Stochastic Generative LLMs with Receding-Horizon Control &amp; Deterministic Invariant Oracles
+        Bounding Stochastic Generative LLMs with Receding-Horizon Closed-Loop Control &amp; Deterministic Invariant Oracles
       </p>
     </div>
 
     <!-- EXECUTIVE THESIS CALLOUT -->
     <div class="bg-slate-50 border-l-4 border-indigo-600 rounded-r-xl p-3 mb-3 shadow-xs">
       <div class="text-[10.5px] font-bold text-slate-800 leading-snug">
-        <span class="text-indigo-700 font-extrabold uppercase font-mono tracking-wider">The Cybernetic Paradigm:</span>
+        <span class="text-indigo-700 font-extrabold uppercase font-mono tracking-wider">The Closed-Loop Control Paradigm:</span>
         Traditional agents run open-loop prompts or rigid DAGs that suffer catastrophic parameter hallucination and compounding state drift. 
-        <strong>AI-MPC</strong> adapts the classical control formulation 
+        <strong>AI-MPC</strong> adapts classical feedback control theory 
         <span class="math-pill">min_{u} &Sigma; L(x, u) s.t. I(x, u) &le; 0</span>
         by using a generative model to simulate candidate trajectory horizons, passing proposals through a <strong>deterministic Invariant Oracle</strong>, 
         and executing <em>only the first verified atomic action</em> before observing true telemetry and recalculating.
@@ -269,7 +270,7 @@ HTML_CONTENT = """<!DOCTYPE html>
           <td class="p-1.5 pl-2.5 text-emerald-900 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-600"></span> AI-MPC (6 Layers)
           </td>
-          <td class="p-1.5 text-emerald-700 font-mono">Closed-Loop Cybernetic</td>
+          <td class="p-1.5 text-emerald-700 font-mono">Closed-Loop Control</td>
           <td class="p-1.5 text-emerald-700">Self-correcting rollback</td>
           <td class="p-1.5 text-emerald-800">
             <strong>Provable Mathematical Safety:</strong> Invariant Oracle blocks violation before actuation.
@@ -279,7 +280,7 @@ HTML_CONTENT = """<!DOCTYPE html>
     </table>
   </div>
 
-  <!-- APPLICATION MAPPING BANNER (Footer Bar Removed) -->
+  <!-- APPLICATION MAPPING BANNER (Clean, No Footer Bar) -->
   <div class="bg-indigo-900 text-white rounded-xl p-3 flex items-center justify-between text-[10.5px] font-mono shadow-xs">
     <div>
       <span class="text-indigo-300 font-bold uppercase tracking-wider block text-[9.5px]">Production Implementations Across Top 5 Agent Suite:</span>
