@@ -5,7 +5,7 @@ Generates a stunning, publication-grade 1-Page PDF and high-res Preview PNG:
  Bounding Stochastic Agents into Deterministic Closed-Loop Cybernetic Control
  Defined by the 6-Layer Architecture"
 
-Guaranteed STRICT 1-PAGE FIT.
+Header and footer strips removed. Guaranteed STRICT 1-PAGE FIT.
 """
 
 import os
@@ -40,7 +40,7 @@ HTML_CONTENT = """<!DOCTYPE html>
       width: 816px;
       height: 1056px;
       margin: 0;
-      padding: 26px 32px;
+      padding: 30px 34px;
       font-family: 'Plus Jakarta Sans', sans-serif;
       background: #ffffff;
       color: #0f172a;
@@ -66,32 +66,20 @@ HTML_CONTENT = """<!DOCTYPE html>
 </head>
 <body>
 
-  <!-- HEADER BLOCK -->
+  <!-- TITLE BLOCK (Running Header Removed) -->
   <div>
-    <div class="flex items-center justify-between border-b-2 border-indigo-600 pb-2 mb-2">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="bg-indigo-600 text-white font-mono font-black text-[10px] px-2 py-0.5 rounded tracking-widest uppercase">Formal Architecture Framework</span>
-          <span class="text-slate-400 font-mono text-[10px]">Version 2.0 • Closed-Loop Cybernetics</span>
-        </div>
-        <h1 class="text-[22px] font-black tracking-tight text-slate-900 mt-0.5 leading-tight">
-          AI Model Predictive Control (AI-MPC)
-        </h1>
-        <p class="text-[11px] font-semibold text-indigo-700 tracking-tight">
-          Bounding Stochastic Generative LLMs with Receding-Horizon Control &amp; Deterministic Invariant Oracles
-        </p>
-      </div>
-      <div class="text-right">
-        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 font-black font-mono text-base ml-auto shadow-xs">
-          6L
-        </div>
-        <span class="text-[9px] font-mono text-slate-500 block mt-0.5 font-bold">REUSABLE STACK</span>
-      </div>
+    <div class="mb-2.5">
+      <h1 class="text-[25px] font-black tracking-tight text-slate-900 leading-tight">
+        AI Model Predictive Control (AI-MPC)
+      </h1>
+      <p class="text-[12px] font-semibold text-indigo-700 tracking-tight mt-0.5">
+        Bounding Stochastic Generative LLMs with Receding-Horizon Control &amp; Deterministic Invariant Oracles
+      </p>
     </div>
 
     <!-- EXECUTIVE THESIS CALLOUT -->
-    <div class="bg-slate-50 border-l-4 border-indigo-600 rounded-r-xl p-2.5 mb-2.5 shadow-xs">
-      <div class="text-[10px] font-bold text-slate-800 leading-snug">
+    <div class="bg-slate-50 border-l-4 border-indigo-600 rounded-r-xl p-3 mb-3 shadow-xs">
+      <div class="text-[10.5px] font-bold text-slate-800 leading-snug">
         <span class="text-indigo-700 font-extrabold uppercase font-mono tracking-wider">The Cybernetic Paradigm:</span>
         Traditional agents run open-loop prompts or rigid DAGs that suffer catastrophic parameter hallucination and compounding state drift. 
         <strong>AI-MPC</strong> adapts the classical control formulation 
@@ -103,7 +91,7 @@ HTML_CONTENT = """<!DOCTYPE html>
   </div>
 
   <!-- THE 6-LAYER ARCHITECTURE MATRIX TABLE -->
-  <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs mb-2.5">
+  <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs mb-3">
     <div class="bg-slate-900 text-white px-3 py-1.5 flex items-center justify-between text-[11px] font-bold">
       <span class="font-mono tracking-wider">THE 6-LAYER CLOSED-LOOP AI-MPC ENGINE SPECIFICATION</span>
       <span class="text-[10px] font-mono text-indigo-300 font-medium">Receding Horizon: N-Step Search &bull; 1-Step Commit</span>
@@ -170,83 +158,83 @@ HTML_CONTENT = """<!DOCTYPE html>
     </table>
   </div>
 
-  <!-- CORE ARCHITECTURAL FLOW DIAGRAM (ASCII / CSS GRAPH) -->
-  <div class="grid grid-cols-3 gap-2.5 mb-2.5">
+  <!-- CORE ARCHITECTURAL FLOW DIAGRAM (3 CARDS) -->
+  <div class="grid grid-cols-3 gap-3 mb-3">
     
     <!-- Left Column: Classical MPC vs AI-MPC -->
-    <div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex flex-col justify-between">
+    <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col justify-between shadow-xs">
       <div>
         <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[10px] font-black uppercase text-indigo-700 font-mono">1. Receding Horizon Cycle</span>
+          <span class="text-[10.5px] font-black uppercase text-indigo-700 font-mono">1. Receding Horizon Cycle</span>
           <span class="text-[9px] font-mono text-slate-400">Classical &harr; AI</span>
         </div>
         <p class="text-[9.5px] text-slate-600 leading-snug">
           Instead of generating a brittle 50-step plan, AI-MPC solves an optimization window of depth <strong>N</strong>, executes <strong>1 step</strong>, 
           re-samples reality, and shifts the window forward:
         </p>
-        <div class="mt-1.5 bg-white p-1.5 rounded border border-slate-200 font-mono text-[8.5px] text-slate-700 leading-relaxed">
+        <div class="mt-2 bg-white p-2 rounded border border-slate-200 font-mono text-[8.5px] text-slate-700 leading-relaxed">
           T=0: Plan [u0, u1, u2] &rarr; Commit u0<br>
           T=1: Observe x1 &rarr; Plan [u1', u2', u3'] &rarr; Commit u1'<br>
           T=2: Observe x2 &rarr; Plan [u2'', u3'', u4'] &rarr; Commit u2''
         </div>
       </div>
-      <div class="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 p-1 rounded border border-emerald-200 mt-1">
+      <div class="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 p-1.5 rounded border border-emerald-200 mt-2">
         &check; Guarantees zero cumulative drift
       </div>
     </div>
 
     <!-- Middle Column: Role of the Invariant Oracle -->
-    <div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex flex-col justify-between">
+    <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col justify-between shadow-xs">
       <div>
         <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[10px] font-black uppercase text-emerald-700 font-mono">2. The Invariant Oracle Gate</span>
+          <span class="text-[10.5px] font-black uppercase text-emerald-700 font-mono">2. The Invariant Oracle Gate</span>
           <span class="text-[9px] font-mono text-slate-400">Layer 4 Core</span>
         </div>
         <p class="text-[9.5px] text-slate-600 leading-snug">
           The mathematical circuit breaker protecting external systems. Evaluates proposals against formal assertions:
         </p>
-        <ul class="text-[9px] text-slate-700 space-y-1 mt-1 font-mono">
-          <li class="flex items-center gap-1">
+        <ul class="text-[9px] text-slate-700 space-y-1 mt-1.5 font-mono">
+          <li class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
             <span>Physical: Temp T &lt; 375 K</span>
           </li>
-          <li class="flex items-center gap-1">
+          <li class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
             <span>Concurrency: Grants &le; Capacity</span>
           </li>
-          <li class="flex items-center gap-1">
+          <li class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
             <span>Ontology: Graph Cycles &equiv; &empty;</span>
           </li>
-          <li class="flex items-center gap-1">
+          <li class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
             <span>Compliance: SLA Delay == 0 ms</span>
           </li>
         </ul>
       </div>
-      <div class="text-[9px] font-mono text-indigo-700 font-bold bg-indigo-50 p-1 rounded border border-indigo-200 mt-1">
+      <div class="text-[9px] font-mono text-indigo-700 font-bold bg-indigo-50 p-1.5 rounded border border-indigo-200 mt-2">
         Deterministic Code &gt; Probabilistic Text
       </div>
     </div>
 
     <!-- Right Column: Atomic Policy Contracts -->
-    <div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex flex-col justify-between">
+    <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col justify-between shadow-xs">
       <div>
         <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[10px] font-black uppercase text-amber-700 font-mono">3. Atomic Policy Runbooks</span>
+          <span class="text-[10.5px] font-black uppercase text-amber-700 font-mono">3. Atomic Policy Runbooks</span>
           <span class="text-[9px] font-mono text-slate-400">Action Space</span>
         </div>
         <p class="text-[9.5px] text-slate-600 leading-snug">
           Actions are strictly quantized into <strong>255 Atomic Policies</strong>. Unregistered actions or out-of-order mutations are rejected at schema validation:
         </p>
-        <div class="mt-1 bg-white p-1.5 rounded border border-slate-200 font-mono text-[8.5px] text-slate-700 leading-tight">
+        <div class="mt-2 bg-white p-2 rounded border border-slate-200 font-mono text-[8.5px] text-slate-700 leading-tight">
           &lang;Precondition, Tool, Invariant, NextState&rang;<br>
           <span class="text-emerald-600 font-bold">POL-303</span>: Lua Script &rarr; Atomic Redis<br>
           <span class="text-blue-600 font-bold">POL-404</span>: Coolant Valve &rarr; Setpoint Commit<br>
           <span class="text-purple-600 font-bold">POL-504</span>: Falsification &rarr; Pivot Gate
         </div>
       </div>
-      <div class="text-[9px] font-mono text-amber-700 font-bold bg-amber-50 p-1 rounded border border-amber-200 mt-1">
+      <div class="text-[9px] font-mono text-amber-700 font-bold bg-amber-50 p-1.5 rounded border border-amber-200 mt-2">
         Action space strictly machine-bounded
       </div>
     </div>
@@ -254,36 +242,36 @@ HTML_CONTENT = """<!DOCTYPE html>
   </div>
 
   <!-- COMPARISON TABLE: CONVENTIONAL CHATBOT VS STATIC DAG VS AI-MPC -->
-  <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs mb-2.5">
-    <table class="w-full text-left border-collapse text-[9.5px]">
+  <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs mb-3">
+    <table class="w-full text-left border-collapse text-[10px]">
       <thead class="bg-slate-100 text-slate-800 font-bold font-mono text-[9px] border-b border-slate-200">
         <tr>
-          <th class="p-1 pl-2.5 w-32">Architectural Paradigm</th>
-          <th class="p-1 w-28">Control Nature</th>
-          <th class="p-1 w-32">Failure Mode</th>
-          <th class="p-1">Safety &amp; Reliability Guarantee</th>
+          <th class="p-1.5 pl-2.5 w-36">Architectural Paradigm</th>
+          <th class="p-1.5 w-32">Control Nature</th>
+          <th class="p-1.5 w-36">Failure Mode</th>
+          <th class="p-1.5">Safety &amp; Reliability Guarantee</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
         <tr>
-          <td class="p-1 pl-2.5 font-bold text-slate-900">Unconstrained Chatbot</td>
-          <td class="p-1 text-rose-700 font-mono">Open-Loop Prompting</td>
-          <td class="p-1 text-rose-600">Hallucinations, parameter drift</td>
-          <td class="p-1 text-slate-500">None. Output is stochastic and unchecked.</td>
+          <td class="p-1.5 pl-2.5 font-bold text-slate-900">Unconstrained Chatbot</td>
+          <td class="p-1.5 text-rose-700 font-mono">Open-Loop Prompting</td>
+          <td class="p-1.5 text-rose-600">Hallucinations, parameter drift</td>
+          <td class="p-1.5 text-slate-500">None. Output is stochastic and unchecked.</td>
         </tr>
         <tr>
-          <td class="p-1 pl-2.5 font-bold text-slate-900">Static DAG Workflow</td>
-          <td class="p-1 text-amber-700 font-mono">Hardcoded Graph</td>
-          <td class="p-1 text-amber-600">Brittle branch deadlocks</td>
-          <td class="p-1 text-slate-500">Rigid. Cannot dynamically optimize trajectory parameters.</td>
+          <td class="p-1.5 pl-2.5 font-bold text-slate-900">Static DAG Workflow</td>
+          <td class="p-1.5 text-amber-700 font-mono">Hardcoded Graph</td>
+          <td class="p-1.5 text-amber-600">Brittle branch deadlocks</td>
+          <td class="p-1.5 text-slate-500">Rigid. Cannot dynamically optimize trajectory parameters.</td>
         </tr>
         <tr class="bg-emerald-50/50 font-bold text-emerald-950">
-          <td class="p-1 pl-2.5 text-emerald-900 flex items-center gap-1">
+          <td class="p-1.5 pl-2.5 text-emerald-900 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-600"></span> AI-MPC (6 Layers)
           </td>
-          <td class="p-1 text-emerald-700 font-mono">Closed-Loop Cybernetic</td>
-          <td class="p-1 text-emerald-700">Self-correcting rollback</td>
-          <td class="p-1 text-emerald-800">
+          <td class="p-1.5 text-emerald-700 font-mono">Closed-Loop Cybernetic</td>
+          <td class="p-1.5 text-emerald-700">Self-correcting rollback</td>
+          <td class="p-1.5 text-emerald-800">
             <strong>Provable Mathematical Safety:</strong> Invariant Oracle blocks violation before actuation.
           </td>
         </tr>
@@ -291,23 +279,17 @@ HTML_CONTENT = """<!DOCTYPE html>
     </table>
   </div>
 
-  <!-- APPLICATION MAPPING BANNER -->
-  <div class="bg-indigo-900 text-white rounded-xl p-2.5 flex items-center justify-between text-[10px] font-mono shadow-xs">
+  <!-- APPLICATION MAPPING BANNER (Footer Bar Removed) -->
+  <div class="bg-indigo-900 text-white rounded-xl p-3 flex items-center justify-between text-[10.5px] font-mono shadow-xs">
     <div>
-      <span class="text-indigo-300 font-bold uppercase tracking-wider block text-[9px]">Verified Production Implementations in Top 5 Agent Suite:</span>
-      <span class="text-slate-200 text-[9.5px]">
+      <span class="text-indigo-300 font-bold uppercase tracking-wider block text-[9.5px]">Production Implementations Across Top 5 Agent Suite:</span>
+      <span class="text-slate-200 text-[10px]">
         1. Self-Improving (Kadane Invariant) &bull; 2. Knowledge Engineer (OWL Acyclicity) &bull; 3. Software Co (Mutex) &bull; 4. Digital Twin (ODE CSTR) &bull; 5. Exoskeleton (Pivot Gate)
       </span>
     </div>
     <div class="text-right pl-3 flex-shrink-0">
-      <span class="px-2 py-1 rounded bg-indigo-800 text-indigo-200 border border-indigo-700 font-bold text-[9px]">Zero-Drift Execution</span>
+      <span class="px-2.5 py-1 rounded bg-indigo-800 text-indigo-200 border border-indigo-700 font-bold text-[9.5px]">Zero-Drift Execution</span>
     </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="border-t border-slate-200 pt-1.5 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-    <span>AI Model Predictive Control &bull; Formulated for Enterprise Agent Reliability &bull; Built on Reusable 6-Layer Stack</span>
-    <span>Cosmos Analytics &bull; us-east-2 Production Architecture</span>
   </div>
 
 </body>
@@ -342,9 +324,6 @@ def generate_assets():
     page_count = len(doc)
     print(f"Verified Page Count: {page_count} page(s)")
     doc.close()
-
-    if page_count > 1:
-        print(f"WARNING: Page count is {page_count}! Adjusting styling to ensure strict 1 page.")
 
     # 4. Render preview PNG
     args_png = [
