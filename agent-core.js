@@ -10,12 +10,17 @@
  *   Layer 4: Deterministic Invariant & Safety Oracle (InvariantOracle)
  *   Layer 5: Actuation & Artifact Generation (Actuator)
  *   Layer 6: Telemetry, Observability & Feedback Loop (TelemetryLoop)
+ * 
+ * Core Primitives:
+ *   - AtomicPolicy: Bounded, indivisible action contract: <Precondition, Tool, Invariant, NextState>
+ *   - ReusableAgent: Closed-loop coordinator executing atomic policies
+ *   - EngineProvider: Tri-engine inference adapter (Instant, Groq LPU, WebGPU)
  */
 
 (function(window) {
   'use strict';
 
-  // --- LAYER DEFINITIONS ---
+  // --- 6 ARCHITECTURAL LAYERS ---
   const SIX_LAYERS = [
     { id: 'L1', name: 'State Space', desc: 'Perception, Context & Input Parameter Ingestion', icon: 'database', color: 'blue' },
     { id: 'L2', name: 'World Model', desc: 'Symbolic State, Graph Ontologies & Environmental Dynamics', icon: 'share-2', color: 'indigo' },
@@ -24,6 +29,28 @@
     { id: 'L5', name: 'Actuation', desc: 'Committed Executables, Artifact Generation & System Mutation', icon: 'zap', color: 'amber' },
     { id: 'L6', name: 'Telemetry Loop', desc: 'Closed-Loop Scoring, Continuous Feedback & Self-Correction', icon: 'activity', color: 'rose' }
   ];
+
+  // --- ATOMIC POLICY SPECIFICATION ---
+  class AtomicPolicy {
+    constructor(spec = {}) {
+      this.id = spec.id || 'POL-' + Math.floor(Math.random() * 900 + 100);
+      this.name = spec.name || 'Unnamed Policy';
+      this.category = spec.category || 'General';
+      this.precondition = spec.precondition || 'True';
+      this.action = spec.action || 'noop';
+      this.invariant = spec.invariant || 'Universal Consistency';
+      this.postState = spec.postState || 'STATE_NEXT';
+    }
+
+    renderBadge() {
+      return `
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-mono font-bold" title="Invariant: ${this.invariant}">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+          <span>${this.id}: ${this.name}</span>
+        </span>
+      `;
+    }
+  }
 
   // --- TRI-ENGINE INFERENCE ADAPTER ---
   class EngineProvider {
@@ -95,7 +122,17 @@
       this.actuator = config.actuator || (async (proposal) => ({ committed: true }));
       this.telemetryLoop = config.telemetryLoop || { history: [], metrics: {} };
 
+      // Registered Atomic Policies
+      this.atomicPolicies = (config.atomicPolicies || []).map(p => new AtomicPolicy(p));
       this.stepCounter = 0;
+    }
+
+    registerPolicy(policy) {
+      this.atomicPolicies.push(new AtomicPolicy(policy));
+    }
+
+    getPolicy(id) {
+      return this.atomicPolicies.find(p => p.id === id);
     }
 
     /**
@@ -177,6 +214,7 @@
   // Expose to window
   window.AgentCore = {
     SIX_LAYERS,
+    AtomicPolicy,
     EngineProvider,
     ReusableAgent,
     renderSixLayerHeader

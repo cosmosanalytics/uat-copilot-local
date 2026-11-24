@@ -121,14 +121,16 @@
         </div>
         <textarea id="task-prompt" rows="5" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 leading-relaxed resize-none"></textarea>
 
-        <!-- Layer 3: Policy Engine Metaprompt -->
+        <!-- Layer 3: Policy Engine Metaprompt & Explicit Atomic Policy Label -->
         <div class="border-t border-slate-200 pt-2 flex flex-col gap-1.5">
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-purple-800 flex items-center gap-1">
               <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold border border-purple-200">L3</span>
-              <span>Policy Engine · Mutating Metaprompt:</span>
+              <span>Policy Engine · Active Metaprompt:</span>
             </span>
-            <span class="text-[10px] text-slate-500 font-mono" id="mutation-count">0 Mutations Applied</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold" id="active-atomic-policy-badge">
+              Atomic Policy POL-101: Baseline Specification
+            </span>
           </div>
           <div id="metaprompt-view" class="bg-amber-50 rounded-lg p-2.5 text-[11px] font-mono text-amber-900 max-h-32 overflow-y-auto border border-amber-200 leading-snug">
             // Baseline Prompt: Solve directly using first principles.
@@ -223,7 +225,7 @@
       engine: 'instant',
       currentGen: 0,
       generations: [
-        { gen: 0, score: 42, latency: 480, tokens: 840, prompt: "Solve directly using basic iterative logic.", critique: "[L4 Oracle]: Basic iterative loop works on small inputs, but O(N^2) complexity exceeds latency budget. Invariant breach on 10^5 elements." },
+        { gen: 0, policyId: "POL-101", policyName: "Baseline Specification", score: 42, latency: 480, tokens: 840, prompt: "Solve directly using basic iterative logic.", critique: "[L4 Invariant Oracle]: Basic iterative loop works on small inputs, but O(N^2) complexity exceeds latency budget. Invariant breach on 10^5 elements." },
       ],
       chart: null,
       challengeKey: 'code_opt'
@@ -235,10 +237,10 @@
         desc: "Find the contiguous subarray with maximum sum in circular array. Naive approach O(N^2); optimal Kadane's two-pass algorithm runs in O(N) time and O(1) space.",
         initialPrompt: "Write a function maxSubarraySumCircular(nums) that computes the maximum circular subarray sum using first-principles logic.",
         stages: [
-          { score: 42, latency: "480ms", tokens: "840", metaprompt: "// Baseline Prompt\nSolve directly using standard nested iteration.", critique: "[L4 Oracle]: Solution functions on test arrays [1,-2,3,-2], but hits 480ms timeout on stress tests. O(N^2) invariant violation." },
-          { score: 64, latency: "210ms", tokens: "620", metaprompt: "// Mutated Generation G-1\nApply prefix-sum memoization. Prune redundant loops when running sum drops negative.", critique: "[L3 Policy]: Discovered Kadane invariant: Max circular subarray is either normal max subarray OR (total sum - min subarray)." },
-          { score: 81, latency: "85ms", tokens: "490", metaprompt: "// Mutated Generation G-2\nDecompose into two parallel linear passes: KadaneMax and KadaneMin. Guard against all-negative elements.", critique: "[L4 Invariant Oracle]: Verified boundary edge case: Array of all negatives returns max(nums) instead of 0. All 40 unit test assertions PASS." },
-          { score: 94, latency: "38ms", tokens: "380", metaprompt: "// Mutated Generation G-3\nSingle-pass loop tracking both curMax and curMin in-place with register variables.", critique: "[L5 Actuation]: Production prompt synthesized. O(N) time, O(1) auxiliary space. Benchmark passed with 0 rollbacks." }
+          { policyId: "POL-101", policyName: "Baseline Direct Specification", score: 42, latency: "480ms", tokens: "840", metaprompt: "// [Atomic Policy POL-101: Baseline Specification]\nSolve directly using standard nested iteration.", critique: "[L4 Oracle]: Solution functions on test arrays [1,-2,3,-2], but hits 480ms timeout on stress tests. O(N^2) invariant violation." },
+          { policyId: "POL-102", policyName: "Memoized Prefix Bounds Heuristic", score: 64, latency: "210ms", tokens: "620", metaprompt: "// [Atomic Policy POL-102: Prefix-Sum Memoization Guard]\nApply prefix-sum memoization. Prune redundant loops when running sum drops negative.", critique: "[L3 Policy]: Discovered Kadane invariant: Max circular subarray is either normal max subarray OR (total sum - min subarray)." },
+          { policyId: "POL-103", policyName: "Dual-Pass Kadane Invariant Decomposition", score: 81, latency: "85ms", tokens: "490", metaprompt: "// [Atomic Policy POL-103: Kadane Dual-Pass Decomposition]\nDecompose into two parallel linear passes: KadaneMax and KadaneMin. Guard against all-negative elements.", critique: "[L4 Invariant Oracle]: Verified boundary edge case: Array of all negatives returns max(nums) instead of 0. All 40 unit test assertions PASS." },
+          { policyId: "POL-104", policyName: "In-Place Register Mutation Actuation", score: 94, latency: "38ms", tokens: "380", metaprompt: "// [Atomic Policy POL-104: In-Place Register Allocation]\nSingle-pass loop tracking both curMax and curMin in-place with register variables.", critique: "[L5 Actuation]: Production prompt synthesized. O(N) time, O(1) auxiliary space. Benchmark passed with 0 rollbacks." }
         ]
       },
       sql_opt: {
@@ -246,9 +248,9 @@
         desc: "Optimize a 4-table join analytical query over 12M rows from 14s table scan to sub-50ms index seek with partition elimination.",
         initialPrompt: "SELECT * FROM orders o JOIN customers c ON o.cid = c.id JOIN items i ON o.iid = i.id WHERE o.date >= '2026-01-01' GROUP BY c.region;",
         stages: [
-          { score: 35, latency: "14200ms", tokens: "910", metaprompt: "// Baseline Prompt\nGenerate standard ANSI SQL query with basic JOIN clauses.", critique: "[L4 Oracle]: Full sequential table scan across 12M rows. Exceeds 100ms SLA by 142x." },
-          { score: 68, latency: "840ms", tokens: "550", metaprompt: "// Mutated Generation G-1\nAdd composite index (date, cid, iid) and filter partition before joining.", critique: "[L3 Policy]: Replaced sequential scan with partition index range scan. Execution time dropped 94%." },
-          { score: 96, latency: "42ms", tokens: "310", metaprompt: "// Mutated Generation G-2\nUse materialized pre-aggregated CTE with covering index index_orders_covering.", critique: "[L5 Actuation]: Execution plan verified by EXPLAIN ANALYZE: Zero disk spills, pure index-only seek." }
+          { policyId: "POL-111", policyName: "Full Scan Baseline Policy", score: 35, latency: "14200ms", tokens: "910", metaprompt: "// [Atomic Policy POL-111: Full Table Scan Specification]\nGenerate standard ANSI SQL query with basic JOIN clauses.", critique: "[L4 Oracle]: Full sequential table scan across 12M rows. Exceeds 100ms SLA by 142x." },
+          { policyId: "POL-112", policyName: "Partition Index Seek Policy", score: 68, latency: "840ms", tokens: "550", metaprompt: "// [Atomic Policy POL-112: Partition Filter Elimination]\nAdd composite index (date, cid, iid) and filter partition before joining.", critique: "[L3 Policy]: Replaced sequential scan with partition index range scan. Execution time dropped 94%." },
+          { policyId: "POL-113", policyName: "Covering Index Materialization Actuation", score: 96, latency: "42ms", tokens: "310", metaprompt: "// [Atomic Policy POL-113: Materialized Covering Index]\nUse materialized pre-aggregated CTE with covering index index_orders_covering.", critique: "[L5 Actuation]: Execution plan verified by EXPLAIN ANALYZE: Zero disk spills, pure index-only seek." }
         ]
       },
       math_proof: {
@@ -256,9 +258,9 @@
         desc: "Formulate an inductive counter-example disproving whether every triangle-free graph with maximum degree d is 3-colorable.",
         initialPrompt: "Prove or disprove whether every triangle-free graph G with Delta(G) <= 4 has chromatic number chi(G) <= 3.",
         stages: [
-          { score: 50, latency: "620ms", tokens: "1100", metaprompt: "// Baseline Prompt\nAttempt direct induction on vertex count N.", critique: "[L4 Oracle]: Induction hypothesis fails at N=11 (Grötzsch graph has chi=4 despite triangle-free). Invariant breach." },
-          { score: 78, latency: "310ms", tokens: "750", metaprompt: "// Mutated Generation G-1\nConstruct explicit Grötzsch graph embedding as counter-example.", critique: "[L3 Policy]: Identified mycielskian construction step as canonical counter-example." },
-          { score: 98, latency: "95ms", tokens: "420", metaprompt: "// Mutated Generation G-2\nGenerate formalized Coq theorem certificate establishing chi(Grötzsch) == 4.", critique: "[L5 Actuation]: Formal Coq proof verified with zero unresolved axioms. Theorem proven unconditionally." }
+          { policyId: "POL-121", policyName: "Direct Vertex Induction Policy", score: 50, latency: "620ms", tokens: "1100", metaprompt: "// [Atomic Policy POL-121: Direct Vertex Induction]\nAttempt direct induction on vertex count N.", critique: "[L4 Oracle]: Induction hypothesis fails at N=11 (Grötzsch graph has chi=4 despite triangle-free). Invariant breach." },
+          { policyId: "POL-122", policyName: "Mycielskian Construction Counter-Example", score: 78, latency: "310ms", tokens: "750", metaprompt: "// [Atomic Policy POL-122: Mycielskian Construction Search]\nConstruct explicit Grötzsch graph embedding as counter-example.", critique: "[L3 Policy]: Identified mycielskian construction step as canonical counter-example." },
+          { policyId: "POL-123", policyName: "Formal Coq Certificate Actuation", score: 98, latency: "95ms", tokens: "420", metaprompt: "// [Atomic Policy POL-123: Coq Theorem Certificate]\nGenerate formalized Coq theorem certificate establishing chi(Grötzsch) == 4.", critique: "[L5 Actuation]: Formal Coq proof verified with zero unresolved axioms. Theorem proven unconditionally." }
         ]
       },
       security_patch: {
@@ -266,9 +268,9 @@
         desc: "Detect and autonomously patch a cross-function reentrancy vulnerability in a liquidity pool contract before state balance update.",
         initialPrompt: "function withdraw(uint amount) external { require(balances[msg.sender] >= amount); msg.sender.call{value: amount}(''); balances[msg.sender] -= amount; }",
         stages: [
-          { score: 20, latency: "350ms", tokens: "720", metaprompt: "// Baseline Prompt\nCheck basic balance requirement before sending ether.", critique: "[L4 Invariant Oracle]: CRITICAL VULNERABILITY: State balance updated AFTER external call. Reentrant drain attack succeeds in simulator." },
-          { score: 75, latency: "180ms", tokens: "520", metaprompt: "// Mutated Generation G-1\nApply Checks-Effects-Interactions pattern: Deduct balance before executing low-level call.", critique: "[L3 Policy]: Applied CEI pattern. Attacker callback now reads zero balance." },
-          { score: 99, latency: "60ms", tokens: "290", metaprompt: "// Mutated Generation G-2\nAdd nonReentrant mutex modifier + CEI pattern + gas stipends check.", critique: "[L5 Actuation]: Automated fuzz tester ran 100,000 symbolic executions with 0 exploit vectors found. Signed off." }
+          { policyId: "POL-131", policyName: "Naive Balance Check Policy", score: 20, latency: "350ms", tokens: "720", metaprompt: "// [Atomic Policy POL-131: Naive Balance Verification]\nCheck basic balance requirement before sending ether.", critique: "[L4 Invariant Oracle]: CRITICAL VULNERABILITY: State balance updated AFTER external call. Reentrant drain attack succeeds in simulator." },
+          { policyId: "POL-132", policyName: "Checks-Effects-Interactions (CEI) Guard", score: 75, latency: "180ms", tokens: "520", metaprompt: "// [Atomic Policy POL-132: Checks-Effects-Interactions Pattern]\nApply Checks-Effects-Interactions pattern: Deduct balance before executing low-level call.", critique: "[L3 Policy]: Applied CEI pattern. Attacker callback now reads zero balance." },
+          { policyId: "POL-133", policyName: "Reentrancy Mutex & Gas Stipend Actuation", score: 99, latency: "60ms", tokens: "290", metaprompt: "// [Atomic Policy POL-133: Mutex Modifier Actuation]\nAdd nonReentrant mutex modifier + CEI pattern + gas stipends check.", critique: "[L5 Actuation]: Automated fuzz tester ran 100,000 symbolic executions with 0 exploit vectors found. Signed off." }
         ]
       }
     };
@@ -313,7 +315,7 @@
       document.getElementById('task-prompt').value = c.initialPrompt;
       appState.currentGen = 0;
       appState.generations = [
-        { gen: 0, score: c.stages[0].score, latency: c.stages[0].latency, tokens: c.stages[0].tokens, prompt: c.stages[0].metaprompt, critique: c.stages[0].critique }
+        { gen: 0, policyId: c.stages[0].policyId, policyName: c.stages[0].policyName, score: c.stages[0].score, latency: c.stages[0].latency, tokens: c.stages[0].tokens, prompt: c.stages[0].metaprompt, critique: c.stages[0].critique }
       ];
       clearCritiqueLogs();
       updateUI();
@@ -329,24 +331,27 @@
       document.getElementById('metric-latency').textContent = latest.latency;
       document.getElementById('metric-tokens').textContent = `${latest.tokens} tok`;
       document.getElementById('metaprompt-view').textContent = latest.prompt;
-      document.getElementById('mutation-count').textContent = `${latest.gen} Mutations Applied`;
+      document.getElementById('active-atomic-policy-badge').textContent = `Atomic Policy ${latest.policyId}: ${latest.policyName}`;
 
       // Update Chart
-      appState.chart.data.labels = appState.generations.map(g => `G-${g.gen}`);
+      appState.chart.data.labels = appState.generations.map(g => `G-${g.gen} (${g.policyId})`);
       appState.chart.data.datasets[0].data = appState.generations.map(g => g.score);
       appState.chart.update();
 
       // Append to stream
-      addCritiqueLog(latest.gen, latest.critique, latest.score);
+      addCritiqueLog(latest.gen, latest.policyId, latest.policyName, latest.critique, latest.score);
     }
 
-    function addCritiqueLog(gen, text, score) {
+    function addCritiqueLog(gen, policyId, policyName, text, score) {
       const stream = document.getElementById('critique-stream');
       const item = document.createElement('div');
       item.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200 leading-relaxed';
       item.innerHTML = `
         <div class="flex items-center justify-between text-[11px] mb-1">
-          <span class="font-bold text-indigo-700 font-mono">Iteration G-${gen} Evaluation</span>
+          <div class="flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold">${policyId}</span>
+            <span class="font-bold text-indigo-700 font-mono">${policyName}</span>
+          </div>
           <span class="text-[10px] font-mono text-slate-500 font-semibold">Reward Score: ${score}/100</span>
         </div>
         <p class="text-slate-700 text-xs">${text}</p>
@@ -365,6 +370,8 @@
         const nextStage = c.stages[appState.currentGen];
         appState.generations.push({
           gen: appState.currentGen,
+          policyId: nextStage.policyId,
+          policyName: nextStage.policyName,
           score: nextStage.score,
           latency: nextStage.latency,
           tokens: nextStage.tokens,
